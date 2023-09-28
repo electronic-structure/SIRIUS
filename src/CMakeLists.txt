@@ -70,6 +70,7 @@ set(_SOURCES
   "utils/utils.cpp"
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
+  "utils/ostream_tools.cpp"
   "mpi/communicator.cpp"
   "SDDK/memory.cpp"
   "gpu/acc.cpp"

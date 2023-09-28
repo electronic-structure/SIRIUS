@@ -28,6 +28,7 @@
 #include "memory.hpp"
 #include "typedefs.hpp"
 #include "utils/utils.hpp"
+#include "specfunc/specfunc.hpp"
 
 namespace sirius {
 
@@ -85,9 +86,9 @@ class Gaunt_coefficients
         , lmax3_(lmax3__)
         , lmax2_(lmax2__)
     {
-        lmmax1_ = utils::lmmax(lmax1_);
-        lmmax3_ = utils::lmmax(lmax3_);
-        lmmax2_ = utils::lmmax(lmax2_);
+        lmmax1_ = sf::lmmax(lmax1_);
+        lmmax3_ = sf::lmmax(lmax3_);
+        lmmax2_ = sf::lmmax(lmax2_);
 
         gaunt_packed_L1_L2_ = sddk::mdarray<std::vector<gaunt_L1_L2<T>>, 1>(lmmax3_);
         gaunt_L1_L2<T> g12;

@@ -269,7 +269,7 @@ class SHT // TODO: better name
                 if (m == 0) {
                     f_ylm__[lm] = f_rlm__[lm];
                 } else {
-                    int lm1     = utils::lm(l, -m);
+                    int lm1     = sf::lm(l, -m);
                     f_ylm__[lm] = ylm_dot_rlm(l, m, m) * f_rlm__[lm] + ylm_dot_rlm(l, m, -m) * f_rlm__[lm1];
                 }
                 lm++;
@@ -286,7 +286,7 @@ class SHT // TODO: better name
                 if (m == 0) {
                     f_rlm__[lm] = std::real(f_ylm__[lm]);
                 } else {
-                    int lm1     = utils::lm(l, -m);
+                    int lm1     = sf::lm(l, -m);
                     f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
                 }
                 lm++;
@@ -298,7 +298,7 @@ class SHT // TODO: better name
     //{
     //    Timer t("sirius::SHT::rlm_forward_iterative_transform");
     //
-    //    assert(lmmax <= lmmax_);
+    //    RTE_ASSERT(lmmax <= lmmax_);
 
     //    mdarray<double, 2> ftp(ftp__, num_points_, ncol);
     //    mdarray<double, 2> ftp1(num_points_, ncol);
@@ -364,7 +364,7 @@ class SHT // TODO: better name
     {
         double const isqrt2 = 1.0 / std::sqrt(2);
 
-        assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
+        RTE_ASSERT(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
 
         if (!((m1 == m2) || (m1 == -m2))) {
             return std::complex<double>(0, 0);
@@ -402,12 +402,12 @@ class SHT // TODO: better name
      */
     static double gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
     {
-        assert(l1 >= 0);
-        assert(l2 >= 0);
-        assert(l3 >= 0);
-        assert(m1 >= -l1 && m1 <= l1);
-        assert(m2 >= -l2 && m2 <= l2);
-        assert(m3 >= -l3 && m3 <= l3);
+        RTE_ASSERT(l1 >= 0);
+        RTE_ASSERT(l2 >= 0);
+        RTE_ASSERT(l3 >= 0);
+        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
         return std::pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
@@ -422,12 +422,12 @@ class SHT // TODO: better name
      */
     static double gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
     {
-        assert(l1 >= 0);
-        assert(l2 >= 0);
-        assert(l3 >= 0);
-        assert(m1 >= -l1 && m1 <= l1);
-        assert(m2 >= -l2 && m2 <= l2);
-        assert(m3 >= -l3 && m3 <= l3);
+        RTE_ASSERT(l1 >= 0);
+        RTE_ASSERT(l2 >= 0);
+        RTE_ASSERT(l3 >= 0);
+        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
         double d = 0;
         for (int k1 = -l1; k1 <= l1; k1++) {
@@ -451,12 +451,12 @@ class SHT // TODO: better name
      */
     static double gaunt_rlm_ylm_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
     {
-        assert(l1 >= 0);
-        assert(l2 >= 0);
-        assert(l3 >= 0);
-        assert(m1 >= -l1 && m1 <= l1);
-        assert(m2 >= -l2 && m2 <= l2);
-        assert(m3 >= -l3 && m3 <= l3);
+        RTE_ASSERT(l1 >= 0);
+        RTE_ASSERT(l2 >= 0);
+        RTE_ASSERT(l3 >= 0);
+        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
         double d = 0;
         for (int k1 = -l1; k1 <= l1; k1++) {
@@ -477,12 +477,12 @@ class SHT // TODO: better name
      */
     static std::complex<double> gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
     {
-        assert(l1 >= 0);
-        assert(l2 >= 0);
-        assert(l3 >= 0);
-        assert(m1 >= -l1 && m1 <= l1);
-        assert(m2 >= -l2 && m2 <= l2);
-        assert(m3 >= -l3 && m3 <= l3);
+        RTE_ASSERT(l1 >= 0);
+        RTE_ASSERT(l2 >= 0);
+        RTE_ASSERT(l3 >= 0);
+        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
         if (m2 == 0) {
             return std::complex<double>(gaunt_yyy(l1, l2, l3, m1, m2, m3), 0.0);
@@ -514,12 +514,12 @@ class SHT // TODO: better name
      */
     static inline double clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
     {
-        assert(l1 >= 0);
-        assert(l2 >= 0);
-        assert(l3 >= 0);
-        assert(m1 >= -l1 && m1 <= l1);
-        assert(m2 >= -l2 && m2 <= l2);
-        assert(m3 >= -l3 && m3 <= l3);
+        RTE_ASSERT(l1 >= 0);
+        RTE_ASSERT(l2 >= 0);
+        RTE_ASSERT(l3 >= 0);
+        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
         return std::pow(-1, l1 - l2 + m3) * std::sqrt(double(2 * l3 + 1)) *
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);

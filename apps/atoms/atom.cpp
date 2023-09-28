@@ -269,7 +269,7 @@ class Free_atom : public sirius::Atom_type
             s << "atom " << symbol() << " is not converged" << std::endl
               << "  energy difference : " << energy_diff << std::endl
               << "  charge difference : " << charge_rms;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         free_atom_density_spline_ = sirius::Spline<double>(radial_grid_, rho.values());

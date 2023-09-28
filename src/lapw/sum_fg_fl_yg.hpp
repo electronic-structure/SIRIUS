@@ -48,7 +48,7 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
         na_max = std::max(na_max, ctx__.unit_cell().atom_type(iat).num_atoms());
     }
 
-    const int lmmax = utils::lmmax(lmax__);
+    const int lmmax = sf::lmmax(lmax__);
     /* resuling matrix */
     sddk::mdarray<std::complex<double>, 2> flm(lmmax, ctx__.unit_cell().num_atoms());
 

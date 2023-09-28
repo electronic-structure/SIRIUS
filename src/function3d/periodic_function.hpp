@@ -239,7 +239,7 @@ class Periodic_function
 
         if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
             auto& frlm = mt_component_[ja];
-            int lmax = utils::lmax(frlm.angular_domain_size());
+            int lmax = sf::lmax(frlm.angular_domain_size());
             std::vector<T> rlm(frlm.angular_domain_size());
             sf::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
             T p{0};

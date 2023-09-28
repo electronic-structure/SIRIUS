@@ -1087,7 +1087,7 @@ class Atom_type
 
     inline int lmmax_apw() const
     {
-        return utils::lmmax(this->lmax_apw());
+        return sf::lmmax(this->lmax_apw());
     }
 
     inline int lmax_lo() const

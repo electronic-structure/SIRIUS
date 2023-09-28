@@ -114,7 +114,7 @@ class Matching_coefficients // TODO: compute on GPU
         , gkvec_(gkvec__)
     {
         int lmax_apw  = unit_cell__.lmax_apw();
-        int lmmax_apw = utils::lmmax(lmax_apw);
+        int lmmax_apw = sf::lmmax(lmax_apw);
 
         gkvec_ylm_ = sddk::mdarray<std::complex<double>, 2>(gkvec_.count(), lmmax_apw);
         gkvec_len_.resize(gkvec_.count());
@@ -194,7 +194,7 @@ class Matching_coefficients // TODO: compute on GPU
     {
         auto& type = atom__.type();
 
-        assert(type.max_aw_order() <= 3);
+        RTE_ASSERT(type.max_aw_order() <= 3);
 
         int iat = type.id();
 
@@ -227,7 +227,7 @@ class Matching_coefficients // TODO: compute on GPU
                             s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
                               << std::endl
                               << "  radial function value at the MT boundary : " << A(0, 0);
-                            WARNING(s.str());
+                            RTE_WARNING(s.str());
                         }
                     }
 
@@ -243,7 +243,7 @@ class Matching_coefficients // TODO: compute on GPU
                             s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
                               << std::endl
                               << "  radial function value at the MT boundary : " << A(0, 0);
-                            WARNING(s.str());
+                            RTE_WARNING(s.str());
                         }
                     }
 
@@ -287,7 +287,7 @@ class Matching_coefficients // TODO: compute on GPU
                     break;
                 }
                 default: {
-                    TERMINATE("wrong order of augmented wave");
+                    RTE_THROW("wrong order of augmented wave");
                 }
             }
         }

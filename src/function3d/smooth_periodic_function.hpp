@@ -229,19 +229,19 @@ class Smooth_periodic_function
 
     auto& spfft()
     {
-        assert(spfft_ != nullptr);
+        RTE_ASSERT(spfft_ != nullptr);
         return *spfft_;
     }
 
     auto const& spfft() const
     {
-        assert(spfft_ != nullptr);
+        RTE_ASSERT(spfft_ != nullptr);
         return *spfft_;
     }
 
     auto& gvec() const
     {
-        assert(gvecp_ != nullptr);
+        RTE_ASSERT(gvecp_ != nullptr);
         return gvecp_->gvec();
     }
 
@@ -254,7 +254,7 @@ class Smooth_periodic_function
     {
         PROFILE("sirius::Smooth_periodic_function::fft_transform");
 
-        assert(gvecp_ != nullptr);
+        RTE_ASSERT(gvecp_ != nullptr);
 
         auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
 
@@ -409,13 +409,13 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 
     spfft::Transform& spfft() const
     {
-        assert(spfft_ != nullptr);
+        RTE_ASSERT(spfft_ != nullptr);
         return *spfft_;
     }
 
     auto gvec_fft() const
     {
-        assert(gvecp_ != nullptr);
+        RTE_ASSERT(gvecp_ != nullptr);
         return gvecp_;
     }
 };

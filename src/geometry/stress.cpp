@@ -118,7 +118,7 @@ Stress::calc_stress_hubbard()
     /* if there are no beta projectors then get out there */
     /* TODO : Need to fix the case where pp have no beta projectors */
     if (ctx_.unit_cell().max_mt_basis_size() == 0) {
-        TERMINATE("Hubbard forces : Your pseudo potentials do not have beta projectors. This need a proper fix");
+        RTE_THROW("Hubbard forces : Your pseudo potentials do not have beta projectors. This need a proper fix");
         return stress_hubbard_;
     }
 
@@ -563,9 +563,9 @@ Stress::print_info(std::ostream& out__, int verbosity__) const
     auto print_stress = [&](std::string label__, r3::matrix<double> const& s) {
         out__ << "=== " << label__ << " ===" << std::endl;
         for (int mu : {0, 1, 2}) {
-           out__ << utils::ffmt(12, 6) << s(mu, 0)
-                 << utils::ffmt(12, 6) << s(mu, 1)
-                 << utils::ffmt(12, 6) << s(mu, 2) << std::endl;
+           out__ << ffmt(12, 6) << s(mu, 0)
+                 << ffmt(12, 6) << s(mu, 1)
+                 << ffmt(12, 6) << s(mu, 2) << std::endl;
         }
     };
 

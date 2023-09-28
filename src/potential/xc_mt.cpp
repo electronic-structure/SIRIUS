@@ -45,8 +45,8 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
     Ftp exc_tp(sht__.num_points(), rgrid__);
     Ftp vxc_tp(sht__.num_points(), rgrid__);
 
-    assert(rho_tp__.size() == vxc_tp.size());
-    assert(rho_tp__.size() == exc_tp.size());
+    RTE_ASSERT(rho_tp__.size() == vxc_tp.size());
+    RTE_ASSERT(rho_tp__.size() == exc_tp.size());
 
     Ftp grad_rho_grad_rho_tp;
     Ftp vsigma_tp;
@@ -66,14 +66,14 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
         }
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
-        assert(rho_tp__.size() == grad_rho_grad_rho_tp.size());
+        RTE_ASSERT(rho_tp__.size() == grad_rho_grad_rho_tp.size());
 
         vsigma_tp = Ftp(sht__.num_points(), rgrid__);
-        assert(rho_tp__.size() == vsigma_tp.size());
+        RTE_ASSERT(rho_tp__.size() == vsigma_tp.size());
         if (use_lapl) {
             /* backward transform Laplacian from Rlm to (theta, phi) */
             lapl_rho_tp = transform(sht__, laplacian(rho_lm__));
-            assert(lapl_rho_tp.size() == rho_tp__.size());
+            RTE_ASSERT(lapl_rho_tp.size() == rho_tp__.size());
         }
     }
 
@@ -334,7 +334,7 @@ void Potential::xc_mt(Density const& density__)
               << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax" << std::endl
               << "  sht.lmax       : " << sht_->lmax() << std::endl
               << "  sht.num_points : " << sht_->num_points();
-            WARNING(s);
+            RTE_WARNING(s);
         }
 
         /* z, x, y order */

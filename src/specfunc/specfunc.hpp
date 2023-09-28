@@ -33,9 +33,47 @@
 #include "utils/utils.hpp"
 #include "SDDK/memory.hpp"
 #include "linalg/r3.hpp"
+#include "constants.hpp"
 
 /// Special functions.
 namespace sf {
+
+/// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
+inline int lmmax(int lmax)
+{
+    return (lmax + 1) * (lmax + 1);
+}
+
+/// Get composite lm index by angular index l and azimuthal index m.
+inline int lm(int l, int m)
+{
+    return (l * l + l + m);
+}
+
+/// Get maximum orbital quantum number by the maximum lm index.
+inline int lmax(int lmmax__)
+{
+    RTE_ASSERT(lmmax__ >= 0);
+    int lmax = static_cast<int>(std::sqrt(static_cast<double>(lmmax__)) + 1e-8) - 1;
+    if (lmmax(lmax) != lmmax__) {
+        std::stringstream s;
+        s << "wrong lmmax: " << lmmax__;
+        RTE_THROW(s);
+    }
+    return lmax;
+}
+
+/// Get array of orbital quantum numbers for each lm component.
+inline std::vector<int> l_by_lm(int lmax__)
+{
+    std::vector<int> v(lmmax(lmax__));
+    for (int l = 0; l <= lmax__; l++) {
+        for (int m = -l; m <= l; m++) {
+            v[lm(l, m)] = l;
+        }
+    }
+    return v;
+}
 
 inline double hermiteh(int n, double x)
 {
@@ -238,17 +276,17 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, std::com
     gsl_sf_legendre_array(GSL_SF_LEGENDRE_SPHARM, lmax, x, &result_array[0]);
 
     for (int l = 0; l <= lmax; l++) {
-        ylm[utils::lm(l, 0)] = result_array[gsl_sf_legendre_array_index(l, 0)];
+        ylm[sf::lm(l, 0)] = result_array[gsl_sf_legendre_array_index(l, 0)];
     }
 
     for (int m = 1; m <= lmax; m++) {
         std::complex<double> z = std::exp(std::complex<double>(0.0, m * phi)) * std::pow(-1, m);
         for (int l = m; l <= lmax; l++) {
-            ylm[utils::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] * z;
+            ylm[sf::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] * z;
             if (m % 2) {
-                ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
+                ylm[sf::lm(l, -m)] = -std::conj(ylm[sf::lm(l, m)]);
             } else {
-                ylm[utils::lm(l, -m)] = std::conj(ylm[utils::lm(l, m)]);
+                ylm[sf::lm(l, -m)] = std::conj(ylm[sf::lm(l, m)]);
             }
         }
     }
@@ -259,7 +297,7 @@ inline void spherical_harmonics(int lmax, double theta, double phi, std::complex
 {
     double x = std::cos(theta);
 
-    sf::legendre_plm(lmax, x, utils::lm, ylm);
+    sf::legendre_plm(lmax, x, sf::lm, ylm);
 
     double c0 = std::cos(phi);
     double c1 = 1;
@@ -277,10 +315,10 @@ inline void spherical_harmonics(int lmax, double theta, double phi, std::complex
         s0 = s1;
         s1 = s;
         for (int l = m; l <= lmax; l++) {
-            double p = std::real(ylm[utils::lm(l, m)]);
+            double p = std::real(ylm[sf::lm(l, m)]);
             double p1 = p * phase;
-            ylm[utils::lm(l, m)] = std::complex<double>(p * c, p * s);
-            ylm[utils::lm(l, -m)] = std::complex<double>(p1 * c, -p1 * s);
+            ylm[sf::lm(l, m)] = std::complex<double>(p * c, p * s);
+            ylm[sf::lm(l, -m)] = std::complex<double>(p1 * c, -p1 * s);
         }
         phase = -phase;
     }
@@ -344,10 +382,10 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* 
     rlm[0] = y00;
 
     for (int l = 1; l <= lmax; l++) {
-        rlm[utils::lm(l, 0)] = ylm[utils::lm(l, 0)].real();
+        rlm[sf::lm(l, 0)] = ylm[sf::lm(l, 0)].real();
         for (int m = 1; m <= l; m++) {
-            rlm[utils::lm(l, m)]  = t * ylm[utils::lm(l, m)].real();
-            rlm[utils::lm(l, -m)] = t * ylm[utils::lm(l, -m)].imag();
+            rlm[sf::lm(l, m)]  = t * ylm[sf::lm(l, m)].real();
+            rlm[sf::lm(l, -m)] = t * ylm[sf::lm(l, -m)].imag();
         }
     }
 }
@@ -357,7 +395,7 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 {
     double x = std::cos(theta);
 
-    sf::legendre_plm(lmax, x, utils::lm, rlm);
+    sf::legendre_plm(lmax, x, sf::lm, rlm);
 
     double c0 = std::cos(phi);
     double c1 = 1;
@@ -377,9 +415,9 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
         s0 = s1;
         s1 = s;
         for (int l = m; l <= lmax; l++) {
-            double p = rlm[utils::lm(l, m)];
-            rlm[utils::lm(l, m)] = t * p * c;
-            rlm[utils::lm(l, -m)] = -t * p * s * phase;
+            double p = rlm[sf::lm(l, m)];
+            rlm[sf::lm(l, m)] = t * p * c;
+            rlm[sf::lm(l, -m)] = -t * p * s * phase;
         }
         phase = -phase;
     }
@@ -519,8 +557,8 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2
     double const t = std::sqrt(2.0);
 
     for (int l = 0; l <= lmax__; l++) {
-       dRlm_dt[utils::lm(l, 0)] = -dplm[ilm(l, 0)];
-       dRlm_dp_sin_t[utils::lm(l, 0)] = 0;
+       dRlm_dt[sf::lm(l, 0)] = -dplm[ilm(l, 0)];
+       dRlm_dp_sin_t[sf::lm(l, 0)] = 0;
     }
 
     int phase{-1};
@@ -533,11 +571,11 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2
         s1 = s;
         for (int l = m; l <= lmax__; l++) {
             double p = -dplm[ilm(l, m)];
-            dRlm_dt[utils::lm(l, m)] = t * p * c;
-            dRlm_dt[utils::lm(l, -m)] = -t * p * s * phase;
+            dRlm_dt[sf::lm(l, m)] = t * p * c;
+            dRlm_dt[sf::lm(l, -m)] = -t * p * s * phase;
             p = plm_y[ilm(l, m)];
-            dRlm_dp_sin_t[utils::lm(l, m)] = -t * p * s * m;
-            dRlm_dp_sin_t[utils::lm(l, -m)] = -t * p * c * m * phase;
+            dRlm_dp_sin_t[sf::lm(l, m)] = -t * p * s * m;
+            dRlm_dp_sin_t[sf::lm(l, -m)] = -t * p * c * m * phase;
         }
 
         phase = -phase;

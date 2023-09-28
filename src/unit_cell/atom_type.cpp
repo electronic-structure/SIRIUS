@@ -147,10 +147,10 @@ Atom_type::init()
     /* get number of valence electrons */
     num_valence_electrons_ = zn_ - num_core_electrons_;
 
-    int lmmax_pot = utils::lmmax(parameters_.lmax_pot());
+    int lmmax_pot = sf::lmmax(parameters_.lmax_pot());
 
     if (parameters_.full_potential()) {
-        auto l_by_lm = utils::l_by_lm(parameters_.lmax_pot());
+        auto l_by_lm = sf::l_by_lm(parameters_.lmax_pot());
 
         /* index the non-zero radial integrals */
         std::vector<std::pair<int, int>> non_zero_elements;
@@ -276,7 +276,7 @@ void
 Atom_type::print_info(std::ostream& out__) const
 {
     out__ << "label          : " << label() << std::endl
-          << utils::hbar(80, '-') << std::endl
+          << hbar(80, '-') << std::endl
           << "symbol         : " << symbol_ << std::endl
           << "name           : " << name_ << std::endl
           << "zn             : " << zn_ << std::endl
@@ -335,12 +335,12 @@ Atom_type::print_info(std::ostream& out__) const
     if (!parameters_.full_potential()) {
         out__ << "lmax of beta-projectors          : " << this->lmax_beta() << std::endl
               << "number of ps wavefunctions       : " << this->indexr_wfs().size() << std::endl
-              << "charge augmentation              : " << utils::boolstr(this->augment()) << std::endl
-              << "vloc is set                      : " << utils::boolstr(!this->local_potential().empty()) << std::endl
-              << "ps_rho_core is set               : " << utils::boolstr(!this->ps_core_charge_density().empty()) << std::endl
-              << "ps_rho_total is set              : " << utils::boolstr(!this->ps_total_charge_density().empty()) << std::endl;
+              << "charge augmentation              : " << boolstr(this->augment()) << std::endl
+              << "vloc is set                      : " << boolstr(!this->local_potential().empty()) << std::endl
+              << "ps_rho_core is set               : " << boolstr(!this->ps_core_charge_density().empty()) << std::endl
+              << "ps_rho_total is set              : " << boolstr(!this->ps_total_charge_density().empty()) << std::endl;
     }
-    out__ << "Hubbard correction               : " << utils::boolstr(this->hubbard_correction()) << std::endl;
+    out__ << "Hubbard correction               : " << boolstr(this->hubbard_correction()) << std::endl;
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {
         out__ << "  angular momentum                   : " << lo_descriptors_hub_[0].l() << std::endl
               << "  principal quantum number           : " << lo_descriptors_hub_[0].n() << std::endl
@@ -357,15 +357,15 @@ Atom_type::print_info(std::ostream& out__) const
         }
         out__ << std::endl;
         out__ << "  orthogonalize                      : "
-              << utils::boolstr(parameters_.cfg().hubbard().orthogonalize()) << std::endl
+              << boolstr(parameters_.cfg().hubbard().orthogonalize()) << std::endl
               << "  normalize                          : "
-              << utils::boolstr(parameters_.cfg().hubbard().normalize()) << std::endl
+              << boolstr(parameters_.cfg().hubbard().normalize()) << std::endl
               << "  full_orthogonalization             : "
-              << utils::boolstr(parameters_.cfg().hubbard().full_orthogonalization()) << std::endl
+              << boolstr(parameters_.cfg().hubbard().full_orthogonalization()) << std::endl
               << "  simplified                         : "
-              << utils::boolstr(parameters_.cfg().hubbard().simplified()) << std::endl;
+              << boolstr(parameters_.cfg().hubbard().simplified()) << std::endl;
     }
-    out__ << "spin-orbit coupling              : " << utils::boolstr(this->spin_orbit_coupling()) << std::endl;
+    out__ << "spin-orbit coupling              : " << boolstr(this->spin_orbit_coupling()) << std::endl;
     out__ << "atomic wave-functions            : ";
     for (auto e : indexr_wfs_) {
         if (e.idxrf) {
@@ -544,7 +544,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
             s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of beta radial functions in the file: " << beta.size() << std::endl
               << "radial grid size: " << num_mt_points();
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         int l = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"].get<int>();
         if (spin_orbit_coupling_) {

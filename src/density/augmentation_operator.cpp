@@ -39,7 +39,7 @@ void Augmentation_operator::generate_pw_coeffs()
 
     /* maximum l of beta-projectors */
     int lmax_beta = atom_type_.indexr().lmax();
-    int lmmax     = utils::lmmax(2 * lmax_beta);
+    int lmmax     = sf::lmmax(2 * lmax_beta);
 
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
@@ -140,7 +140,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
 
     /* maximum l of beta-projectors */
     int lmax_beta = atom_type_.indexr().lmax();
-    int lmmax     = utils::lmmax(2 * lmax_beta);
+    int lmmax     = sf::lmmax(2 * lmax_beta);
 
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();

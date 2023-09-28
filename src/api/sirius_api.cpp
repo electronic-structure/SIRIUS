@@ -1127,7 +1127,7 @@ sirius_set_mpi_grid_dims(void* const* handler__, int const* ndims__, int const* 
 {
     call_sirius(
         [&]() {
-            assert(*ndims__ > 0);
+            RTE_ASSERT(*ndims__ > 0);
             auto& sim_ctx = get_sim_ctx(handler__);
             std::vector<int> dims(dims__, dims__ + *ndims__);
             sim_ctx.mpi_grid_dims(dims);
@@ -2463,9 +2463,9 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                     RTE_THROW("wrong label: " + label);
                 }
             } else {
-                assert(ngv__ != nullptr);
-                assert(gvl__ != nullptr);
-                assert(comm__ != nullptr);
+                RTE_ASSERT(ngv__ != nullptr);
+                RTE_ASSERT(gvl__ != nullptr);
+                RTE_ASSERT(comm__ != nullptr);
 
                 mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
@@ -2576,11 +2576,11 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
 
             std::string label(label__);
             if (gs.ctx().full_potential()) {
-                STOP();
+                RTE_THROW("not implemented");
             } else {
-                assert(ngv__ != NULL);
-                assert(gvl__ != NULL);
-                assert(comm__ != NULL);
+                RTE_ASSERT(ngv__ != NULL);
+                RTE_ASSERT(gvl__ != NULL);
+                RTE_ASSERT(comm__ != NULL);
 
                 mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
@@ -2620,7 +2620,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                             dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(), r3::vector<double>(G[0], G[1], G[2]));
                         s << "wrong index of G-vector" << std::endl
                           << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                        WARNING(s);
+                        RTE_WARNING(s);
                         pw_coeffs__[i] = 0;
                         //RTE_THROW(s);
                     } else {

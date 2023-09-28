@@ -309,7 +309,7 @@ void SHT::check() const
         s << "spherical mesh error is too big" << std::endl
           << "  real spherical integration error " << dr << std::endl
           << "  complex spherical integration error " << dy;
-        WARNING(s.str())
+        RTE_WARNING(s.str())
     }
 
     std::vector<double> flm(lmmax_);
@@ -332,7 +332,7 @@ void SHT::check() const
             std::stringstream s;
             s << "test of backward / forward real SHT failed" << std::endl
               << "  total error " << t;
-            WARNING(s.str());
+            RTE_WARNING(s.str());
         }
     }
 }

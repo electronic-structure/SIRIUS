@@ -1422,7 +1422,7 @@ class XC_functional_base
 
             /* init xc functional handler */
             if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
-                TERMINATE("xc_func_init() failed");
+                RTE_THROW("xc_func_init() failed");
             }
         }
 
@@ -1531,15 +1531,15 @@ class XC_functional_base
     void get_lda(const int size, const double* rho, double* v, double* e) const
     {
         if (family() != XC_FAMILY_LDA) {
-            TERMINATE("wrong XC");
+            RTE_THROW("wrong XC");
         }
 
         /* check density */
         for (int i = 0; i < size; i++) {
             if (rho[i] < 0) {
                 std::stringstream s;
-                s << "rho is negative : " << utils::double_to_string(rho[i]);
-                TERMINATE(s);
+                s << "rho is negative : " << double_to_string(rho[i]);
+                RTE_THROW(s);
             }
         }
 
@@ -1559,7 +1559,7 @@ class XC_functional_base
     void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e) const
     {
         if (family() != XC_FAMILY_LDA) {
-            TERMINATE("wrong XC");
+            RTE_THROW("wrong XC");
         }
 
         std::vector<double> rho_ud(size * 2);
@@ -1567,9 +1567,9 @@ class XC_functional_base
         for (int i = 0; i < size; i++) {
             if (rho_up[i] < 0 || rho_dn[i] < 0) {
                 std::stringstream s;
-                s << "rho is negative : " << utils::double_to_string(rho_up[i]) << " "
-                  << utils::double_to_string(rho_dn[i]);
-                TERMINATE(s);
+                s << "rho is negative : " << double_to_string(rho_up[i]) << " "
+                  << double_to_string(rho_dn[i]);
+                RTE_THROW(s);
             }
 
             rho_ud[2 * i]     = rho_up[i];
@@ -1599,14 +1599,14 @@ class XC_functional_base
     void get_gga(const int size, const double* rho, const double* sigma, double* vrho, double* vsigma, double* e) const
     {
         if (family() != XC_FAMILY_GGA)
-            TERMINATE("wrong XC");
+            RTE_THROW("wrong XC");
 
         /* check density */
         for (int i = 0; i < size; i++) {
             if (rho[i] < 0.0) {
                 std::stringstream s;
-                s << "rho is negative : " << utils::double_to_string(rho[i]);
-                TERMINATE(s);
+                s << "rho is negative : " << double_to_string(rho[i]);
+                RTE_THROW(s);
             }
         }
 
@@ -1627,7 +1627,7 @@ class XC_functional_base
                  double* vsigma_ud, double* vsigma_dd, double* e) const
     {
         if (family() != XC_FAMILY_GGA) {
-            TERMINATE("wrong XC");
+            RTE_THROW("wrong XC");
         }
 
         std::vector<double> rho(2 * size);
@@ -1637,9 +1637,9 @@ class XC_functional_base
         for (int i = 0; i < size; i++) {
             if (rho_up[i] < 0 || rho_dn[i] < 0) {
                 std::stringstream s;
-                s << "rho is negative : " << utils::double_to_string(rho_up[i]) << " "
-                  << utils::double_to_string(rho_dn[i]);
-                TERMINATE(s);
+                s << "rho is negative : " << double_to_string(rho_up[i]) << " "
+                  << double_to_string(rho_dn[i]);
+                RTE_THROW(s);
             }
 
             rho[2 * i]     = rho_up[i];
@@ -1670,7 +1670,7 @@ class XC_functional_base
 
             /* init xc functional handler */
             if (xc_func_init(h1.get(), XC_LDA_C_PZ, 2) != 0) {
-                TERMINATE("xc_func_init() failed");
+                RTE_THROW("xc_func_init() failed");
             }
 
             xc_lda_exc_vxc(h1.get(), size, &rho[0], e, &vrho[0]);

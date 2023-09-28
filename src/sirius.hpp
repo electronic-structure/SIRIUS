@@ -88,7 +88,7 @@ inline void initialize(bool call_mpi_init__ = true)
     PROFILE_START("sirius");
     PROFILE("sirius::initialize");
     if (is_initialized()) {
-        TERMINATE("SIRIUS library is already initialized");
+        RTE_THROW("SIRIUS library is already initialized");
     }
 #if defined(SIRIUS_USE_POWER_COUNTER)
     energy() = -utils::power::energy();
@@ -148,7 +148,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 {
     PROFILE_START("sirius::finalize");
     if (!is_initialized()) {
-        TERMINATE("SIRIUS library was not initialized");
+        RTE_THROW("SIRIUS library was not initialized");
     }
 #if defined(SIRIUS_MAGMA)
     magma::finalize();

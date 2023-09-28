@@ -744,7 +744,7 @@ class Simulation_context : public Simulation_parameters
         if (this->verbosity() >= level__) {
             return this->out();
         } else {
-            return utils::null_stream();
+            return null_stream();
         }
     }
 
@@ -753,7 +753,7 @@ class Simulation_context : public Simulation_parameters
         if (this->verbosity() >= level__) {
             return rte::ostream(this->out(), label__);
         } else {
-            return rte::ostream(utils::null_stream(), label__);
+            return rte::ostream(null_stream(), label__);
         }
     }
 
@@ -761,7 +761,7 @@ class Simulation_context : public Simulation_parameters
     inline void message(int level__, char const* label__, std::stringstream const& s) const
     {
         if (this->verbosity() >= level__) {
-            auto strings = ::rte::split(s.str());
+            auto strings = split(s.str(), '\n');
             for (auto& e : strings) {
                 this->out() << "[" << label__ << "] " << e << std::endl;
             }

@@ -214,7 +214,7 @@ D_operator<T>::initialize()
                             break;
                         }
                         default: {
-                            TERMINATE("wrong number of magnetic dimensions");
+                            RTE_THROW("wrong number of magnetic dimensions");
                         }
                     }
                 }

@@ -72,7 +72,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        WARNING(s);
+        RTE_WARNING(s);
     }
 
     if (env::print_hash()) {
@@ -147,7 +147,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
-            TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
+            RTE_THROW("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
 #endif
         } else {
             if (num_points) {
@@ -344,7 +344,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
-            TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
+            RTE_THROW("You should not be there since sirius is not compiled with libVDWXC\n");
 #endif
         } else {
             if (num_points) {

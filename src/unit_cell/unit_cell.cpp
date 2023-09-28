@@ -172,7 +172,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     for (int i = 0; i < 3; i++) {
         out__ << "  a" << i + 1 << " : ";
         for (int x: {0, 1, 2}) {
-            out__ << utils::ffmt(18, 10) << lattice_vectors_(x, i);
+            out__ << ffmt(18, 10) << lattice_vectors_(x, i);
         }
         out__ << std::endl;
     }
@@ -180,23 +180,23 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     for (int i = 0; i < 3; i++) {
         out__ << "  b" << i + 1 << " : ";
         for (int x: {0, 1, 2}) {
-            out__ << utils::ffmt(18, 10) << reciprocal_lattice_vectors_(x, i);
+            out__ << ffmt(18, 10) << reciprocal_lattice_vectors_(x, i);
         }
         out__ << std::endl;
     }
     out__ << std::endl
-          << "unit cell volume : " << utils::ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl
-          << "1/sqrt(omega)    : " << utils::ffmt(18, 8) << 1.0 / sqrt(omega()) << std::endl
-          << "MT volume        : " << utils::ffmt(18, 8) << volume_mt() 
-                                   << " (" << utils::ffmt(5, 2) << volume_mt() * 100 / omega() << "%)" << std::endl
-          << "IT volume        : " << utils::ffmt(18, 8) << volume_it()
-                                   << " (" << utils::ffmt(5, 2) << volume_it() * 100 / omega() << "%)" << std::endl
+          << "unit cell volume : " << ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl
+          << "1/sqrt(omega)    : " << ffmt(18, 8) << 1.0 / sqrt(omega()) << std::endl
+          << "MT volume        : " << ffmt(18, 8) << volume_mt() 
+                                   << " (" << ffmt(5, 2) << volume_mt() * 100 / omega() << "%)" << std::endl
+          << "IT volume        : " << ffmt(18, 8) << volume_it()
+                                   << " (" << ffmt(5, 2) << volume_it() * 100 / omega() << "%)" << std::endl
           << std::endl
           << "number of atom types : " << num_atom_types() << std::endl;
     for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
         out__ << "type id : " << id << " symbol : " << std::setw(2) << atom_type(i).symbol() << " mt_radius : "
-              << utils::ffmt(10, 6) << atom_type(i).mt_radius() << " num_atoms : " << atom_type(i).num_atoms() << std::endl;
+              << ffmt(10, 6) << atom_type(i).mt_radius() << " num_atoms : " << atom_type(i).num_atoms() << std::endl;
     }
 
     out__ << "total number of atoms : " << num_atoms() << std::endl
@@ -214,7 +214,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     if (verbosity__ >= 2) {
         out__ << std::endl
               << "atom id  type id  class id             position                      vector_field" << std::endl
-              << utils::hbar(90, '-') << std::endl;
+              << hbar(90, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
@@ -223,23 +223,23 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
                   << std::setw(9) << atom(i).symmetry_class_id()
                   << "   ";
             for (int x: {0, 1, 2}) {
-                out__ << utils::ffmt(10, 5) << pos[x];
+                out__ << ffmt(10, 5) << pos[x];
             }
             out__ << "   ";
             for (int x: {0, 1, 2}) {
-                out__ << utils::ffmt(10, 5) << vf[x];
+                out__ << ffmt(10, 5) << vf[x];
             }
             out__ << std::endl;
         }
         out__ << std::endl
               << "atom id         position (Cartesian, a.u.)" << std::endl
-              << utils::hbar(45, '-') << std::endl;
+              << hbar(45, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
             out__ << std::setw(6) << i << "   ";
             for (int x: {0, 1 ,2}) {
-                out__ << utils::ffmt(12, 6) << vc[x];
+                out__ << ffmt(12, 6) << vc[x];
             }
             out__ << std::endl;
         }
@@ -253,7 +253,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
         }
     }
     out__ << std::endl
-          << "minimum bond length: " << utils::ffmt(12, 6) << min_bond_length() << std::endl;
+          << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
     if (!parameters_.full_potential()) {
         out__ << std::endl
               << "total number of pseudo wave-functions: " << this->num_ps_atomic_wf().first << std::endl;
@@ -270,18 +270,18 @@ Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
         for (int i = 0; i < 3; i++) {
             out__ << "  a" << i + 1 << " : ";
             for (int x: {0, 1, 2}) {
-                out__ << utils::ffmt(18, 10) << lattice_vectors_(x, i);
+                out__ << ffmt(18, 10) << lattice_vectors_(x, i);
             }
             out__ << std::endl;
         }
         out__ << std::endl
-              << "unit cell volume : " << utils::ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl;
+              << "unit cell volume : " << ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl;
     }
 
     if (verbosity__ >= 2) {
         out__ << std::endl
               << "atom id  type id  class id             position                      vector_field" << std::endl
-              << utils::hbar(90, '-') << std::endl;
+              << hbar(90, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
@@ -290,30 +290,30 @@ Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
                   << std::setw(9) << atom(i).symmetry_class_id()
                   << "   ";
             for (int x: {0, 1, 2}) {
-                out__ << utils::ffmt(10, 5) << pos[x];
+                out__ << ffmt(10, 5) << pos[x];
             }
             out__ << "   ";
             for (int x: {0, 1, 2}) {
-                out__ << utils::ffmt(10, 5) << vf[x];
+                out__ << ffmt(10, 5) << vf[x];
             }
             out__ << std::endl;
         }
         out__ << std::endl
               << "atom id         position (Cartesian, a.u.)" << std::endl
-              << utils::hbar(45, '-') << std::endl;
+              << hbar(45, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
             out__ << std::setw(6) << i << "   ";
             for (int x: {0, 1 ,2}) {
-                out__ << utils::ffmt(12, 6) << vc[x];
+                out__ << ffmt(12, 6) << vc[x];
             }
             out__ << std::endl;
         }
     }
     if (verbosity__ >= 1) {
         out__ << std::endl
-              << "minimum bond length: " << utils::ffmt(12, 6) << min_bond_length() << std::endl;
+              << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
     }
 }
 
@@ -462,10 +462,10 @@ void
 Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 {
     out__ << "Nearest neighbors" << std::endl
-          << utils::hbar(17, '-') << std::endl;
+          << hbar(17, '-') << std::endl;
     for (int ia = 0; ia < num_atoms(); ia++) {
         out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl
-              << utils::hbar(80, '-') << std::endl;
+              << hbar(80, '-') << std::endl;
         out__ << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
         for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
             int ja = nearest_neighbours_[ia][i].atom_id;
@@ -581,8 +581,9 @@ Unit_cell::generate_radial_integrals()
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "Error in generating atom_symmetry_class radial integrals";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 
     try {
@@ -596,8 +597,9 @@ Unit_cell::generate_radial_integrals()
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "Error in generating atom radial integrals";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 }
 

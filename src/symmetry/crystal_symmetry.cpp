@@ -111,6 +111,7 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> 
         sym_op.euler_angles = euler_angles(sym_op.Rcp, tolerance__);
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "number of symmetry operations found by spglib: " << spg_dataset__->n_operations << std::endl
           << "symmetry operation: " << isym_spg__ << std::endl
           << "rotation matrix in lattice coordinates: " << sym_op.R << std::endl
@@ -119,7 +120,7 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> 
           << "metric tensor error: " << metric_tensor_error(lattice_vectors__, sym_op.R) << std::endl
           << std::endl
           << "possible solution: decrease the spglib_tolerance";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
     try {
         /* get symmetry related atoms */
@@ -140,10 +141,11 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> 
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "R: " << sym_op.R << std::endl
           << "t: " << sym_op.t << std::endl
           << "tolerance: " << tolerance__;
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 
     return sym_op;
@@ -337,14 +339,14 @@ Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
         auto tm = this->transformation_matrix();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                out__ << utils::ffmt(8, 4) << tm(i, j);
+                out__ << ffmt(8, 4) << tm(i, j);
             }
             out__ << std::endl;
         }
         out__ << "space group origin shift : " << std::endl;
         auto t = this->origin_shift();
         for (auto x: {0, 1, 2}) {
-            out__ << utils::ffmt(8, 4) << t[x];
+            out__ << ffmt(8, 4) << t[x];
         }
         out__ << std::endl;
     }
@@ -380,13 +382,13 @@ Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
                     out__ << "    ";
                 }
                 for (int j: {0, 1, 2}) {
-                    out__ << utils::ffmt(8, 4) << Rc(i, j);
+                    out__ << ffmt(8, 4) << Rc(i, j);
                 }
                 out__ << std::endl;
             }
             out__ << "t : ";
             for (int j: {0, 1, 2}) {
-                out__ << utils::ffmt(8, 4) << t[j];
+                out__ << ffmt(8, 4) << t[j];
             }
             out__ << std::endl;
             out__ << "S : ";
@@ -395,7 +397,7 @@ Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
                     out__ << "    ";
                 }
                 for (int j: {0, 1, 2}) {
-                    out__ << utils::ffmt(8, 4) << S(i, j);
+                    out__ << ffmt(8, 4) << S(i, j);
                 }
                 out__ << std::endl;
             }

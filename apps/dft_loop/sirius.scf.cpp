@@ -79,7 +79,7 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
 
     auto& inp = ctx.cfg().parameters();
     if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
+        RTE_THROW("this is not a Gamma-point calculation")
     }
 
     ctx.import(args__);

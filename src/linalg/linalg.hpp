@@ -1935,7 +1935,7 @@ inline void check_hermitian(std::string const& name, sddk::matrix<T> const& mtrx
         s << name << " is not a symmetric or hermitian matrix" << std::endl
           << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
 
-        WARNING(s);
+        RTE_WARNING(s);
     }
 }
 

@@ -731,7 +731,7 @@ class K_point
         if (ctx_.verbosity() >= level__ && this->comm().rank() == 0) {
             return std::cout;
         } else {
-            return utils::null_stream();
+            return null_stream();
         }
     }
 

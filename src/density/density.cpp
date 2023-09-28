@@ -101,7 +101,7 @@ Density::Density(Simulation_context& ctx__)
         rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
     }
 
-    l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
+    l_by_lm_ = sf::l_by_lm(ctx_.lmax_rho());
 
     density_matrix_ = std::make_unique<density_matrix_t>(ctx_.unit_cell(), ctx_.num_mag_comp());
 
@@ -201,7 +201,7 @@ Density::initial_density_pseudo()
           << "  integral of the density : " << std::setprecision(12) << charge << std::endl
           << "  target number of electrons : " << std::setprecision(12) << unit_cell_.num_valence_electrons();
         if (ctx_.comm().rank() == 0) {
-            WARNING(s);
+            RTE_WARNING(s);
         }
     }
     rho().rg().fft_transform(1);
@@ -318,9 +318,9 @@ Density::initial_density_full_pot()
     }
 
     int lmax  = ctx_.lmax_rho();
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
 
-    auto l_by_lm = utils::l_by_lm(lmax);
+    auto l_by_lm = sf::l_by_lm(lmax);
 
     std::vector<std::complex<double>> zil(lmax + 1);
     for (int l = 0; l <= lmax; l++) {
@@ -488,7 +488,7 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 
     auto lmax = atom_type.indexr().lmax();
 
-    auto l_by_lm = utils::l_by_lm(2 * lmax);
+    auto l_by_lm = sf::l_by_lm(2 * lmax);
 
     /* get gaunt coefficients */
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
@@ -1076,7 +1076,7 @@ Density::check_num_electrons() const
                 s << std::endl << "    atom class : " << ic << ", core leakage : " << core_leakage(ic);
             }
         }
-        WARNING(s);
+        RTE_WARNING(s);
         return false;
     } else {
         return true;
@@ -1257,7 +1257,7 @@ Density::generate_valence(K_point_set const& ks__)
           << "  required : " << unit_cell_.num_valence_electrons() - ctx_.cfg().parameters().extra_charge() << std::endl
           << "  difference : "
           << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge());
-        WARNING(s);
+        RTE_WARNING(s);
     }
 
     density_matrix_->zero();
@@ -1360,7 +1360,7 @@ Density::generate_valence(K_point_set const& ks__)
               << "  obtained value : " << std::scientific << nel << std::endl
               << "  target value : " << std::scientific << unit_cell_.num_electrons() << std::endl
               << "  difference : " << std::scientific << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
-            WARNING(s);
+            RTE_WARNING(s);
         }
     }
 
@@ -1553,9 +1553,9 @@ void Density::reduce_density_matrix(Atom_type const& atom_type__, sddk::mdarray<
             int l1   = atom_type__.indexr(idxrf1).am.l();
 
             int xi2 = atom_type__.indexb().index_of(rf_index(idxrf2));
-            for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {
+            for (int lm2 = sf::lm(l2, -l2); lm2 <= sf::lm(l2, l2); lm2++, xi2++) {
                 int xi1 = atom_type__.indexb().index_of(rf_index(idxrf1));
-                for (int lm1 = utils::lm(l1, -l1); lm1 <= utils::lm(l1, l1); lm1++, xi1++) {
+                for (int lm1 = sf::lm(l1, -l1); lm1 <= sf::lm(l1, l1); lm1++, xi1++) {
                     for (int k = 0; k < atom_type__.gaunt_coefs().num_gaunt(lm1, lm2); k++) {
                         int lm3 = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).lm3;
                         auto gc = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).coef;
@@ -1585,7 +1585,7 @@ Density::generate_valence_mt()
 
     /* compute occupation matrix */
     if (ctx_.hubbard_correction()) {
-        STOP();
+        RTE_THROW("LDA+U in LAPW is not implemented");
 
         // TODO: fix the way how occupation matrix is calculated
 
@@ -1963,14 +1963,14 @@ void Density::print_info(std::ostream& out__) const
     };
 
     out__ << "Charges and magnetic moments" << std::endl
-          << utils::hbar(80, '-') << std::endl;
+          << hbar(80, '-') << std::endl;
     if (ctx_.full_potential()) {
         double total_core_leakage{0.0};
         out__ << "atom      charge    core leakage";
         if (ctx_.num_mag_dims()) {
             out__ << "                 moment                |moment|";
         }
-        out__ << std::endl << utils::hbar(80, '-') << std::endl;
+        out__ << std::endl << hbar(80, '-') << std::endl;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
@@ -1998,7 +1998,7 @@ void Density::print_info(std::ostream& out__) const
     } else {
         if (ctx_.num_mag_dims()) {
             out__ << "atom                moment                |moment|" << std::endl
-                  << utils::hbar(80, '-') << std::endl;
+                  << hbar(80, '-') << std::endl;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 r3::vector<double> v(mt_mag[ia]);

@@ -28,6 +28,7 @@
 #include "typedefs.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/utils.hpp"
+#include "specfunc/specfunc.hpp"
 #include "memory.hpp"
 #include "dft/smearing.hpp"
 #include "context/config.hpp"
@@ -123,7 +124,7 @@ class Simulation_parameters
 
     void set_num_mag_dims(int num_mag_dims__)
     {
-        assert(num_mag_dims__ == 0 || num_mag_dims__ == 1 || num_mag_dims__ == 3);
+        RTE_ASSERT(num_mag_dims__ == 0 || num_mag_dims__ == 1 || num_mag_dims__ == 3);
 
         cfg().parameters().num_mag_dims(num_mag_dims__);
     }
@@ -201,7 +202,7 @@ class Simulation_parameters
 
     inline int lmmax_rho() const
     {
-        return utils::lmmax(lmax_rho());
+        return sf::lmmax(lmax_rho());
     }
 
     inline int lmax_pot() const
@@ -211,7 +212,7 @@ class Simulation_parameters
 
     inline int lmmax_pot() const
     {
-        return utils::lmmax(this->lmax_pot());
+        return sf::lmmax(this->lmax_pot());
     }
 
     inline double aw_cutoff() const
@@ -255,7 +256,7 @@ class Simulation_parameters
     inline int num_mag_dims() const
     {
         auto nmd = cfg().parameters().num_mag_dims();
-        assert(nmd == 0 || nmd == 1 || nmd == 3);
+        RTE_ASSERT(nmd == 0 || nmd == 1 || nmd == 3);
         return nmd;
     }
 

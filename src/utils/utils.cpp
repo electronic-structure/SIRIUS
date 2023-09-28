@@ -38,36 +38,6 @@ std::string timestamp(std::string fmt)
     return std::string(buf);
 }
 
-std::string double_to_string(double val, int precision)
-{
-    char buf[100];
-
-    double abs_val = std::abs(val);
-
-    if (precision == -1) {
-        if (abs_val > 1.0) {
-            precision = 6;
-        } else if (abs_val > 1e-14) {
-            precision = int(-std::log(abs_val) / std::log(10.0)) + 7;
-        } else {
-            return std::string("0.0");
-        }
-    }
-
-    std::stringstream fmt;
-    fmt << "%." << precision << "f";
-
-    int len = snprintf(buf, 100, fmt.str().c_str(), val);
-    for (int i = len - 1; i >= 1; i--) {
-        if (buf[i] == '0' && buf[i - 1] == '0') {
-            buf[i] = 0;
-        } else {
-            break;
-        }
-    }
-    return std::string(buf);
-}
-
 double confined_polynomial(double r, double R, int p1, int p2, int dm)
 {
     double t = 1.0 - std::pow(r / R, 2);
@@ -194,10 +164,5 @@ int get_proc_threads()
     return num_threads;
 }
 
-null_stream_t& null_stream()
-{
-    static null_stream_t null_stream__;
-    return null_stream__;
-}
 
 } // namespace utils

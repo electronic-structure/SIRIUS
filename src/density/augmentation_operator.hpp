@@ -142,10 +142,10 @@ class Augmentation_operator
     {
         int lmax_beta = atom_type_.indexr().lmax();
         int lmax      = 2 * lmax_beta;
-        int lmmax     = utils::lmmax(lmax);
+        int lmmax     = sf::lmmax(lmax);
 
         /* compute l of lm index */
-        auto l_by_lm = utils::l_by_lm(lmax);
+        auto l_by_lm = sf::l_by_lm(lmax);
         l_by_lm_ = sddk::mdarray<int, 1>(lmmax);
         std::copy(l_by_lm.begin(), l_by_lm.end(), &l_by_lm_[0]);
 
@@ -230,7 +230,7 @@ class Augmentation_operator
 //
 //        /* maximum l of beta-projectors */
 //        int lmax_beta = atom_type_.indexr().lmax();
-//        int lmmax     = utils::lmmax(2 * lmax_beta);
+//        int lmmax     = sf::lmmax(2 * lmax_beta);
 //        /* number of beta-projectors */
 //        int nbf = atom_type_.mt_basis_size();
 //        /* only half of Q_{xi,xi'}(G) matrix is stored */

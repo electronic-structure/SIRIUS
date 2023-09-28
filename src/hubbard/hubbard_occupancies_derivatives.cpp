@@ -404,7 +404,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     auto bp_coeffs = bp_gen.prepare();
 
     const int lmax  = ctx_.unit_cell().lmax();
-    const int lmmax = utils::lmmax(lmax);
+    const int lmmax = sf::lmmax(lmax);
 
     sddk::mdarray<double, 2> rlm_g(lmmax, kp__.num_gkvec_loc());
     sddk::mdarray<double, 3> rlm_dg(lmmax, 3, kp__.num_gkvec_loc());

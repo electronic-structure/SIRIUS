@@ -427,7 +427,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                     std::stringstream s;
                     s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                       << "  happened before entering the iterative loop" << std::endl;
-                    WARNING(s);
+                    RTE_WARNING(s);
                     if (N <= 20) {
                         auto s1 = H.serialize("davidson:H_first", N, N);
                         if (kp__.comm().rank() == 0) {
@@ -443,7 +443,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                 std::stringstream s;
                 s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
-                WARNING(s);
+                RTE_WARNING(s);
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:O_first", N, N);
                     if (kp__.comm().rank() == 0) {
@@ -511,7 +511,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                 std::stringstream s;
                 s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
-                WARNING(s);
+                RTE_WARNING(s);
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:H", N, N);
                     if (kp__.comm().rank() == 0) {

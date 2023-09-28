@@ -56,7 +56,7 @@ Potential::Potential(Simulation_context& ctx__)
         if (ctx_.cfg().control().verification() >= 1)  {
             sht_->check();
         }
-        l_by_lm_ = utils::l_by_lm(lmax);
+        l_by_lm_ = sf::l_by_lm(lmax);
 
         /* precompute i^l */
         zil_.resize(lmax + 1);
@@ -64,7 +64,7 @@ Potential::Potential(Simulation_context& ctx__)
             zil_[l] = std::pow(std::complex<double>(0, 1), l);
         }
 
-        zilm_.resize(utils::lmmax(lmax));
+        zilm_.resize(sf::lmmax(lmax));
         for (int l = 0, lm = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++, lm++) {
                 zilm_[lm] = zil_[l];
@@ -345,7 +345,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
                     for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                         out << "    ";
                         for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                            out << utils::ffmt(8, 3) << density__.density_matrix(ia)(ib1, ib2, imagn);
+                            out << ffmt(8, 3) << density__.density_matrix(ia)(ib1, ib2, imagn);
                         }
                         out << std::endl;
                     }
@@ -361,7 +361,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
                     for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                         out << "    ";
                         for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                            out << utils::ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
+                            out << ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
                         }
                         out << std::endl;
                     }

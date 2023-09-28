@@ -841,7 +841,7 @@ class Potential : public Field4D
 
     auto& vsigma(int idx__)
     {
-        assert(idx__ >= 0 && idx__ < 3);
+        RTE_ASSERT(idx__ >= 0 && idx__ < 3);
         return (*vsigma_[idx__].get());
     }
 

@@ -41,94 +41,12 @@
 #include <complex>
 #include <chrono>
 #include "json.hpp"
+#include "string_tools.hpp"
+#include "ostream_tools.hpp"
 #include "rte.hpp"
 
 /// Namespace for simple utility functions.
 namespace utils {
-
-class null_stream_t : public std::ostream
-{
-  public:
-    null_stream_t() : std::ostream(nullptr)
-    {
-    }
-    null_stream_t(null_stream_t&&) : std::ostream(nullptr)
-    {
-    };
-};
-
-null_stream_t& null_stream();
-
-/// Terminate the execution and print the info message.
-inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
-{
-    std::stringstream s;
-    s << "\n=== Fatal error at line " << line_number__ << " of file " << file_name__ << " ===\n";
-    s << message__ << "\n";
-    throw std::runtime_error(s.str());
-}
-
-/// Terminate the execution and print the info message.
-inline void terminate(const char* file_name__, int line_number__, const std::stringstream& message__)
-{
-    terminate(file_name__, line_number__, message__.str());
-}
-
-/// Issue a warning message.
-inline void warning(const char* file_name__, int line_number__, const std::string& message__)
-{
-    std::printf("\n=== Warning at line %i of file %s ===\n", line_number__, file_name__);
-    std::printf("%s\n\n", message__.c_str());
-}
-
-/// Issue a warning message.
-inline void warning(const char* file_name__, int line_number__, const std::stringstream& message__)
-{
-    warning(file_name__, line_number__, message__.str());
-}
-
-#define TERMINATE(msg) utils::terminate(__FILE__, __LINE__, msg);
-
-#define WARNING(msg) utils::warning(__FILE__, __LINE__, msg);
-
-#define STOP() TERMINATE("terminated by request")
-
-/// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
-inline int lmmax(int lmax)
-{
-    return (lmax + 1) * (lmax + 1);
-}
-
-/// Get composite lm index by angular index l and azimuthal index m.
-inline int lm(int l, int m)
-{
-    return (l * l + l + m);
-}
-
-/// Get maximum orbital quantum number by the maximum lm index.
-inline int lmax(int lmmax__)
-{
-    assert(lmmax__ >= 0);
-    int lmax = static_cast<int>(std::sqrt(static_cast<double>(lmmax__)) + 1e-8) - 1;
-    if (lmmax(lmax) != lmmax__) {
-        std::stringstream s;
-        s << "wrong lmmax: " << lmmax__;
-        RTE_THROW(s);
-    }
-    return lmax;
-}
-
-/// Get array of orbital quantum numbers for each lm component.
-inline std::vector<int> l_by_lm(int lmax__)
-{
-    std::vector<int> v(lmmax(lmax__));
-    for (int l = 0; l <= lmax__; l++) {
-        for (int m = -l; m <= l; m++) {
-            v[lm(l, m)] = l;
-        }
-    }
-    return v;
-}
 
 /// Check if file exists.
 /** \param[in] file_name Full path to the file being checked.
@@ -202,9 +120,6 @@ inline int packed_index(int i__, int j__)
     return j__ * (j__ + 1) / 2 + i__;
 }
 
-/// Convert double to a string with a given precision.
-std::string double_to_string(double val, int precision = -1);
-
 /// Return angle phi in the range [0, 2Pi) by its values of sin(phi) and cos(phi).
 inline double phi_by_sin_cos(double sinp, double cosp)
 {
@@ -220,7 +135,7 @@ inline double phi_by_sin_cos(double sinp, double cosp)
 template <typename T>
 inline T factorial(int n)
 {
-    assert(n >= 0);
+    RTE_ASSERT(n >= 0);
 
     T result{1};
     for (int i = 1; i <= n; i++) {
@@ -311,7 +226,7 @@ void get_proc_status(size_t* VmHWM__, size_t* VmRSS__);
 int get_proc_threads();
 
 /// Get a host name.
-inline std::string hostname()
+inline auto hostname()
 {
     const int len{1024};
     char nm[len];
@@ -352,11 +267,11 @@ inline uint32_t rnd(bool reset = false)
     if (reset) {
         a = 123456;
     }
-    a                 = (a ^ 61) ^ (a >> 16);
-    a                 = a + (a << 3);
-    a                 = a ^ (a >> 4);
-    a                 = a * 0x27d4eb2d;
-    a                 = a ^ (a >> 15);
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
     return a;
 }
 
@@ -409,14 +324,6 @@ inline long get_total_memory()
 //    return std::is_same<typedef std::result_of<F(Args...)>::type, T>::value;
 //}
 
-inline std::string boolstr(bool b__)
-{
-    if (b__) {
-        return "true";
-    } else {
-        return "false";
-    }
-}
 
 template <typename T>
 auto abs_diff(T a, T b)
@@ -428,76 +335,6 @@ template <typename T>
 auto rel_diff(T a, T b)
 {
     return std::abs(a - b) / (std::abs(a) + std::abs(b) + 1e-13);
-}
-
-class hbar {
-  private:
-    int w_;
-    char c_;
-  public:
-    hbar(int w__, char c__)
-        : w_(w__)
-        , c_(c__)
-    {
-    }
-    int w() const
-    {
-        return w_;
-    }
-    char c() const
-    {
-        return c_;
-    }
-};
-
-inline std::ostream&
-operator<<(std::ostream& out, hbar&& b)
-{
-    char prev = out.fill();
-    out << std::setfill(b.c()) << std::setw(b.w()) << b.c() << std::setfill(prev);
-    return out;
-}
-
-class ffmt {
-  private:
-    int w_;
-    int p_;
-  public:
-    ffmt(int w__, int p__)
-      : w_(w__)
-      , p_(p__)
-    {
-    }
-    int w() const
-    {
-        return w_;
-    }
-    int p() const
-    {
-        return p_;
-    }
-};
-
-inline std::ostream&
-operator<<(std::ostream& out, ffmt&& f)
-{
-    out.precision(f.p());
-    out.width(f.w());
-    out.setf(std::ios_base::fixed, std::ios_base::floatfield);
-    return out;
-}
-
-inline auto split(std::string const str__, char delim__)
-{
-    std::istringstream iss(str__);
-    std::vector<std::string> result;
-
-    while (iss.good()) {
-        std::string s;
-        std::getline(iss, s, delim__);
-        result.push_back(s);
-    }
-    return result;
 }
 
 template <typename T, typename OUT>
@@ -512,38 +349,5 @@ inline void print_hash(std::string label__, unsigned long long int hash__)
 }
 
 } // namespace
-
-template <typename T>
-inline std::ostream&
-operator<<(std::ostream& out, std::vector<T>& v)
-{
-    if (v.size() == 0) {
-        out << "{}";
-    } else {
-        out << "{";
-        for (size_t i = 0; i < v.size() - 1; i++) {
-            out << v[i] << ", ";
-        }
-        out << v.back() << "}";
-    }
-    return out;
-}
-
-inline std::string& ltrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
-{
-    str.erase(0, str.find_first_not_of(chars));
-    return str;
-}
- 
-inline std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
-{
-    str.erase(str.find_last_not_of(chars) + 1);
-    return str;
-}
-
-inline std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
-{
-    return ltrim(rtrim(str, chars), chars);
-}
 
 #endif

@@ -142,7 +142,7 @@ Simulation_context::ewald_lambda() const
     if (lambda < 1.5 && comm().rank() == 0) {
         std::stringstream s;
         s << "ewald_lambda(): pw_cutoff is too small";
-        WARNING(s);
+        RTE_WARNING(s);
     }
     return lambda;
 }
@@ -164,7 +164,7 @@ Simulation_context::initialize()
 
     /* setup the output stream */
     if (this->comm().rank() == 0 && this->verbosity() >= 1) {
-        auto out_str = utils::split(cfg().control().output(), ':');
+        auto out_str = split(cfg().control().output(), ':');
         if (out_str.size() != 2) {
             RTE_THROW("wrong output stream parameter");
         }
@@ -177,7 +177,7 @@ Simulation_context::initialize()
             RTE_THROW("unknown output stream type");
         }
     } else {
-        output_stream_ = &utils::null_stream();
+        output_stream_ = &null_stream();
     }
 
     electronic_structure_method(cfg().parameters().electronic_structure_method());
@@ -316,7 +316,7 @@ Simulation_context::initialize()
           << this->unit_cell().lmax_apw() << ") and a maximum MT radius (" << this->unit_cell().max_mt_radius() << ")"
           << std::endl
           << "suggested minimum value for lmax : " << int(this->gk_cutoff() * this->unit_cell().max_mt_radius()) + 1;
-        WARNING(s);
+        RTE_WARNING(s);
     }
 
     if (!full_potential()) {
@@ -488,7 +488,7 @@ Simulation_context::initialize()
         mpi::pstdout pout(comm());
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
-            pout << utils::hbar(136, '-') << std::endl;
+            pout << hbar(136, '-') << std::endl;
             pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col" << std::endl;
         }
         pout << std::setw(12) << utils::hostname() << " | "
@@ -551,7 +551,7 @@ Simulation_context::print_info(std::ostream& out__) const
 
         for (int i = 0; i < 2; i++) {
             os << headers[i] << std::endl
-               << utils::hbar(37, '=') << std::endl
+               << hbar(37, '=') << std::endl
                << "  comm size                             : " << comms[i]->size() << std::endl
                << "  plane wave cutoff                     : " << cutoffs[i] << std::endl
                << "  grid size                             : " << fft_grids[i][0] << " "
@@ -686,7 +686,7 @@ Simulation_context::print_info(std::ostream& out__) const
         rte::ostream os(out__, "info");
         int i{1};
         os << std::endl << "XC functionals" << std::endl
-           << utils::hbar(14, '=') << std::endl;
+           << hbar(14, '=') << std::endl;
         for (auto& xc_label : xc_functionals()) {
             XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
 #if defined(SIRIUS_USE_VDWXC)
@@ -706,7 +706,7 @@ Simulation_context::print_info(std::ostream& out__) const
         rte::ostream os(out__, "info");
         os << std::endl
            << "memory consumption" << std::endl
-           << utils::hbar(18, '=') << std::endl;
+           << hbar(18, '=') << std::endl;
         /* volume of the Brillouin zone */
         double v0 = std::pow(twopi, 3) / unit_cell().omega();
         /* volume of the cutoff sphere for wave-functions */

@@ -146,7 +146,7 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
         int m;
         h5.read("/ncol", &m, 1);
         if (n != m) {
-            TERMINATE("not a square matrix");
+            RTE_THROW("not a square matrix");
         }
         full_mtrx = sddk::matrix<std::complex<double>>(n, n);
         h5.read("/mtrx", full_mtrx);
@@ -172,7 +172,7 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
     }
 
     if (solver->solve(n, A, eval.data(), Z)) {
-        TERMINATE("diagonalization failed");
+        RTE_THROW("diagonalization failed");
     }
     if (blacs_grid__.comm().rank() == 0) {
         printf("lowest eigen-value: %18.12f\n", eval[0]);

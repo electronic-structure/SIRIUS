@@ -68,7 +68,7 @@ class Grid
     void initialize()
     {
         if (dimensions_.size() == 0) {
-            TERMINATE("no dimensions provided for the MPI grid");
+            RTE_THROW("no dimensions provided for the MPI grid");
         }
 
         int sz{1};
@@ -84,7 +84,7 @@ class Grid
             }
             s << std::endl << "  available number of MPI ranks : " << parent_communicator_.size();
 
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         /* communicator of the entire grid */

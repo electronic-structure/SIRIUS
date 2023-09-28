@@ -309,8 +309,8 @@ int run_test(cmd_args& args)
             for (int m = -l; m <= l; m++) {
                 /* compute spherical harmonics using their definition */
                 auto val = SphericalHarmonicY(l, m, theta, phi);
-                diff += std::abs(val - ylm[utils::lm(l, m)]);
-                diff += std::abs(val - ylm_ref[utils::lm(l, m)]);
+                diff += std::abs(val - ylm[sf::lm(l, m)]);
+                diff += std::abs(val - ylm_ref[sf::lm(l, m)]);
             }
         }
         if (diff > 1e-10) {

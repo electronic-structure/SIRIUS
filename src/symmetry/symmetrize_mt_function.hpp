@@ -44,7 +44,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     for (auto ia : frlm.atoms()) {
         lmmax = std::max(lmmax, frlm[ia].angular_domain_size());
     }
-    int lmax = utils::lmax(lmmax);
+    int lmax = sf::lmax(lmmax);
 
     /* split atoms between MPI ranks */
     sddk::splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));

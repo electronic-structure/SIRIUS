@@ -71,7 +71,7 @@ class serializer
 
         if (comm__.rank() == source__) {
             sz = stream_.size();
-            assert(sz < static_cast<size_t>(std::numeric_limits<int>::max()));
+            RTE_ASSERT(sz < static_cast<size_t>(std::numeric_limits<int>::max()));
             r1 = comm__.isend(&sz, 1, dest__, tag++);
             r2 = comm__.isend(&stream_[0], (int)sz, dest__, tag++);
         }

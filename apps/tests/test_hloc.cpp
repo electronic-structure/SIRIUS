@@ -57,7 +57,7 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
         }
     }
     if (diff != diff) {
-        TERMINATE("NaN");
+        RTE_THROW("NaN");
     }
     mpi::Communicator::world().allreduce(&diff, 1);
     diff = std::sqrt(diff / 4 / num_bands__ / gvec->num_gvec());

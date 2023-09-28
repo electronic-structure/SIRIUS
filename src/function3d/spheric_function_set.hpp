@@ -37,7 +37,7 @@ class Spheric_function_set
                             sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia,
                             sptr__->lmmax, unit_cell_->atom(ia).radial_grid());
             } else {
-                func_[ia] = Spheric_function<function_domain_t::spectral, T>(utils::lmmax(lmax__(ia)),
+                func_[ia] = Spheric_function<function_domain_t::spectral, T>(sf::lmmax(lmax__(ia)),
                             unit_cell_->atom(ia).radial_grid());
             }
         };

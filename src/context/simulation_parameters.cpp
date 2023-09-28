@@ -114,7 +114,7 @@ compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohman
         std::stringstream ss;
         ss << "The following configuration parameters were not recognized and ignored: ";
         std::copy(visited.begin(), visited.end(), std::ostream_iterator<std::string>(ss, " "));
-        WARNING(ss)
+        RTE_WARNING(ss)
     }
 }
 
@@ -236,7 +236,7 @@ Simulation_parameters::electronic_structure_method(std::string name__)
     if (m.count(name__) == 0) {
         std::stringstream s;
         s << "wrong type of electronic structure method: " << name__;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     electronic_structure_method_ = m[name__];
 }

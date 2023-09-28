@@ -108,12 +108,12 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             s << "ik:" << std::setw(5) << ik;
             for (int j = 0; j < nbnd; j++) {
-                s << utils::ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 0);
+                s << ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 0);
             }
             if (ctx.num_mag_dims() == 1) {
                 s << std::endl << "        ";
                 for (int j = 0; j < nbnd; j++) {
-                    s << utils::ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 1);
+                    s << ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 1);
                 }
             }
             s << std::endl;

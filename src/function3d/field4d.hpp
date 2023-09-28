@@ -27,7 +27,6 @@
 
 #include <memory>
 #include <array>
-#include <cassert>
 #include <stdexcept>
 #include "SDDK/memory.hpp"
 #include "function3d/periodic_function.hpp"
@@ -86,20 +85,20 @@ class Field4D
     /// Return component of the vector part of the field.
     inline auto& vector(int i)
     {
-        assert(i >= 0 && i <= 2);
+        RTE_ASSERT(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
     /// Return component of the vector part of the field.
     inline auto const& vector(int i) const
     {
-        assert(i >= 0 && i <= 2);
+        RTE_ASSERT(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
     inline auto& component(int i)
     {
-        assert(i >= 0 && i <= 3);
+        RTE_ASSERT(i >= 0 && i <= 3);
         return *(components_[i]);
     }
 
@@ -114,7 +113,7 @@ class Field4D
 
     inline auto const& component(int i) const
     {
-        assert(i >= 0 && i <= 3);
+        RTE_ASSERT(i >= 0 && i <= 3);
         return *(components_[i]);
     }
 

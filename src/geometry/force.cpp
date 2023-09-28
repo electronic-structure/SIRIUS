@@ -882,8 +882,8 @@ Force::print_info(std::ostream& out__, int verbosity__)
     auto print_forces = [&](std::string label__, sddk::mdarray<double, 2> const& forces) {
         out__ << "==== " << label__ << " =====" << std::endl;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            out__ << "atom: " << std::setw(4) << ia << ", force: " << utils::ffmt(15, 7) << forces(0, ia) <<
-                utils::ffmt(15, 7) << forces(1, ia) << utils::ffmt(15, 7) << forces(2, ia) << std::endl;
+            out__ << "atom: " << std::setw(4) << ia << ", force: " << ffmt(15, 7) << forces(0, ia) <<
+                ffmt(15, 7) << forces(1, ia) << ffmt(15, 7) << forces(2, ia) << std::endl;
         }
     };
 

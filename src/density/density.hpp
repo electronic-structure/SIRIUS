@@ -582,7 +582,7 @@ class Density : public Field4D
         int ngv;
         fin.read("/parameters/num_gvec", &ngv, 1);
         if (ngv != ctx_.gvec().num_gvec()) {
-            TERMINATE("wrong number of G-vectors");
+            RTE_THROW("wrong number of G-vectors");
         }
         sddk::mdarray<int, 2> gv(3, ngv);
         fin.read("/parameters/gvec", gv);
@@ -796,7 +796,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        WARNING(s);
+        RTE_WARNING(s);
     }
     std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> result;
     result[0] = std::move(rho_up);

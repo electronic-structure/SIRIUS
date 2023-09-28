@@ -129,16 +129,9 @@ init_step_function(Unit_cell const& uc__, fft::Gvec const& gv__, fft::Gvec_fft c
         s << "step function gives a wrong volume for IT region" << std::endl
           << "  difference with exact value : " << std::abs(vit - uc__.volume_it());
         if (gv__.comm().rank() == 0) {
-            WARNING(s);
+            RTE_WARNING(s);
         }
     }
-    //if (ctx__.cfg().control().print_checksum()) {
-    //    auto z1 = theta.pw.checksum();
-    //    auto d1 = theta.rg.checksum();
-    //    mpi::Communicator(spfft__.communicator()).allreduce(&d1, 1);
-    //    utils::print_checksum("theta(r)", d1, ctx__.out());
-    //    utils::print_checksum("theta(G)", z1, ctx__.out());
-    //}
 
     return theta;
 }

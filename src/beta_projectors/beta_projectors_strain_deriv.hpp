@@ -57,7 +57,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         auto& beta_ri1 = *this->ctx_.ri().beta_djl_;
 
         int lmax  = uc.lmax();
-        int lmmax = utils::lmmax(lmax);
+        int lmmax = sf::lmmax(lmax);
 
         sddk::mdarray<double, 2> rlm_g(lmmax, this->num_gkvec_loc());
         sddk::mdarray<double, 3> rlm_dg(lmmax, 3, this->num_gkvec_loc());

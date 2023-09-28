@@ -39,7 +39,7 @@ K_point<T>::initialize()
         zil_[l] = std::pow(std::complex<T>(0, 1), l);
     }
 
-    l_by_lm_ = utils::l_by_lm(ctx_.unit_cell().lmax_apw());
+    l_by_lm_ = sf::l_by_lm(ctx_.unit_cell().lmax_apw());
 
     int bs = ctx_.cyclic_block_size();
 
@@ -444,8 +444,9 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "Error in getting plane-wave coefficients";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 
     try {
@@ -471,8 +472,9 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "Error in getting muffin-tin coefficients";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 }
 
@@ -602,7 +604,7 @@ template <typename T>
 void
 K_point<T>::load(sddk::HDF5_tree h5in, int id)
 {
-    STOP();
+    RTE_THROW("not implemented");
     //== band_energies_.resize(ctx_.num_bands());
     //== h5in[id].read("band_energies", band_energies_);
 
@@ -680,12 +682,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 
     int lmax{3};
-    int lmmax = utils::lmmax(lmax);
-    // for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-    //    auto& atom_type = unit_cell_.atom_type(iat);
-    //    lmax            = std::max(lmax, atom_type.lmax_ps_atomic_wf());
-    //}
-    // lmax = std::max(lmax, unit_cell_.lmax());
+    int lmmax = sf::lmmax(lmax);
 
     /* compute offset for each atom */
     std::vector<int> offset;

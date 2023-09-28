@@ -5,7 +5,7 @@ using namespace sirius;
 double test1_angular_radial_double(int lmax__)
 {
     SHT sht(sddk::device_t::CPU, lmax__);
-    int lmmax = utils::lmmax(lmax__);
+    int lmmax = sf::lmmax(lmax__);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
@@ -31,7 +31,7 @@ double test1_angular_radial_double(int lmax__)
 double test1_angular_radial_complex(int lmax__)
 {
     SHT sht(sddk::device_t::CPU, lmax__);
-    int lmmax = utils::lmmax(lmax__);
+    int lmmax = sf::lmmax(lmax__);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
@@ -39,10 +39,10 @@ double test1_angular_radial_complex(int lmax__)
 
     for (int ir = 0; ir < r.num_points(); ir++) {
         for (int l = 0; l <= lmax__; l++) {
-            f1(utils::lm(l, 0), ir) = utils::random<double>();
+            f1(sf::lm(l, 0), ir) = utils::random<double>();
             for (int m = 1; m <= l; m++) {
-                f1(utils::lm(l, m), ir) = utils::random<std::complex<double>>();
-                f1(utils::lm(l, -m), ir) = std::pow(-1, m) * std::conj(f1(utils::lm(l, m), ir));
+                f1(sf::lm(l, m), ir) = utils::random<std::complex<double>>();
+                f1(sf::lm(l, -m), ir) = std::pow(-1, m) * std::conj(f1(sf::lm(l, m), ir));
             }
         }
     }

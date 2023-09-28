@@ -243,7 +243,7 @@ class Eigensolver_lapack : public Eigensolver
               << "nb : " << nb << std::endl
               << "liwork : " << liwork << std::endl
               << "lwork : " << lwork << std::endl;
-            WARNING(s);
+            RTE_WARNING(s);
             return 1;
         }
 
@@ -368,7 +368,7 @@ class Eigensolver_lapack : public Eigensolver
             s << "not all eigen-values are found" << std::endl
               << "target number of eigen-values: " << nev__ << std::endl
               << "number of eigen-values found: " << m;
-            WARNING(s);
+            RTE_WARNING(s);
             return 1;
         }
 
@@ -729,7 +729,7 @@ class Eigensolver_scalapack : public Eigensolver
         }
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -751,7 +751,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -760,7 +760,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, float>::value) {
                 s << "pssyevx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -859,7 +859,7 @@ class Eigensolver_scalapack : public Eigensolver
         }
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -881,7 +881,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -890,7 +890,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, std::complex<float>>::value) {
                 s << "pcheevx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -983,7 +983,7 @@ class Eigensolver_scalapack : public Eigensolver
         }
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -1005,7 +1005,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -1014,7 +1014,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, float>::value) {
                 s << "pssygvx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -1127,7 +1127,7 @@ class Eigensolver_scalapack : public Eigensolver
 
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -1149,7 +1149,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -1158,7 +1158,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, std::complex<float>>::value) {
                 s << "pchegvx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }

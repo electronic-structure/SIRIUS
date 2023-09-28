@@ -124,7 +124,7 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
     Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
     std::vector<Flm>& vxc__, Flm& exclm__)
 {
-    int lmmax = utils::lmmax(lmax__);
+    int lmmax = sf::lmmax(lmax__);
 
     /* new array to store core and valence densities */
     Flm rho0(lmmax, rgrid__);
@@ -196,7 +196,7 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
 
     std::vector<Flm> vxc;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        vxc.emplace_back(utils::lmmax(l_max), rgrid);
+        vxc.emplace_back(sf::lmmax(l_max), rgrid);
     }
 
     sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc, (*paw_ae_exc_)[ia__]);
@@ -228,9 +228,9 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
 
     /* get lm size for density */
     int lmax  = atom_type.indexr().lmax();
-    int lmmax = utils::lmmax(2 * lmax);
+    int lmmax = sf::lmmax(2 * lmax);
 
-    auto l_by_lm = utils::l_by_lm(2 * lmax);
+    auto l_by_lm = sf::l_by_lm(2 * lmax);
 
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
 

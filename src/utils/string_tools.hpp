@@ -17,32 +17,43 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file generate_gvec_ylm.hpp
+/** \file string_tools.hpp
  *
- *  \brief Generate complex spherical harmonics for the local set of G-vectors.
+ *  \brief Extra functions to work with std::strings
  */
 
-#ifndef __GENERATE_GVEC_YLM_HPP__
-#define __GENERATE_GVEC_YLM_HPP__
+#ifndef __STRING_TOOLS_HPP__
+#define __STRING_TOOLS_HPP__
 
-namespace sirius {
-
-/// Generate complex spherical harmonics for the local set of G-vectors.
-inline auto
-generate_gvec_ylm(Simulation_context const& ctx__, int lmax__)
+/// Split multi-line string into a list of strings.
+inline auto split(std::string const str__, char delim__)
 {
-    PROFILE("sirius::generate_gvec_ylm");
+    std::istringstream iss(str__);
+    std::vector<std::string> result;
 
-    sddk::mdarray<std::complex<double>, 2> gvec_ylm(sf::lmmax(lmax__), ctx__.gvec().count(),
-            sddk::memory_t::host, "gvec_ylm");
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < ctx__.gvec().count(); igloc++) {
-        auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
-        sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
+    while (iss.good()) {
+        std::string s;
+        std::getline(iss, s, delim__);
+        result.push_back(s);
     }
-    return gvec_ylm;
+    return result;
 }
 
+inline std::string& ltrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
+{
+    str.erase(0, str.find_first_not_of(chars));
+    return str;
+}
+ 
+inline std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
+{
+    str.erase(str.find_last_not_of(chars) + 1);
+    return str;
+}
+
+inline std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
+{
+    return ltrim(rtrim(str, chars), chars);
 }
 
 #endif
