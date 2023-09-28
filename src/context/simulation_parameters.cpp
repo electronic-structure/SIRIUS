@@ -154,7 +154,7 @@ get_section_options(std::string const& section__)
 void
 Simulation_parameters::import(std::string const& str__)
 {
-    auto json = utils::read_json_from_file_or_string(str__);
+    auto json = read_json_from_file_or_string(str__);
     import(json);
 }
 

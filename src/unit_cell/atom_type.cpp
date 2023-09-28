@@ -699,7 +699,7 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
 void
 Atom_type::read_input(std::string const& str__)
 {
-    auto parser = utils::read_json_from_file_or_string(str__);
+    auto parser = read_json_from_file_or_string(str__);
 
     if (parser.empty()) {
         return;

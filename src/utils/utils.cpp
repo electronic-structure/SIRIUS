@@ -58,52 +58,6 @@ double confined_polynomial(double r, double R, int p1, int p2, int dm)
     }
 }
 
-nlohmann::json try_parse(std::istream &is) {
-    nlohmann::json dict;
-
-    try {
-        is >> dict;
-    } catch (std::exception& e) {
-        std::stringstream s;
-        s << "cannot parse input JSON" << std::endl << e.what();
-        RTE_THROW(s);
-    }
-
-    return dict;
-}
-
-nlohmann::json read_json_from_file(std::string const &filename) {
-    std::ifstream file{filename};
-    if (!file.is_open()) {
-        std::stringstream s;
-        s << "file " << filename << " can't be opened";
-        RTE_THROW(s);
-    }
-
-    return try_parse(file);
-}
-
-nlohmann::json read_json_from_string(std::string const &str) {
-    if (str.empty()) {
-        return {};
-    }
-    std::istringstream input{str};
-    return try_parse(input);
-}
-
-nlohmann::json read_json_from_file_or_string(std::string const& str__)
-{
-    if (str__.empty()) {
-        return {};
-    }
-    // Detect JSON
-    if (str__.find("{") == std::string::npos) {
-        return read_json_from_file(str__);
-    } else {
-        return read_json_from_string(str__);
-    }
-}
-
 void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
 {
     *VmHWM__ = 0;

@@ -58,12 +58,12 @@ nlohmann::json preprocess_json_input(std::string fname__)
 {
     if (fname__.find("{") == std::string::npos) {
         // If it's a file, set the working directory to that file.
-        auto json = utils::read_json_from_file(fname__);
+        auto json = read_json_from_file(fname__);
         rewrite_relative_paths(json, fs::path{fname__}.parent_path());
         return json;
     } else {
         // Raw JSON input
-        auto json = utils::read_json_from_string(fname__);
+        auto json = read_json_from_string(fname__);
         rewrite_relative_paths(json);
         return json;
     }
@@ -412,34 +412,34 @@ void run_tasks(cmd_args const& args)
             }
         }
     }
-    if (task_id == task_t::read_config) {
-        //int count{0};
-        //while (true) {
-        //    std::stringstream s;
-        //    s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
-        //    fname = s.str();
-        //    try {
-        //        auto dict = utils::read_json_from_file_or_string(fname);
-        //        Simulation_context ctx(dict["config"].dump());
-        //    } catch(...) {
-        //        break;
-        //    }
-        //    count++;
-        //}
-        auto dict1 = utils::read_json_from_file_or_string("sirius000030.json");
-        Simulation_context ctx1(dict1["config"].dump());
-        ctx1.initialize();
+    //if (task_id == task_t::read_config) {
+    //    //int count{0};
+    //    //while (true) {
+    //    //    std::stringstream s;
+    //    //    s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
+    //    //    fname = s.str();
+    //    //    try {
+    //    //        auto dict = utils::read_json_from_file_or_string(fname);
+    //    //        Simulation_context ctx(dict["config"].dump());
+    //    //    } catch(...) {
+    //    //        break;
+    //    //    }
+    //    //    count++;
+    //    //}
+    //    auto dict1 = read_json_from_file_or_string("sirius000030.json");
+    //    Simulation_context ctx1(dict1["config"].dump());
+    //    ctx1.initialize();
 
-        auto dict2 = utils::read_json_from_file_or_string("sirius000031.json");
-        Simulation_context ctx2(dict1["config"].dump());
-        ctx2.initialize();
+    //    auto dict2 = read_json_from_file_or_string("sirius000031.json");
+    //    Simulation_context ctx2(dict1["config"].dump());
+    //    ctx2.initialize();
 
-        ctx1.unit_cell().set_lattice_vectors(ctx2.unit_cell().lattice_vectors());
-        for (int ia = 0; ia < ctx2.unit_cell().num_atoms(); ia++) {
-            ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
-        }
-        ctx1.update();
-    }
+    //    ctx1.unit_cell().set_lattice_vectors(ctx2.unit_cell().lattice_vectors());
+    //    for (int ia = 0; ia < ctx2.unit_cell().num_atoms(); ia++) {
+    //        ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
+    //    }
+    //    ctx1.update();
+    //}
 
     if (task_id == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
