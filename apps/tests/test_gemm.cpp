@@ -80,13 +80,13 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 
     for (int ic = 0; ic < a.num_cols_local(); ic++) {
         for (int ir = 0; ir < a.num_rows_local(); ir++) {
-            a(ir, ic) = utils::random<gemm_type>();
+            a(ir, ic) = random<gemm_type>();
         }
     }
 
     for (int ic = 0; ic < b.num_cols_local(); ic++) {
         for (int ir = 0; ir < b.num_rows_local(); ir++) {
-            b(ir, ic) = utils::random<gemm_type>();
+            b(ir, ic) = random<gemm_type>();
         }
     }
 
@@ -96,7 +96,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
-    double t = -utils::wtime();
+    double t = -wtime();
     gemm_type one = 1;
     gemm_type zero = 0;
     const char TA [] = {'N', 'T', 'C'};
@@ -104,7 +104,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
-    t += utils::wtime();
+    t += wtime();
     double perf = nop_gemm * 1e-9 * M * (N - n) * K / t / nrow / ncol;
     if (mpi::Communicator::world().rank() == 0) {
         printf("execution time : %12.6f seconds\n", t);
