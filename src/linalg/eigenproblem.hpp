@@ -26,6 +26,7 @@
 #define __EIGENPROBLEM_HPP__
 
 #include "utils/profiler.hpp"
+#include "utils/rte.hpp"
 #include "linalg.hpp"
 #include "SDDK/omp.hpp"
 #include "eigensolver.hpp"
@@ -407,10 +408,10 @@ class Eigensolver_elpa : public Eigensolver
     //          << std::endl
     //          << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows()
     //          << std::endl;
-    //        TERMINATE(s);
+    //        RTE_THROW(s);
     //    }
     //    if (A__.bs_row() != A__.bs_col()) {
-    //        TERMINATE("wrong block size");
+    //        RTE_THROW("wrong block size");
     //    }
 
     //    /* Cholesky factorization B = U^{H}*U */
@@ -1231,7 +1232,7 @@ class Eigensolver_magma: public Eigensolver
 
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1283,7 +1284,7 @@ class Eigensolver_magma: public Eigensolver
                              rwork.get(), lrwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1333,7 +1334,7 @@ class Eigensolver_magma: public Eigensolver
                       nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1380,7 +1381,7 @@ class Eigensolver_magma: public Eigensolver
                       lrwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1444,7 +1445,7 @@ class Eigensolver_magma_gpu: public Eigensolver
                           liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1492,7 +1493,7 @@ class Eigensolver_magma_gpu: public Eigensolver
                           &info /*info*/);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {

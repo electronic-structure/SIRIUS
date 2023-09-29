@@ -31,7 +31,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
 
     auto& inp = ctx.parameters_input();
     if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
+        RTE_THROW("this is not a Gamma-point calculation")
     }
 
     ctx.import(args__);
@@ -63,7 +63,7 @@ double ground_state(Simulation_context& ctx,
 
     if (task == task_t::ground_state_restart) {
         if (!utils::file_exists(storage_file_name)) {
-            TERMINATE("storage file is not found");
+            RTE_THROW("storage file is not found");
         }
         density.load();
         potential.load();
@@ -295,7 +295,7 @@ void run_tasks(cmd_args const& args)
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
-                TERMINATE("fix me");
+                RTE_THROW("fix me");
                 potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
                 potential.U().calculate_hubbard_potential_and_energy();
             }

@@ -61,7 +61,7 @@ double test_gemm(int M, int N, int K, int transa)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < M; j++) {
             if (std::abs(c(j, i) - double(K)) > 1e-12) {
-                TERMINATE("wrong result");
+                RTE_THROW("wrong result");
             }
         }
     }

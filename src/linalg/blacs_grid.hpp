@@ -28,6 +28,7 @@
 #include <memory>
 #include "mpi/mpi_grid.hpp"
 #include "linalg_base.hpp"
+#include "utils/rte.hpp"
 
 namespace la {
 
@@ -85,7 +86,7 @@ class BLACS_grid
               << " mpi_grid " << rank_row() << " " << rank_col() << " " << num_ranks_row() << " " << num_ranks_col()
               << std::endl
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 #else
         for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
