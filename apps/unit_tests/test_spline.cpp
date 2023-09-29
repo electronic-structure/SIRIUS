@@ -145,14 +145,14 @@ void test_spline_5()
         s2[i].interpolate();
     }
     mdarray<double, 2> prod(n, n);
-    double t = -utils::wtime();
+    double t = -wtime();
     #pragma omp parallel for
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             prod(i, j) = inner(s1[i], s2[j], 2);
         }
     }
-    t += utils::wtime();
+    t += wtime();
     printf("inner product time: %12.6f", t);
     printf("performance: %12.6f GFlops", 1e-9 * n * n * N * 85 / t);
 }

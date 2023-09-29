@@ -16,7 +16,7 @@ int test1()
 
     for (int ir = 0; ir < r.num_points(); ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<T>();
+            f1(lm, ir) = random<T>();
         }
     }
     auto f2 = convert(f1);
@@ -46,7 +46,7 @@ int test2(int lmax, int nr)
 
     for (int ir = 0; ir < nr; ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<T>();
+            f1(lm, ir) = random<T>();
         }
     }
     auto f2 = transform(sht, f1);
@@ -77,7 +77,7 @@ int test3(int lmax, int nr)
     /* real Rlm coefficients */
     for (int ir = 0; ir < nr; ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<double>();
+            f1(lm, ir) = random<double>();
         }
     }
     /* reansform to (theta, phi) */
@@ -327,8 +327,8 @@ int test6()
 
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
         for (int lm = 0; lm < 64; lm++) {
-            rho_up_lm(lm, ir) = utils::random<double>();
-            rho_dn_lm(lm, ir) = utils::random<double>();
+            rho_up_lm(lm, ir) = random<double>();
+            rho_dn_lm(lm, ir) = random<double>();
         }
     }
 

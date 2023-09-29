@@ -33,6 +33,7 @@
 #include "mpi/mpi_grid.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/utils.hpp"
+#include "utils/time_tools.hpp"
 #include "utils/env.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
@@ -316,7 +317,7 @@ class Simulation_context : public Simulation_parameters
     void init_common()
     {
         gettimeofday(&start_time_, NULL);
-        start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
+        start_time_tag_ = timestamp("%Y%m%d_%H%M%S");
 
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
 

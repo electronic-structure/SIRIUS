@@ -35,6 +35,7 @@
 #include "mixer/mixer.hpp"
 #include "occupation_matrix.hpp"
 #include "density_matrix.hpp"
+#include "utils/math_tools.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -87,7 +88,7 @@ get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
         mag = mag__[0];
         /* fix numerical noise at high values of magnetization */
         if (std::abs(mag) > rho__) {
-            mag = utils::sign(mag) * rho__;
+            mag = sign(mag) * rho__;
         }
     } else { /* non-collinear case */
         /* fix numerical noise at high values of magnetization */

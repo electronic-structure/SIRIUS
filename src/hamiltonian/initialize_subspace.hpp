@@ -88,9 +88,9 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     /* generate some random noise */
     std::vector<T> tmp(4096);
-    utils::rnd(true);
+    random_uint32(true);
     for (int i = 0; i < 4096; i++) {
-        tmp[i] = 1e-5 * utils::random<T>();
+        tmp[i] = 1e-5 * random<T>();
     }
     PROFILE_START("sirius::initialize_subspace|kp|wf");
     /* fill remaining wave-functions with pseudo-random guess */

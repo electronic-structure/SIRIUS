@@ -148,7 +148,7 @@ void test7()
     std::vector<double*> v(N);
     for (int k = 0; k < 30; k++) {
         for (int i = 0; i < N; i++) {
-            auto n = (utils::rand() & 0b1111111111) + 1;
+            auto n = (rand() & 0b1111111111) + 1;
             v[i] = mp.allocate<double>(n);
         }
         std::random_device rd;

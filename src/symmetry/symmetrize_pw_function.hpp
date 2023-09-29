@@ -239,7 +239,7 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                             /* run checks */
                             if (frg__[0]) {
                                 /* check that another symmetry operation leads to the same coefficient */
-                                if (utils::abs_diff(fpw_sym[0][ig1], symf1) > eps) {
+                                if (abs_diff(fpw_sym[0][ig1], symf1) > eps) {
                                     std::stringstream s;
                                     s << "inconsistent symmetry operation" << std::endl
                                       << "  existing value : " << fpw_sym[0][ig1] << std::endl
@@ -249,7 +249,7 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                                 }
                             }
                             if (num_mag_dims__ == 1 && frg__[1]) {
-                                if (utils::abs_diff(fpw_sym[1][ig1], symz1) > eps) {
+                                if (abs_diff(fpw_sym[1][ig1], symz1) > eps) {
                                     std::stringstream s;
                                     s << "inconsistent symmetry operation" << std::endl
                                       << "  existing value : " << fpw_sym[1][ig1] << std::endl
@@ -259,9 +259,9 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                                 }
                             }
                             if (num_mag_dims__ == 3) {
-                                if (utils::abs_diff(fpw_sym[1][ig1], symx1) > eps ||
-                                    utils::abs_diff(fpw_sym[2][ig1], symy1) > eps ||
-                                    utils::abs_diff(fpw_sym[3][ig1], symz1) > eps) {
+                                if (abs_diff(fpw_sym[1][ig1], symx1) > eps ||
+                                    abs_diff(fpw_sym[2][ig1], symy1) > eps ||
+                                    abs_diff(fpw_sym[3][ig1], symz1) > eps) {
 
                                     RTE_THROW("inconsistent symmetry operation");
                                 }
@@ -298,18 +298,20 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
             std::complex<double> phase = std::conj(phase_factor(isym, gv_rot));
 
             if (frg__[0] && ig_rot != -1) {
-                if (utils::abs_diff(fpw_sym[0][ig_rot], fpw_sym[0][igloc] * phase) > eps) {
+                auto diff = abs_diff(fpw_sym[0][ig_rot], fpw_sym[0][igloc] * phase);
+                if (diff > eps) {
                     std::stringstream s;
                     s << "check of symmetrized PW coefficients failed" << std::endl
-                      << "difference : " << utils::abs_diff(fpw_sym[0][ig_rot], fpw_sym[0][igloc] * phase);
+                      << "difference : " << diff;
                     RTE_THROW(s);
                 }
             }
             if (num_mag_dims__ == 1 && frg__[1] && ig_rot != -1) {
-                if (utils::abs_diff(fpw_sym[1][ig_rot], fpw_sym[1][igloc] * phase * S(2, 2)) > eps) {
+                auto diff = abs_diff(fpw_sym[1][ig_rot], fpw_sym[1][igloc] * phase * S(2, 2));
+                if (diff > eps) {
                     std::stringstream s;
                     s << "check of symmetrized PW coefficients failed" << std::endl
-                      << "difference : " << utils::abs_diff(fpw_sym[1][ig_rot], fpw_sym[1][igloc] * phase * S(2, 2));
+                      << "difference : " << diff;
                     RTE_THROW(s);
                 }
             }

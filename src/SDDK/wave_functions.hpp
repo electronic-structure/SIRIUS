@@ -33,6 +33,7 @@
 #include "SDDK/hdf5_tree.hpp"
 #include "fft/gvec.hpp"
 #include "utils/env.hpp"
+#include "utils/time_tools.hpp"
 #include "utils/rte.hpp"
 #include "strong_type.hpp"
 
@@ -889,7 +890,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         PROFILE("shuffle_to_fft_layout");
 
         auto sp = wf_->actual_spin_index(ispn__);
-        auto t0 = utils::time_now();
+        auto t0 = time_now();
         if (false) {
             auto layout_in  = wf_->grid_layout_pw(sp, b__);
             auto layout_out = this->grid_layout(b__.size());
@@ -954,7 +955,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         }
 
         if (env::print_performance() && wf_->gkvec().comm().rank() == 0) {
-            auto t = utils::time_interval(t0);
+            auto t = time_interval(t0);
             std::cout << "[transform_to_fft_layout] throughput: "
                       << 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
         }
@@ -968,7 +969,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         auto sp = wf_->actual_spin_index(ispn__);
         auto pp = env::print_performance();
 
-        auto t0 = utils::time_now();
+        auto t0 = time_now();
         if (false) {
             auto layout_in  = this->grid_layout(b__.size());
             auto layout_out = wf_->grid_layout_pw(sp, b__);
@@ -1047,7 +1048,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             }
         }
         if (pp && wf_->gkvec().comm().rank() == 0) {
-            auto t = utils::time_interval(t0);
+            auto t = time_interval(t0);
             std::cout << "[transform_from_fft_layout] throughput: "
                       << 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t << " Gb/sec" << std::endl;
         }
@@ -1774,7 +1775,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
     if (pp) {
         comm.barrier();
     }
-    auto t0 = utils::time_now();
+    auto t0 = time_now();
 
     double gflops{0};
 
@@ -2002,7 +2003,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 //== //    }
     if (pp) {
         comm.barrier();
-        auto t = utils::time_interval(t0);
+        auto t = time_interval(t0);
         if (comm.rank() == 0) {
             RTE_OUT(std::cout) << "effective performance : " << gflops / t << " GFlop/s/rank, "
                                << gflops * comm.size() / t << " GFlop/s" << std::endl;

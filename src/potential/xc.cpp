@@ -422,7 +422,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
             double bxc = 0.5 * (vxc_up(irloc) - vxc_dn(irloc));
 
             /* get the sign between mag and B */
-            auto s = utils::sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
+            auto s = sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
 
             r3::vector<double> m;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {

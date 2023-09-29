@@ -33,6 +33,17 @@
 
 namespace sirius {
 
+/// Return angle phi in the range [0, 2Pi) by its values of sin(phi) and cos(phi).
+inline double phi_by_sin_cos(double sinp, double cosp)
+{
+    const double twopi = 6.2831853071795864769;
+    double phi = std::atan2(sinp, cosp);
+    if (phi < 0) {
+        phi += twopi;
+    }
+    return phi;
+}
+
 /// Generate SU(2) rotation matrix from the axes and angle.
 inline auto
 rotation_matrix_su2(std::array<double, 3> u__, double theta__)
@@ -99,7 +110,7 @@ axis_angle(r3::matrix<double> R__)
     double sint = u.length() / 2.0;
     double cost = (R__(0, 0) + R__(1, 1) + R__(2, 2) - 1) / 2.0;
 
-    double theta = utils::phi_by_sin_cos(sint, cost);
+    double theta = phi_by_sin_cos(sint, cost);
 
     /* rotation angle is zero */
     if (std::abs(theta) < 1e-12) {
@@ -209,15 +220,15 @@ euler_angles(r3::matrix<double> const& rot__, double tolerance__)
     }
 
     if (std::abs(rot__(2, 2) - 1.0) < 1e-10) { // cos(beta) == 1, beta = 0
-        angles[0] = utils::phi_by_sin_cos(rot__(1, 0), rot__(0, 0));
+        angles[0] = phi_by_sin_cos(rot__(1, 0), rot__(0, 0));
     } else if (std::abs(rot__(2, 2) + 1.0) < 1e-10) { // cos(beta) == -1, beta = Pi
-        angles[0] = utils::phi_by_sin_cos(-rot__(0, 1), rot__(1, 1));
+        angles[0] = phi_by_sin_cos(-rot__(0, 1), rot__(1, 1));
         angles[1] = pi;
     } else {
         double beta = std::acos(rot__(2, 2));
-        angles[0] = utils::phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
+        angles[0] = phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
         angles[1] = beta;
-        angles[2] = utils::phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
+        angles[2] = phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
     }
 
     auto rm1 = rot_mtrx_cart(angles);

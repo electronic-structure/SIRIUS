@@ -72,7 +72,7 @@ void create_supercell(cmd_args const& args__)
 
                         auto vr = reduce_coordinates(vf);
                         for (int x: {0, 1, 2}) {
-                            vr.first[x] = utils::round(vr.first[x], 10);
+                            vr.first[x] = round(vr.first[x], 10);
                         }
                         bool add_atom = (ctx_sc.unit_cell().atom_id_by_position(vr.first) == -1);
                         //==if (add_atom && iat == 2)

@@ -26,37 +26,6 @@
 #include "utils/rte.hpp"
 
 namespace utils {
-std::string timestamp(std::string fmt)
-{
-    timeval t;
-    gettimeofday(&t, NULL);
-
-    char buf[128];
-
-    tm* ptm = localtime(&t.tv_sec);
-    strftime(buf, sizeof(buf), fmt.c_str(), ptm);
-    return std::string(buf);
-}
-
-double confined_polynomial(double r, double R, int p1, int p2, int dm)
-{
-    double t = 1.0 - std::pow(r / R, 2);
-    switch (dm) {
-        case 0: {
-            return (std::pow(r, p1) * std::pow(t, p2));
-        }
-        case 2: {
-            return (-4 * p1 * p2 * std::pow(r, p1) * std::pow(t, p2 - 1) / std::pow(R, 2) +
-                    p1 * (p1 - 1) * std::pow(r, p1 - 2) * std::pow(t, p2) +
-                    std::pow(r, p1) * (4 * (p2 - 1) * p2 * std::pow(r, 2) * std::pow(t, p2 - 2) / std::pow(R, 4) -
-                                       2 * p2 * std::pow(t, p2 - 1) / std::pow(R, 2)));
-        }
-        default: {
-            RTE_THROW("wrong derivative order");
-            return 0.0;
-        }
-    }
-}
 
 void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
 {

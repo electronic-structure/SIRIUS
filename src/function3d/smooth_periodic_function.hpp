@@ -509,7 +509,7 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 
     //#pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
-        result_rg += utils::conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
+        result_rg += conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
     }
 
     result_rg *= (f__.gvec().omega() / fft::spfft_grid_size(f__.spfft()));

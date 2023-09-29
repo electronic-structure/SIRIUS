@@ -18,6 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "sht/sht.hpp"
+#include "utils/math_tools.hpp"
 
 namespace sirius {
 
@@ -36,10 +37,10 @@ wigner_d_matrix(int l, double beta)
             long double d = 0;
             for (int j = 0; j <= std::min(l + m1, l - m2); j++) {
                 if ((l - m2 - j) >= 0 && (l + m1 - j) >= 0 && (j + m2 - m1) >= 0) {
-                    long double g = (std::sqrt(utils::factorial<long double>(l + m1)) / utils::factorial<long double>(l - m2 - j)) *
-                                    (std::sqrt(utils::factorial<long double>(l - m1)) / utils::factorial<long double>(l + m1 - j)) *
-                                    (std::sqrt(utils::factorial<long double>(l - m2)) / utils::factorial<long double>(j + m2 - m1)) *
-                                    (std::sqrt(utils::factorial<long double>(l + m2)) / utils::factorial<long double>(j));
+                    long double g = (std::sqrt(factorial<long double>(l + m1)) / factorial<long double>(l - m2 - j)) *
+                                    (std::sqrt(factorial<long double>(l - m1)) / factorial<long double>(l + m1 - j)) *
+                                    (std::sqrt(factorial<long double>(l - m2)) / factorial<long double>(j + m2 - m1)) *
+                                    (std::sqrt(factorial<long double>(l + m2)) / factorial<long double>(j));
                     d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
                 }
             }

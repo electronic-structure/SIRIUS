@@ -245,7 +245,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
                 /* Bxc = 0.5 * (V_up - V_dn) */
                 double bxc = 0.5 * (vxc_up_tp(itp, ir) - vxc_dn_tp(itp, ir));
                 /* get the sign between mag and B */
-                auto s = utils::sign((rho_up_tp(itp, ir) - rho_dn_tp(itp, ir)) * bxc);
+                auto s = sign((rho_up_tp(itp, ir) - rho_dn_tp(itp, ir)) * bxc);
 
                 r3::vector<double> m;
                 for (int j = 0; j < num_mag_dims__; j++) {

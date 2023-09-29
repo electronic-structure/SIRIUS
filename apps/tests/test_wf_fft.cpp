@@ -29,7 +29,7 @@ void test_wf_fft()
             for (int ig = 0; ig < gkvec->count(); ig++) {
                 wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) =
                     wf_ref.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) =
-                        utils::random<std::complex<double>>();
+                        random<std::complex<double>>();
             }
         }
     }

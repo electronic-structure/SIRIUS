@@ -1,5 +1,6 @@
 #include "radial/spline.hpp"
 #include "potential/xc_functional.hpp"
+#include "utils/math_tools.hpp"
 
 using namespace sirius;
 
@@ -49,7 +50,7 @@ int main(int argn, char** argv)
 
     xc.get_lda(np, rhoup.data(), rhodn.data(), vxcup.data(), vxcdn.data(), exc.data());
     printf("vxcup[0]: %18.12f   vxcdn[0]: %18.12f   bxc[0]: %18.12f\n", vxcup[0], vxcdn[0], vxcup[0] - vxcdn[0]);
-    printf("sign(mag * Bxc): %i\n", utils::sign((rhoup[0] - rhodn[0]) * (vxcup[0] - vxcdn[0])));
+    printf("sign(mag * Bxc): %i\n", sign((rhoup[0] - rhodn[0]) * (vxcup[0] - vxcdn[0])));
 
     Spline<double> s1(rg);
     Spline<double> s2(rg);

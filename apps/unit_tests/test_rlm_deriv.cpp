@@ -478,9 +478,9 @@ int test3()
     double max_diff{0};
 
     for (int i = 0; i < 300; i++) {
-        r3::vector<double> v(1 + 10 * utils::random<double>(),
-                           1 + 10 * utils::random<double>(),
-                           1 + 10 * utils::random<double>());
+        r3::vector<double> v(1 + 10 * random<double>(),
+                             1 + 10 * random<double>(),
+                             1 + 10 * random<double>());
 
         auto rtp = r3::spherical_coordinates(v);
 

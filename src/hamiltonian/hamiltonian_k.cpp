@@ -380,7 +380,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
     std::vector<int> offsets(uc.num_atoms());
 
     PROFILE_START("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
-    const auto t1 = utils::time_now();
+    const auto t1 = time_now();
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -514,7 +514,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
     // }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     if (env::print_performance()) {
-        auto tval = utils::time_interval(t1);
+        auto tval = time_interval(t1);
         RTE_OUT(kp_.out(0)) << "effective zgemm performance: "
                             << 2 * 8e-9 * std::pow(kp_.num_gkvec(), 2) * uc.mt_aw_basis_size() / tval << " GFlop/s"
                             << std::endl;
@@ -1218,7 +1218,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
         /* if there is APW part */
         if (!phi_is_lo__) {
-            auto t0 = utils::time_now();
+            auto t0 = time_now();
 
             PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
 
@@ -1304,12 +1304,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     }
                 }
             }
-            time += utils::time_interval(t0);
+            time += time_interval(t0);
         }
 
         if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
             PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
-            auto t0 = utils::time_now();
+            auto t0 = time_now();
             if (hphi__) {
                 /* APW-lo contribution to hphi */
                 spla::pgemm_sbs(ngv, b__.size(), num_mt_aw, one, alm.at(mem), alm.ld(),
@@ -1334,7 +1334,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 ctx.spla_context());
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
             }
-            time += utils::time_interval(t0);
+            time += time_interval(t0);
         }
         offset_aw_global += num_mt_aw;
         atom_begin += na;

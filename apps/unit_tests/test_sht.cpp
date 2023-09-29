@@ -13,7 +13,7 @@ double test1_angular_radial_double(int lmax__)
 
     for (int ir = 0; ir < r.num_points(); ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<double>();
+            f1(lm, ir) = random<double>();
         }
     }
     auto f2 = convert(f1);
@@ -39,9 +39,9 @@ double test1_angular_radial_complex(int lmax__)
 
     for (int ir = 0; ir < r.num_points(); ir++) {
         for (int l = 0; l <= lmax__; l++) {
-            f1(sf::lm(l, 0), ir) = utils::random<double>();
+            f1(sf::lm(l, 0), ir) = random<double>();
             for (int m = 1; m <= l; m++) {
-                f1(sf::lm(l, m), ir) = utils::random<std::complex<double>>();
+                f1(sf::lm(l, m), ir) = random<std::complex<double>>();
                 f1(sf::lm(l, -m), ir) = std::pow(-1, m) * std::conj(f1(sf::lm(l, m), ir));
             }
         }

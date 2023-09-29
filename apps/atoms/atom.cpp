@@ -296,7 +296,7 @@ class Free_atom : public sirius::Atom_type
         std::printf("NIST  : %20.12f\n", Eref);
 
         /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-        double dE = (utils::round(energy_tot, 6) - Eref);
+        double dE = (round(energy_tot, 6) - Eref);
         std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
 
         return energy_tot;

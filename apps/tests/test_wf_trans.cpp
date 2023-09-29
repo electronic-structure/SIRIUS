@@ -35,11 +35,11 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
     for (auto s = sr.begin(); s != sr.end(); s++) {
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
-                phi.pw_coeffs(igloc, s, wf::band_index(i)) = utils::random<std::complex<T>>();
+                phi.pw_coeffs(igloc, s, wf::band_index(i)) = random<std::complex<T>>();
             }
             for (auto it : phi.spl_num_atoms()) {
                 for (int xi = 0; xi < num_mt_coeffs[it.i]; xi++) {
-                    phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) = utils::random<std::complex<T>>();
+                    phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) = random<std::complex<T>>();
                 }
             }
         }
@@ -62,13 +62,13 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
         }
         mpi::Communicator::world().barrier();
 
-        double t = -utils::wtime();
+        double t = -wtime();
         for (auto s = sr.begin(); s != sr.end(); s++) {
             wf::transform(spla_ctx, mem__, tmtrx, 0, 0, 1.0, phi, s, wf::band_range(0, num_bands__), 0.0, psi, s,
                     wf::band_range(0, num_bands__));
         }
         mpi::Communicator::world().barrier();
-        t += utils::wtime();
+        t += wtime();
 
         double perf = 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() * sr.size() / t;
         if (mpi::Communicator::world().rank() == 0) {

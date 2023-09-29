@@ -68,7 +68,7 @@ int run_test_impl(cmd_args& args)
             /* rotate original sperical harmonics with P^{-1} */
             for (int i = 0; i < sf::lmmax(lmax); i++) {
                 for (int j = 0; j < sf::lmmax(lmax); j++) {
-                    ylm1(i) += utils::conj(ylm_rot_mtrx(i, j)) * ylm(j);
+                    ylm1(i) += conj(ylm_rot_mtrx(i, j)) * ylm(j);
                 }
             }
 

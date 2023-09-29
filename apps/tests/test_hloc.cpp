@@ -24,7 +24,7 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.ld(); j++) {
-            phi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) = utils::random<std::complex<T>>();
+            phi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) = random<std::complex<T>>();
         }
         phi.pw_coeffs(0, wf::spin_index(0), wf::band_index(i)) = 1.0;
     }

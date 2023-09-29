@@ -263,7 +263,7 @@ diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
     }
     std::vector<double> tmp(4096);
     for (int i = 0; i < 4096; i++) {
-        tmp[i] = utils::random<double>();
+        tmp[i] = random<double>();
     }
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < nevec; i++) {

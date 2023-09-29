@@ -30,7 +30,7 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t
     if (!is_host_memory(memA__)) {
         a.allocate(sddk::memory_t::host);
     }
-    a = [](int64_t i, int64_t j){return utils::random<gemm_type>();};
+    a = [](int64_t i, int64_t j){return random<gemm_type>();};
     if (!is_host_memory(memA__)) {
         a.copy_to(sddk::memory_t::device);
     }
@@ -38,7 +38,7 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t
     if (!is_host_memory(memB__)) {
         b.allocate(sddk::memory_t::host);
     }
-    b = [](int64_t i, int64_t j){return utils::random<gemm_type>();};
+    b = [](int64_t i, int64_t j){return random<gemm_type>();};
     if (!is_host_memory(memB__)) {
         b.copy_to(sddk::memory_t::device);
     }
@@ -54,17 +54,17 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    double t = -utils::wtime();
+    double t = -wtime();
     la::wrap(la__).gemm(TA[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
                        &la::constant<gemm_type>::zero(),
                        c.at(memC__), c.ld());
-    double t2 = t + utils::wtime();
+    double t2 = t + wtime();
     if (is_device_memory(memC__)) {
         c.copy_to(sddk::memory_t::host);
     }
 
-    t += utils::wtime();
+    t += wtime();
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
     printf("performance (GFlops) : %12.6f\n", perf);

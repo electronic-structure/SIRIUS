@@ -37,11 +37,11 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
     for (auto s = sr.begin(); s != sr.end(); s++) {
         for (int i = 0; i < 2 * num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
-                phi.pw_coeffs(igloc, s, wf::band_index(i)) = utils::random<std::complex<T>>();
+                phi.pw_coeffs(igloc, s, wf::band_index(i)) = random<std::complex<T>>();
             }
             for (auto it : phi.spl_num_atoms()) {
                 for (int xi = 0; xi < num_mt_coeffs[it.i]; xi++) {
-                    phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) = utils::random<std::complex<T>>();
+                    phi.mt_coeffs(xi, it.li, s, wf::band_index(i)) = random<std::complex<T>>();
                 }
             }
         }

@@ -55,7 +55,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     if (blacs_grid__.comm().rank() == 0) {
         sirius::print_memory_usage(std::cout, FILE_LINE);
     }
-    double t = -utils::wtime();
+    double t = -wtime();
     if (test_gen__) {
         if (n__ == nev__) {
             solver.solve(n__, A, B, eval.data(), Z);
@@ -69,7 +69,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
             solver.solve(n__, nev__, A, eval.data(), Z);
         }
     }
-    t += utils::wtime();
+    t += wtime();
     if (blacs_grid__.comm().rank() == 0) {
         sirius::print_memory_usage(std::cout, FILE_LINE);
     }
