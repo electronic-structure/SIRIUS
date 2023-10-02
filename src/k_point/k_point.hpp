@@ -29,7 +29,7 @@
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
 #include "fft/fft.hpp"
-#include "wave_functions.hpp"
+#include "SDDK/wave_functions.hpp"
 
 namespace sirius {
 

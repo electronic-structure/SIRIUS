@@ -25,7 +25,7 @@
 #ifndef __ROTATION_HPP__
 #define __ROTATION_HPP__
 
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "linalg/r3.hpp"
 #include "utils/utils.hpp"
 #include "utils/rte.hpp"

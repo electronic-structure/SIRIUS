@@ -1,6 +1,6 @@
 #include <utils/cmd_args.hpp>
 #include <utils/utils.hpp>
-#include <memory.hpp>
+#include <SDDK/memory.hpp>
 #include <complex>
 #include <sys/time.h>
 #include <random>

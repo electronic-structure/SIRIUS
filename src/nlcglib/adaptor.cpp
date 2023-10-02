@@ -22,9 +22,9 @@
  *  \brief Contains implementation of the interface to nlcglib.
  */
 
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
-#include "wave_functions.hpp"
+#include "SDDK/wave_functions.hpp"
 #ifdef SIRIUS_NLCGLIB
 #include <stdexcept>
 

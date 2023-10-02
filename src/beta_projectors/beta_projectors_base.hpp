@@ -27,7 +27,7 @@
 
 #include "context/simulation_context.hpp"
 #include "SDDK/wave_functions.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "mpi/communicator.hpp"
 #include <spla/context.hpp>
 

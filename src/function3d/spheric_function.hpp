@@ -30,7 +30,7 @@
 #include <typeinfo>
 #include "radial/spline.hpp"
 #include "sht/sht.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "utils/math_tools.hpp"
 
 namespace sirius {

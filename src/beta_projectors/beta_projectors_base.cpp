@@ -26,7 +26,7 @@
 #include "utils/env.hpp"
 #include "beta_projectors_base.hpp"
 #include "utils/profiler.hpp"
-#include "wave_functions.hpp"
+#include "SDDK/wave_functions.hpp"
 #include <stdexcept>
 
 namespace sirius {

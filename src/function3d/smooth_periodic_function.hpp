@@ -25,7 +25,7 @@
 
 #include "fft/fft.hpp"
 #include "fft/gvec.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
 #include "typedefs.hpp"

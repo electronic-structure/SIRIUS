@@ -25,7 +25,7 @@
 #ifndef __GAUNT_HPP__
 #define __GAUNT_HPP__
 
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "typedefs.hpp"
 #include "utils/utils.hpp"
 #include "specfunc/specfunc.hpp"

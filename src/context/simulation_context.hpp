@@ -40,6 +40,7 @@
 #include "symmetry/rotation.hpp"
 #include "fft/fft.hpp"
 #include "lapw/step_function.hpp"
+#include "utils/system_tools.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -56,14 +57,13 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
         return;
     }
 
-    size_t VmRSS, VmHWM;
-    utils::get_proc_status(&VmHWM, &VmRSS);
+    auto res = get_proc_status();
 
     std::stringstream s;
     s << "rank" << std::setfill('0') << std::setw(4) << mpi::Communicator::world().rank();
     out__ << "[" << s.str() << " at " << file_and_line__ << "] "
-          << "VmHWM: " << (VmHWM >> 20) << " Mb, "
-          << "VmRSS: " << (VmRSS >> 20) << " Mb";
+          << "VmHWM: " << (res.VmHWM >> 20) << " Mb, "
+          << "VmRSS: " << (res.VmRSS >> 20) << " Mb";
 
     if (acc::num_devices() > 0) {
         size_t gpu_mem = acc::get_free_mem();

@@ -135,7 +135,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     auto& density = dft.density();
 
     if (task_id == task_t::ground_state_restart) {
-        if (!utils::file_exists(storage_file_name)) {
+        if (!file_exists(storage_file_name)) {
             RTE_THROW("storage file is not found");
         }
         density.load(storage_file_name);

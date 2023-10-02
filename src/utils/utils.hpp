@@ -48,16 +48,6 @@
 /// Namespace for simple utility functions.
 namespace utils {
 
-/// Check if file exists.
-/** \param[in] file_name Full path to the file being checked.
- *  \return True if file exists, false otherwise. 
- */
-inline bool file_exists(std::string file_name)
-{
-    std::ifstream ifs(file_name.c_str());
-    return ifs.is_open();
-}
-
 /// Pack two indices into one for symmetric matrices.
 inline int packed_index(int i__, int j__)
 {
@@ -106,38 +96,6 @@ inline auto split_in_blocks(int length__, int block_size__)
     }
 
     return result;
-}
-
-/// Get high water mark and resident space size values of a given process.
-void get_proc_status(size_t* VmHWM__, size_t* VmRSS__);
-
-/// Get number of threads currently running for this process.
-int get_proc_threads();
-
-/// Get a host name.
-inline auto hostname()
-{
-    const int len{1024};
-    char nm[len];
-    gethostname(nm, len);
-    nm[len - 1] = 0;
-    return std::string(nm);
-}
-
-
-inline long get_page_size()
-{
-    return sysconf(_SC_PAGESIZE);
-}
-
-inline long get_num_pages()
-{
-    return sysconf(_SC_PHYS_PAGES);
-}
-
-inline long get_total_memory()
-{
-    return get_page_size() * get_num_pages();
 }
 
 ///// Check if lambda F(Args) is of type T.

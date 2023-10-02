@@ -29,7 +29,7 @@
 #include "utils/cmd_args.hpp"
 #include "utils/utils.hpp"
 #include "specfunc/specfunc.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "dft/smearing.hpp"
 #include "context/config.hpp"
 

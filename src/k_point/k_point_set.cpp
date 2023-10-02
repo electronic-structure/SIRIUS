@@ -564,7 +564,7 @@ void K_point_set::print_info()
 void K_point_set::save(std::string const& name__) const
 {
     if (ctx_.comm().rank() == 0) {
-        if (!utils::file_exists(name__)) {
+        if (!file_exists(name__)) {
             sddk::HDF5_tree(name__, sddk::hdf5_access_t::truncate);
         }
         sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);

@@ -38,7 +38,7 @@
 #include "gpu/cusolver.hpp"
 #endif
 #include "blas_lapack.h"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "dmatrix.hpp"
 #include "linalg_spla.hpp"
 

@@ -26,7 +26,7 @@
 #define __RESIDUALS_HPP__
 
 #include "typedefs.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "linalg/linalg.hpp"
 #include "context/simulation_context.hpp"
 #include "SDDK/wave_functions.hpp"

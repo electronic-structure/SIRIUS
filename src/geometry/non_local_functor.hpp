@@ -29,7 +29,7 @@
 #include "k_point/k_point.hpp"
 #include "density/augmentation_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 
 namespace sirius {
 

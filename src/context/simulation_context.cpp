@@ -491,7 +491,7 @@ Simulation_context::initialize()
             pout << hbar(136, '-') << std::endl;
             pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col" << std::endl;
         }
-        pout << std::setw(12) << utils::hostname() << " | "
+        pout << std::setw(12) << hostname() << " | "
              << std::setw(6) << comm().rank()
              << std::setw(6) << comm_band().rank()
              << std::setw(6) << comm_k().rank() << " | "
@@ -536,9 +536,9 @@ Simulation_context::print_info(std::ostream& out__) const
         }
         os << "maximum number of OMP threads : " << omp_get_max_threads() << std::endl
            << "number of MPI ranks per node  : " << mpi::num_ranks_per_node() << std::endl
-           << "page size (Kb)                : " << (utils::get_page_size() >> 10) << std::endl
-           << "number of pages               : " << utils::get_num_pages() << std::endl
-           << "available memory (GB)         : " << (utils::get_total_memory() >> 30) << std::endl;
+           << "page size (Kb)                : " << (get_page_size() >> 10) << std::endl
+           << "number of pages               : " << get_num_pages() << std::endl
+           << "available memory (GB)         : " << (get_total_memory() >> 30) << std::endl;
         os << std::endl;
     }
     {

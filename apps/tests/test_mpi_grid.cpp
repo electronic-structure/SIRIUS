@@ -16,7 +16,7 @@ void test_grid(std::vector<int> grid__)
     pout << "rank(flat): " << mpi::Communicator::world().rank() << ", coordinate: "
          << mpi_grid.communicator(1 << 0).rank() << " "
          << mpi_grid.communicator(1 << 1).rank() << " "
-         << mpi_grid.communicator(1 << 2).rank() << ", hostname: " << utils::hostname() << std::endl;
+         << mpi_grid.communicator(1 << 2).rank() << ", hostname: " << hostname() << std::endl;
     std::cout << pout.flush(0) << std::endl;
 }
 

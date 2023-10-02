@@ -25,7 +25,7 @@
 #ifndef __RADIAL_GRID_HPP__
 #define __RADIAL_GRID_HPP__
 
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "typedefs.hpp"
 
 namespace sirius {

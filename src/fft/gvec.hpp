@@ -30,9 +30,9 @@
 #include <iostream>
 #include <limits>
 #include <type_traits>
-#include "memory.hpp"
 #include "fft/fft3d_grid.hpp"
 #include "linalg/r3.hpp"
+#include "SDDK/memory.hpp"
 #include "SDDK/serializer.hpp"
 #include "SDDK/splindex.hpp"
 #include "utils/profiler.hpp"

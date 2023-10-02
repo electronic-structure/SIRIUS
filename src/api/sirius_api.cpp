@@ -24,7 +24,7 @@
 
 #include <ctype.h>
 #include <iostream>
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"

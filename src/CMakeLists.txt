@@ -67,7 +67,6 @@ set(_SOURCES
   "radial/radial_integrals.cpp"
   "specfunc/sbessel.cpp"
   "utils/cmd_args.cpp"
-  "utils/utils.cpp"
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
   "utils/ostream_tools.cpp"
@@ -132,7 +131,6 @@ target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
 )
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-                                         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 target_compile_definitions(sirius PUBLIC
@@ -163,8 +161,7 @@ install(TARGETS sirius
         EXPORT sirius_targets
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
-                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src/SDDK")
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
 install(EXPORT sirius_targets
         FILE siriusTargets.cmake
         NAMESPACE sirius::
