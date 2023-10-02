@@ -186,7 +186,7 @@ run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
-    if (!utils::file_exists(fname)) {
+    if (!file_exists(fname)) {
         if (mpi::Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
