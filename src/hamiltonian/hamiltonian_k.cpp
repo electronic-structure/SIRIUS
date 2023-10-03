@@ -485,9 +485,9 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
             auto z1 = alm_row.checksum();
             auto z2 = alm_col.checksum();
             auto z3 = halm_col.checksum();
-            utils::print_checksum("alm_row", z1, H0_.ctx().out());
-            utils::print_checksum("alm_col", z2, H0_.ctx().out());
-            utils::print_checksum("halm_col", z3, H0_.ctx().out());
+            print_checksum("alm_row", z1, H0_.ctx().out());
+            print_checksum("alm_col", z2, H0_.ctx().out());
+            print_checksum("halm_col", z3, H0_.ctx().out());
         }
 
         la::wrap(la).gemm('N', 'T', kp_.num_gkvec_row(), kp_.num_gkvec_col(), num_mt_aw,
@@ -838,7 +838,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     if (pcs) {
         auto cs = phi__.checksum(mem, wf::spin_index(0), b__);
         if (comm.rank() == 0) {
-            utils::print_checksum("phi", cs, RTE_OUT(std::cout));
+            print_checksum("phi", cs, RTE_OUT(std::cout));
         }
     }
 
@@ -853,15 +853,15 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 auto cs_pw = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                 auto cs_mt = hphi__->checksum_mt(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
-                    utils::print_checksum("hloc_phi_pw", cs_pw, RTE_OUT(std::cout));
-                    utils::print_checksum("hloc_phi_mt", cs_mt, RTE_OUT(std::cout));
-                    utils::print_checksum("hloc_phi", cs, RTE_OUT(std::cout));
+                    print_checksum("hloc_phi_pw", cs_pw, RTE_OUT(std::cout));
+                    print_checksum("hloc_phi_mt", cs_mt, RTE_OUT(std::cout));
+                    print_checksum("hloc_phi", cs, RTE_OUT(std::cout));
                 }
             }
             if (ophi__) {
                 auto cs = ophi__->checksum(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
-                    utils::print_checksum("oloc_phi", cs, RTE_OUT(std::cout));
+                    print_checksum("oloc_phi", cs, RTE_OUT(std::cout));
                 }
             }
         }
@@ -1232,7 +1232,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             if (pcs) {
                 auto cs = alm_phi.checksum(num_mt_aw, b__.size());
                 if (comm.rank() == 0) {
-                    utils::print_checksum("alm_phi", cs, RTE_OUT(std::cout));
+                    print_checksum("alm_phi", cs, RTE_OUT(std::cout));
                 }
             }
 
@@ -1273,8 +1273,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         auto cs1 = alm_phi_slab.checksum_mt(sddk::memory_t::host, wf::spin_index(0), b__);
                         auto cs2 = halm_phi_slab.checksum_mt(sddk::memory_t::host, wf::spin_index(0), b__);
                         if (comm.rank() == 0) {
-                            utils::print_checksum("alm_phi_slab", cs1, RTE_OUT(std::cout));
-                            utils::print_checksum("halm_phi_slab", cs2, RTE_OUT(std::cout));
+                            print_checksum("alm_phi_slab", cs1, RTE_OUT(std::cout));
+                            print_checksum("halm_phi_slab", cs2, RTE_OUT(std::cout));
                         }
                     }
                 }
@@ -1286,7 +1286,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     if (pcs) {
                         auto cs = halm_phi.checksum(num_mt_aw, b__.size());
                         if (comm.rank() == 0) {
-                            utils::print_checksum("halm_phi", cs, RTE_OUT(std::cout));
+                            print_checksum("halm_phi", cs, RTE_OUT(std::cout));
                         }
                     }
                 }
@@ -1300,7 +1300,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 if (pcs) {
                     auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                     if (comm.rank() == 0) {
-                        utils::print_checksum("hphi_apw#1", cs, RTE_OUT(std::cout));
+                        print_checksum("hphi_apw#1", cs, RTE_OUT(std::cout));
                     }
                 }
             }
@@ -1320,7 +1320,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 if (pcs) {
                     auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                     if (comm.rank() == 0) {
-                        utils::print_checksum("hphi_apw#2", cs, RTE_OUT(std::cout));
+                        print_checksum("hphi_apw#2", cs, RTE_OUT(std::cout));
                     }
                 }
                 gflops += ngop * ngv * b__.size() * num_mt_aw;
@@ -1343,13 +1343,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             if (hphi__) {
                 auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
-                    utils::print_checksum("hphi_apw#3", cs, RTE_OUT(std::cout));
+                    print_checksum("hphi_apw#3", cs, RTE_OUT(std::cout));
                 }
             }
             if (ophi__) {
                 auto cs = ophi__->checksum_pw(mem, wf::spin_index(0), b__);
                 if (comm.rank() == 0) {
-                    utils::print_checksum("ophi_apw", cs, RTE_OUT(std::cout));
+                    print_checksum("ophi_apw", cs, RTE_OUT(std::cout));
                 }
             }
         }
@@ -1403,13 +1403,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         if (hphi__) {
             auto cs = hphi__->checksum(mem, wf::spin_index(0), b__);
             if (comm.rank() == 0) {
-                utils::print_checksum("hphi", cs, RTE_OUT(std::cout));
+                print_checksum("hphi", cs, RTE_OUT(std::cout));
             }
         }
         if (ophi__) {
             auto cs = ophi__->checksum(mem, wf::spin_index(0), b__);
             if (comm.rank() == 0) {
-                utils::print_checksum("ophi", cs, RTE_OUT(std::cout));
+                print_checksum("ophi", cs, RTE_OUT(std::cout));
             }
         }
     }
@@ -1445,10 +1445,10 @@ Hamiltonian_k<T>::apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fun
         auto cs3 = bpsi__[1].checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         auto cs4 = bpsi__[1].checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         if (this->kp_.gkvec().comm().rank() == 0) {
-            utils::print_checksum("hpsi[0]_pw", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("hpsi[0]_mt", cs2, RTE_OUT(std::cout));
-            utils::print_checksum("hpsi[1]_pw", cs3, RTE_OUT(std::cout));
-            utils::print_checksum("hpsi[1]_mt", cs4, RTE_OUT(std::cout));
+            print_checksum("hpsi[0]_pw", cs1, RTE_OUT(std::cout));
+            print_checksum("hpsi[0]_mt", cs2, RTE_OUT(std::cout));
+            print_checksum("hpsi[1]_pw", cs3, RTE_OUT(std::cout));
+            print_checksum("hpsi[1]_mt", cs4, RTE_OUT(std::cout));
         }
     }
 }

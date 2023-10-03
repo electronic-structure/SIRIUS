@@ -61,7 +61,7 @@ void K_point<T>::generate_fv_states()
         auto alm = generate_alm_block<false, T>(ctx_, atom_begin, na, this->alm_coeffs_loc());
         auto cs = alm.checksum();
         if (pcs) {
-            utils::print_checksum("alm", cs, RTE_OUT(this->out(0)));
+            print_checksum("alm", cs, RTE_OUT(this->out(0)));
         }
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
@@ -114,8 +114,8 @@ void K_point<T>::generate_fv_states()
     if (pcs) {
         auto z1 = fv_states_->checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         auto z2 = fv_states_->checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
-        utils::print_checksum("fv_states_pw", z1, RTE_OUT(this->out(0)));
-        utils::print_checksum("fv_states_mt", z2, RTE_OUT(this->out(0)));
+        print_checksum("fv_states_pw", z1, RTE_OUT(this->out(0)));
+        print_checksum("fv_states_mt", z2, RTE_OUT(this->out(0)));
 
     }
 }

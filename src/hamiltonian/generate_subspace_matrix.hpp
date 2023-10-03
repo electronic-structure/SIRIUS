@@ -80,7 +80,7 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
         if (env::print_checksum()) {
             auto cs = mtrx__.checksum(N__ - num_locked__, N__ - num_locked__);
             if (ctx__.comm_band().rank() == 0) {
-                utils::print_checksum("subspace_mtrx_old", cs, RTE_OUT(std::cout));
+                print_checksum("subspace_mtrx_old", cs, RTE_OUT(std::cout));
             }
         }
     }
@@ -118,7 +118,7 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
                 mtrx__.bs_col());
         auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
         if (ctx__.comm_band().rank() == 0) {
-            utils::print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
+            print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
         }
     }
 

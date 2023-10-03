@@ -75,17 +75,6 @@ inline int packed_index(int i__, int j__)
 //    return std::is_same<typedef std::result_of<F(Args...)>::type, T>::value;
 //}
 
-template <typename T, typename OUT>
-inline void print_checksum(std::string label__, T value__, OUT&& out__)
-{
-    out__ << "checksum(" << label__ << ") : " << ffmt(16, 8) << value__ << std::endl;
-}
-
-inline void print_hash(std::string label__, unsigned long long int hash__)
-{
-    std::printf("hash(%s): %llx\n", label__.c_str(), hash__);
-}
-
 } // namespace
 
 #endif

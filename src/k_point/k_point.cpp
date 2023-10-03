@@ -211,7 +211,7 @@ K_point<T>::generate_hubbard_orbitals()
     if (pcs) {
         auto cs = atomic_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
-            utils::print_checksum("atomic_wave_functions", cs, RTE_OUT(std::cout));
+            print_checksum("atomic_wave_functions", cs, RTE_OUT(std::cout));
         }
     }
 
@@ -282,7 +282,7 @@ K_point<T>::generate_hubbard_orbitals()
     if (pcs) {
         auto cs = atomic_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
-            utils::print_checksum("atomic_wave_functions_S", cs, RTE_OUT(std::cout));
+            print_checksum("atomic_wave_functions_S", cs, RTE_OUT(std::cout));
         }
     }
 
@@ -329,8 +329,8 @@ K_point<T>::generate_hubbard_orbitals()
         auto cs2 = hubbard_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0),
                 wf::band_range(0, num_hubbard_wf.first));
         if (comm().rank() == 0) {
-            utils::print_checksum("hubbard_wave_functions", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("hubbard_wave_functions_S", cs2, RTE_OUT(std::cout));
+            print_checksum("hubbard_wave_functions", cs1, RTE_OUT(std::cout));
+            print_checksum("hubbard_wave_functions_S", cs2, RTE_OUT(std::cout));
         }
     }
 }

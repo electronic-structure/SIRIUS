@@ -77,14 +77,12 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (env::print_hash()) {
         auto h = rho.hash_f_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("rho", h);
-        }
+        print_hash("rho", h, ctx_.out());
     }
 
     if (env::print_checksum()) {
         auto cs = density__.rho().rg().checksum_rg();
-        utils::print_checksum("rho_rg", cs, ctx_.out());
+        print_checksum("rho_rg", cs, ctx_.out());
     }
 
     Smooth_periodic_vector_function<double> grad_rho;
@@ -117,10 +115,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         if (env::print_hash()) {
             //auto h1 = lapl_rho.hash_f_rg();
             auto h2 = grad_rho_grad_rho.hash_f_rg();
-            if (ctx_.comm().rank() == 0) {
-                //utils::print_hash("lapl_rho", h1);
-                utils::print_hash("grad_rho_grad_rho", h2);
-            }
+            //utils::print_hash("lapl_rho", h1);
+            print_hash("grad_rho_grad_rho", h2, ctx_.out());
         }
     }
 
@@ -243,7 +239,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (env::print_checksum()) {
         auto cs = xc_potential_->rg().checksum_rg();
-        utils::print_checksum("exc", cs, ctx_.out());
+        print_checksum("exc", cs, ctx_.out());
     }
 }
 
@@ -264,10 +260,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
     if (env::print_hash()) {
         auto h1 = rho_up.hash_f_rg();
         auto h2 = rho_dn.hash_f_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("rho_up", h1);
-            utils::print_hash("rho_dn", h2);
-        }
+        print_hash("rho_up", h1, ctx_.out());
+        print_hash("rho_dn", h2, ctx_.out());
     }
 
     Smooth_periodic_vector_function<double> grad_rho_up;
@@ -302,11 +296,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
             auto h4 = grad_rho_up_grad_rho_dn.hash_f_rg();
             auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
 
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("grad_rho_up_grad_rho_up", h3);
-                utils::print_hash("grad_rho_up_grad_rho_dn", h4);
-                utils::print_hash("grad_rho_dn_grad_rho_dn", h5);
-            }
+            print_hash("grad_rho_up_grad_rho_up", h3, ctx_.out());
+            print_hash("grad_rho_up_grad_rho_dn", h4, ctx_.out());
+            print_hash("grad_rho_dn_grad_rho_dn", h5, ctx_.out());
         }
     }
 
@@ -467,9 +459,7 @@ void Potential::xc(Density const& density__)
 
     if (env::print_hash()) {
         auto h = xc_energy_density_->rg().hash_f_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("Exc", h);
-        }
+        print_hash("Exc", h, ctx_.out());
     }
 }
 

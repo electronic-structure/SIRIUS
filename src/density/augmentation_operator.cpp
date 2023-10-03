@@ -123,8 +123,8 @@ void Augmentation_operator::generate_pw_coeffs()
         auto cs1 = q_mtrx_.checksum();
         gvec_.comm().allreduce(&cs, 1);
         if (gvec_.comm().rank() == 0) {
-            utils::print_checksum("q_pw", cs, std::cout);
-            utils::print_checksum("q_mtrx", cs1, std::cout);
+            print_checksum("q_pw", cs, std::cout);
+            print_checksum("q_mtrx", cs1, std::cout);
         }
     }
 }

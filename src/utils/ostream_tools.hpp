@@ -6,6 +6,8 @@
 #include <vector>
 #include <cmath>
 
+namespace sirius {
+
 class null_stream_t : public std::ostream
 {
   public:
@@ -136,5 +138,19 @@ inline std::string double_to_string(double val, int precision = -1)
     }
     return std::string(buf);
 }
+
+template <typename T, typename OUT>
+inline void print_checksum(std::string label__, T value__, OUT&& out__)
+{
+    out__ << "checksum(" << label__ << ") : " << ffmt(16, 8) << value__ << std::endl;
+}
+
+template <typename OUT>
+inline void print_hash(std::string label__, unsigned long long int hash__, OUT&& out__)
+{
+    out__ << "hashsum(" << label__ << ") : " << std::hex << hash__ << std::endl;
+}
+
+} // namespace
 
 #endif

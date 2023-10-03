@@ -453,10 +453,10 @@ class Hamiltonian_k
 
         if (pcs) {
             auto cs = phi__.checksum(mem, br__);
-            utils::print_checksum("phi", cs, RTE_OUT(H0().ctx().out()));
+            print_checksum("phi", cs, RTE_OUT(H0().ctx().out()));
             if (hphi__) {
                 auto cs = hphi__->checksum(mem, br__);
-                utils::print_checksum("hloc_phi", cs, RTE_OUT(H0().ctx().out()));
+                print_checksum("hloc_phi", cs, RTE_OUT(H0().ctx().out()));
             }
         }
 
@@ -484,11 +484,11 @@ class Hamiltonian_k
         if (pcs) {
             if (hphi__) {
                 auto cs = hphi__->checksum(mem, br__);
-                utils::print_checksum("hphi", cs, RTE_OUT(H0().ctx().out()));
+                print_checksum("hphi", cs, RTE_OUT(H0().ctx().out()));
             }
             if (sphi__) {
                 auto cs = sphi__->checksum(mem, br__);
-                utils::print_checksum("hsphi", cs, RTE_OUT(H0().ctx().out()));
+                print_checksum("hsphi", cs, RTE_OUT(H0().ctx().out()));
             }
         }
     }

@@ -89,7 +89,7 @@ class Beta_projectors : public Beta_projectors_base<T>
             auto c1 = this->pw_coeffs_t_.checksum();
             comm.allreduce(&c1, 1);
             if (comm.rank() == 0) {
-                utils::print_checksum("beta_pw_coeffs_t", c1, std::cout);
+                print_checksum("beta_pw_coeffs_t", c1, std::cout);
             }
         }
     }

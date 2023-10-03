@@ -244,7 +244,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
                         cs += values_(iat)(iq);
                     }
                 }
-                utils::print_checksum("Radial_integrals_rho_pseudo", cs, std::cout);
+                print_checksum("Radial_integrals_rho_pseudo", cs, std::cout);
             }
         }
     }

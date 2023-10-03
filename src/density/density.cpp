@@ -184,13 +184,13 @@ Density::initial_density_pseudo()
     if (env::print_checksum()) {
         auto z1 = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
-        utils::print_checksum("rho_pw_init", z1, ctx_.out());
+        print_checksum("rho_pw_init", z1, ctx_.out());
     }
     std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
 
-    if (env::print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash()) {
         auto h = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).hash();
-        utils::print_hash("rho_pw_init", h);
+        print_hash("rho_pw_init", h, ctx_.out());
     }
 
     double charge = rho().rg().f_0().real() * unit_cell_.omega();
@@ -205,9 +205,9 @@ Density::initial_density_pseudo()
         }
     }
     rho().rg().fft_transform(1);
-    if (env::print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash()) {
         auto h = rho().rg().values().hash();
-        utils::print_hash("rho_rg_init", h);
+        print_hash("rho_rg_init", h, ctx_.out());
     }
 
     /* remove possible negative noise */
@@ -219,7 +219,7 @@ Density::initial_density_pseudo()
 
     if (env::print_checksum()) {
         auto cs = rho().rg().checksum_rg();
-        utils::print_checksum("rho_rg_init", cs, ctx_.out());
+        print_checksum("rho_rg_init", cs, ctx_.out());
     }
 
     /* initialize the magnetization */
@@ -258,10 +258,10 @@ Density::initial_density_pseudo()
             auto cs1 = component(i).rg().checksum_pw();
             std::stringstream s;
             s << "component[" << i << "]_rg";
-            utils::print_checksum(s.str(), cs, ctx_.out());
+            print_checksum(s.str(), cs, ctx_.out());
             std::stringstream s1;
             s1 << "component[" << i << "]_pw";
-            utils::print_checksum(s1.str(), cs1, ctx_.out());
+            print_checksum(s1.str(), cs1, ctx_.out());
         }
     }
 }
@@ -289,7 +289,7 @@ Density::initial_density_full_pot()
     if (env::print_checksum()) {
         auto z = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
-        utils::print_checksum("rho_pw", z, ctx_.out());
+        print_checksum("rho_pw", z, ctx_.out());
     }
 
     /* set plane-wave coefficients of the charge density */
@@ -299,7 +299,7 @@ Density::initial_density_full_pot()
 
     if (env::print_checksum()) {
         auto cs = rho().rg().checksum_rg();
-        utils::print_checksum("rho_rg", cs, ctx_.out());
+        print_checksum("rho_rg", cs, ctx_.out());
     }
 
     /* remove possible negative noise */
@@ -1329,7 +1329,7 @@ Density::generate_valence(K_point_set const& ks__)
         if (env::print_checksum()) {
             auto cs = sddk::mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
             mpi::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
-            utils::print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
+            print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
@@ -1347,9 +1347,9 @@ Density::generate_valence(K_point_set const& ks__)
             rho().rg().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
-        if (env::print_hash() && ctx_.comm().rank() == 0) {
+        if (env::print_hash()) {
             auto h = sddk::mdarray<std::complex<double>, 1>(&rho().rg().f_pw_local(0), ctx_.gvec().count()).hash();
-            utils::print_hash("rho", h);
+            print_hash("rho", h, ctx_.out());
         }
 
         double nel = rho().rg().f_0().real() * unit_cell_.omega();
@@ -1414,7 +1414,7 @@ Density::generate_rho_aug()
 
         if (env::print_checksum()) {
             auto cs = dm.checksum();
-            utils::print_checksum("density_matrix_aux", cs, ctx_.out());
+            print_checksum("density_matrix_aux", cs, ctx_.out());
         }
 
         int ndm_pw = (ctx_.processing_unit() == sddk::device_t::CPU) ? 1 : ctx_.num_mag_dims() + 1;
@@ -1526,14 +1526,12 @@ Density::generate_rho_aug()
     if (env::print_checksum()) {
         auto cs = rho_aug.checksum();
         ctx_.comm().allreduce(&cs, 1);
-        utils::print_checksum("rho_aug", cs, ctx_.out());
+        print_checksum("rho_aug", cs, ctx_.out());
     }
 
     if (env::print_hash()) {
         auto h = rho_aug.hash();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("rho_aug", h);
-        }
+        print_hash("rho_aug", h, ctx_.out());
     }
 
     return rho_aug;

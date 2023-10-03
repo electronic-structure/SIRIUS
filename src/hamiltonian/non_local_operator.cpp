@@ -224,7 +224,7 @@ D_operator<T>::initialize()
 
     if (env::print_checksum()) {
         auto cs = this->op_.checksum();
-        utils::print_checksum("D_operator", cs, this->ctx_.out());
+        print_checksum("D_operator", cs, this->ctx_.out());
     }
 
     if (this->pu_ == device_t::GPU && uc.max_mt_basis_size() != 0) {
@@ -317,7 +317,7 @@ Q_operator<T>::initialize()
     }
     if (env::print_checksum()) {
         auto cs = this->op_.checksum();
-        utils::print_checksum("Q_operator", cs, this->ctx_.out());
+        print_checksum("Q_operator", cs, this->ctx_.out());
     }
 
     if (this->pu_ == device_t::GPU && uc.max_mt_basis_size() != 0) {

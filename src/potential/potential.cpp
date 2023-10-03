@@ -270,9 +270,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
         if (env::print_hash()) {
             auto h = effective_potential().rg().hash_f_rg();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("Vha", h);
-            }
+            print_hash("Vha", h, ctx_.out());
         }
 
         if (ctx_.full_potential()) {
@@ -288,9 +286,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
         if (env::print_hash()) {
             auto h = effective_potential().rg().hash_f_rg();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("Vha+Vxc", h);
-            }
+            print_hash("Vha+Vxc", h, ctx_.out());
         }
 
         if (ctx_.full_potential()) {
@@ -326,9 +322,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (env::print_hash()) {
         auto h = effective_potential().rg().hash_f_pw();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("V(G)", h);
-        }
+        print_hash("V(G)", h, ctx_.out());
     }
 
     if (!ctx_.full_potential()) {

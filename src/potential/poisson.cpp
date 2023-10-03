@@ -166,14 +166,14 @@ void Potential::poisson(Periodic_function<double> const& rho)
         auto qmt = poisson_vmt(rho);
 
         if (env::print_checksum()) {
-            utils::print_checksum("qmt", qmt.checksum(), ctx_.out());
+            print_checksum("qmt", qmt.checksum(), ctx_.out());
         }
 
         /* compute multipoles of interstitial density in MT region */
         auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
         if (env::print_checksum()) {
-            utils::print_checksum("qit", qit.checksum(), ctx_.out());
+            print_checksum("qit", qit.checksum(), ctx_.out());
         }
 
         /* add contribution from the pseudo-charge */
@@ -280,8 +280,8 @@ void Potential::poisson(Periodic_function<double> const& rho)
     if (env::print_checksum()) {
         auto cs = hartree_potential_->rg().checksum_rg();
         auto cs1 = hartree_potential_->rg().checksum_pw();
-        utils::print_checksum("vha_rg", cs, ctx_.out());
-        utils::print_checksum("vha_pw", cs1, ctx_.out());
+        print_checksum("vha_rg", cs, ctx_.out());
+        print_checksum("vha_pw", cs1, ctx_.out());
     }
 
     /* compute contribution from the smooth part of Hartree potential */

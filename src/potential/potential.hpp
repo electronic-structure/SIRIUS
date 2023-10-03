@@ -264,8 +264,8 @@ class Potential : public Field4D
         if (env::print_checksum()) {
             auto cs = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
-            utils::print_checksum("local_potential_pw", cs, ctx_.out());
-            utils::print_checksum("local_potential_rg", cs1, ctx_.out());
+            print_checksum("local_potential_pw", cs, ctx_.out());
+            print_checksum("local_potential_rg", cs1, ctx_.out());
         }
     }
 

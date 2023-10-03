@@ -176,7 +176,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             if (kp__.comm().rank() == 0) {
                 std::stringstream s;
                 s << "initial_phi" << ispn;
-                utils::print_checksum(s.str(), cs, RTE_OUT(std::cout));
+                print_checksum(s.str(), cs, RTE_OUT(std::cout));
             }
         }
     }
@@ -224,8 +224,8 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             auto cs1 = hmlt.checksum(num_phi_tot, num_phi_tot);
             auto cs2 = ovlp.checksum(num_phi_tot, num_phi_tot);
             if (kp__.comm().rank() == 0) {
-                utils::print_checksum("hmlt", cs1, RTE_OUT(std::cout));
-                utils::print_checksum("ovlp", cs2, RTE_OUT(std::cout));
+                print_checksum("hmlt", cs1, RTE_OUT(std::cout));
+                print_checksum("ovlp", cs2, RTE_OUT(std::cout));
             }
         }
 
@@ -279,7 +279,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;
             if (kp__.comm().rank() == 0) {
-                utils::print_checksum(s.str(), cs, RTE_OUT(std::cout));
+                print_checksum(s.str(), cs, RTE_OUT(std::cout));
             }
         }
     }
