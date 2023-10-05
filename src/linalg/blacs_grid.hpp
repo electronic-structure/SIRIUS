@@ -29,8 +29,8 @@
 #include "mpi/mpi_grid.hpp"
 #include "linalg_base.hpp"
 
-#ifdef SRIUS_DLAF
-#include <dlaf_c/grid.h>
+#ifdef SIRIUS_DLAF
+#include "dlaf_c/grid.h"
 #endif
 
 namespace la {

@@ -184,7 +184,7 @@ else()
   endif()
 endif()
 
-if(SRIUS_USE_DLAF)
+if(SIRIUS_USE_DLAF)
   find_package(DLAF REQUIRED)
 endif(SIRIUS_USE_DLAF)
 

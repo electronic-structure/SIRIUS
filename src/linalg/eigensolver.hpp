@@ -65,7 +65,7 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
         {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa},
-        {"elpa2", ev_solver_t::elpa}, {"dlaf", ev_soler_t::dlaf}, {"magma", ev_solver_t::magma}, {"magma_gpu", ev_solver_t::magma_gpu},
+        {"elpa2", ev_solver_t::elpa}, {"dlaf", ev_solver_t::dlaf}, {"magma", ev_solver_t::magma}, {"magma_gpu", ev_solver_t::magma_gpu},
         {"plasma", ev_solver_t::plasma}, {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {
