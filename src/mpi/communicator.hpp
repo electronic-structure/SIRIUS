@@ -162,7 +162,7 @@ struct type_wrapper<unsigned long>
 template <>
 struct type_wrapper<bool>
 {
-    operator MPI_Datatype() const noexcept {return MPI_CXX_BOOL;}
+    operator MPI_Datatype() const noexcept {return MPI_C_BOOL;}
 };
 
 template <>
