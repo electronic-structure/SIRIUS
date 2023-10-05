@@ -35,6 +35,7 @@
 #include "sht/sht.hpp"
 #include "sht/gaunt.hpp"
 #include "utils/profiler.hpp"
+#include "utils/packed_index.hpp"
 
 namespace sirius {
 
@@ -560,7 +561,7 @@ class Atom_type
             }
         }
 
-        int ijv                         = utils::packed_index(idxrf1__, idxrf2__);
+        int ijv                         = packed_index(idxrf1__, idxrf2__);
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 

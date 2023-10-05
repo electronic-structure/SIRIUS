@@ -175,9 +175,9 @@ class Augmentation_operator
                 int idxrf1 = atom_type_.indexb(xi1).idxrf;
 
                 /* packed orbital index */
-                int idx12 = utils::packed_index(xi1, xi2);
+                int idx12 = packed_index(xi1, xi2);
                 /* packed radial-function index */
-                int idxrf12 = utils::packed_index(idxrf1, idxrf2);
+                int idxrf12 = packed_index(idxrf1, idxrf2);
 
                 idx_(0, idx12) = lm1;
                 idx_(1, idx12) = lm2;
@@ -185,7 +185,7 @@ class Augmentation_operator
             }
         }
 
-        ri_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
+        ri_values_    = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
         ri_dq_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
         #pragma omp parallel for
         for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
@@ -203,7 +203,7 @@ class Augmentation_operator
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
-                int idx12          = utils::packed_index(xi1, xi2);
+                int idx12          = packed_index(xi1, xi2);
                 sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
             }
         }

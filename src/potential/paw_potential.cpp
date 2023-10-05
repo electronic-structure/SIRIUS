@@ -263,7 +263,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
                     }
 
                     /* integrate */
-                    integrals(lm3, utils::packed_index(irb1, irb2), imagn) = Spline<double>(rgrid, intdata).integrate(0);
+                    integrals(lm3, packed_index(irb1, irb2), imagn) = Spline<double>(rgrid, intdata).integrate(0);
                 }
             }
         }
@@ -282,7 +282,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
             int irb2 = atom_type.indexb(ib2).idxrf;
 
             /* common index */
-            int iqij = utils::packed_index(irb1, irb2);
+            int iqij = packed_index(irb1, irb2);
 
             /* get num of non-zero GC */
             int num_non_zero_gk = GC.num_gaunt(lm1, lm2);
@@ -313,7 +313,7 @@ Potential::calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<double, 2>
     for (int ib2 = 0; ib2 < atom__.mt_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 < atom__.mt_basis_size(); ib1++) {
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                energy += density_matrix__(utils::packed_index(ib1, ib2), imagn) * paw_dij__(ib1, ib2, imagn);
+                energy += density_matrix__(packed_index(ib1, ib2), imagn) * paw_dij__(ib1, ib2, imagn);
             }
         }
     }

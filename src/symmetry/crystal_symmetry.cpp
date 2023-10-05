@@ -22,9 +22,11 @@
  *  \brief Contains implementation of sirius::Crystal_symmetry class.
  */
 
+#include <numeric>
 #include "crystal_symmetry.hpp"
 #include "lattice.hpp"
 #include "rotation.hpp"
+#include "utils/ostream_tools.hpp"
 
 namespace sirius {
 

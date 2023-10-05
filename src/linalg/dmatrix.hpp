@@ -34,6 +34,7 @@
 #include "SDDK/hdf5_tree.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
+#include "utils/json.hpp"
 #include "typedefs.hpp"
 
 namespace la {

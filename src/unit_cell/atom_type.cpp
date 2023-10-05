@@ -23,6 +23,7 @@
  */
 
 #include "atom_type.hpp"
+#include "utils/ostream_tools.hpp"
 
 namespace sirius {
 

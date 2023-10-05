@@ -30,10 +30,10 @@
 #include <gsl/gsl_sf_legendre.h>
 #include <gsl/gsl_sf_hermite.h>
 #include "typedefs.hpp"
-#include "utils/utils.hpp"
 #include "SDDK/memory.hpp"
 #include "linalg/r3.hpp"
 #include "constants.hpp"
+#include "utils/rte.hpp"
 
 /// Special functions.
 namespace sf {

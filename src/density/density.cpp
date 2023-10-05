@@ -521,7 +521,7 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 
                 double diag_coef = (xi1 == xi2) ? 1.0 : 2.0;
 
-                auto idx = utils::packed_index(xi1, xi2);
+                auto idx = packed_index(xi1, xi2);
 
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gc; inz++) {
@@ -1783,7 +1783,7 @@ Density::density_matrix_aux(typename atom_index_t::global ia__) const
     sddk::mdarray<double, 2> dm(nbf * (nbf + 1) / 2, ctx_.num_mag_dims() + 1);
     for (int xi2 = 0; xi2 < nbf; xi2++) {
         for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            auto idx12 = utils::packed_index(xi1, xi2);
+            auto idx12 = packed_index(xi1, xi2);
             switch (ctx_.num_mag_dims()) {
                 case 3: {
                     dm(idx12, 2) = 2 * std::real(this->density_matrix(ia__)(xi2, xi1, 2));

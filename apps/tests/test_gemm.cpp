@@ -44,11 +44,11 @@ double test_gemm(int M, int N, int K, int transa)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     const char ta[] = {'N', 'T', 'C'};
-    double t = -wtime();
+    double t = -::sirius::wtime();
     la::wrap(la::lib_t::blas).gemm(ta[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
         a.at(sddk::memory_t::host), a.ld(), b.at(sddk::memory_t::host), b.ld(), &la::constant<gemm_type>::zero(),
         c.at(sddk::memory_t::host), c.ld());
-    t += wtime();
+    t += ::sirius::wtime();
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
     printf("performance (GFlops) : %12.6f\n", perf);

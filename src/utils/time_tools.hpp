@@ -1,6 +1,10 @@
 #ifndef __TIME_TOOLS_HPP__
 #define __TIME_TOOLS_HPP__
 
+#include <sys/time.h>
+
+namespace sirius {
+
 /// Return the timestamp string in a specified format.
 /** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" */
 inline auto timestamp(std::string fmt)
@@ -33,6 +37,8 @@ inline auto time_now()
 inline double time_interval(std::chrono::high_resolution_clock::time_point t0)
 {
     return std::chrono::duration_cast<std::chrono::duration<double>>(time_now() - t0).count();
+}
+
 }
 
 #endif

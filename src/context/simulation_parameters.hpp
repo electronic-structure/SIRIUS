@@ -27,7 +27,7 @@
 
 #include "typedefs.hpp"
 #include "utils/cmd_args.hpp"
-#include "utils/utils.hpp"
+#include "utils/json.hpp"
 #include "specfunc/specfunc.hpp"
 #include "SDDK/memory.hpp"
 #include "dft/smearing.hpp"

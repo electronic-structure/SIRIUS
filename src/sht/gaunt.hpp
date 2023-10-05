@@ -27,7 +27,6 @@
 
 #include "SDDK/memory.hpp"
 #include "typedefs.hpp"
-#include "utils/utils.hpp"
 #include "specfunc/specfunc.hpp"
 
 namespace sirius {

@@ -110,7 +110,7 @@ void Augmentation_operator::generate_pw_coeffs()
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
-                int idx12         = utils::packed_index(xi1, xi2);
+                int idx12         = packed_index(xi1, xi2);
                 q_mtrx_(xi1, xi2) = q_mtrx_(xi2, xi1) = gvec_.omega() * q_pw_(idx12, 0);
             }
         }

@@ -26,7 +26,7 @@
 #define __MPI_GRID_HPP__
 
 #include "communicator.hpp"
-#include "utils/utils.hpp"
+#include "utils/rte.hpp"
 
 namespace mpi {
 

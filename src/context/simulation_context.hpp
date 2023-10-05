@@ -32,15 +32,14 @@
 #include "simulation_parameters.hpp"
 #include "mpi/mpi_grid.hpp"
 #include "radial/radial_integrals.hpp"
-#include "utils/utils.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/env.hpp"
+#include "utils/system_tools.hpp"
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
 #include "fft/fft.hpp"
 #include "lapw/step_function.hpp"
-#include "utils/system_tools.hpp"
 
 #ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,

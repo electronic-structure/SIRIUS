@@ -54,17 +54,17 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    double t = -wtime();
+    double t = -::sirius::wtime();
     la::wrap(la__).gemm(TA[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
                        &la::constant<gemm_type>::zero(),
                        c.at(memC__), c.ld());
-    double t2 = t + wtime();
+    double t2 = t + ::sirius::wtime();
     if (is_device_memory(memC__)) {
         c.copy_to(sddk::memory_t::host);
     }
 
-    t += wtime();
+    t += ::sirius::wtime();
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
     printf("performance (GFlops) : %12.6f\n", perf);
