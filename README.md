@@ -152,7 +152,8 @@ To enable MAGMA (GPU implementation of LAPACK) use `-DSIRIUS_USE_MAGMA=On`. Appe
 #### Parallel eigensolvers
 To compile with ScaLAPACK use `-DSIRIUS_USE_SCALAPACK=On`. To use ELPA, both `-DSIRIUS_USE_SCALAPACK=On` and `-DSIRIUS_USE_ELPA=On` are
 required, as we need ScaLAPACK functionality to transform the generalized eigenvalue problem to standard form,
-which can then be solved by ELPA. Append ScaLAPACK's and ELPA's install directory to `CMAKE_PREFIX_PATH` if necessary.
+which can then be solved by ELPA. Append ScaLAPACK's and ELPA's install directory to `CMAKE_PREFIX_PATH` if necessary. To use DLA-Future use
+`-DSIRIUS_USE_DLAF=ON`
 
 #### Python module
 Use `-DSIRIUS_CREATE_PYTHON_MODULE=On` to build the Python module. The SIRIUS Python module depends on `mpi4py` and

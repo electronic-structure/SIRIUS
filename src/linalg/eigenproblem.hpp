@@ -1191,6 +1191,69 @@ class Eigensolver_scalapack : public Eigensolver
 };
 #endif
 
+#ifdef SRIUS_DLAF
+class Eigensolver_dlaf : public Eigensolver
+{
+  public:
+    Eigensolver_dlaf()
+        : Eigensolver(ev_solver_t::dlaf, true, sddk::memory_t::host, sddk::memory_t::host)
+    {
+    }
+
+    /// Solve a standard eigen-value problem for all eigen-pairs.
+    template <typename T>
+    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
+    {
+        DLAF_descriptor desca{matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), ?, ?, 0, 0, A__.ld()};
+        DLAF_descriptor desca{matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), ?, ?, 0, 0, Z__.ld()};
+        
+        if (std::is_same_v<T, std::complex<double>>) {
+            dlaf_hermitian_eigensoler_z(A__.blacs_grid().context(), 'U', A__.at(sddk::memory_t::host), desca, eval__, Z__.at(sddk::memory_t::host), descz);
+        } else if (std::is_same_v<T, std::complex<float>>) {
+            dlaf_hermitian_eigensoler_c(A__.blacs_grid().context(), 'U', A__.at(sddk::memory_t::host), desca, eval__, Z__.at(sddk::memory_t::host), descz);
+        } else if (std::is_same_v<T, double>){
+            dlaf_symmetric_eigensoler_d(A__.blacs_grid().context(), 'U', A__.at(sddk::memory_t::host), desca, eval__, Z__.at(sddk::memory_t::host), descz);
+        } else if (std::is_same_v<T, float>){
+            dlaf_symmetric_eigensoler_s(A__.blacs_grid().context(), 'U', A__.at(sddk::memory_t::host), desca, eval__, Z__.at(sddk::memory_t::host), descz);
+        }
+    }
+
+    /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_eigensolver_z");
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_eigensoler_c");
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve_(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_eigensoler_d");
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve_(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_eigenslver_s");
+        return solve_(matrix_size__, A__, eval__, Z__);
+    }
+};
+#else
+class Eigensolver_dlaf : public Eigensolver
+{
+  public:
+    Eigensolver_dlaf()
+        : Eigensolver(ev_solver_t::dlaf, true, sddk::memory_t::host, sddk::memory_t::host)
+    {
+    }
+};
+#endif
+
 #ifdef SIRIUS_MAGMA
 class Eigensolver_magma: public Eigensolver
 {

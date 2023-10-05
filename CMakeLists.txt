@@ -28,6 +28,7 @@ option(SIRIUS_USE_VDWXC               "use libvdwxc for van der Walls correction
 option(SIRIUS_USE_MKL                 "use Intel MKL" OFF)
 option(SIRIUS_USE_CRAY_LIBSCI         "use LAPACK/SCALAPACK from Cray LIBSCI" OFF)
 option(SIRIUS_USE_SCALAPACK           "use scalapack" OFF)
+option(SIRIUS_USE_DLAF                "use DLA-Future" OFF)
 option(SIRIUS_BUILD_APPS              "build apps" ON)
 option(SIRIUS_USE_OPENMP              "use OpenMP" ON)
 option(SIRIUS_USE_PROFILER            "measure execution of functions with timer" ON)
@@ -182,6 +183,10 @@ else()
     set(SIRIUS_LINALG_LIB "${SIRIUS_LINALG_LIB};${SIRIUS_SCALAPACK_LIBRARIES}")
   endif()
 endif()
+
+if(SRIUS_USE_DLAF)
+  find_package(DLAF REQUIRED)
+endif(SIRIUS_USE_DLAF)
 
 if(SIRIUS_USE_ELPA)
   find_package(Elpa REQUIRED)

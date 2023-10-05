@@ -102,6 +102,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("python", default=False, description="Build Python bindings")
     variant("memory_pool", default=True, description="Build with memory pool")
     variant("elpa", default=False, description="Use ELPA")
+    variant("dlaf", default=False, description="Use DLA-Future")
     variant("vdwxc", default=False, description="Enable libvdwxc support")
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
@@ -119,6 +120,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
+
     depends_on("cmake@3.23:", type="build")
     depends_on("mpi")
     depends_on("gsl")
@@ -164,6 +166,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("libvdwxc@0.3.0:+mpi", when="+vdwxc")
 
     depends_on("scalapack", when="+scalapack")
+
+    depends_on("dla-future@master", when="+dlaf") # TODO: Change version when generalised eigensolver C API is relased
 
     depends_on("rocblas", when="+rocm")
     depends_on("rocsolver", when="@7.5.0: +rocm")

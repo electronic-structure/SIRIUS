@@ -371,6 +371,11 @@ Simulation_context::initialize()
 #else
     bool is_elpa{false};
 #endif
+#if defined(SIRIUS_DLAF)
+    bool is_dlaf{true};
+#else
+    bool is_dlaf{false};
+#endif
 
     if (processing_unit() == sddk::device_t::CPU || acc::num_devices() == 0) {
         is_cuda  = false;
@@ -383,6 +388,7 @@ Simulation_context::initialize()
     /* deduce the default eigen-value solver */
     for (int i : {0, 1}) {
         if (evsn[i] == "auto") {
+            // TODO: Add DLA-Future
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
                 if (full_potential()) {
