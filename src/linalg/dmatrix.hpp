@@ -294,11 +294,13 @@ class dmatrix: public sddk::matrix<T>
         return blacs_grid_->num_ranks_col();
     }
 
+    /// Row blocking factor
     inline int bs_row() const
     {
         return bs_row_;
     }
-
+    
+    /// Column blocking factor
     inline int bs_col() const
     {
         return bs_col_;
