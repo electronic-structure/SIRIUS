@@ -96,7 +96,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
-    double t = -wtime();
+    double t = -::sirius::wtime();
     gemm_type one = 1;
     gemm_type zero = 0;
     const char TA [] = {'N', 'T', 'C'};
@@ -104,7 +104,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
-    t += wtime();
+    t += ::sirius::wtime();
     double perf = nop_gemm * 1e-9 * M * (N - n) * K / t / nrow / ncol;
     if (mpi::Communicator::world().rank() == 0) {
         printf("execution time : %12.6f seconds\n", t);
