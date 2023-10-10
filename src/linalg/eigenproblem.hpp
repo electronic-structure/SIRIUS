@@ -1253,7 +1253,7 @@ class Eigensolver_dlaf : public Eigensolver
         return solve_(matrix_size__, A__, eval__, Z__);
     }
     
-    /// Solve a standard eigen-value problem for all eigen-pairs.
+    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     template <typename T>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
@@ -1267,7 +1267,7 @@ class Eigensolver_dlaf : public Eigensolver
         return info;
     }
     
-    /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
+    /// wrapper for solving a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
         PROFILE("Eigensolver_dlaf|dlaf_hermitian_eigensolver_z");
@@ -1290,6 +1290,88 @@ class Eigensolver_dlaf : public Eigensolver
     {
         PROFILE("Eigensolver_dlaf|dlaf_symmetric_eigensolver_s");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
+
+    /// Solve a generalized eigen-value problem for all eigen-pairs.
+    template <typename T>
+    int solve_(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__){
+        DLAF_descriptor desca{matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, static_cast<int>(A__.ld())};
+        DLAF_descriptor descb{matrix_size__, matrix_size__, B__.bs_row(), B__.bs_col(), 0, 0, 0, 0, static_cast<int>(B__.ld())};
+        DLAF_descriptor descz{matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
+            
+        if (std::is_same_v<T, std::complex<double>>) {
+            return dlaf_hermitian_generalized_eigensolver_z(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<std::complex<double>*>(B__.at(sddk::memory_t::host)), descb, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), descz);
+        } else if (std::is_same_v<T, std::complex<float>>) {
+            return dlaf_hermitian_generalized_eigensolver_c(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<std::complex<float>*>(B__.at(sddk::memory_t::host)), descb, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), descz);
+        }
+        else if (std::is_same_v<T, double>){
+            return dlaf_symmetric_generalized_eigensolver_d(A__.blacs_grid().context(), 'L', reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(B__.at(sddk::memory_t::host)), descb, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), descz);
+        } else if (std::is_same_v<T, float>){
+            return dlaf_symmetric_generalized_eigensolver_s(A__.blacs_grid().context(), 'L', reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), descb, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), descz);
+        }
+    }
+
+    /// wrapper for solving a generalized eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__, dmatrix<std::complex<double>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_generalized_eigensolver_z");
+        return solve_(matrix_size__, A__, B__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__, dmatrix<std::complex<float>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_generalized_eigensolver_c");
+        return solve_(matrix_size__, A__, B__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_generalized_eigensolver_d");
+        return solve_(matrix_size__, A__, B__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_generalized_eigensolver_s");
+        return solve_(matrix_size__, A__, B__, eval__, Z__);
+    }
+    
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    template <typename T>
+    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__){
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto w = mph.get_unique_ptr<real_type<T>>(matrix_size__);
+
+        auto info = solve_(matrix_size__, A__, B__, w.get(), Z__);
+
+        std::copy(w.get(), w.get() + nev__, eval__);
+
+        return info;
+    }
+
+    /// wrapper for solving a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__, dmatrix<std::complex<double>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_generalized_eigensolver_z");
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__, dmatrix<std::complex<float>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_generalized_eigensolver_c");
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_generalized_eigensolver_d");
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_generalized_eigensolver_s");
+        return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 };
 #else
