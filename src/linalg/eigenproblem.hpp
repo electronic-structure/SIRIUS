@@ -1252,6 +1252,45 @@ class Eigensolver_dlaf : public Eigensolver
         PROFILE("Eigensolver_dlaf|dlaf_symmetric_eigensolver_s");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
+    
+    /// Solve a standard eigen-value problem for all eigen-pairs.
+    template <typename T>
+    int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
+    {
+        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto w = mph.get_unique_ptr<real_type<T>>(matrix_size__);
+
+        auto info = solve_(matrix_size__, A__, w.get(), Z__);
+
+        std::copy(w.get(), w.get() + nev__, eval__);
+
+        return info;
+    }
+    
+    /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_eigensolver_z");
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_hermitian_eigensolver_c");
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
+    
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_eigensolver_d");
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override
+    {
+        PROFILE("Eigensolver_dlaf|dlaf_symmetric_eigensolver_s");
+        return solve_(matrix_size__, nev__, A__, eval__, Z__);
+    }
 };
 #else
 class Eigensolver_dlaf : public Eigensolver
