@@ -116,7 +116,7 @@ K_point<T>::initialize()
             }
             if (ctx_.cfg().iterative_solver().type() == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
-                if (ctx_.gen_evp_solver().type() == la::ev_solver_t::elpa) {
+                if (ctx_.gen_evp_solver().type() == la::ev_solver_t::elpa || ctx_.gen_evp_solver().type() == la::ev_solver_t::dlaf) {
                     fv_eigen_vectors_ = la::dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
                                                                  ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 } else {

@@ -648,7 +648,7 @@ class config_t
             }
             dict_["/control/mpi_grid_dims"_json_pointer] = mpi_grid_dims__;
         }
-        /// Block size for ScaLAPACK and ELPA.
+        /// Block size for ScaLAPACK, ELPA, and DLA-Future.
         inline auto cyclic_block_size() const
         {
             return dict_.at("/control/cyclic_block_size"_json_pointer).get<int>();

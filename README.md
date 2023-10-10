@@ -120,6 +120,7 @@ When installing SIRIUS without Spack, make sure to install the required dependen
 and optionally any of the additional libraries:
  * ScaLAPACK (Intel MKL or netlib scalapack)
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
+ * [DLA-Future](https://github.com/eth-cscs/DLA-Future)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
  * [Boost Filesystem](https://www.boost.org/doc/libs/1_73_0/libs/filesystem/doc/index.htm)*
