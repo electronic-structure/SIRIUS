@@ -167,7 +167,11 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on("scalapack", when="+scalapack")
 
-    depends_on("dla-future@master", when="+dlaf") # TODO: Change version when generalised eigensolver C API is relased
+    # TODO: Change version when generalised eigensolver C API is relased
+    depends_on("dla-future@master", when="+dlaf")
+    depends_on("dla-future@master +scalapack", when="+dlaf+scalapack")
+    depends_on("dla-future@master +cuda", when="+dlaf+cuda")
+    depends_on("dla-future@master +cuda+scalapack", when="+dlaf+cuda+scalapack")
 
     depends_on("rocblas", when="+rocm")
     depends_on("rocsolver", when="@7.5.0: +rocm")
