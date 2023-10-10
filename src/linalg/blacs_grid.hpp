@@ -91,6 +91,11 @@ class BLACS_grid
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
             TERMINATE(s);
         }
+
+#ifdef SIRIUS_DLAF
+        dlaf_create_grid_from_blacs(blacs_context_);
+#endif
+
 #else
         for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
           rank_map_[i] = i;
@@ -98,8 +103,8 @@ class BLACS_grid
 #ifdef SIRIUS_DLAF
         blacs_context_ = dlaf_create_grid(comm_.native(), num_ranks_row__, num_ranks_col__, 'R');
 #endif
-
 #endif
+
     }
 
     ~BLACS_grid()

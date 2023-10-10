@@ -1217,14 +1217,14 @@ class Eigensolver_dlaf : public Eigensolver
         DLAF_descriptor descz{matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
             
         if (std::is_same_v<T, std::complex<double>>) {
-            return dlaf_hermitian_eigensolver_z(A__.blacs_grid().context(), 'U', reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_hermitian_eigensolver_z(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), descz);
         } else if (std::is_same_v<T, std::complex<float>>) {
-            return dlaf_hermitian_eigensolver_c(A__.blacs_grid().context(), 'U', reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_hermitian_eigensolver_c(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), descz);
         }
         else if (std::is_same_v<T, double>){
-            return dlaf_symmetric_eigensolver_d(A__.blacs_grid().context(), 'U', reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_symmetric_eigensolver_d(A__.blacs_grid().context(), 'L', reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), descz);
         } else if (std::is_same_v<T, float>){
-            return dlaf_symmetric_eigensolver_s(A__.blacs_grid().context(), 'U', reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_symmetric_eigensolver_s(A__.blacs_grid().context(), 'L', reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), descz);
         }
     }
 
