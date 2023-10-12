@@ -26,6 +26,7 @@
 #define __TYPEDEFS_HPP__
 
 #include <cstdlib>
+#include <cstdint>
 //#include <assert.h>
 #include <complex>
 #include <vector>
