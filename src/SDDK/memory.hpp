@@ -29,6 +29,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <algorithm>
