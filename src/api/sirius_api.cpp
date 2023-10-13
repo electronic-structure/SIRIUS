@@ -3348,7 +3348,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                         auto kp   = ks.get<double>(jk);
                         int count = kp->spinor_wave_functions().ld();
                         req       = ks.comm().isend(kp->spinor_wave_functions().at(sddk::memory_t::host, 0,
-                                        wf::spin_index(0), wf::band_index(0)), count * sim_ctx.num_bands(), dest_rank, tag);
+                                        sirius::wf::spin_index(0), sirius::wf::band_index(0)), count * sim_ctx.num_bands(), dest_rank, tag);
                     }
                     /* receive wave-functions */
                     if (ks.comm().rank() == dest_rank) {
@@ -5857,6 +5857,7 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
         std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__, double const * alpha_pv__,
         int const* spin__, int const* nbnd_occ__, int* error_code__)
 {
+    using namespace sirius;
     PROFILE("sirius_api::sirius_linear_solver");
     call_sirius(
         [&]() {

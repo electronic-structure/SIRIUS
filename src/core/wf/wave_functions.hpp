@@ -35,7 +35,7 @@
 #include "utils/env.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/rte.hpp"
-#include "strong_type.hpp"
+#include "core/strong_type.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -110,6 +110,8 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
 #endif
     return cs;
 }
+
+namespace sirius {
 
 /// Namespace for the wave-functions.
 namespace wf {
@@ -2014,5 +2016,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
 }
 
 } // namespace wf
+
+} // namespace sirius
 
 #endif

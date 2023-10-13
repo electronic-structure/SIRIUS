@@ -24,7 +24,7 @@
 
 #include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #ifdef SIRIUS_NLCGLIB
 #include <stdexcept>
 

@@ -27,7 +27,7 @@
 
 #include "context/simulation_context.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "traits.hpp"
+#include "core/traits.hpp"
 
 namespace sirius {
 

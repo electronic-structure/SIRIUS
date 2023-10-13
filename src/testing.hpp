@@ -29,7 +29,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "linalg/linalg.hpp"
 #include "linalg/dmatrix.hpp"
 #include "linalg/r3.hpp"

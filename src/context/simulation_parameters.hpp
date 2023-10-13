@@ -25,7 +25,7 @@
 #ifndef __SIMULATION_PARAMETERS_HPP__
 #define __SIMULATION_PARAMETERS_HPP__
 
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
 #include "specfunc/specfunc.hpp"

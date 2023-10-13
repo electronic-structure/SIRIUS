@@ -26,7 +26,7 @@
 #define __RADIAL_FUNCTIONS_INDEX_HPP__
 
 #include "utils/rte.hpp"
-#include "strong_type.hpp"
+#include "core/strong_type.hpp"
 
 namespace sirius {
 

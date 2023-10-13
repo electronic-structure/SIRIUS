@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "potential.hpp"
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/omp.hpp"
 #include "xc_functional.hpp"

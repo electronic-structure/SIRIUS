@@ -32,9 +32,9 @@
 #include <string.h>
 #include <vector>
 #include <algorithm>
-#include <constants.hpp>
 
-#include "typedefs.hpp"
+#include "core/constants.hpp"
+#include "core/typedefs.hpp"
 #include "linalg/linalg.hpp"
 #include "linalg/r3.hpp"
 #include "lebedev_grids.hpp"

@@ -1,5 +1,5 @@
 #include "smearing.hpp"
-#include "constants.hpp"
+#include "core/constants.hpp"
 #include "specfunc/specfunc.hpp"
 #include <cmath>
 

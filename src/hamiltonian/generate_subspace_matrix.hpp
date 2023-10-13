@@ -26,7 +26,7 @@
 #define __GENERATE_SUBSPACE_MATRIX_HPP__
 
 #include "context/simulation_context.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 
 namespace sirius {
 

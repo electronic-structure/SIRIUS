@@ -1,5 +1,5 @@
 #include <sirius.hpp>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "mpi/mpi_grid.hpp"
 
 using namespace sirius;

@@ -28,7 +28,7 @@
 #include "SDDK/memory.hpp"
 #include "linalg/r3.hpp"
 #include "utils/rte.hpp"
-#include "constants.hpp"
+#include "core/constants.hpp"
 
 namespace sirius {
 

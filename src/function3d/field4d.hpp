@@ -30,7 +30,7 @@
 #include <stdexcept>
 #include "SDDK/memory.hpp"
 #include "function3d/periodic_function.hpp"
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
 
 namespace sirius {
 

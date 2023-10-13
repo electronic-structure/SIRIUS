@@ -31,7 +31,7 @@
 #include <cmath>
 #include <iostream>
 #include <complex>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "hamiltonian/residuals.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/non_local_operator.hpp"

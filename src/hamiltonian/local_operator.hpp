@@ -27,7 +27,7 @@
 
 #include "SDDK/memory.hpp"
 #include "fft/fft.hpp"
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
 #include "utils/rte.hpp"
 
 /* forward declarations */
@@ -36,15 +36,15 @@ class Potential;
 class Simulation_context;
 template <typename T>
 class Smooth_periodic_function;
-}
-namespace fft {
-class Gvec_fft;
-}
 namespace wf {
 template <typename T>
 class Wave_functions;
 class band_range;
 class spin_range;
+}
+}
+namespace fft {
+class Gvec_fft;
 }
 namespace spfft {
 class Transform;

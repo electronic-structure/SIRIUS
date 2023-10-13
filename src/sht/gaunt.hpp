@@ -26,7 +26,7 @@
 #define __GAUNT_HPP__
 
 #include "SDDK/memory.hpp"
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
 #include "specfunc/specfunc.hpp"
 
 namespace sirius {

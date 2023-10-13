@@ -1,6 +1,6 @@
 #include <sirius.hpp>
 #include <spla/spla.hpp>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 
 using namespace sirius;
 using namespace sddk;

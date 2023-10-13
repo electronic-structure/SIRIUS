@@ -28,9 +28,9 @@
 #include <memory>
 #include <complex>
 #include "SDDK/memory.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
+#include "core/typedefs.hpp"
 #include "linalg/dmatrix.hpp"
-#include "typedefs.hpp"
 #include "fft/fft.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"

@@ -29,10 +29,10 @@
 #include <gsl/gsl_sf_coupling.h>
 #include <gsl/gsl_sf_legendre.h>
 #include <gsl/gsl_sf_hermite.h>
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
+#include "core/constants.hpp"
 #include "SDDK/memory.hpp"
 #include "linalg/r3.hpp"
-#include "constants.hpp"
 #include "utils/rte.hpp"
 
 /// Special functions.

@@ -6,7 +6,7 @@
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 
 using namespace pybind11::literals;
