@@ -47,7 +47,7 @@ using json = nlohmann::json;
 #include "radial/radial_solver.hpp"
 #include "sht/sht.hpp"
 #include "sht/gaunt.hpp"
-#include "SDDK/hdf5_tree.hpp"
+#include "core/hdf5_tree.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "linalg/eigenproblem.hpp"
 #include "sirius_version.hpp"

@@ -541,7 +541,7 @@ K_point<T>::save(std::string const& name__, int id__) const
     /* rank 0 creates placeholders in the HDF5 file */
     if (comm().rank() == 0) {
         /* open file with write access */
-        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
         /* create /K_point_set/ik */
         fout["K_point_set"].create_node(id__);
         fout["K_point_set"][id__].write("vk", &vk_[0], 3);
@@ -602,7 +602,7 @@ K_point<T>::save(std::string const& name__, int id__) const
 
 template <typename T>
 void
-K_point<T>::load(sddk::HDF5_tree h5in, int id)
+K_point<T>::load(HDF5_tree h5in, int id)
 {
     RTE_THROW("not implemented");
     //== band_energies_.resize(ctx_.num_bands());

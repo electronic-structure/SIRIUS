@@ -141,7 +141,7 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
     sddk::matrix<std::complex<double>> full_mtrx;
     int n;
     if (blacs_grid__.comm().rank() == 0) {
-        sddk::HDF5_tree h5(fname__, sddk::hdf5_access_t::read_only);
+        sirius::HDF5_tree h5(fname__, sirius::hdf5_access_t::read_only);
         h5.read("/nrow", &n, 1);
         int m;
         h5.read("/ncol", &m, 1);

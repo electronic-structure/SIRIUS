@@ -578,7 +578,7 @@ class Density : public Field4D
 
     void load(std::string name__)
     {
-        sddk::HDF5_tree fin(name__, sddk::hdf5_access_t::read_only);
+        HDF5_tree fin(name__, hdf5_access_t::read_only);
 
         int ngv;
         fin.read("/parameters/num_gvec", &ngv, 1);

@@ -19,7 +19,7 @@
 
 /** \file hdf5_tree.hpp
  *
- *  \brief Contains definition and implementation of sddk::HDF5_tree class.
+ *  \brief Contains definition and implementation of sirius::HDF5_tree class.
  */
 
 #ifndef __HDF5_TREE_HPP__
@@ -30,10 +30,10 @@
 #include <vector>
 #include <string>
 #include <initializer_list>
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
 
-namespace sddk {
+namespace sirius {
 
 enum class hdf5_access_t
 {
@@ -439,30 +439,30 @@ class HDF5_tree
     }
 
     template <typename T, int N>
-    void write(const std::string& name, mdarray<std::complex<T>, N> const& data)
+    void write(const std::string& name, sddk::mdarray<std::complex<T>, N> const& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        write(name, (T*)data.at(memory_t::host), dims);
+        write(name, (T*)data.at(sddk::memory_t::host), dims);
     }
 
     /// Write a multidimensional array by name.
     template <typename T, int N>
-    void write(std::string const& name__, mdarray<T, N> const& data__)
+    void write(std::string const& name__, sddk::mdarray<T, N> const& data__)
     {
         std::vector<int> dims(N);
         for (int i = 0; i < N; i++) {
             dims[i] = static_cast<int>(data__.size(i));
         }
-        write(name__, data__.at(memory_t::host), dims);
+        write(name__, data__.at(sddk::memory_t::host), dims);
     }
 
     /// Write a multidimensional array by integer index.
     template <typename T, int N>
-    void write(int name_id, mdarray<T, N> const& data)
+    void write(int name_id, sddk::mdarray<T, N> const& data)
     {
         std::string name = std::to_string(name_id);
         write(name, data);
@@ -574,28 +574,28 @@ class HDF5_tree
     }
 
     template <int N>
-    void read(const std::string& name, mdarray<std::complex<double>, N>& data)
+    void read(const std::string& name, sddk::mdarray<std::complex<double>, N>& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        read(name, (double*)data.at(memory_t::host), dims);
+        read(name, (double*)data.at(sddk::memory_t::host), dims);
     }
 
     template <typename T, int N>
-    void read(const std::string& name, mdarray<T, N>& data)
+    void read(const std::string& name, sddk::mdarray<T, N>& data)
     {
         std::vector<int> dims(N);
         for (int i = 0; i < N; i++) {
             dims[i] = (int)data.size(i);
         }
-        read(name, data.at(memory_t::host), dims);
+        read(name, data.at(sddk::memory_t::host), dims);
     }
 
     template <typename T, int N>
-    void read(int name_id, mdarray<T, N>& data)
+    void read(int name_id, sddk::mdarray<T, N>& data)
     {
         std::string name = std::to_string(name_id);
         read(name, data);
@@ -635,6 +635,6 @@ class HDF5_tree
     }
 };
 
-}; // namespace sddk
+}; // namespace
 
 #endif // __HDF5_TREE_HPP__

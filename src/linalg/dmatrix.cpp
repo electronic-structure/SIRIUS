@@ -253,7 +253,7 @@ void dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
     this->comm().allreduce(full_mtrx.template at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()));
 
     if (this->blacs_grid().comm().rank() == 0) {
-        sddk::HDF5_tree h5(name__, sddk::hdf5_access_t::truncate);
+        sirius::HDF5_tree h5(name__, sirius::hdf5_access_t::truncate);
         h5.write("nrow", m__);
         h5.write("ncol", n__);
         h5.write("mtrx", full_mtrx);

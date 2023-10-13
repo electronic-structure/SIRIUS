@@ -30,7 +30,7 @@
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/linalg.hpp"
-#include "SDDK/hdf5_tree.hpp"
+#include "core/hdf5_tree.hpp"
 #include "fft/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/time_tools.hpp"

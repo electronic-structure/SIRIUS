@@ -31,7 +31,7 @@
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/blacs_grid.hpp"
 #include "SDDK/splindex.hpp"
-#include "SDDK/hdf5_tree.hpp"
+#include "core/hdf5_tree.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
 #include "utils/json.hpp"

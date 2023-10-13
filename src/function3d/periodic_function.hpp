@@ -180,7 +180,7 @@ class Periodic_function
     {
         auto v = this->rg().gather_f_pw();
         if (ctx_.comm().rank() == 0) {
-            sddk::HDF5_tree fout(file_name__, sddk::hdf5_access_t::read_write);
+            HDF5_tree fout(file_name__, hdf5_access_t::read_write);
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -193,7 +193,7 @@ class Periodic_function
 
     void hdf5_read(std::string file_name__, std::string path__, sddk::mdarray<int, 2> const& gvec__)
     {
-        sddk::HDF5_tree h5f(file_name__, sddk::hdf5_access_t::read_only);
+        HDF5_tree h5f(file_name__, hdf5_access_t::read_only);
 
         /* read the PW coeffs. */
         std::vector<std::complex<T>> v(gvec_.num_gvec());

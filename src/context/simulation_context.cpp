@@ -1130,7 +1130,7 @@ Simulation_context::create_storage_file(std::string name__) const
 {
     if (comm_.rank() == 0) {
         /* create new hdf5 file */
-        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::truncate);
+        HDF5_tree fout(name__, hdf5_access_t::truncate);
         fout.create_node("parameters");
         fout.create_node("effective_potential");
         fout.create_node("effective_magnetic_field");

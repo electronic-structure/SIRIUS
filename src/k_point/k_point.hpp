@@ -332,7 +332,7 @@ class K_point
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
 
-    void load(sddk::HDF5_tree h5in, int id);
+    void load(HDF5_tree h5in, int id);
 
     //== void save_wave_functions(int id);
 

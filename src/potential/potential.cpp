@@ -384,7 +384,7 @@ void Potential::save(std::string name__)
         effective_magnetic_field(j).hdf5_write(name__,  "effective_magnetic_field/" + std::to_string(j));
     }
     if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
-        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
         for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
             if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
                 fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
@@ -396,7 +396,7 @@ void Potential::save(std::string name__)
 
 void Potential::load(std::string name__)
 {
-    sddk::HDF5_tree fin(name__, sddk::hdf5_access_t::read_only);
+    HDF5_tree fin(name__, hdf5_access_t::read_only);
 
     int ngv;
     fin.read("/parameters/num_gvec", &ngv, 1);
