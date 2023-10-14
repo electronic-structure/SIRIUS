@@ -88,7 +88,7 @@ class Periodic_function
 
     /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
     Periodic_function(Simulation_context const& ctx__, std::function<lmax_t(int)> lmax__,
-            sddk::splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
+            splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
             smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
             spheric_function_set_ptr_t<T> const* mt_ptr__ = nullptr)
         : ctx_(ctx__)
@@ -225,7 +225,7 @@ class Periodic_function
     {
         T p{0};
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            auto vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
+            auto vgc = gvec_.gvec_cart<index_domain_t::local>(igloc);
             p += std::real(this->rg().f_pw_local(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
         }
         gvec_.comm().allreduce(&p, 1);

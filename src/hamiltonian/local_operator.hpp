@@ -42,9 +42,9 @@ class Wave_functions;
 class band_range;
 class spin_range;
 }
-}
 namespace fft {
 class Gvec_fft;
+}
 }
 namespace spfft {
 class Transform;

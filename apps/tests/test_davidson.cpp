@@ -74,7 +74,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     if (mpi::Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
         for (int i = 0; i < kp.num_gkvec(); i++) {
-            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(i).length2();
+            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
         }
         std::sort(ekin.begin(), ekin.end());
 

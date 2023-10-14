@@ -1,6 +1,8 @@
 #include "sirius.hpp"
 #include "testing.hpp"
 
+using namespace sirius;
+
 #ifdef __TEST_REAL
 typedef double gemm_type;
 int const nop_gemm = 2;

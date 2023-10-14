@@ -178,7 +178,7 @@ Density::initial_density_pseudo()
     // TODO: MPI parallelise over G-shells
     auto const ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
     /* make Vloc(G) */
-    auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+    auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
                 ctx_.phase_factors_t(), ff);
 
     if (env::print_checksum()) {
@@ -278,7 +278,7 @@ Density::initial_density_full_pot()
     Radial_integrals_rho_free_atom ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 40);
 
     /* compute contribution from free atoms to the interstitial density */
-    auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
+    auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
             [&ri](int iat, double g) { return ri.value(iat, g); });
 
     /* initialize density of free atoms (not smoothed) */
@@ -832,7 +832,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
                     bp_coeffs__, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
-        sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
+        splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
         int nbnd_loc = spl_nbnd.local_size();
         if (nbnd_loc) { // TODO: this part can also be moved to GPU
@@ -882,7 +882,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
     /* total number of occupied bands */
     int nbnd = kp__.num_occupied_bands();
 
-    sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
+    splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
     int nbnd_loc = spl_nbnd.local_size();
 
     /* auxiliary arrays */

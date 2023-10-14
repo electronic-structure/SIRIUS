@@ -24,14 +24,16 @@
  */
 #include "dmatrix.hpp"
 
+namespace sirius {
+
 namespace la {
 
 template <typename T>
 dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
                     sddk::memory_t mem_type__)
-    : sddk::matrix<T>(sddk::splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
+    : sddk::matrix<T>(splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
                 block_id(blacs_grid__.rank_row()), bs_row__).local_size(),
-            sddk::splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
+            splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
                 block_id(blacs_grid__.rank_col()), bs_col__).local_size(), mem_type__)
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
@@ -51,9 +53,9 @@ template <typename T>
 dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__,
                     int bs_col__)
     : sddk::matrix<T>(ptr__,
-                sddk::splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
+                splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
                     block_id(blacs_grid__.rank_row()), bs_row__).local_size(),
-                sddk::splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
+                splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
                     block_id(blacs_grid__.rank_col()), bs_col__).local_size())
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
@@ -110,9 +112,9 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__)
 template <typename T>
 dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
                     sddk::memory_pool& mp__)
-    : sddk::matrix<T>(sddk::splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
+    : sddk::matrix<T>(splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
                 block_id(blacs_grid__.rank_row()), bs_row__).local_size(),
-                sddk::splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
+                splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
                     block_id(blacs_grid__.rank_col()), bs_col__).local_size(), mp__)
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
@@ -131,14 +133,14 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
 template <typename T>
 void dmatrix<T>::set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__)
 {
-    sddk::splindex_block_cyclic<> spl_r0(ir0__, n_blocks(blacs_grid().num_ranks_row()),
+    splindex_block_cyclic<> spl_r0(ir0__, n_blocks(blacs_grid().num_ranks_row()),
             block_id(blacs_grid().rank_row()), bs_row_);
-    sddk::splindex_block_cyclic<> spl_r1(ir0__ + mr__, n_blocks(blacs_grid().num_ranks_row()),
+    splindex_block_cyclic<> spl_r1(ir0__ + mr__, n_blocks(blacs_grid().num_ranks_row()),
             block_id(blacs_grid().rank_row()), bs_row_);
 
-    sddk::splindex_block_cyclic<> spl_c0(jc0__, n_blocks(blacs_grid().num_ranks_col()),
+    splindex_block_cyclic<> spl_c0(jc0__, n_blocks(blacs_grid().num_ranks_col()),
             block_id(blacs_grid().rank_col()), bs_col_);
-    sddk::splindex_block_cyclic<> spl_c1(jc0__ + nc__, n_blocks(blacs_grid().num_ranks_col()),
+    splindex_block_cyclic<> spl_c1(jc0__ + nc__, n_blocks(blacs_grid().num_ranks_col()),
             block_id(blacs_grid().rank_col()), bs_col_);
 
     int m0 = spl_r0.local_size();
@@ -269,3 +271,5 @@ template class dmatrix<std::complex<float>>;
 #endif
 
 } // namespace
+
+} // namespace sirius

@@ -42,6 +42,8 @@
 #include <elpa/elpa.h>
 #endif
 
+namespace sirius {
+
 namespace la {
 
 class Eigensolver_lapack : public Eigensolver
@@ -1769,45 +1771,8 @@ class Eigensolver_cuda: public Eigensolver
 };
 #endif
 
-//== #ifdef __PLASMA
-//== extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
-//==                                       int32_t ldz, double* eval);
-//== #endif
-//==
-//== /// Interface for PLASMA eigen-value solvers.
-//== class Eigenproblem_plasma: public Eigenproblem
-//== {
-//==     public:
-//==
-//==         Eigenproblem_plasma()
-//==         {
-//==         }
-//==
-//==         #ifdef __PLASMA
-//==         void solve(int32_t matrix_size, std::complex<double>* A, int32_t lda, double* eval, std::complex<double>* Z, int32_t
-//ldz) const
-//==         {
-//==             //plasma_set_num_threads(1);
-//==             //omp_set_num_threads(1);
-//==             //printf("before call to plasma_zheevd_wrapper\n");
-//==             plasma_zheevd_wrapper(matrix_size, a, lda, z, lda, eval);
-//==             //printf("after call to plasma_zheevd_wrapper\n");
-//==             //plasma_set_num_threads(8);
-//==             //omp_set_num_threads(8);
-//==         }
-//==         #endif
-//==
-//==         bool parallel() const
-//==         {
-//==             return false;
-//==         }
-//==
-//==         ev_solver_t type() const
-//==         {
-//==             return ev_plasma;
-//==         }
-//== };
-
 } // namespace
+
+} // namespace sirius
 
 #endif // __EIGENPROBLEM_HPP__

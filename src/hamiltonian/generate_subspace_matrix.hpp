@@ -61,10 +61,10 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
 
     /* copy old N - num_locked x N - num_locked distributed matrix */
     if (N__ > 0) {
-        sddk::splindex_block_cyclic<> spl_row(N__ - num_locked__,
+        splindex_block_cyclic<> spl_row(N__ - num_locked__,
                 n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
                 mtrx__.bs_row());
-        sddk::splindex_block_cyclic<> spl_col(N__ - num_locked__,
+        splindex_block_cyclic<> spl_col(N__ - num_locked__,
                 n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
                 mtrx__.bs_col());
 
@@ -110,10 +110,10 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
     }
 
     if (env::print_checksum()) {
-        sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
+        splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
                 n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
                 mtrx__.bs_row());
-        sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
+        splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
                 n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
                 mtrx__.bs_col());
         auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
@@ -127,10 +127,10 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
 
     /* save new matrix */
     if (mtrx_old__) {
-        sddk::splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
+        splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
                 n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
                 mtrx__.bs_row());
-        sddk::splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
+        splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
                 n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
                 mtrx__.bs_col());
 

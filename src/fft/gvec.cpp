@@ -27,6 +27,8 @@
 #include "gvec.hpp"
 #include "SDDK/serializer.hpp"
 
+namespace sirius {
+
 namespace fft {
 
 r3::vector<int> Gvec::gvec_by_full_index(uint32_t idx__) const
@@ -289,7 +291,7 @@ void Gvec::find_gvec_shells()
     for (int ig = 0; ig < num_gvec_; ig++) {
         /* if the shell for this vector is not yet found */
         if (gvec_shell_[ig] == -1) {
-            auto G = gvec<sddk::index_domain_t::global>(ig);
+            auto G = gvec<index_domain_t::global>(ig);
             for (auto& R: lat_sym) {
                 auto G1 = r3::dot(G, R);
                 auto ig1 = index_by_gvec(G1);
@@ -334,7 +336,7 @@ void Gvec::find_gvec_shells()
     std::vector<int> ngv_sh(num_gvec_shells_, 0);
 
     for (int ig = 0; ig < num_gvec_; ig++) {
-        auto g   = gvec_cart<sddk::index_domain_t::global>(ig).length();
+        auto g   = gvec_cart<index_domain_t::global>(ig).length();
         int igsh = gvec_shell_[ig];
         gvec_shell_len_[igsh] += g;
         ngv_sh[igsh]++;
@@ -445,7 +447,7 @@ Gvec::init(fft::Grid const& fft_grid)
     }
 
     for (int ig = 0; ig < num_gvec_; ig++) {
-        auto gv = gvec<sddk::index_domain_t::global>(ig);
+        auto gv = gvec<index_domain_t::global>(ig);
         if (index_by_gvec(gv) != ig) {
             std::stringstream s;
             s << "wrong G-vector index: ig=" << ig << " gv=" << gv << " index_by_gvec(gv)=" << index_by_gvec(gv);
@@ -467,7 +469,7 @@ Gvec::init(fft::Grid const& fft_grid)
         /* loop over local G-vectors of a base set */
         for (int igloc = 0; igloc < gvec_base_->count(); igloc++) {
             /* G-vector in lattice coordinates */
-            auto G = gvec_base_->gvec<sddk::index_domain_t::local>(igloc);
+            auto G = gvec_base_->gvec<index_domain_t::local>(igloc);
             /* global index of G-vector in the current set */
             int ig = index_by_gvec(G);
             /* the same MPI rank must store this G-vector */
@@ -560,7 +562,7 @@ Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source
     sddk::serializer s;
 
     if (comm__.rank() == source__) {
-        ::fft::serialize(s, gv_src__);
+        ::sirius::fft::serialize(s, gv_src__);
     }
 
     s.send_recv(comm__, source__, dest__);
@@ -568,7 +570,7 @@ Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source
     Gvec gv(gv_src__.comm());
 
     if (comm__.rank() == dest__) {
-        ::fft::deserialize(s, gv);
+        ::sirius::fft::deserialize(s, gv);
     }
     return gv;
 }
@@ -671,7 +673,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     a2a_recv_ = mpi::block_data_descriptor(comm_.size());
 
     /* split G-vector shells between ranks in cyclic order */
-    spl_num_gsh_ = sddk::splindex_block_cyclic<>(gvec_.num_shells(), n_blocks(comm_.size()), block_id(comm_.rank()), 1);
+    spl_num_gsh_ = splindex_block_cyclic<>(gvec_.num_shells(), n_blocks(comm_.size()), block_id(comm_.rank()), 1);
 
     /* each rank sends a fraction of its local G-vectors to other ranks */
     /* count this fraction */
@@ -713,7 +715,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
         for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
             int ig   = gvec_.gvec_offset(r) + igloc;
             int igsh = gvec_.shell(ig);
-            auto G   = gvec_.gvec<sddk::index_domain_t::global>(ig);
+            auto G   = gvec_.gvec<index_domain_t::global>(ig);
             if (spl_num_gsh_.location(igsh).ib == comm_.rank()) {
                 for (int x : {0, 1, 2}) {
                     gvec_remapped_(x, a2a_recv_.offsets[r] + counts[r]) = G[x];
@@ -782,3 +784,5 @@ void deserialize(sddk::serializer& s__, Gvec& gv__)
 }
 
 } // namespace sddk
+
+} // namespace sirius

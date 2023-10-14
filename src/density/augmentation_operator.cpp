@@ -157,7 +157,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
                 /* index of the G-vector shell */
                 int igsh = gvec_.gvec_shell_idx_local(igloc);
 
-                auto gvc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
+                auto gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
                 double gvc_nu = gvc[nu__];
 
                 std::vector<double> rlm(lmmax);

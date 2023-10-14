@@ -47,7 +47,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     int lmax = sf::lmax(lmmax);
 
     /* split atoms between MPI ranks */
-    sddk::splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));
+    splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));
 
     /* space for real Rlm rotation matrix */
     sddk::mdarray<double, 2> rotm(lmmax, lmmax);

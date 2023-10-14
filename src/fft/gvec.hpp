@@ -34,10 +34,12 @@
 #include "linalg/r3.hpp"
 #include "SDDK/memory.hpp"
 #include "SDDK/serializer.hpp"
-#include "SDDK/splindex.hpp"
+#include "core/splindex.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
 #include "mpi/pstdout.hpp"
+
+namespace sirius {
 
 namespace fft {
 
@@ -533,16 +535,16 @@ class Gvec
     }
 
     /// Return G vector in fractional coordinates.
-    template <sddk::index_domain_t idx_t>
+    template <index_domain_t idx_t>
     inline r3::vector<int>
     gvec(int ig__) const
     {
         switch (idx_t) {
-            case sddk::index_domain_t::local: {
+            case index_domain_t::local: {
                 return r3::vector<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
                 break;
             }
-            case sddk::index_domain_t::global: {
+            case index_domain_t::global: {
                 return gvec_by_full_index(gvec_full_index_(ig__));
                 break;
             }
@@ -550,16 +552,16 @@ class Gvec
     }
 
     /// Return G+k vector in fractional coordinates.
-    template <sddk::index_domain_t idx_t>
+    template <index_domain_t idx_t>
     inline r3::vector<double>
     gkvec(int ig__) const
     {
         switch (idx_t) {
-            case sddk::index_domain_t::local: {
+            case index_domain_t::local: {
                 return r3::vector<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
                 break;
             }
-            case sddk::index_domain_t::global: {
+            case index_domain_t::global: {
                 return this->gvec<idx_t>(ig__) + vk_;
                 break;
             }
@@ -567,16 +569,16 @@ class Gvec
     }
 
     /// Return G vector in Cartesian coordinates.
-    template <sddk::index_domain_t idx_t>
+    template <index_domain_t idx_t>
     inline r3::vector<double>
     gvec_cart(int ig__) const
     {
         switch (idx_t) {
-            case sddk::index_domain_t::local: {
+            case index_domain_t::local: {
                 return r3::vector<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
                 break;
             }
-            case sddk::index_domain_t::global: {
+            case index_domain_t::global: {
                 auto G = this->gvec<idx_t>(ig__);
                 return dot(lattice_vectors_, G);
                 break;
@@ -585,16 +587,16 @@ class Gvec
     }
 
     /// Return G+k vector in fractional coordinates.
-    template <sddk::index_domain_t idx_t>
+    template <index_domain_t idx_t>
     inline r3::vector<double>
     gkvec_cart(int ig__) const
     {
         switch (idx_t) {
-            case sddk::index_domain_t::local: {
+            case index_domain_t::local: {
                 return r3::vector<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
                 break;
             }
-            case sddk::index_domain_t::global: {
+            case index_domain_t::global: {
                 auto Gk = this->gvec<idx_t>(ig__) + vk_;
                 return dot(lattice_vectors_, Gk);
                 break;
@@ -630,16 +632,16 @@ class Gvec
     }
 
     /// Return length of the G-vector.
-    template <sddk::index_domain_t idx_t>
+    template <index_domain_t idx_t>
     inline double
     gvec_len(int ig__) const
     {
         switch (idx_t) {
-            case sddk::index_domain_t::local: {
+            case index_domain_t::local: {
                 return gvec_len_(ig__);
                 break;
             }
-            case sddk::index_domain_t::global: {
+            case index_domain_t::global: {
                 return gvec_shell_len_(gvec_shell_(ig__));
                 break;
             }
@@ -920,7 +922,7 @@ class Gvec_shells
     mpi::block_data_descriptor a2a_recv_;
 
     /// Split global index of G-shells between MPI ranks.
-    sddk::splindex_block_cyclic<> spl_num_gsh_;
+    splindex_block_cyclic<> spl_num_gsh_;
 
     /// List of G-vectors in the remapped storage.
     sddk::mdarray<int, 2> gvec_remapped_;
@@ -989,7 +991,7 @@ class Gvec_shells
     template <typename T>
     auto remap_forward(T* data__) const
     {
-        PROFILE("sddk::Gvec_shells::remap_forward");
+        PROFILE("fft::Gvec_shells::remap_forward");
 
         std::vector<T> send_buf(gvec_.count());
         std::vector<int> counts(comm_.size(), 0);
@@ -1012,7 +1014,7 @@ class Gvec_shells
     template <typename T>
     void remap_backward(std::vector<T> buf__, T* data__) const
     {
-        PROFILE("sddk::Gvec_shells::remap_backward");
+        PROFILE("fft::Gvec_shells::remap_backward");
 
         std::vector<T> recv_buf(gvec_.count());
 
@@ -1068,8 +1070,8 @@ inline void print(std::ostream& out__, Gvec const& gvec__)
         auto len = gvec__.shell_len(igsh);
         out__ << "shell : " << igsh << ", length : " << len << std::endl;
         for (auto ig : gsh_map[igsh]) {
-            auto G = gvec__.gvec<sddk::index_domain_t::global>(ig);
-            auto Gc = gvec__.gvec_cart<sddk::index_domain_t::global>(ig);
+            auto G = gvec__.gvec<index_domain_t::global>(ig);
+            auto Gc = gvec__.gvec_cart<index_domain_t::global>(ig);
             out__ << "  ig : " << ig << ", G = " << G << ", length diff : " << std::abs(Gc.length() - len) << std::endl;
         }
     }
@@ -1088,6 +1090,9 @@ inline void print(std::ostream& out__, Gvec const& gvec__)
     //}
     //out__ << pout.flush(0);
 }
-} // namespace sddk
+
+} // namespace
+
+} // namespace sirius
 
 #endif //__GVEC_HPP__

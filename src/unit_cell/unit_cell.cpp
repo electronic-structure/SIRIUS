@@ -671,7 +671,7 @@ Unit_cell::initialize()
     PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
-    spl_num_atoms_ = sddk::splindex_block<atom_index_t>(num_atoms(), n_blocks(comm_.size()), block_id(comm_.rank()));
+    spl_num_atoms_ = splindex_block<atom_index_t>(num_atoms(), n_blocks(comm_.size()), block_id(comm_.rank()));
 
     /* initialize atom types */
     for (int iat = 0; iat < num_atom_types(); iat++) {
@@ -879,7 +879,7 @@ Unit_cell::update()
 
     get_symmetry();
 
-    spl_num_atom_symmetry_classes_ = sddk::splindex_block<atom_symmetry_class_index_t>(num_atom_symmetry_classes(),
+    spl_num_atom_symmetry_classes_ = splindex_block<atom_symmetry_class_index_t>(num_atom_symmetry_classes(),
             n_blocks(comm_.size()), block_id(comm_.rank()));
 
     volume_mt_ = 0.0;
@@ -963,7 +963,7 @@ Unit_cell::init_paw()
         }
     }
 
-    spl_num_paw_atoms_ = sddk::splindex_block<paw_atom_index_t>(num_paw_atoms(), n_blocks(comm_.size()),
+    spl_num_paw_atoms_ = splindex_block<paw_atom_index_t>(num_paw_atoms(), n_blocks(comm_.size()),
             block_id(comm_.rank()));
 }
 

@@ -353,12 +353,12 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->count(), SPFFT_INDEX_TRIPLETS,
         gv.at(sddk::memory_t::host))));
 
-    sddk::splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
+    splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
             ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
     sddk::mdarray<int, 2> gkvec_row(3, num_gkvec_row_);
 
-    sddk::splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
+    splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
             ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
     sddk::mdarray<int, 2> gkvec_col(3, num_gkvec_col_);
@@ -557,7 +557,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* save the order of G-vectors */
         sddk::mdarray<int, 2> gv(3, num_gkvec());
         for (int i = 0; i < num_gkvec(); i++) {
-            auto v = gkvec().template gvec<sddk::index_domain_t::global>(i);
+            auto v = gkvec().template gvec<index_domain_t::global>(i);
             for (int x : {0, 1, 2}) {
                 gv(x, i) = v[x];
             }
@@ -706,7 +706,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* vs = {r, theta, phi} */
-        auto vs = r3::spherical_coordinates(this->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igk_loc));
+        auto vs = r3::spherical_coordinates(this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
@@ -741,7 +741,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
         #pragma omp parallel for
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto G = gkvec().template gvec<sddk::index_domain_t::local>(igk_loc);
+            auto G = gkvec().template gvec<index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }
@@ -763,19 +763,19 @@ void
 K_point<T>::generate_gklo_basis()
 {
     /* find local number of row G+k vectors */
-    sddk::splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
+    splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
             ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
 
     /* find local number of column G+k vectors */
-    sddk::splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
+    splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
             ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
 
     if (ctx_.full_potential()) {
-        sddk::splindex_block_cyclic<> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),
+        splindex_block_cyclic<> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),
                 n_blocks(num_ranks_row_), block_id(rank_row_), ctx_.cyclic_block_size());
-        sddk::splindex_block_cyclic<> spl_nlo_col(num_gkvec() + unit_cell_.mt_lo_basis_size(),
+        splindex_block_cyclic<> spl_nlo_col(num_gkvec() + unit_cell_.mt_lo_basis_size(),
                 n_blocks(num_ranks_col_), block_id(rank_col_), ctx_.cyclic_block_size());
 
         lo_basis_descriptor lo_desc;

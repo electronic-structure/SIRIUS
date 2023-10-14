@@ -88,7 +88,7 @@ init_step_function(Unit_cell const& uc__, fft::Gvec const& gv__, fft::Gvec_fft c
         sddk::mdarray<std::complex<double>, 2> const& phase_factors_t__,
         fft::spfft_transform_type<double> spfft__)
 {
-    auto v = make_periodic_function<sddk::index_domain_t::global>(uc__, gv__, phase_factors_t__,
+    auto v = make_periodic_function<index_domain_t::global>(uc__, gv__, phase_factors_t__,
             [&](int iat, double g) {
                 auto R = uc__.atom_type(iat).mt_radius();
                 return unit_step_function_form_factors(R, g);

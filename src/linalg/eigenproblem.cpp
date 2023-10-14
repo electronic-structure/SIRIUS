@@ -4,6 +4,8 @@
 #include <elpa/elpa.h>
 #endif
 
+namespace sirius {
+
 namespace la {
 
 #if defined(SIRIUS_ELPA)
@@ -270,5 +272,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<doub
 }
 
 #endif
+
+}
 
 }

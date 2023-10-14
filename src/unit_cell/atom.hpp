@@ -151,7 +151,7 @@ class Atom
             RTE_THROW("not yet mpi parallel");
         }
 
-        sddk::splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
+        splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
 
         auto l_by_lm = sf::l_by_lm(lmax_pot_);
 

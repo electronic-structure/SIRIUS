@@ -42,6 +42,8 @@
 #include "hamiltonian/diagonalize.hpp"
 #include "sirius.hpp"
 
+using namespace sirius;
+
 struct sirius_context_handler_t
 {
     void* handler_ptr_{nullptr};
@@ -57,7 +59,7 @@ struct sirius_kpoint_set_handler_t
     void* handler_ptr_{nullptr};
 };
 
-sirius::Simulation_context& get_sim_ctx(void* const* h);
+Simulation_context& get_sim_ctx(void* const* h);
 
 enum class option_type_t : int
 {
@@ -77,14 +79,14 @@ enum class option_type_t : int
 
 template <typename T>
 void
-sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string section__, std::string name__,
+sirius_option_set_value(Simulation_context& sim_ctx__, std::string section__, std::string name__,
                         T const* values__, int const* max_length__)
 {
     std::transform(section__.begin(), section__.end(), section__.begin(), ::tolower);
 
     auto& conf_dict = const_cast<nlohmann::json&>(sim_ctx__.cfg().dict());
 
-    const auto& section_schema = sirius::get_section_options(section__);
+    const auto& section_schema = get_section_options(section__);
 
     if (!section_schema.count(name__)) {
         std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -105,14 +107,14 @@ sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string secti
 }
 
 void
-sirius_option_set_value(sirius::Simulation_context& sim_ctx__, std::string section__, std::string name__,
+sirius_option_set_value(Simulation_context& sim_ctx__, std::string section__, std::string name__,
                         char const* values__, int const* max_length__, bool append__)
 {
     std::transform(section__.begin(), section__.end(), section__.begin(), ::tolower);
 
     auto& conf_dict = const_cast<nlohmann::json&>(sim_ctx__.cfg().dict());
 
-    const auto& section_schema = sirius::get_section_options(section__);
+    const auto& section_schema = get_section_options(section__);
 
     if (!section_schema.count(name__)) {
         std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -136,7 +138,7 @@ template <typename T>
 void
 sirius_option_get_value(std::string section__, std::string name__, T* default_value__, int const* max_length__)
 {
-    const auto& section_schema = sirius::get_section_options(section__);
+    const auto& section_schema = get_section_options(section__);
 
     if (!section_schema.count(name__)) {
         std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -170,7 +172,7 @@ void
 sirius_option_get_value(std::string section__, std::string name__, char* default_value__, int const* max_length__,
                         int const* enum_idx__)
 {
-    const auto& section_schema = sirius::get_section_options(section__);
+    const auto& section_schema = get_section_options(section__);
 
     if (!section_schema.count(name__)) {
         std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -295,31 +297,31 @@ auto get_value(T const* ptr__, T v0__ = T())
     return (ptr__) ? *ptr__ : v0__;
 }
 
-sirius::Simulation_context&
+Simulation_context&
 get_sim_ctx(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing simulation context handler");
     }
-    return static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
+    return static_cast<utils::any_ptr*>(*h)->get<Simulation_context>();
 }
 
-sirius::DFT_ground_state&
+DFT_ground_state&
 get_gs(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing DFT ground state handler");
     }
-    return static_cast<utils::any_ptr*>(*h)->get<sirius::DFT_ground_state>();
+    return static_cast<utils::any_ptr*>(*h)->get<DFT_ground_state>();
 }
 
-sirius::K_point_set&
+K_point_set&
 get_ks(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing K-point set handler");
     }
-    return static_cast<utils::any_ptr*>(*h)->get<sirius::K_point_set>();
+    return static_cast<utils::any_ptr*>(*h)->get<K_point_set>();
 }
 
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
@@ -331,7 +333,7 @@ idx_m_qe(int m__)
 
 /// Mapping of atomic indices from SIRIUS to QE order.
 static inline std::vector<int>
-atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
+atomic_orbital_index_map_QE(Atom_type const& type__)
 {
     int nbf = type__.mt_basis_size();
 
@@ -340,13 +342,13 @@ atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
         int m     = type__.indexb(xi).m;
         auto idxrf = type__.indexb(xi).idxrf;
         idx_map[xi] =
-            type__.indexb().index_of(sirius::rf_index(idxrf)) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
+            type__.indexb().index_of(rf_index(idxrf)) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
     }
     return idx_map;
 }
 
 static inline int
-phase_Rlm_QE(::sirius::Atom_type const& type__, int xi__)
+phase_Rlm_QE(Atom_type const& type__, int xi__)
 {
     return (type__.indexb(xi__).m < 0 && (-type__.indexb(xi__).m) % 2 == 0) ? -1 : 1;
 }
@@ -603,7 +605,7 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
             auto& comm_k = (fcomm_k__) ? mpi::Communicator::map_fcomm(*fcomm_k__) : mpi::Communicator();
             auto const& comm_band =
                 (fcomm_band__) ? mpi::Communicator::map_fcomm(*fcomm_band__) : mpi::Communicator();
-            *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm, comm_k, comm_band));
+            *handler__ = new utils::any_ptr(new Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
 }
@@ -1429,7 +1431,7 @@ sirius_set_periodic_function(void* const* handler__, char const* label__, double
         [&]() {
             auto& gs = get_gs(handler__);
             std::string label(label__);
-            std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+            std::map<std::string, Periodic_function<double>*> func_map = {
                 {"rho", &gs.density().component(0)},         {"magz", &gs.density().component(1)},
                 {"magx", &gs.density().component(2)},        {"magy", &gs.density().component(3)},
                 {"veff", &gs.potential().component(0)},      {"bz", &gs.potential().component(1)},
@@ -1524,7 +1526,7 @@ sirius_get_periodic_function(void* const* handler__, char const* label__, double
         [&]() {
             auto& gs = get_gs(handler__);
             std::string label(label__);
-            std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+            std::map<std::string, Periodic_function<double>*> func_map = {
                 {"rho", &gs.density().component(0)},          {"magz", &gs.density().component(1)},
                 {"magx", &gs.density().component(2)},         {"magy", &gs.density().component(3)},
                 {"veff", &gs.potential().component(0)},       {"bz", &gs.potential().component(1)},
@@ -1601,7 +1603,7 @@ sirius_create_kset(void* const* handler__, int const* num_kpoints__, double* kpo
 
             sddk::mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
-            sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
+            K_point_set* new_kset = new K_point_set(sim_ctx);
             new_kset->add_kpoints(kpoints, kpoint_weights__);
             if (*init_kset__) {
                 new_kset->initialize();
@@ -1660,7 +1662,7 @@ sirius_create_kset_from_grid(void* const* handler__, int const* k_grid__, int co
             k_shift[1] = k_shift__[1];
             k_shift[2] = k_shift__[2];
 
-            sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
+            K_point_set* new_kset = new K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
 
             *kset_handler__ = new utils::any_ptr(new_kset);
         },
@@ -1693,7 +1695,7 @@ sirius_create_ground_state(void* const* ks_handler__, void** gs_handler__, int* 
         [&]() {
             auto& ks = get_ks(ks_handler__);
 
-            *gs_handler__ = new utils::any_ptr(new sirius::DFT_ground_state(ks));
+            *gs_handler__ = new utils::any_ptr(new DFT_ground_state(ks));
         },
         error_code__);
 }
@@ -2114,12 +2116,12 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                 int l = *l__;
                 if (type.spin_orbit_coupling()) {
                     if (l >= 0) {
-                        type.add_beta_radial_function(sirius::angular_momentum(l, 1), std::vector<double>(rf__, rf__ + *num_points__));
+                        type.add_beta_radial_function(angular_momentum(l, 1), std::vector<double>(rf__, rf__ + *num_points__));
                     } else {
-                        type.add_beta_radial_function(sirius::angular_momentum(-l, -1), std::vector<double>(rf__, rf__ + *num_points__));
+                        type.add_beta_radial_function(angular_momentum(-l, -1), std::vector<double>(rf__, rf__ + *num_points__));
                     }
                 } else {
-                    type.add_beta_radial_function(sirius::angular_momentum(l), std::vector<double>(rf__, rf__ + *num_points__));
+                    type.add_beta_radial_function(angular_momentum(l), std::vector<double>(rf__, rf__ + *num_points__));
                 }
             } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
                 if (l__ == nullptr) {
@@ -2127,7 +2129,7 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                 }
                 int n      = (n__) ? *n__ : -1;
                 double occ = (occ__) ? *occ__ : 0.0;
-                type.add_ps_atomic_wf(n, sirius::angular_momentum(*l__),
+                type.add_ps_atomic_wf(n, angular_momentum(*l__),
                         std::vector<double>(rf__, rf__ + *num_points__), occ);
             } else if (label == "ps_rho_core") {
                 type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
@@ -2500,7 +2502,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 }
                 comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
 
-                std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+                std::map<std::string, Smooth_periodic_function<double>*> func = {
                     {"rho", &gs.density().rho().rg()},
                     {"rhoc", &gs.density().rho_pseudo_core()},
                     {"magz", &gs.density().mag(0).rg()},
@@ -2585,7 +2587,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 mpi::Communicator comm(MPI_Comm_f2c(*comm__));
                 sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-                std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+                std::map<std::string, Smooth_periodic_function<double>*> func = {
                     {"rho", &gs.density().rho().rg()},
                     {"magz", &gs.density().mag(0).rg()},
                     {"magx", &gs.density().mag(1).rg()},
@@ -2662,8 +2664,8 @@ sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__,
         [&]() {
             auto& gs = get_gs(gs_handler__);
             auto& ks = get_ks(ks_handler__);
-            sirius::Hamiltonian0<double> H0(gs.potential(), true);
-            sirius::initialize_subspace(ks, H0);
+            Hamiltonian0<double> H0(gs.potential(), true);
+            initialize_subspace(ks, H0);
         },
         error_code__);
 }
@@ -2720,13 +2722,13 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 gs.potential().update_atomic_potential();
             }
             if (precompute_rf__ && *precompute_rf__) {
-                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
+                const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
             }
             if (precompute_ri__ && *precompute_ri__) {
-                const_cast<sirius::Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
+                const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
             }
-            sirius::Hamiltonian0<double> H0(gs.potential(), false);
-            sirius::diagonalize<double, double>(H0, ks, tol);
+            Hamiltonian0<double> H0(gs.potential(), false);
+            diagonalize<double, double>(H0, ks, tol);
         },
         error_code__);
 }
@@ -3227,7 +3229,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
 
     // TODO: refactor this part; use QE order of G-vectors
 
-    auto gvec_mapping = [&](fft::Gvec const& gkvec) {
+    auto gvec_mapping = [&](sirius::fft::Gvec const& gkvec) {
         std::vector<int> igm(*num_gvec_loc__);
 
         sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
@@ -3308,11 +3310,11 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
             ks.comm().bcast(&spin, 1, dest_rank);
 
             /* rank where k-point vkl resides on the SIRIUS side */
-            int src_rank = ks.spl_num_kpoints().location(typename kp_index_t::global(jk)).ib;
+            int src_rank = ks.spl_num_kpoints().location(typename sirius::kp_index_t::global(jk)).ib;
 
             if (ks.comm().rank() == src_rank || ks.comm().rank() == dest_rank) {
                 /* send G+k copy to destination rank (where host code receives the data) */
-                auto gkvec = ks.get_gkvec(typename kp_index_t::global(jk), dest_rank);
+                auto gkvec = ks.get_gkvec(typename sirius::kp_index_t::global(jk), dest_rank);
 
                 sddk::mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
@@ -3782,7 +3784,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
             if (gvec__ != nullptr) {
                 sddk::mdarray<int, 2> gvec(gvec__, 3, sim_ctx.gvec().num_gvec());
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                    auto gv = sim_ctx.gvec().gvec<sddk::index_domain_t::global>(ig);
+                    auto gv = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
                     for (int x : {0, 1, 2}) {
                         gvec(x, ig) = gv[x];
                     }
@@ -3791,7 +3793,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
             if (gvec_cart__ != nullptr) {
                 sddk::mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx.gvec().num_gvec());
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                    auto gvc = sim_ctx.gvec().gvec_cart<sddk::index_domain_t::global>(ig);
+                    auto gvc = sim_ctx.gvec().gvec_cart<index_domain_t::global>(ig);
                     for (int x : {0, 1, 2}) {
                         gvec_cart(x, ig) = gvc[x];
                     }
@@ -3799,7 +3801,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
             }
             if (gvec_len__ != nullptr) {
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                    gvec_len__[ig] = sim_ctx.gvec().gvec_len<sddk::index_domain_t::global>(ig);
+                    gvec_len__[ig] = sim_ctx.gvec().gvec_len<index_domain_t::global>(ig);
                 }
             }
             if (index_by_gvec__ != nullptr) {
@@ -3812,7 +3814,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                           -1);
 
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                    auto G = sim_ctx.gvec().gvec<sddk::index_domain_t::global>(ig);
+                    auto G = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
 
                     index_by_gvec(G[0], G[1], G[2]) = ig + 1;
                 }
@@ -3877,7 +3879,7 @@ sirius_get_fft_index(void* const* handler__, int* fft_index__, int* error_code__
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                auto G          = sim_ctx.gvec().gvec<sddk::index_domain_t::global>(ig);
+                auto G          = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
                 fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
             }
         },
@@ -3980,12 +3982,12 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
                 sddk::mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec());
 
                 for (int igk = 0; igk < kp->num_gkvec(); igk++) {
-                    auto gkc = kp->gkvec().gkvec_cart<sddk::index_domain_t::global>(igk);
-                    auto G   = kp->gkvec().gvec<sddk::index_domain_t::global>(igk);
+                    auto gkc = kp->gkvec().gkvec_cart<index_domain_t::global>(igk);
+                    auto G   = kp->gkvec().gvec<index_domain_t::global>(igk);
 
                     gvec_index__[igk] = ks.ctx().gvec().index_by_gvec(G) + 1; // Fortran counts from 1
                     for (int x : {0, 1, 2}) {
-                        gkvec(x, igk)      = kp->gkvec().template gkvec<sddk::index_domain_t::global>(igk)[x];
+                        gkvec(x, igk)      = kp->gkvec().template gkvec<index_domain_t::global>(igk)[x];
                         gkvec_cart(x, igk) = gkc[x];
                     }
                     auto rtp         = r3::spherical_coordinates(gkc);
@@ -4473,7 +4475,7 @@ sirius_option_get_number_of_sections(int* length__, int *error_code__)
 {
     call_sirius(
         [&]() {
-            auto const& dict = sirius::get_options_dictionary();
+            auto const& dict = get_options_dictionary();
             *length__        = static_cast<int>(dict["properties"].size());
         }, error_code__);
 }

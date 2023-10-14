@@ -29,6 +29,8 @@
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
 
+namespace sirius {
+
 namespace fft {
 
 /// Helper class to create FFT grids of given sizes and compute indices in space- and frequency domains.
@@ -162,5 +164,7 @@ inline auto get_min_grid(double cutoff__, r3::matrix<double> M__)
 }
 
 } // namespace fft
+
+} // namespace sirius
 
 #endif // __FFT3D_GRID_HPP__

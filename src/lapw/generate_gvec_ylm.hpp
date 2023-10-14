@@ -37,7 +37,7 @@ generate_gvec_ylm(Simulation_context const& ctx__, int lmax__)
             sddk::memory_t::host, "gvec_ylm");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < ctx__.gvec().count(); igloc++) {
-        auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart<sddk::index_domain_t::local>(igloc));
+        auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart<index_domain_t::local>(igloc));
         sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;

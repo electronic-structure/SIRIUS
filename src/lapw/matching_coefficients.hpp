@@ -126,7 +126,7 @@ class Matching_coefficients // TODO: compute on GPU
 
             #pragma omp for
             for (int i = 0; i < gkvec_.count(); i++) {
-                auto gkvec_cart = gkvec_.gkvec_cart<sddk::index_domain_t::local>(i);
+                auto gkvec_cart = gkvec_.gkvec_cart<index_domain_t::local>(i);
                 /* get r, theta, phi */
                 auto vs = r3::spherical_coordinates(gkvec_cart);
                 gkvec_len_[i] = vs[0];
@@ -200,7 +200,7 @@ class Matching_coefficients // TODO: compute on GPU
 
         std::vector<std::complex<double>> phase_factors(gkvec_.count());
         for (int i = 0; i < gkvec_.count(); i++) {
-            double phase     = twopi * dot(gkvec_.template gkvec<sddk::index_domain_t::local>(i), atom__.position());
+            double phase     = twopi * dot(gkvec_.template gkvec<index_domain_t::local>(i), atom__.position());
             phase_factors[i] = std::exp(std::complex<double>(0, phase));
         }
 

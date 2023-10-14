@@ -254,7 +254,7 @@ class Potential : public Field4D
         /* get form-factors for all G shells */
         auto const ff = ctx_.ri().vloc_->values(q, ctx_.comm());
         /* make Vloc(G) */
-        auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
                 ctx_.phase_factors_t(), ff);
 
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));

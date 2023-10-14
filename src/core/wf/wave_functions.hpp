@@ -495,7 +495,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     /// Total number of atoms.
     int num_atoms_{0};
     /// Distribution of atoms between MPI ranks.
-    sddk::splindex_block<atom_index_t> spl_num_atoms_;
+    splindex_block<atom_index_t> spl_num_atoms_;
     /// Local size of muffin-tin coefficients for each rank.
     /** Each rank stores local fraction of atoms. Each atom has a set of MT coefficients. */
     mpi::block_data_descriptor mt_coeffs_distr_;
@@ -510,7 +510,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     static int get_local_num_mt_coeffs(std::vector<int> num_mt_coeffs__, mpi::Communicator const& comm__)
     {
         int num_atoms = static_cast<int>(num_mt_coeffs__.size());
-        sddk::splindex_block<atom_index_t> spl_atoms(num_atoms, n_blocks(comm__.size()), block_id(comm__.rank()));
+        splindex_block<atom_index_t> spl_atoms(num_atoms, n_blocks(comm__.size()), block_id(comm__.rank()));
         int result{0};
         for (auto it : spl_atoms) {
             result += num_mt_coeffs__[it.i];
@@ -523,7 +523,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
             sddk::memory_t default_mem__, int num_pw__)
         : Wave_functions_base<T>(num_pw__, 0, num_md__, num_wf__, default_mem__)
         , comm_{comm__}
-        , spl_num_atoms_{sddk::splindex_block<atom_index_t>(num_atoms_, n_blocks(comm_.size()), block_id(comm_.rank()))}
+        , spl_num_atoms_{splindex_block<atom_index_t>(num_atoms_, n_blocks(comm_.size()), block_id(comm_.rank()))}
     {
     }
 
@@ -540,7 +540,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
                                  default_mem__)
         , comm_{comm__}
         , num_atoms_{static_cast<int>(num_mt_coeffs__.size())}
-        , spl_num_atoms_{sddk::splindex_block<atom_index_t>(num_atoms_, n_blocks(comm_.size()), block_id(comm_.rank()))}
+        , spl_num_atoms_{splindex_block<atom_index_t>(num_atoms_, n_blocks(comm_.size()), block_id(comm_.rank()))}
         , num_mt_coeffs_{num_mt_coeffs__}
     {
         mt_coeffs_distr_ = mpi::block_data_descriptor(comm_.size());
@@ -840,7 +840,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     /// Pointer to FFT-friendly G+k vector deistribution.
     std::shared_ptr<fft::Gvec_fft> gkvec_fft_;
     /// Split number of wave-functions between column communicator.
-    sddk::splindex_block<> spl_num_wf_;
+    splindex_block<> spl_num_wf_;
     /// Pointer to the original wave-functions.
     Wave_functions<T>* wf_{nullptr};
     /// Spin-index of the wave-function component
@@ -1072,7 +1072,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
         , shuffle_flag_{shuffle_flag___}
     {
         auto& comm_col = gkvec_fft_->comm_ortho_fft();
-        spl_num_wf_ = sddk::splindex_block<>(br__.size(), n_blocks(comm_col.size()), block_id(comm_col.rank()));
+        spl_num_wf_ = splindex_block<>(br__.size(), n_blocks(comm_col.size()), block_id(comm_col.rank()));
         this->num_mt_ = 0;
         this->num_md_ = wf::num_mag_dims(0);
         this->num_sc_ = wf::num_spins(1);

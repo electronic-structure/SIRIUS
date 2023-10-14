@@ -26,9 +26,11 @@
 #define __FFT_HPP__
 
 #include <spfft/spfft.hpp>
-#include "SDDK/splindex.hpp"
+#include "core/splindex.hpp"
 #include "mpi/communicator.hpp"
 #include "SDDK/memory.hpp"
+
+namespace sirius {
 
 namespace fft {
 
@@ -232,10 +234,12 @@ inline size_t spfft_grid_size_local(T const& spfft__)
  *  using block distribution. */
 inline auto split_z_dimension(int size_z__, mpi::Communicator const& comm_fft__)
 {
-    return sddk::splindex_block<>(size_z__, n_blocks(comm_fft__.size()), block_id(comm_fft__.rank()));
+    return splindex_block<>(size_z__, n_blocks(comm_fft__.size()), block_id(comm_fft__.rank()));
 }
 
 } // namespace fft
+
+} // namespace sirius
 
 #endif // __FFT_HPP__
 

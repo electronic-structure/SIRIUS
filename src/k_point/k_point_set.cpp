@@ -138,11 +138,11 @@ void K_point_set::initialize(std::vector<int> const& counts)
     PROFILE("sirius::K_point_set::initialize");
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
-        sddk::splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
-        spl_num_kpoints_ = sddk::splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
+        splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
+        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
                 block_id(comm().rank()), spl_tmp.counts());
     } else {
-        spl_num_kpoints_ = sddk::splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
+        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
                 block_id(comm().rank()), counts);
     }
 
@@ -334,7 +334,7 @@ void K_point_set::find_band_occupancies()
     comm().allreduce<double, mpi::op_t::min>(&emin, 1);
     comm().allreduce<double, mpi::op_t::max>(&emax, 1);
 
-    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
@@ -451,7 +451,7 @@ double K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
 
-    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     for (auto it : spl_num_kpoints_) {
         auto const& kp = this->get<T>(it.i);
@@ -499,7 +499,7 @@ double K_point_set::entropy_sum() const
 
     auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
-    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     for (auto it : spl_num_kpoints_) {
         auto const& kp = this->get<T>(it.i);

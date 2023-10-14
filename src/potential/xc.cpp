@@ -150,7 +150,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             #pragma omp parallel
             {
                 /* split local size between threads */
-                sddk::splindex_block <>spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
+                splindex_block <>spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho.value(spl_t.global_offset()),
@@ -343,7 +343,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
             #pragma omp parallel
             {
                 /* split local size between threads */
-                sddk::splindex_block<> spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
+                splindex_block<> spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho_up.value(spl_t.global_offset()),

@@ -42,6 +42,8 @@
 #include "dmatrix.hpp"
 #include "linalg_spla.hpp"
 
+namespace sirius {
+
 namespace la {
 
 namespace _local {
@@ -2047,5 +2049,7 @@ inline void unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T>
 }
 
 } // namespace
+
+} // namespace sirius
 
 #endif // __LINALG_HPP__

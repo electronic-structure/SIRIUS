@@ -124,7 +124,7 @@ class Teter : DiagonalPreconditioner<numeric_t>, public local::OperatorBase
         this->d_ = sddk::mdarray<numeric_t, 1>(gkvec.count());
         for (int i = 0; i < gkvec.count(); ++i) {
             // teter formula
-            double T  = gkvec.gkvec_cart<sddk::index_domain_t::global>(i).length2();
+            double T  = gkvec.gkvec_cart<index_domain_t::global>(i).length2();
             double T2 = T * T;
             double T3 = T2 * T;
             double T4 = T2 * T2;

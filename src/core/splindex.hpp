@@ -30,6 +30,8 @@
 #include <cstddef>
 #include <numeric>
 
+namespace sirius {
+
 /// Return the maximum number of blocks (with size 'block_size') needed to split the 'length' elements.
 inline int num_blocks(int length__, int block_size__)
 {
@@ -104,8 +106,6 @@ using n_blocks = strong_type<int, struct __n_blocks_tag>;
 /// ID of the block.
 /** The id of the block has the range [0, n_blocks) */
 using block_id = strong_type<int, struct __block_id_tag>;
-
-namespace sddk {
 
 enum class index_domain_t
 {
@@ -530,6 +530,6 @@ auto end(splindex<Index_t> const& a__)
     return it;
 }
 
-} // namespace sddk
+} // namespace sirius
 
 #endif // __SPLINDEX_HPP__

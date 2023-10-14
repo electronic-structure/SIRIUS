@@ -30,6 +30,8 @@
 #include "linalg_base.hpp"
 #include "utils/rte.hpp"
 
+namespace sirius {
+
 namespace la {
 
 /// BLACS grid wrapper.
@@ -165,5 +167,7 @@ class BLACS_grid
 };
 
 } // namespace
+
+} // namespace sirius
 
 #endif // __BLACS_GRID_HPP__

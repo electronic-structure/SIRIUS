@@ -898,7 +898,7 @@ Simulation_context::update()
                 gvec_coord_ = sddk::mdarray<int, 2>(gvec().count(), 3, sddk::memory_t::host, "gvec_coord_");
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                    auto G = gvec().gvec<sddk::index_domain_t::local>(igloc);
+                    auto G = gvec().gvec<index_domain_t::local>(igloc);
                     for (int x : {0, 1, 2}) {
                         gvec_coord_(igloc, x) = G[x];
                     }
@@ -931,7 +931,7 @@ Simulation_context::update()
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
 
-            auto gv = gvec().gvec<sddk::index_domain_t::local>(igloc);
+            auto gv = gvec().gvec<index_domain_t::local>(igloc);
             /* check limits */
             for (int x : {0, 1, 2}) {
                 auto limits = fft_grid().limits(x);
@@ -939,7 +939,7 @@ Simulation_context::update()
                 if (gv[x] < limits.first || gv[x] > limits.second) {
                     std::stringstream s;
                     s << "G-vector is outside of grid limits\n"
-                      << "  G: " << gv << ", length: " << gvec().gvec_cart<sddk::index_domain_t::global>(ig).length() << "\n"
+                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << "\n"
                       << "  FFT grid limits: " << fft_grid().limits(0).first << " " << fft_grid().limits(0).second
                       << " " << fft_grid().limits(1).first << " " << fft_grid().limits(1).second << " "
                       << fft_grid().limits(2).first << " " << fft_grid().limits(2).second << "\n"
@@ -1016,7 +1016,7 @@ Simulation_context::update()
         /* find the new maximum length of G-vectors */
         double new_pw_cutoff{this->pw_cutoff()};
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len<sddk::index_domain_t::local>(igloc));
+            new_pw_cutoff = std::max(new_pw_cutoff, gvec().gvec_len<index_domain_t::local>(igloc));
         }
         gvec().comm().allreduce<double, mpi::op_t::max>(&new_pw_cutoff, 1);
         /* estimate new G+k-vectors cutoff */
@@ -1148,7 +1148,7 @@ Simulation_context::create_storage_file(std::string name__) const
 
         sddk::mdarray<int, 2> gv(3, gvec().num_gvec());
         for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-            auto G = gvec().gvec<sddk::index_domain_t::global>(ig);
+            auto G = gvec().gvec<index_domain_t::global>(ig);
             for (int x : {0, 1, 2}) {
                 gv(x, ig) = G[x];
             }

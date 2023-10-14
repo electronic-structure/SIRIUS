@@ -30,12 +30,14 @@
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/blacs_grid.hpp"
-#include "SDDK/splindex.hpp"
+#include "core/splindex.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/typedefs.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/rte.hpp"
 #include "utils/json.hpp"
+
+namespace sirius {
 
 namespace la {
 
@@ -69,10 +71,10 @@ class dmatrix: public sddk::matrix<T>
     BLACS_grid const* blacs_grid_{nullptr};
 
     /// Split index of matrix rows.
-    sddk::splindex_block_cyclic<> spl_row_;
+    sirius::splindex_block_cyclic<> spl_row_;
 
     /// Split index of matrix columns.
-    sddk::splindex_block_cyclic<> spl_col_;
+    sirius::splindex_block_cyclic<> spl_col_;
 
     /// ScaLAPACK matrix descriptor.
     ftn_int descriptor_[9];
@@ -222,14 +224,14 @@ class dmatrix: public sddk::matrix<T>
     {
         int m0, m1, n0, n1;
         if (blacs_grid_ != nullptr) {
-            sddk::splindex_block_cyclic<> spl_r0(ir0__, n_blocks(blacs_grid().num_ranks_row()),
+            splindex_block_cyclic<> spl_r0(ir0__, n_blocks(blacs_grid().num_ranks_row()),
                     block_id(blacs_grid().rank_row()), bs_row_);
-            sddk::splindex_block_cyclic<> spl_r1(ir0__ + nr__, n_blocks(blacs_grid().num_ranks_row()),
+            splindex_block_cyclic<> spl_r1(ir0__ + nr__, n_blocks(blacs_grid().num_ranks_row()),
                     block_id(blacs_grid().rank_row()), bs_row_);
 
-            sddk::splindex_block_cyclic<> spl_c0(ic0__, n_blocks(blacs_grid().num_ranks_col()),
+            splindex_block_cyclic<> spl_c0(ic0__, n_blocks(blacs_grid().num_ranks_col()),
                     block_id(blacs_grid().rank_col()), bs_col_);
-            sddk::splindex_block_cyclic<> spl_c1(ic0__ + nc__, n_blocks(blacs_grid().num_ranks_col()),
+            splindex_block_cyclic<> spl_c1(ic0__ + nc__, n_blocks(blacs_grid().num_ranks_col()),
                     block_id(blacs_grid().rank_col()), bs_col_);
 
             m0 = spl_r0.local_size();
@@ -387,10 +389,10 @@ class dmatrix: public sddk::matrix<T>
         T cs{0};
 
         if (blacs_grid_ != nullptr) {
-            sddk::splindex_block_cyclic<> spl_row(m__, n_blocks(this->blacs_grid().num_ranks_row()),
-                                                       block_id(this->blacs_grid().rank_row()), this->bs_row());
-            sddk::splindex_block_cyclic<> spl_col(n__, n_blocks(this->blacs_grid().num_ranks_col()),
-                                                       block_id(this->blacs_grid().rank_col()), this->bs_col());
+            splindex_block_cyclic<> spl_row(m__, n_blocks(this->blacs_grid().num_ranks_row()),
+                                                 block_id(this->blacs_grid().rank_row()), this->bs_row());
+            splindex_block_cyclic<> spl_col(n__, n_blocks(this->blacs_grid().num_ranks_col()),
+                                                 block_id(this->blacs_grid().rank_col()), this->bs_col());
             for (int i = 0; i < spl_col.local_size(); i++) {
                 for (int j = 0; j < spl_row.local_size(); j++) {
                     cs += (*this)(j, i);
@@ -431,5 +433,7 @@ class dmatrix: public sddk::matrix<T>
 };
 
 } // namespace
+
+} // namespace sirius
 
 #endif // __DMATRIX_HPP__
