@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include "acc.hpp"
 #include "acc_runtime.hpp"
-#include "../typedefs.hpp"
+#include "core/typedefs.hpp"
 
 const double twopi = 6.2831853071795864769;
 
