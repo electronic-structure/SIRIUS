@@ -1,5 +1,7 @@
 #include <sirius.hpp>
 
+using namespace sirius;
+
 int main(int argn, char** argv)
 {
     sirius::initialize(true);
