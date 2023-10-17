@@ -122,7 +122,6 @@ and optionally any of the additional libraries:
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
- * [Boost Filesystem](https://www.boost.org/doc/libs/1_73_0/libs/filesystem/doc/index.htm)*
  * [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page)**
 
 \* Only required when `SIRIUS_BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.

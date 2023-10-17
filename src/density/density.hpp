@@ -403,7 +403,7 @@ class Density : public Field4D
     void augment();
 
     /// Generate augmentation charge density.
-    sddk::mdarray<std::complex<double>, 2> generate_rho_aug();
+    sddk::mdarray<std::complex<double>, 2> generate_rho_aug() const;
 
     /// Return core leakage for a specific atom symmetry class
     inline double core_leakage(int ic) const
