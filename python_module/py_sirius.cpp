@@ -1,12 +1,12 @@
 #include "python_module_includes.hpp"
 #include <mpi.h>
 
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
-#include "core/wf/wave_functions.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 
 using namespace pybind11::literals;
