@@ -37,6 +37,8 @@
 #include <cstdio>
 #include <map>
 
+namespace sirius {
+
 /// MPI related functions and classes.
 namespace mpi {
 
@@ -696,5 +698,7 @@ class Communicator
 };
 
 } // namespace mpi
+
+} // namespace sirius
 
 #endif // __COMMUNICATOR_HPP__

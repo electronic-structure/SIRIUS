@@ -27,6 +27,8 @@
 
 #include "communicator.hpp"
 
+namespace sirius {
+
 namespace mpi {
 
 /// Parallel standard output.
@@ -80,5 +82,7 @@ class pstdout : public std::stringstream
 };
 
 }
+
+} // namespace sirius
 
 #endif

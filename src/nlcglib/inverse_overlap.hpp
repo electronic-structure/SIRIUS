@@ -32,7 +32,7 @@
 
 #include "linalg/linalg_base.hpp"
 #include "SDDK/memory.hpp"
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"

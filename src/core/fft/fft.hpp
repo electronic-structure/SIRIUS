@@ -27,7 +27,7 @@
 
 #include <spfft/spfft.hpp>
 #include "core/splindex.hpp"
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 #include "SDDK/memory.hpp"
 
 namespace sirius {

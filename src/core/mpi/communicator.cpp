@@ -25,6 +25,8 @@
 
 #include "communicator.hpp"
 
+namespace sirius {
+
 namespace mpi {
 
 int num_ranks_per_node()
@@ -93,4 +95,6 @@ int get_device_id(int num_devices__)
     return id;
 }
 
-} // namespace sddk
+} // namespace mpi
+
+} // namespace sirius

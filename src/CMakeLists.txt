@@ -70,7 +70,6 @@ set(_SOURCES
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
   "utils/ostream_tools.cpp"
-  "mpi/communicator.cpp"
   "SDDK/memory.cpp"
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
@@ -87,6 +86,7 @@ set(_SOURCES
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
   "core/fft/gvec.cpp"
+  "core/mpi/communicator.cpp"
   )
 
 

@@ -27,7 +27,7 @@
 
 #include <algorithm>
 #include "atom.hpp"
-#include "mpi/mpi_grid.hpp"
+#include "core/mpi/mpi_grid.hpp"
 #include "context/simulation_parameters.hpp"
 #include "utils/json.hpp"
 

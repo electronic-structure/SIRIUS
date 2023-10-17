@@ -559,7 +559,7 @@ int Gvec::index_by_gvec(r3::vector<int> const& G__) const
 
 Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
 {
-    sddk::serializer s;
+    serializer s;
 
     if (comm__.rank() == source__) {
         ::sirius::fft::serialize(s, gv_src__);
@@ -741,7 +741,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     }
 }
 
-void serialize(sddk::serializer& s__, Gvec const& gv__)
+void serialize(serializer& s__, Gvec const& gv__)
 {
     serialize(s__, gv__.vk_);
     serialize(s__, gv__.Gmax_);
@@ -762,7 +762,7 @@ void serialize(sddk::serializer& s__, Gvec const& gv__)
     serialize(s__, gv__.count_);
 }
 
-void deserialize(sddk::serializer& s__, Gvec& gv__)
+void deserialize(serializer& s__, Gvec& gv__)
 {
     deserialize(s__, gv__.vk_);
     deserialize(s__, gv__.Gmax_);

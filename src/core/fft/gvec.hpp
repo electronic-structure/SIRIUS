@@ -37,7 +37,7 @@
 #include "SDDK/serializer.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
-#include "mpi/pstdout.hpp"
+#include "core/mpi/pstdout.hpp"
 
 namespace sirius {
 
@@ -77,7 +77,7 @@ struct z_column_descriptor
 };
 
 /// Serialize a single z-column descriptor.
-inline void serialize(sddk::serializer& s__, z_column_descriptor const& zcol__)
+inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
 {
     serialize(s__, zcol__.x);
     serialize(s__, zcol__.y);
@@ -87,7 +87,7 @@ inline void serialize(sddk::serializer& s__, z_column_descriptor const& zcol__)
 }
 
 /// Deserialize a single z-column descriptor.
-inline void deserialize(sddk::serializer& s__, z_column_descriptor& zcol__)
+inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
 {
     deserialize(s__, zcol__.x);
     deserialize(s__, zcol__.y);
@@ -97,7 +97,7 @@ inline void deserialize(sddk::serializer& s__, z_column_descriptor& zcol__)
 }
 
 /// Serialize a vector of z-column descriptors.
-inline void serialize(sddk::serializer& s__, std::vector<z_column_descriptor> const& zcol__)
+inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
 {
     serialize(s__, zcol__.size());
     for (auto& e: zcol__) {
@@ -106,7 +106,7 @@ inline void serialize(sddk::serializer& s__, std::vector<z_column_descriptor> co
 }
 
 /// Deserialize a vector of z-column descriptors.
-inline void deserialize(sddk::serializer& s__, std::vector<z_column_descriptor>& zcol__)
+inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
 {
     size_t sz;
     deserialize(s__, sz);
@@ -118,8 +118,8 @@ inline void deserialize(sddk::serializer& s__, std::vector<z_column_descriptor>&
 
 /* forward declarations */
 class Gvec;
-void serialize(sddk::serializer& s__, Gvec const& gv__);
-void deserialize(sddk::serializer& s__, Gvec& gv__);
+void serialize(serializer& s__, Gvec const& gv__);
+void deserialize(serializer& s__, Gvec& gv__);
 Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__);
 
 /// A set of G-vectors for FFTs and G+k basis functions.
@@ -268,9 +268,9 @@ class Gvec
     /// Initialize everything.
     void init(fft::Grid const& fft_grid);
 
-    friend void serialize(sddk::serializer& s__, Gvec const& gv__);
+    friend void serialize(serializer& s__, Gvec const& gv__);
 
-    friend void deserialize(sddk::serializer& s__, Gvec& gv__);
+    friend void deserialize(serializer& s__, Gvec& gv__);
 
     /* copy constructor is forbidden */
     Gvec(Gvec const& src__) = delete;

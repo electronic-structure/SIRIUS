@@ -28,7 +28,7 @@
 #include "context/simulation_context.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "SDDK/memory.hpp"
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 #include <spla/context.hpp>
 
 namespace sirius {

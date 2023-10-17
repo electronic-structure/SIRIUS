@@ -26,9 +26,9 @@
 #define __SERIALIZER_HPP__
 
 #include <limits>
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 
-namespace sddk {
+namespace sirius {
 
 /// Serialize and deserialize objects.
 class serializer
@@ -128,7 +128,7 @@ inline void deserialize(serializer& s__, std::vector<T>& vec__)
 
 /// Serialize multidimentional array.
 template <typename T, int N>
-void serialize(serializer& s__, mdarray<T, N> const& array__)
+void serialize(serializer& s__, sddk::mdarray<T, N> const& array__)
 {
     serialize(s__, array__.size());
     if (array__.size() == 0) {
@@ -143,22 +143,22 @@ void serialize(serializer& s__, mdarray<T, N> const& array__)
 
 /// Deserialize multidimentional array.
 template <typename T, int N>
-void deserialize(serializer& s__, mdarray<T, N>& array__)
+void deserialize(serializer& s__, sddk::mdarray<T, N>& array__)
 {
     size_t sz;
     deserialize(s__, sz);
     if (sz == 0) {
-        array__ = mdarray<T, N>();
+        array__ = sddk::mdarray<T, N>();
         return;
     }
-    std::array<mdarray_index_descriptor, N> dims;
+    std::array<sddk::mdarray_index_descriptor, N> dims;
     for (int i = 0; i < N; i++) {
-        mdarray_index_descriptor::index_type begin, end;
+        sddk::mdarray_index_descriptor::index_type begin, end;
         deserialize(s__, begin);
         deserialize(s__, end);
-        dims[i] = mdarray_index_descriptor(begin, end);
+        dims[i] = sddk::mdarray_index_descriptor(begin, end);
     }
-    array__ = mdarray<T, N>(dims);
+    array__ = sddk::mdarray<T, N>(dims);
     s__.copyout(reinterpret_cast<uint8_t*>(&array__[0]), sizeof(T) * array__.size());
 }
 

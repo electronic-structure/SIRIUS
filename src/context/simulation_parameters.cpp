@@ -23,7 +23,7 @@
  */
 
 #include "simulation_parameters.hpp"
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 #include "context/input_schema.hpp"
 
 #include <unordered_set>

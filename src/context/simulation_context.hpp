@@ -30,7 +30,8 @@
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
-#include "mpi/mpi_grid.hpp"
+#include "core/fft/fft.hpp"
+#include "core/mpi/mpi_grid.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/env.hpp"
@@ -38,7 +39,6 @@
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
-#include "core/fft/fft.hpp"
 #include "lapw/step_function.hpp"
 
 #ifdef SIRIUS_GPU

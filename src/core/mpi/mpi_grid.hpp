@@ -28,6 +28,8 @@
 #include "communicator.hpp"
 #include "utils/rte.hpp"
 
+namespace sirius {
+
 namespace mpi {
 
 /// MPI grid interface
@@ -144,5 +146,7 @@ class Grid
 };
 
 } // namespace mpi
+
+} // namespace sirius
 
 #endif // __MPI_GRID_HPP__
