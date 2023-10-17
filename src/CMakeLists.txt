@@ -86,7 +86,7 @@ set(_SOURCES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
-  "fft/gvec.cpp"
+  "core/fft/gvec.cpp"
   )
 
 

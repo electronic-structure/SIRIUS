@@ -30,7 +30,7 @@
 #include "symmetry/check_gvec.hpp"
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
-#include "SDDK/omp.hpp"
+#include "core/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
 #include "lapw/step_function.hpp"

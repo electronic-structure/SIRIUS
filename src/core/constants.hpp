@@ -27,6 +27,8 @@
 
 #include <complex>
 
+namespace sirius {
+
 /// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999139;
 
@@ -59,5 +61,7 @@ const std::complex<double> pauli_matrix[4][2][2] = {
     {{1.0, 0.0}, {0.0, -1.0}},
     {{0.0, 1.0}, {1.0, 0.0}},
     {{0.0, std::complex<double>(0, -1)}, {std::complex<double>(0, 1), 0.0}}};
+
+} // namespace sirius
 
 #endif // __CONSTANTS_HPP__

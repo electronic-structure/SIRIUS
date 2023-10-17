@@ -29,7 +29,7 @@
 #include <apex_api.hpp>
 #endif
 
-#include "SDDK/omp.hpp"
+#include "core/omp.hpp"
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
 #include "gpu/cusolver.hpp"
 #endif

@@ -30,12 +30,12 @@
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
 #include "linalg/linalg.hpp"
+#include "core/strong_type.hpp"
 #include "core/hdf5_tree.hpp"
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
 #include "utils/env.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/rte.hpp"
-#include "core/strong_type.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {

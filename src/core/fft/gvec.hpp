@@ -30,11 +30,11 @@
 #include <iostream>
 #include <limits>
 #include <type_traits>
-#include "fft/fft3d_grid.hpp"
-#include "linalg/r3.hpp"
+#include "core/fft/fft3d_grid.hpp"
+#include "core/r3/r3.hpp"
+#include "core/splindex.hpp"
 #include "SDDK/memory.hpp"
 #include "SDDK/serializer.hpp"
-#include "core/splindex.hpp"
 #include "utils/profiler.hpp"
 #include "utils/rte.hpp"
 #include "mpi/pstdout.hpp"

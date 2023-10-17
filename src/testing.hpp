@@ -32,7 +32,7 @@
 #include "core/wf/wave_functions.hpp"
 #include "linalg/linalg.hpp"
 #include "linalg/dmatrix.hpp"
-#include "linalg/r3.hpp"
+#include "core/r3/r3.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/profiler.hpp"
 #include "context/simulation_context.hpp"

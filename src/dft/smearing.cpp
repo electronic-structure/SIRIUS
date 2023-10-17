@@ -3,6 +3,8 @@
 #include "specfunc/specfunc.hpp"
 #include <cmath>
 
+namespace sirius {
+
 namespace smearing {
 
 const double pi = 3.1415926535897932385;
@@ -195,3 +197,5 @@ methfessel_paxton::entropy(double x__, double width__, int n__)
 }
 
 } // namespace smearing
+
+} // namespace sirius

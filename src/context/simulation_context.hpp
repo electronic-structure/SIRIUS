@@ -38,7 +38,7 @@
 #include "density/augmentation_operator.hpp"
 #include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
-#include "fft/fft.hpp"
+#include "core/fft/fft.hpp"
 #include "lapw/step_function.hpp"
 
 #ifdef SIRIUS_GPU

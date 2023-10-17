@@ -32,6 +32,8 @@
 #include <sstream>
 #include <algorithm>
 
+namespace sirius {
+
 namespace smearing {
 
 enum class smearing_t
@@ -193,5 +195,7 @@ dxdelta(smearing_t type__, double width__)
 }
 
 } // namespace smearing
+
+} // namespace sirius
 
 #endif

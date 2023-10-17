@@ -23,11 +23,11 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
-#include "fft/fft.hpp"
-#include "fft/gvec.hpp"
+#include "core/typedefs.hpp"
+#include "core/fft/fft.hpp"
+#include "core/fft/gvec.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/profiler.hpp"
-#include "core/typedefs.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__

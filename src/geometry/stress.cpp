@@ -22,7 +22,7 @@
  *  \brief Contains implementation of sirius::Stress class.
  */
 
-#include "linalg/r3.hpp"
+#include "core/r3/r3.hpp"
 #include "k_point/k_point.hpp"
 #include "stress.hpp"
 #include "non_local_functor.hpp"

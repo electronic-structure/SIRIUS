@@ -29,7 +29,7 @@
 #include "hamiltonian/non_local_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "SDDK/memory.hpp"
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
 #include "diag_mm.hpp"
 
 namespace sirius {

@@ -34,6 +34,8 @@
 #include <stdexcept>
 #include <sstream>
 
+namespace sirius {
+
 namespace r3 {
 
 /// Simple implementation of 3d vector.
@@ -614,5 +616,7 @@ inline auto spherical_coordinates(vector<double> vc)
 }
 
 } // namespace r3
+
+} // namespace sirius
 
 #endif // __R3_HPP__

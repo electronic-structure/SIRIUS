@@ -27,7 +27,7 @@
 
 #include <gsl/gsl_sf_bessel.h>
 #include "unit_cell/unit_cell.hpp"
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
 
 namespace sirius {
 

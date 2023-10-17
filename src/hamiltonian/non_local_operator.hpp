@@ -25,12 +25,11 @@
 #ifndef __NON_LOCAL_OPERATOR_HPP__
 #define __NON_LOCAL_OPERATOR_HPP__
 
-#include "SDDK/omp.hpp"
+#include "core/omp.hpp"
 #include "SDDK/memory.hpp"
 #include "non_local_operator_base.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
-//#include "traits.hpp"
 #include "utils/rte.hpp"
 
 namespace sirius {

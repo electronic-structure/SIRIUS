@@ -27,9 +27,9 @@
 
 #include <xc.h>
 #include <string.h>
-#include "linalg/r3.hpp"
+#include "core/r3/r3.hpp"
 #include "xc_functional_base.hpp"
-#include "fft/fft.hpp"
+#include "core/fft/fft.hpp"
 #if defined(SIRIUS_USE_VDWXC)
 #include <vdwxc.h>
 #if SIRIUS_HAVE_VDWXC_MPI

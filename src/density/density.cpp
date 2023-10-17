@@ -31,7 +31,7 @@
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
-#include "SDDK/serialize_mdarray.hpp"
+#include "core/serialize_mdarray.hpp"
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/sum_fg_fl_yg.hpp"
 #include "lapw/generate_sbessel_mt.hpp"

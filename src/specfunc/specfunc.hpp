@@ -31,9 +31,11 @@
 #include <gsl/gsl_sf_hermite.h>
 #include "core/typedefs.hpp"
 #include "core/constants.hpp"
+#include "core/r3/r3.hpp"
 #include "SDDK/memory.hpp"
-#include "linalg/r3.hpp"
 #include "utils/rte.hpp"
+
+namespace sirius {
 
 /// Special functions.
 namespace sf {
@@ -630,4 +632,7 @@ inline void dRlm_dr_numerical(int lmax__, r3::vector<double>& r__, sddk::mdarray
 }
 
 } // namespace sf
+
+} // namespace sirius
+
 #endif // __SPECFUNC_HPP__

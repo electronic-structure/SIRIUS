@@ -26,7 +26,7 @@
 #define __AUGMENTATION_OPERATOR_HPP__
 
 #include "radial/radial_integrals.hpp"
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {

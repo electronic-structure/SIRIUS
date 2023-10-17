@@ -26,8 +26,8 @@
 #define __LOCAL_OPERATOR_HPP__
 
 #include "SDDK/memory.hpp"
-#include "fft/fft.hpp"
 #include "core/typedefs.hpp"
+#include "core/fft/fft.hpp"
 #include "utils/rte.hpp"
 
 /* forward declarations */

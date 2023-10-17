@@ -24,7 +24,7 @@
 
 #include <array>
 #include <cassert>
-#include "linalg/r3.hpp"
+#include "core/r3/r3.hpp"
 
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
