@@ -4,6 +4,8 @@
 
 using namespace sddk;
 
+using namespace sirius;
+
 /* test generation of complex spherical harmonics */
 
 

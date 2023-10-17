@@ -1,11 +1,11 @@
 #include <sirius.hpp>
 #include <testing.hpp>
 
+using namespace sirius;
+
 template <typename T>
 void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
 {
-    using namespace sirius;
-
     auto gvec = ctx__.gvec_coarse_sptr();
     auto gvec_fft = ctx__.gvec_coarse_fft_sptr();
     auto& fft = ctx__.spfft_coarse<T>();

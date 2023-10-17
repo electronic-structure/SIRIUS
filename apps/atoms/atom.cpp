@@ -24,6 +24,7 @@
 #include "potential/xc_functional.hpp"
 
 using namespace sddk;
+using namespace sirius;
 
 double const rmin{1e-5};
 
