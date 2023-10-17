@@ -619,13 +619,17 @@ class Eigensolver_scalapack : public Eigensolver
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevd)
             ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             const_cast<ftn_int*>(A__.descriptor()), eval__, reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione,
-             &ione, const_cast<ftn_int*>(Z__.descriptor()), work1, &lwork, iwork1, &liwork, &info, (ftn_int)1, (ftn_int)1);
+             const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<double*>(eval__),
+             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<double*>(work1), &lwork, iwork1, &liwork, &info,
+             (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssyevd)
             ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             const_cast<ftn_int*>(A__.descriptor()), eval__, reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione,
-             &ione, const_cast<ftn_int*>(Z__.descriptor()), work1, &lwork, iwork1, &liwork, &info, (ftn_int)1, (ftn_int)1);
+             const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<float*>(eval__),
+             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<float*>(work1), &lwork, iwork1, &liwork, &info,
+             (ftn_int)1, (ftn_int)1);
         }
 
         lwork  = static_cast<ftn_int>(work1[0]) + 1;
@@ -638,26 +642,28 @@ class Eigensolver_scalapack : public Eigensolver
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevd)
             ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             const_cast<ftn_int*>(A__.descriptor()), eval__, reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione,
-             &ione, const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<double*>(work.get()), &lwork, iwork.get(),
+             const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<double*>(eval__),
+             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<double*>(work.get()), &lwork, iwork.get(),
              &liwork, &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssyevd)
             ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             const_cast<ftn_int*>(A__.descriptor()), eval__, reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione,
-             &ione, const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<float*>(work.get()), &lwork, iwork.get(),
+             const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<float*>(eval__),
+             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<float*>(work.get()), &lwork, iwork.get(),
              &liwork, &info, (ftn_int)1, (ftn_int)1);
         }
         return info;
     }
 
-    int solve_(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pdsyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
     }
 
-    int solve_(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override
     {
         PROFILE("Eigensolver_scalapack|pssyevd");
         return solve_(matrix_size__, A__, eval__, Z__);
