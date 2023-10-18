@@ -4,7 +4,7 @@
 #include <pybind11/operators.h>
 #include <iostream>
 
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 #include "utils/rte.hpp"
 
 namespace sirius {
