@@ -29,7 +29,7 @@
 #include <array>
 #include <typeinfo>
 #include "radial/spline.hpp"
-#include "sht/sht.hpp"
+#include "core/sht/sht.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/math_tools.hpp"
 

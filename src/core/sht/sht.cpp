@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "sht/sht.hpp"
+#include "core/sht/sht.hpp"
 #include "utils/math_tools.hpp"
 
 namespace sirius {
@@ -159,15 +159,15 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
         RTE_THROW("Error : unknown spin direction");
     }
 
-    const double denom = sqrt(1.0 / (2.0 * l + 1.0));
+    const double denom = std::sqrt(1.0 / (2.0 * l + 1.0));
 
     if (std::abs(j - l - 0.5) < 1e-8) { // check for j = l + 1/2
         int m = static_cast<int>(mj - 0.5); // if mj is integer (2 * m), then int m = (mj-1) >> 1;
         if (spin == 0) {
-            CG = sqrt(l + m + 1.0);
+            CG = std::sqrt(l + m + 1.0);
         }
         if (spin == 1) {
-            CG = sqrt((l - m));
+            CG = std::sqrt((l - m));
         }
     } else {
         if (std::abs(j - l + 0.5) < 1e-8) { // check for j = l - 1/2
@@ -176,10 +176,10 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
                 CG = 0.0;
             } else {
                 if (spin == 0) {
-                    CG = sqrt(l - m + 1);
+                    CG = std::sqrt(l - m + 1);
                 }
                 if (spin == 1) {
-                    CG = -sqrt(l + m);
+                    CG = -std::sqrt(l + m);
                 }
             }
         } else {

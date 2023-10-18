@@ -25,7 +25,7 @@
 
 #include "symmetry/lattice.hpp"
 #include "gvec.hpp"
-#include "SDDK/serializer.hpp"
+#include "core/serializer.hpp"
 
 namespace sirius {
 

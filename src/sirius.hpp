@@ -45,16 +45,12 @@ using json = nlohmann::json;
 #include "context/simulation_context.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"
-#include "sht/sht.hpp"
-#include "sht/gaunt.hpp"
+#include "core/sht/sht.hpp"
+#include "core/sht/gaunt.hpp"
 #include "core/hdf5_tree.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "linalg/eigenproblem.hpp"
 #include "sirius_version.hpp"
-
-#if defined(__PLASMA)
-extern "C" void plasma_init(int num_cores);
-#endif
 
 /// Namespace of the SIRIUS library.
 namespace sirius {
@@ -129,9 +125,6 @@ inline void initialize(bool call_mpi_init__ = true)
 
 #if defined(SIRIUS_MAGMA)
     magma::init();
-#endif
-#if defined(__PLASMA)
-    plasma_init(omp_get_max_threads());
 #endif
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::initialize();

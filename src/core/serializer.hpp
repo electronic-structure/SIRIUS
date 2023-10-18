@@ -27,6 +27,7 @@
 
 #include <limits>
 #include "core/mpi/communicator.hpp"
+#include "SDDK/memory.hpp"
 
 namespace sirius {
 

@@ -26,14 +26,14 @@
 #define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
-#include "core/r3/r3.hpp"
 #include "radial/radial_solver.hpp"
 #include "context/simulation_parameters.hpp"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
-#include "sht/sht.hpp"
-#include "sht/gaunt.hpp"
+#include "core/sht/sht.hpp"
+#include "core/sht/gaunt.hpp"
+#include "core/r3/r3.hpp"
 #include "utils/profiler.hpp"
 #include "utils/packed_index.hpp"
 

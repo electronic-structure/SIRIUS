@@ -75,7 +75,6 @@ set(_SOURCES
   "gpu/acc_blas.cpp"
   "gpu/cusolver.cpp"
   "gpu/rocsolver.cpp"
-  "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
@@ -85,6 +84,7 @@ set(_SOURCES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
+  "core/sht/sht.cpp"
   "core/fft/gvec.cpp"
   "core/mpi/communicator.cpp"
   )
