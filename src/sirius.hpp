@@ -251,7 +251,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
      - \b atoms - utility program to generate FP-LAPW atomic species files
      - \b bands - band plotting
      - \b cif_input - CIF parser
-     - \b dft_loop - DFT miniapp
+     - \b mini_app - DFT miniapp
      - \b hydrogen - solve hydrogen-like atom using Schrödinger equation
      - \b tests - tests of various functionality
      - \b timers - scripts to analyze timer outputs
