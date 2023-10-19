@@ -26,9 +26,9 @@
 #define __SIMULATION_PARAMETERS_HPP__
 
 #include "core/typedefs.hpp"
+#include "core/sf/specfunc.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
-#include "specfunc/specfunc.hpp"
 #include "SDDK/memory.hpp"
 #include "dft/smearing.hpp"
 #include "context/config.hpp"

@@ -65,7 +65,6 @@ set(_SOURCES
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
-  "specfunc/sbessel.cpp"
   "utils/cmd_args.cpp"
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
@@ -87,6 +86,7 @@ set(_SOURCES
   "core/sht/sht.cpp"
   "core/fft/gvec.cpp"
   "core/mpi/communicator.cpp"
+  "core/sf/sbessel.cpp"
   )
 
 

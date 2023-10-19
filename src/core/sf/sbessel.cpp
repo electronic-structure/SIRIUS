@@ -6,6 +6,8 @@
 
 namespace sirius {
 
+namespace sf {
+
 // compute the spherical bessel functions.
 // This implementation is faster than the one provided by GSL, but not necessarily as accurate. For small input, GSL is
 // used as a fallback.
@@ -121,5 +123,6 @@ Spherical_Bessel_functions::deriv_q(int l__)
     return s;
 }
 
+} // namespace sf
 
 }  // sirius

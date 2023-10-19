@@ -35,10 +35,10 @@
 
 #include "core/constants.hpp"
 #include "core/typedefs.hpp"
-#include "linalg/linalg.hpp"
 #include "core/r3/r3.hpp"
+#include "core/sf/specfunc.hpp"
+#include "linalg/linalg.hpp"
 #include "lebedev_grids.hpp"
-#include "specfunc/specfunc.hpp"
 
 namespace sirius {
 

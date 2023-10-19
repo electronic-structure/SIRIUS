@@ -32,6 +32,7 @@
 
 namespace sirius {
 
+/// FFT-related functions and objects.
 namespace fft {
 
 /// Type traits to handle Spfft grid for different precision type.

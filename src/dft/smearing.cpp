@@ -1,7 +1,7 @@
+#include <cmath>
 #include "smearing.hpp"
 #include "core/constants.hpp"
-#include "specfunc/specfunc.hpp"
-#include <cmath>
+#include "core/sf/specfunc.hpp"
 
 namespace sirius {
 

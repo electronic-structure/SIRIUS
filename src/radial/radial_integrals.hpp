@@ -26,7 +26,7 @@
 #define __RADIAL_INTEGRALS_HPP__
 
 #include "unit_cell/unit_cell.hpp"
-#include "specfunc/sbessel.hpp"
+#include "core/sf/sbessel.hpp"
 #include "utils/rte.hpp"
 #include "utils/env.hpp"
 #include "utils/ostream_tools.hpp"

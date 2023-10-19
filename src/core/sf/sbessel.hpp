@@ -31,6 +31,8 @@
 
 namespace sirius {
 
+namespace sf {
+
 /// Spherical Bessel functions \f$ j_{\ell}(q x) \f$ up to lmax.
 class Spherical_Bessel_functions
 {
@@ -60,6 +62,8 @@ class Spherical_Bessel_functions
     Spline<double> deriv_q(int l__);
 
 };
+
+} // namespace sf
 
 }; // namespace sirius
 

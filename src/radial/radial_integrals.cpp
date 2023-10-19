@@ -32,7 +32,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
     PROFILE("sirius::Radial_integrals|atomic_wfs");
 
     /* spherical Bessel functions jl(qx) */
-    sddk::mdarray<Spherical_Bessel_functions, 1> jl(nq());
+    sddk::mdarray<sf::Spherical_Bessel_functions, 1> jl(nq());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
@@ -46,7 +46,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
         /* create jl(qx) */
         #pragma omp parallel for
         for (int iq = 0; iq < nq(); iq++) {
-            jl(iq) = Spherical_Bessel_functions(indexr_(iat).lmax(), atom_type.radial_grid(), grid_q_[iq]);
+            jl(iq) = sf::Spherical_Bessel_functions(indexr_(iat).lmax(), atom_type.radial_grid(), grid_q_[iq]);
         }
 
         /* loop over all pseudo wave-functions */
@@ -99,7 +99,7 @@ void Radial_integrals_aug<jl_deriv>::generate()
         for (auto it : spl_q_) {
             int iq = it.i;
 
-            Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
+            sf::Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
 
             for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
                 for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++) {
@@ -156,7 +156,7 @@ void Radial_integrals_rho_pseudo::generate()
         #pragma omp parallel for
         for (auto it : spl_q_) {
             int iq = it.i;
-            Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
+            sf::Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
 
             values_(iat)(iq) = sirius::inner(jl[0], rho, 0, atom_type.num_mt_points()) / fourpi;
         }
@@ -184,7 +184,7 @@ void Radial_integrals_rho_core_pseudo<jl_deriv>::generate()
         #pragma omp parallel for
         for (auto it : spl_q_) {
             int iq = it.i;
-            Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
+            sf::Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
 
             if (jl_deriv) {
                 auto s           = jl.deriv_q(0);
@@ -218,7 +218,7 @@ void Radial_integrals_beta<jl_deriv>::generate()
         #pragma omp parallel for
         for (auto it : spl_q_) {
             int iq = it.i;
-            Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
+            sf::Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 int l  = atom_type.indexr(idxrf).am.l();
                 /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
@@ -238,46 +238,6 @@ void Radial_integrals_beta<jl_deriv>::generate()
         }
     }
 }
-
-//void Radial_integrals_beta_jl::generate()
-//{
-//    PROFILE("sirius::Radial_integrals|beta_jl");
-//
-//    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-//        auto& atom_type = unit_cell_.atom_type(iat);
-//        int nrb         = atom_type.num_beta_radial_functions();
-//
-//        if (!nrb) {
-//            continue;
-//        }
-//
-//        for (int idxrf = 0; idxrf < nrb; idxrf++) {
-//            for (int l = 0; l <= lmax_; l++) {
-//                values_(idxrf, l, iat) = Spline<double>(grid_q_);
-//            }
-//        }
-//
-//        #pragma omp parallel for
-//        for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-//            Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
-//            for (int idxrf = 0; idxrf < nrb; idxrf++) {
-//                // int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-//                for (int l = 0; l <= lmax_; l++) {
-//                    /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
-//                    /* remember that beta(r) are defined as miltiplied by r */
-//                    values_(idxrf, l, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 2);
-//                }
-//            }
-//        }
-//
-//        #pragma omp parallel for
-//        for (int idxrf = 0; idxrf < nrb; idxrf++) {
-//            for (int l = 0; l <= lmax_; l++) {
-//                values_(idxrf, l, iat).interpolate();
-//            }
-//        }
-//    }
-//}
 
 template <bool jl_deriv>
 void Radial_integrals_vloc<jl_deriv>::generate()
