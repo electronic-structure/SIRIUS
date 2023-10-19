@@ -14,7 +14,7 @@ jobs:
     env:
       DEVSPEC: sirius@develop %gcc +python +memory_pool +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Configure SIRIUS
         run: |
           spack spec -I $DEVSPEC
@@ -51,7 +51,7 @@ jobs:
     env:
       DEVSPEC: sirius@develop %gcc +python +cuda +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Configure SIRIUS
         run: |
           spack spec -I $DEVSPEC
