@@ -37,7 +37,10 @@
 #error Either SIRIUS_CUDA or SIRIUS_ROCM must be defined!
 #endif
 
+namespace sirius {
+
 namespace acc {
+/// Interface to accelerated BLAS functions (CUDA or ROCM).
 namespace blas {
 
 #if defined(SIRIUS_CUDA)
@@ -315,7 +318,8 @@ inline auto sscal(ARGS&&... args) -> status_t {
 #endif // SIRIUS_ROCM
 }
 
-}  // namespace blas
-}  // namespace acc
+} // namespace blas
+} // namespace acc
+} // namespace sirius
 
 #endif

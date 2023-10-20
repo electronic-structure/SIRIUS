@@ -50,6 +50,11 @@
 #include <vector>
 #include <stdio.h>
 
+namespace sirius {
+
+/// Namespace for accelerator-related functions.
+namespace acc {
+
 #if defined(SIRIUS_CUDA)
 #define GPU_PREFIX(x) cuda##x
 #elif defined(SIRIUS_ROCM)
@@ -151,11 +156,8 @@ inline void stack_backtrace()
     raise(SIGQUIT);
 }
 
-/// Namespace for accelerator-related functions.
-namespace acc {
 /// Get the number of devices.
 int num_devices();
-}
 
 #if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
 #define CALL_DEVICE_API(func__, args__)                                         \
@@ -176,9 +178,6 @@ int num_devices();
 #else
 #define CALL_DEVICE_API(func__, args__)
 #endif
-
-/// Namespace for accelerator-related functions.
-namespace acc {
 
 /// Set the GPU id.
 inline void set_device_id(int id__)
@@ -513,20 +512,17 @@ inline bool check_device_ptr(void const* ptr__)
 
 #endif
 
+extern "C" {
+void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);
+void scale_matrix_elements_gpu(acc_complex_double_t* ptr__, int ld__, int nrow__, int ncol__, double beta__);
+}
+
 } // namespace acc
 
+} // namespace sirius
+
 #if defined(SIRIUS_GPU)
-// extern "C" void scale_matrix_columns_gpu_double(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
 
-// extern "C" void scale_matrix_columns_gpu_float(int nrow, int ncol, acc_complex_float_t* mtrx, float* a);
-
-extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);
-
-extern "C" void scale_matrix_elements_gpu(acc_complex_double_t* ptr__,
-                                          int ld__,
-                                          int nrow__,
-                                          int ncol__,
-                                          double beta__);
 #endif
 
 #endif // __ACC_HPP__

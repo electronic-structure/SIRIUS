@@ -23,6 +23,8 @@
 #include "rocsolver.hpp"
 #include "acc_blas.hpp"
 
+namespace sirius {
+
 namespace rocsolver {
 
 ::acc::blas::handle_t&
@@ -50,4 +52,7 @@ zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpi
 }
 
 } // namespace rocsolver
+
+} // namespace sirius
+
 #endif

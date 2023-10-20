@@ -1,6 +1,8 @@
 #if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
 #include "acc_blas.hpp"
 
+namespace sirius {
+
 namespace accblas {
 
 ::acc::blas::handle_t&
@@ -27,6 +29,8 @@ cublasxt_handle()
 }
 } // namespace xt
 #endif
+}
+
 }
 
 #endif

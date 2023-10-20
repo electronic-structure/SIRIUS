@@ -26,16 +26,16 @@
 #define __LINALG_HPP__
 
 #include <stdint.h>
-#include "gpu/acc.hpp"
+#include "core/acc/acc.hpp"
 #if defined(SIRIUS_GPU)
-#include "gpu/acc_blas.hpp"
-#include "gpu/acc_lapack.hpp"
+#include "core/acc/acc_blas.hpp"
+#include "core/acc/acc_lapack.hpp"
 #endif
 #if defined(SIRIUS_MAGMA)
-#include "gpu/magma.hpp"
+#include "core/acc/magma.hpp"
 #endif
 #if defined(SIRIUS_GPU) and defined(SIRIUS_CUDA)
-#include "gpu/cusolver.hpp"
+#include "core/acc/cusolver.hpp"
 #endif
 #include "blas_lapack.h"
 #include "SDDK/memory.hpp"

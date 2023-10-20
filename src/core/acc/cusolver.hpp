@@ -11,6 +11,9 @@
 #include "SDDK/memory.hpp"
 #include <cusolverDn.h>
 
+namespace sirius {
+
+/// Interface to cuSolver library
 namespace cusolver {
 
 inline void error_message(cusolverStatus_t status)
@@ -147,5 +150,7 @@ int trtri(int n__, T* A__, int lda__)
 }
 
 } // namespace cusolver
+
+} // namespace sirius
 
 #endif

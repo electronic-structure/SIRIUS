@@ -29,6 +29,9 @@
 #include "gpu/rocsolver.hpp"
 #endif
 
+namespace sirius {
+
+/// Interface to accelerated lapack functions.
 namespace acclapack {
 
 inline int getrf(int m, int n, acc_complex_double_t* A, int* devIpiv, int lda)
@@ -85,9 +88,8 @@ inline int getrs(char trans, int n, int nrhs, const acc_complex_double_t* A, int
 #endif
 }
 
-
-
 } // namespace acclapack
 
+} // namespace sirius
 
 #endif /* __ACC_LAPACK_HPP__ */

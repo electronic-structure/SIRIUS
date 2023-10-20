@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include "utils/rte.hpp"
 
+namespace sirius {
+
 namespace rocsolver {
 
 #define CALL_ROCSOLVER(func__, args__)                                                                                 \
@@ -254,7 +256,8 @@ zgetrs(rocblas_handle handle, char trans, int n, int nrhs, acc_complex_double_t*
 void
 zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpiv, int lda, int* devInfo);
 
-
 } // namespace rocsolver
+
+} // namespace sirius
 
 #endif

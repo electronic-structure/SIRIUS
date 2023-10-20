@@ -6,6 +6,8 @@
 #include <atomic>
 #include "acc.hpp"
 
+namespace sirius {
+
 namespace acc {
 
 int num_devices()
@@ -32,4 +34,6 @@ std::vector<acc_stream_t>& streams()
     return streams_;
 }
 
-} // namespace sddk
+} // namespace acc
+
+} // namespace sirius
