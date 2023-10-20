@@ -13,6 +13,8 @@
 #include <memory>
 #include "historylist.hpp"
 
+namespace vcsqnm {
+
 namespace sqnm_space
 {
   class SQNM {
@@ -265,5 +267,7 @@ namespace sqnm_space
       return S;
     }
   };
+}
+
 }
 #endif

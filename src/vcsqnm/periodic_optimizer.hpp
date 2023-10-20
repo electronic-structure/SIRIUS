@@ -12,6 +12,7 @@
 #include <iostream>
 #include "sqnm.hpp"
 
+namespace vcsqnm {
 
 namespace PES_optimizer{
 
@@ -265,5 +266,7 @@ namespace PES_optimizer{
       this->opt_lattice = true;
     }
   };
+}
+
 }
 #endif
