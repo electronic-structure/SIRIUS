@@ -23,55 +23,43 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     version("7.4.3", sha256="015679a60a39fa750c5d1bd8fb1ce73945524bef561270d8a171ea2fd4687fec")
     version("7.4.0", sha256="f9360a695a1e786d8cb9d6702c82dd95144a530c4fa7e8115791c7d1e92b020b")
+    version("7.3.2", sha256="a256508de6b344345c295ad8642dbb260c4753cd87cc3dd192605c33542955d7")
+    version("7.3.1", sha256="8bf9848b8ebf0b43797fd359adf8c84f00822de4eb677e3049f22baa72735e98")
+    version("7.3.0", sha256="69b5cf356adbe181be6c919032859c4e0160901ff42a885d7e7ea0f38cc772e2")
     version(
-            "7.3.2",
-            sha256="a256508de6b344345c295ad8642dbb260c4753cd87cc3dd192605c33542955d7",
-            deprecated=True
+        "7.2.7",
+        sha256="929bf7f131a4847624858b9c4295532c24b0c06f6dcef5453c0dfc33fb78eb03",
+        deprecated=True,
     )
     version(
-            "7.3.1",
-            sha256="8bf9848b8ebf0b43797fd359adf8c84f00822de4eb677e3049f22baa72735e98",
-            deprecated=True
+        "7.2.6",
+        sha256="e751fd46cdc7c481ab23b0839d3f27fb00b75dc61dc22a650c92fe8e35336e3a",
+        deprecated=True,
     )
     version(
-            "7.3.0",
-            sha256="69b5cf356adbe181be6c919032859c4e0160901ff42a885d7e7ea0f38cc772e2",
-            deprecated=True
+        "7.2.5",
+        sha256="794e03d4da91025f77542d3d593d87a8c74e980394f658a0210a4fd91c011f22",
+        deprecated=True,
     )
     version(
-            "7.2.7",
-            sha256="929bf7f131a4847624858b9c4295532c24b0c06f6dcef5453c0dfc33fb78eb03",
-            deprecated=True
+        "7.2.4",
+        sha256="aeed0e83b80c3a79a9469e7f3fe10d80ad331795e38dbc3c49cb0308e2bd084d",
+        deprecated=True,
     )
     version(
-            "7.2.6",
-            sha256="e751fd46cdc7c481ab23b0839d3f27fb00b75dc61dc22a650c92fe8e35336e3a",
-            deprecated=True
+        "7.2.3",
+        sha256="6c10f0e87e50fcc7cdb4d1b2d35e91dba6144de8f111e36c7d08912e5942a906",
+        deprecated=True,
     )
     version(
-            "7.2.5",
-            sha256="794e03d4da91025f77542d3d593d87a8c74e980394f658a0210a4fd91c011f22",
-            deprecated=True
+        "7.2.1",
+        sha256="01bf6c9893ff471473e13351ca7fdc2ed6c1f4b1bb7afa151909ea7cd6fa0de7",
+        deprecated=True,
     )
     version(
-            "7.2.4",
-            sha256="aeed0e83b80c3a79a9469e7f3fe10d80ad331795e38dbc3c49cb0308e2bd084d",
-            deprecated=True
-    )
-    version(
-            "7.2.3",
-            sha256="6c10f0e87e50fcc7cdb4d1b2d35e91dba6144de8f111e36c7d08912e5942a906",
-            deprecated=True
-    )
-    version(
-            "7.2.1",
-            sha256="01bf6c9893ff471473e13351ca7fdc2ed6c1f4b1bb7afa151909ea7cd6fa0de7",
-            deprecated=True
-    )
-    version(
-            "7.2.0",
-            sha256="537800459db8a7553d7aa251c19f3a31f911930194b068bc5bca2dfb2c9b71db",
-            deprecated=True
+        "7.2.0",
+        sha256="537800459db8a7553d7aa251c19f3a31f911930194b068bc5bca2dfb2c9b71db",
+        deprecated=True,
     )
     version(
         "7.0.2",
@@ -91,13 +79,6 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     variant("shared", default=True, description="Build shared libraries")
     variant("openmp", default=True, description="Build with OpenMP support")
-    variant(
-        "boost_filesystem",
-        default=False,
-        description="Use Boost filesystem for self-consistent field method "
-        "mini-app. Only required when the compiler does not "
-        "support std::experimental::filesystem nor std::filesystem",
-    )
     variant("fortran", default=False, description="Build Fortran bindings")
     variant("python", default=False, description="Build Python bindings")
     variant("memory_pool", default=True, description="Build with memory pool")
@@ -144,7 +125,6 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     extends("python", when="+python")
 
     depends_on("magma", when="+magma")
-    depends_on("boost cxxstd=14 +filesystem", when="+boost_filesystem")
 
     depends_on("spfft@0.9.13:", when="@7.0.1:")
     depends_on("spfft+single_precision", when="+single_precision ^spfft")
@@ -171,7 +151,6 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     # FindHIP cmake script only works for < 4.1
     depends_on("hip@:4.0", when="@:7.2.0 +rocm")
 
-    conflicts("+boost_filesystem", when="~apps")
     conflicts("^libxc@5.0.0")  # known to produce incorrect results
     conflicts("+single_precision", when="@:7.2.4")
     conflicts("+scalapack", when="^cray-libsci")
@@ -193,21 +172,11 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("costa+shared", when="@7.3.2:")
 
     with when("@7.5: +memory_pool"):
-        depends_on("umpire")
+        depends_on("umpire~cuda~rocm", when="~cuda~rocm")
         depends_on("umpire+cuda~device_alloc", when="+cuda")
         depends_on("umpire+rocm~device_alloc", when="+rocm")
 
     patch("mpi_datatypes.patch", when="@:7.2.6")
-
-    @property
-    def libs(self):
-        libraries = []
-
-        libraries += ["libsirius"]
-
-        return find_libraries(
-            libraries, root=self.prefix, shared="+shared" in self.spec, recursive=True
-        )
 
     def cmake_args(self):
         spec = self.spec
@@ -228,12 +197,12 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             self.define_from_variant(cm_label + "CREATE_PYTHON_MODULE", "python"),
             self.define_from_variant(cm_label + "USE_CUDA", "cuda"),
             self.define_from_variant(cm_label + "USE_ROCM", "rocm"),
-            self.define_from_variant(cm_label + "BUILD_TESTING", "tests"),
             self.define_from_variant(cm_label + "BUILD_APPS", "apps"),
             self.define_from_variant(cm_label + "BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant(cm_label + "USE_FP32", "single_precision"),
             self.define_from_variant(cm_label + "USE_PROFILER", "profiler"),
             self.define_from_variant(cm_label + "USE_WANNIER90", "wannier90"),
+            self.define_from_variant("BUILD_TESTING", "tests"),
         ]
 
         lapack = spec["lapack"]
@@ -272,18 +241,16 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             args.append(self.define(cm_label + "ELPA_INCLUDE_DIR", elpa_incdir))
 
         if "+cuda" in spec:
-            cuda_arch = self.spec.variants["cuda_arch"].value
+            cuda_arch = spec.variants["cuda_arch"].value
             if cuda_arch[0] != "none":
-                args += [self.define("CMAKE_CUDA_ARCHITECTURES", cuda_arch)]
+                # Make SIRIUS handle it
+                if "@:7.4.3" in spec:
+                    args.append(self.define("CMAKE_CUDA_ARCH", ";".join(cuda_arch)))
+                else:
+                    args.append(self.define("CMAKE_CUDA_ARCHITECTURES", ";".join(cuda_arch)))
 
         if "+rocm" in spec:
             archs = ",".join(self.spec.variants["amdgpu_target"].value)
-            args.extend(
-                [
-                    self.define("HIP_ROOT_DIR", spec["hip"].prefix),
-                    self.define("HIP_HCC_FLAGS", "--amdgpu-target={0}".format(archs)),
-                    self.define("HIP_CXX_COMPILER", self.spec["hip"].hipcc),
-                ]
-            )
+            args.extend([self.define("CMAKE_HIP_ARCHITECTURES", archs)])
 
         return args

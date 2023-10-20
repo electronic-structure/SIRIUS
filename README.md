@@ -25,7 +25,7 @@
 ## Introduction
 SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
 and full potential linearized augmented plane wave (FP-LAPW) methods and is designed for GPU acceleration of popular community
-codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++14 with MPI, OpenMP and CUDA/ROCm programming models.
+codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++17 with MPI, OpenMP and CUDA/ROCm programming models.
 SIRIUS is organised as a collection of classes that abstract away the different building blocks of DFT self-consistency cycle.
 
 The following functionality is currently implemented in SIRIUS:
@@ -107,7 +107,7 @@ $ spack build-env $SPEC -- make -j$(nproc)
 When installing SIRIUS without Spack, make sure to install the required dependencies first:
 
  * CMake ≥ 3.14
- * C++ compiler with C++14 support
+ * C++ compiler with C++17 support
  * MPI (OpenMPI or MPICH)
  * BLAS/LAPACK (OpenBLAS or Intel MKL)
  * [GSL](https://www.gnu.org/software/gsl/) - GNU scientific library
@@ -122,7 +122,6 @@ and optionally any of the additional libraries:
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
- * [Boost Filesystem](https://www.boost.org/doc/libs/1_73_0/libs/filesystem/doc/index.htm)*
  * [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page)**
 
 \* Only required when `SIRIUS_BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.

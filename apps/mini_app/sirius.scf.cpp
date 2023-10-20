@@ -589,12 +589,15 @@ int main(int argn, char** argv)
 
     int my_rank = mpi::Communicator::world().rank();
 
+    bool exception_thrown{false};
     try {
         run_tasks(args);
     } catch (std::exception const& e) {
         std::cout << e.what() << std::endl;
+        exception_thrown = true;
     } catch (...) {
         std::cout << "unknown exception" << std::endl;
+        exception_thrown = true;
     }
 
     sirius::finalize(1);
@@ -621,5 +624,5 @@ int main(int argn, char** argv)
         std::cout << "FE_OVERFLOW exception\n";
     }
 
-    return 0;
+    return exception_thrown ? -1 : 0;
 }

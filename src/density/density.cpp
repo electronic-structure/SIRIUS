@@ -1371,7 +1371,7 @@ Density::generate_valence(K_point_set const& ks__)
 }
 
 sddk::mdarray<std::complex<double>, 2>
-Density::generate_rho_aug()
+Density::generate_rho_aug() const
 {
     PROFILE("sirius::Density::generate_rho_aug");
 

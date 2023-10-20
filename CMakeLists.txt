@@ -144,21 +144,14 @@ if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")
   endif()
 endif()
 
-# Either find std::filesystem or boost::filesystem
 find_package(Filesystem COMPONENTS Final Experimental)
 
 add_library(sirius::filesystem INTERFACE IMPORTED)
-if(TARGET std::filesystem)
   target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
   target_compile_definitions(sirius::filesystem INTERFACE
     $<$<BOOL:${Filesystem_FOUND}>:SIRIUS_STD_FILESYSTEM>
     $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:SIRIUS_STD_FILESYSTEM_EXPERIMENTAL>
   )
-else()
-  find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
-  target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
-  target_compile_definitions(sirius::filesystem INTERFACE SIRIUS_BOOST_FILESYSTEM)
-endif()
 
 if (SIRIUS_USE_OPENMP)
   find_package(OpenMP REQUIRED)
@@ -292,7 +285,7 @@ endif(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
 if(SIRIUS_BUILD_APPS)
   add_subdirectory(apps/atoms)
   add_subdirectory(apps/hydrogen)
-  add_subdirectory(apps/dft_loop)
+  add_subdirectory(apps/mini_app)
   if(SIRIUS_USE_NLCGLIB)
     add_subdirectory(apps/nlcg)
   endif()
