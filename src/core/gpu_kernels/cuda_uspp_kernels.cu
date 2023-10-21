@@ -22,11 +22,14 @@
  *  \brief CUDA kernel for the PW-PW method.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
-#include "gpu/acc.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+#include "core/acc/acc.hpp"
 
-extern acc_stream_t* streams;
+extern sirius::acc_stream_t* streams;
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void compute_chebyshev_order1_gpu_kernel
 (

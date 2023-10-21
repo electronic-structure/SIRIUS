@@ -23,8 +23,11 @@
  */
 
 #include <cmath>
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 inline __device__ int lmidx(int l, int m)
 {

@@ -22,12 +22,15 @@
  *  \brief CUDA kernel for the generation of beta(G+k) projectors.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
 
 #ifdef SIRIUS_CUDA
-#include "gpu/cuda_timer.hpp"
+#include "core/acc/cuda_timer.hpp"
 #endif
+
+using namespace sirius;
+using namespace sirius::acc;
 
 template <typename T>
 __global__ void create_beta_gk_gpu_kernel

@@ -22,8 +22,11 @@
  *  \brief CUDA kernel to generate plane-wave atomic phase factors.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc//acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void generate_phase_factors_gpu_kernel
 (

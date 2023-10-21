@@ -13,7 +13,6 @@ if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
     "core/gpu_kernels/create_beta_gk.cu"
     "core/gpu_kernels/cuda_uspp_kernels.cu"
     "core/gpu_kernels/density_rg.cu"
-    "core/gpu_kernels/fft_kernels.cu"
     "core/gpu_kernels/generate_dm_pw.cu"
     "core/gpu_kernels/generate_phase_factors.cu"
     "core/gpu_kernels/local_operator.cu"
@@ -70,10 +69,6 @@ set(_SOURCES
   "utils/profiler.cpp"
   "utils/ostream_tools.cpp"
   "SDDK/memory.cpp"
-  "gpu/acc.cpp"
-  "gpu/acc_blas.cpp"
-  "gpu/cusolver.cpp"
-  "gpu/rocsolver.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
@@ -87,6 +82,10 @@ set(_SOURCES
   "core/fft/gvec.cpp"
   "core/mpi/communicator.cpp"
   "core/sf/sbessel.cpp"
+  "core/acc/acc.cpp"
+  "core/acc/acc_blas.cpp"
+  "core/acc/cusolver.cpp"
+  "core/acc/rocsolver.cpp"
   )
 
 

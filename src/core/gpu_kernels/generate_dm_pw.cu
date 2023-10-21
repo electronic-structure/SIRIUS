@@ -22,9 +22,12 @@
  *  \brief CUDA kernel to generate a product of phase-factors and density matrix.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
-#include "gpu/acc_blas.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+#include "core/acc/acc_blas.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void generate_phase_factors_conj_gpu_kernel
 (

@@ -22,8 +22,11 @@
  *  \brief CUDA kernel to update density on the regular FFT grid.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 template <typename T>
 __global__ void update_density_rg_1_complex_gpu_kernel(int size__,

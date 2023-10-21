@@ -40,8 +40,8 @@
 namespace sirius {
 
 namespace acc {
-/// Interface to accelerated BLAS functions (CUDA or ROCM).
-namespace blas {
+/// Internal interface to accelerated BLAS functions (CUDA or ROCM).
+namespace blas_api {
 
 #if defined(SIRIUS_CUDA)
 using handle_t = cublasHandle_t;

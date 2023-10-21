@@ -22,8 +22,11 @@
  *  \brief CUDA kernels to perform operations on splines.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
                                                    int const* idx_ri__,

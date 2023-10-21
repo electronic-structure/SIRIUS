@@ -2,7 +2,7 @@
 #include "cusolver.hpp"
 
 namespace sirius {
-
+namespace acc {
 namespace cusolver {
 
 cusolverDnHandle_t&
@@ -25,6 +25,7 @@ destroy_handle()
 }
 
 } // namespace cusolver
-
+} // namespace acc
 } // namespace sirius
+
 #endif

@@ -149,10 +149,10 @@ inline void
 copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
     for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
-        ::sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
+        sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
-        ::sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
+        sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
 }
 

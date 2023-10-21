@@ -35,6 +35,8 @@
 #include <algorithm>
 #include <type_traits>
 
+namespace sirius {
+
 // define type traits that return real type
 // general case for real type
 template <typename T>
@@ -265,5 +267,7 @@ struct periodic_function_ptr_t
     {
     }
 };
+
+}
 
 #endif // __TYPEDEFS_HPP__

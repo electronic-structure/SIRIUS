@@ -22,8 +22,11 @@
  *  \brief CUDA kernel to compute wave-function residuals on GPUs.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 template <typename T>
 __global__ void compute_residuals_gpu_kernel

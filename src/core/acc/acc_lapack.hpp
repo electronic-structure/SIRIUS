@@ -31,6 +31,8 @@
 
 namespace sirius {
 
+namespace acc {
+
 /// Interface to accelerated lapack functions.
 namespace acclapack {
 
@@ -89,6 +91,8 @@ inline int getrs(char trans, int n, int nrhs, const acc_complex_double_t* A, int
 }
 
 } // namespace acclapack
+
+} // namespace acc
 
 } // namespace sirius
 

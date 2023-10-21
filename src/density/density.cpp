@@ -1508,7 +1508,7 @@ Density::generate_rho_aug() const
                                            rho_aug.at(sddk::memory_t::device, g_begin, iv), 1 + iv);
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        acc::sync_stream(stream_id(1 + iv));
+                        acc::sync_stream(acc::stream_id(1 + iv));
                     }
 #endif
                     break;

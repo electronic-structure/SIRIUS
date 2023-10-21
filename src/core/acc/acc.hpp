@@ -52,9 +52,6 @@
 
 namespace sirius {
 
-/// Namespace for accelerator-related functions.
-namespace acc {
-
 #if defined(SIRIUS_CUDA)
 #define GPU_PREFIX(x) cuda##x
 #elif defined(SIRIUS_ROCM)
@@ -126,6 +123,9 @@ struct GPU_Complex<float> {using type = acc_complex_float_t;};
 template <typename T>
 using gpu_complex_type = typename GPU_Complex<T>::type;
 #endif
+
+/// Namespace for accelerator-related functions.
+namespace acc {
 
 /// Helper class to wrap stream id (integer number).
 class stream_id
