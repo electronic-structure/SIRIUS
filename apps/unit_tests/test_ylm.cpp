@@ -2,12 +2,10 @@
 #include <math.h>
 #include <complex.h>
 
-using namespace sddk;
-
 using namespace sirius;
+using namespace sirius::sddk;
 
 /* test generation of complex spherical harmonics */
-
 
 /* Generated with the following Mathematica code
 
