@@ -24,9 +24,9 @@
 #include "utils/rte.hpp"
 
 #if defined(SIRIUS_CUDA)
-#include "cusolver.hpp"
+#include "core/acc/cusolver.hpp"
 #elif defined(SIRIUS_ROCM)
-#include "gpu/rocsolver.hpp"
+#include "core/acc/rocsolver.hpp"
 #endif
 
 namespace sirius {
