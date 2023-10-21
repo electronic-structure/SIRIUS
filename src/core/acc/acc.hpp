@@ -514,10 +514,12 @@ inline bool check_device_ptr(void const* ptr__)
 
 } // namespace acc
 
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
 extern "C" {
 void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);
 void scale_matrix_elements_gpu(acc_complex_double_t* ptr__, int ld__, int nrow__, int ncol__, double beta__);
 }
+#endif
 
 } // namespace sirius
 
