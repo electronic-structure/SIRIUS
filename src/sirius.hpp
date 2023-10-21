@@ -49,7 +49,7 @@ using json = nlohmann::json;
 #include "core/sht/gaunt.hpp"
 #include "core/hdf5_tree.hpp"
 #include "dft/dft_ground_state.hpp"
-#include "linalg/eigenproblem.hpp"
+//#include "linalg/eigenproblem.hpp"
 #include "sirius_version.hpp"
 
 /// Namespace of the SIRIUS library.
@@ -130,8 +130,8 @@ inline void initialize(bool call_mpi_init__ = true)
     la::Eigensolver_elpa::initialize();
 #endif
     /* for the fortran interface to blas/lapack */
-    assert(sizeof(int) == 4);
-    assert(sizeof(double) == 8);
+    RTE_ASSERT(sizeof(int) == 4);
+    RTE_ASSERT(sizeof(double) == 8);
 
     is_initialized() = true;
 }

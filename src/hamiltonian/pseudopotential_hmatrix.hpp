@@ -1,5 +1,5 @@
-#ifndef PSEUDOPOTENTIAL_HMATRIX_H
-#define PSEUDOPOTENTIAL_HMATRIX_H
+#ifndef __PSEUDOPOTENTIAL_HMATRIX_HPP__
+#define __PSEUDOPOTENTIAL_HMATRIX_HPP__
 
 namespace sirius {
 template <typename T>
@@ -148,4 +148,4 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
 }
 }  // sirius
 
-#endif /* PSEUDOPOTENTIAL_HMATRIX_H */
+#endif /* __PSEUDOPOTENTIAL_HMATRIX_HPP__ */
