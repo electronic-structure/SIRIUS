@@ -36,6 +36,7 @@ namespace sirius {
 
 namespace acc {
 
+/// Interface to ROCM eigensolver.
 namespace rocsolver {
 
 #define CALL_ROCSOLVER(func__, args__)                                                                                 \

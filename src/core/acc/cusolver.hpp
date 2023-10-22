@@ -15,7 +15,7 @@ namespace sirius {
 
 namespace acc {
 
-/// Interface to cuSolver library
+/// Interface to cuSolver library.
 namespace cusolver {
 
 inline void error_message(cusolverStatus_t status)
