@@ -114,10 +114,10 @@ inline void initialize(bool call_mpi_init__ = true)
            number of OMP threads */
         acc::create_streams(std::max(omp_get_max_threads(), 6));
 #if defined(SIRIUS_GPU)
-        acc::accblas::create_stream_handles();
+        acc::blas::create_stream_handles();
 #endif
 #if defined(SIRIUS_CUDA)
-        acc::accblas::xt::create_handle();
+        acc::blas::xt::create_handle();
         acc::cusolver::create_handle();
 #endif
     }
@@ -156,11 +156,11 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         sddk::get_memory_pool(sddk::memory_t::host_pinned).clear();
         sddk::get_memory_pool(sddk::memory_t::device).clear();
 #if defined(SIRIUS_GPU)
-        acc::accblas::destroy_stream_handles();
+        acc::blas::destroy_stream_handles();
 #endif
 #if defined(SIRIUS_CUDA)
         acc::cusolver::destroy_handle();
-        acc::accblas::xt::destroy_handle();
+        acc::blas::xt::destroy_handle();
 #endif
         acc::destroy_streams();
         if (reset_device__) {

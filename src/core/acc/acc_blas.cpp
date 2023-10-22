@@ -5,7 +5,7 @@ namespace sirius {
 
 namespace acc {
 
-namespace accblas {
+namespace blas {
 
 acc::blas_api::handle_t&
 null_stream_handle()
@@ -31,10 +31,10 @@ cublasxt_handle()
 }
 } // namespace xt
 #endif
-}
+} // blas
 
-}
+} // acc
 
-}
+} // sirius
 
 #endif

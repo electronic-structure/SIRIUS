@@ -35,7 +35,7 @@ namespace sirius {
 namespace acc {
 
 /// User facing interface to GPU blas functions.
-namespace accblas {
+namespace blas {
 
 #ifdef SIRIUS_CUDA
 inline const char*
@@ -530,7 +530,7 @@ ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, ac
 } // namespace xt
 #endif
 
-} // namespace accblas
+} // namespace blas
 
 } // namespace acc
 

@@ -1572,9 +1572,9 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
     if (is_device_memory(mem__)) {
 #if defined(SIRIUS_GPU)
         if (std::is_same<T, double>::value) {
-            acc::accblas::dscal(m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), ld);
+            acc::blas::dscal(m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), ld);
         } else if (std::is_same<T, float>::value) {
-            acc::accblas::sscal(m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), ld);
+            acc::blas::sscal(m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), ld);
         }
 #else
         RTE_THROW("not compiled with GPU support!");

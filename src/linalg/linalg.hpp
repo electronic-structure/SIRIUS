@@ -444,7 +444,7 @@ wrap::axpy(int n, ftn_double_complex const* alpha, ftn_double_complex const* x, 
         }
 #if defined(SIRIUS_GPU)
         case lib_t::gpublas: {
-            acc::accblas::zaxpy(n, reinterpret_cast<const acc_complex_double_t*>(alpha),
+            acc::blas::zaxpy(n, reinterpret_cast<const acc_complex_double_t*>(alpha),
                            reinterpret_cast<const acc_complex_double_t*>(x), incx,
                            reinterpret_cast<acc_complex_double_t*>(y), incy);
             break;
@@ -478,7 +478,7 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
+            acc::blas::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -486,7 +486,7 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            acc::blas::xt::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -522,7 +522,7 @@ inline void wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int 
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
+            acc::blas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -530,7 +530,7 @@ inline void wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int 
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            acc::blas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -568,7 +568,7 @@ inline void wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
+            acc::blas::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
                            reinterpret_cast<acc_complex_float_t const*>(A), lda,
                            reinterpret_cast<acc_complex_float_t const*>(B), ldb,
                            reinterpret_cast<acc_complex_float_t const*>(beta),
@@ -580,7 +580,7 @@ inline void wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
+            acc::blas::xt::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
                                reinterpret_cast<acc_complex_float_t const*>(A), lda,
                                reinterpret_cast<acc_complex_float_t const*>(B), ldb,
                                reinterpret_cast<acc_complex_float_t const*>(beta),
@@ -622,7 +622,7 @@ inline void wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, 
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
+            acc::blas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
                           reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B),
                           ldb, reinterpret_cast<acc_complex_double_t const*>(beta),
                           reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
@@ -634,7 +634,7 @@ inline void wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, 
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
+            acc::blas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
                               reinterpret_cast<acc_complex_double_t const*>(A), lda,
                               reinterpret_cast<acc_complex_double_t const*>(B), ldb,
                               reinterpret_cast<acc_complex_double_t const*>(beta),
@@ -843,7 +843,7 @@ inline void wrap::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha,
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::sger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+            acc::blas::sger(m, n, alpha, x, incx, y, incy, A, lda, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -872,7 +872,7 @@ inline void wrap::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha,
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+            acc::blas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -901,7 +901,7 @@ inline void wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m,
         }
         case  lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
+            acc::blas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -909,7 +909,7 @@ inline void wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m,
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+            acc::blas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -934,7 +934,7 @@ inline void wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m,
         }
         case  lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
+            acc::blas::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -942,7 +942,7 @@ inline void wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m,
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+            acc::blas::xt::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -969,7 +969,7 @@ inline void wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ft
         }
         case  lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
+            acc::blas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
                           reinterpret_cast<acc_complex_double_t const*>(A), lda,
                           reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
 #else
@@ -979,7 +979,7 @@ inline void wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ft
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
+            acc::blas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
                               reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
@@ -1007,7 +1007,7 @@ inline void wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
-            acc::accblas::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
+            acc::blas::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
                            reinterpret_cast<acc_complex_float_t const*>(A), lda,
                            reinterpret_cast<acc_complex_float_t*>(B), ldb, sid());
 #else
@@ -1017,7 +1017,7 @@ inline void wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-            acc::accblas::xt::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
+            acc::blas::xt::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
                                reinterpret_cast<acc_complex_float_t const*>(A), lda,
                                reinterpret_cast<acc_complex_float_t*>(B), ldb);
 #else
@@ -1562,7 +1562,7 @@ wrap::getrs<ftn_double_complex>(char trans, ftn_int n, ftn_int nrhs, const ftn_d
         }
 #if defined(SIRIUS_GPU)
         case lib_t::gpublas: {
-            return acc::acclapack::getrs(trans, n, nrhs, reinterpret_cast<const acc_complex_double_t*>(A), lda, ipiv,
+            return acc::lapack::getrs(trans, n, nrhs, reinterpret_cast<const acc_complex_double_t*>(A), lda, ipiv,
                                     reinterpret_cast<acc_complex_double_t*>(B), ldb);
             break;
         }

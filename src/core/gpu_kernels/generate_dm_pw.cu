@@ -89,13 +89,13 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
     double alpha = 1;
     double beta = 0;
 
-    accblas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
-                  &alpha,
-                  dm__, nbf__ * (nbf__ + 1) / 2,
-                  phase_factors__, num_gvec_loc__ * 2,
-                  &beta,
-                  dm_pw__, nbf__ * (nbf__ + 1) / 2,
-                  stream_id__);
+    blas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
+                &alpha,
+                dm__, nbf__ * (nbf__ + 1) / 2,
+                phase_factors__, num_gvec_loc__ * 2,
+                &beta,
+                dm_pw__, nbf__ * (nbf__ + 1) / 2,
+                stream_id__);
    acc::sync_stream(stream_id(stream_id__));
 }
 
