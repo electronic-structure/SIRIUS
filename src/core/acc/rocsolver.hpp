@@ -34,6 +34,8 @@
 
 namespace sirius {
 
+namespace acc {
+
 namespace rocsolver {
 
 #define CALL_ROCSOLVER(func__, args__)                                                                                 \
@@ -45,11 +47,11 @@ namespace rocsolver {
             printf("hostname: %s\n", nm);                                                                              \
             printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__,                             \
                    rocblas_status_to_string(status));                                                                  \
-            stack_backtrace();                                                                                         \
+            acc::stack_backtrace();                                                                                    \
         }                                                                                                              \
     }
 
-::acc::blas::handle_t& rocsolver_handle();
+acc::blas::handle_t& rocsolver_handle();
 
 inline rocblas_operation
 get_rocblas_operation(char trans)
@@ -257,6 +259,8 @@ void
 zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpiv, int lda, int* devInfo);
 
 } // namespace rocsolver
+
+} // namespace acc
 
 } // namespace sirius
 
