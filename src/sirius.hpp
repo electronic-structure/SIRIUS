@@ -49,7 +49,7 @@ using json = nlohmann::json;
 #include "core/sht/gaunt.hpp"
 #include "core/hdf5_tree.hpp"
 #include "dft/dft_ground_state.hpp"
-//#include "linalg/eigenproblem.hpp"
+#include "linalg/eigenproblem.hpp"
 #include "sirius_version.hpp"
 
 /// Namespace of the SIRIUS library.
