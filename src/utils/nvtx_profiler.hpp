@@ -1,5 +1,5 @@
-#ifndef NVTX_PROFILER_H
-#define NVTX_PROFILER_H
+#ifndef __NVTX_PROFILER_HPP__
+#define __NVTX_PROFILER_HPP__
 
 #if defined(SIRIUS_CUDA_NVTX)
 

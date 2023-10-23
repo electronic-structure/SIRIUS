@@ -35,7 +35,7 @@
 #include "core/fft/gvec.hpp"
 #include "core/env/env.hpp"
 #include "core/rte/rte.hpp"
-#include "utils/time_tools.hpp"
+#include "core/time_tools.hpp"
 #include "SDDK/memory.hpp"
 
 namespace sirius {

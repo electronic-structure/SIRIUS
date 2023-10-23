@@ -1,6 +1,8 @@
 #ifndef __SYSTEM_TOOLS_HPP__
 #define __SYSTEM_TOOLS_HPP__
 
+namespace sirius {
+
 /// Check if file exists.
 /** \param[in] file_name Full path to the file being checked.
  *  \return True if file exists, false otherwise. 
@@ -103,5 +105,7 @@ inline int get_proc_threads()
 
     return num_threads;
 }
+
+} // namespace sirius
 
 #endif
