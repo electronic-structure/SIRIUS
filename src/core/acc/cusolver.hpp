@@ -11,6 +11,11 @@
 #include "SDDK/memory.hpp"
 #include <cusolverDn.h>
 
+namespace sirius {
+
+namespace acc {
+
+/// Interface to cuSolver library.
 namespace cusolver {
 
 inline void error_message(cusolverStatus_t status)
@@ -54,12 +59,12 @@ inline void error_message(cusolverStatus_t status)
 {                                                                                        \
     cusolverStatus_t status;                                                             \
     if ((status = func__ args__) != CUSOLVER_STATUS_SUCCESS) {                           \
-        cusolver::error_message(status);                                                 \
+        acc::cusolver::error_message(status);                                            \
         char nm[1024];                                                                   \
         gethostname(nm, 1024);                                                           \
         std::printf("hostname: %s\n", nm);                                               \
         std::printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
-        stack_backtrace();                                                               \
+        acc::stack_backtrace();                                                          \
     }                                                                                    \
 }
 
@@ -147,5 +152,9 @@ int trtri(int n__, T* A__, int lda__)
 }
 
 } // namespace cusolver
+
+} // namespace acc
+
+} // namespace sirius
 
 #endif

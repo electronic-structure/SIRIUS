@@ -22,12 +22,15 @@
  *  \brief CUDA kernel to perform a summation over xi,xi' indices for the charge density augmentation.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
 
 #ifdef SIRIUS_CUDA
-#include "gpu/cuda_timer.hpp"
+#include "core/acc/cuda_timer.hpp"
 #endif
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void
 sum_q_pw_dm_pw_gpu_kernel(int nbf__, double const* q_pw__, int ldq__, double const* dm_pw__, int ldd__,

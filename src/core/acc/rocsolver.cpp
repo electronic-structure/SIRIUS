@@ -23,12 +23,16 @@
 #include "rocsolver.hpp"
 #include "acc_blas.hpp"
 
+namespace sirius {
+
+namespace acc {
+
 namespace rocsolver {
 
-::acc::blas::handle_t&
+acc::blas::handle_t&
 rocsolver_handle()
 {
-    return ::accblas::null_stream_handle();
+    return blas::null_stream_handle();
 }
 
 /// Linear Solvers
@@ -50,4 +54,9 @@ zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpi
 }
 
 } // namespace rocsolver
+
+} // namespace acc
+
+} // namespace sirius
+
 #endif

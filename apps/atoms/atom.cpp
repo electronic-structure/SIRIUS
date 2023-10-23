@@ -23,8 +23,8 @@
 #include "unit_cell/atomic_conf.hpp"
 #include "potential/xc_functional.hpp"
 
-using namespace sddk;
 using namespace sirius;
+using namespace sirius::sddk;
 
 double const rmin{1e-5};
 

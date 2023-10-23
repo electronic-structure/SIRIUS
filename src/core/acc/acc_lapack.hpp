@@ -24,12 +24,17 @@
 #include "utils/rte.hpp"
 
 #if defined(SIRIUS_CUDA)
-#include "cusolver.hpp"
+#include "core/acc/cusolver.hpp"
 #elif defined(SIRIUS_ROCM)
-#include "gpu/rocsolver.hpp"
+#include "core/acc/rocsolver.hpp"
 #endif
 
-namespace acclapack {
+namespace sirius {
+
+namespace acc {
+
+/// Interface to accelerated lapack functions.
+namespace lapack {
 
 inline int getrf(int m, int n, acc_complex_double_t* A, int* devIpiv, int lda)
 {
@@ -60,14 +65,13 @@ inline int getrf(int m, int n, acc_complex_double_t* A, int* devIpiv, int lda)
 #endif
 }
 
-
 inline int getrs(char trans, int n, int nrhs, const acc_complex_double_t* A, int lda, const int* devIpiv, acc_complex_double_t* B, int ldb)
 {
 #if defined(SIRIUS_CUDA)
     auto& handle = cusolver::cusolver_handle();
     int* devInfo = acc::allocate<int>(1);
 
-    cublasOperation_t op = accblas::get_gpublasOperation_t(trans);
+    cublasOperation_t op = blas::get_gpublasOperation_t(trans);
 
     CALL_CUSOLVER(cusolverDnZgetrs, (handle, op, n, nrhs, A, lda, devIpiv, B, ldb, devInfo));
 
@@ -85,9 +89,10 @@ inline int getrs(char trans, int n, int nrhs, const acc_complex_double_t* A, int
 #endif
 }
 
+} // namespace lapack
 
+} // namespace acc
 
-} // namespace acclapack
-
+} // namespace sirius
 
 #endif /* __ACC_LAPACK_HPP__ */

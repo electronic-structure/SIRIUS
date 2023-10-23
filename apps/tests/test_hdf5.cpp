@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
-#include <string>
-#include <vector>
+using namespace sirius;
 
 void
 test1()

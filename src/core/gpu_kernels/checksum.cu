@@ -22,8 +22,11 @@
  *  \brief CUDA kernel for the calculation of checksum.
  */
 
-#include "acc_common.hpp"
-#include "acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void double_complex_checksum_gpu_kernel
 (
@@ -34,7 +37,7 @@ __global__ void double_complex_checksum_gpu_kernel
 {
     int N = num_blocks(size__, blockDim.x);
 
-    ACC_DYNAMIC_SHARED( char, sdata_ptr)
+    ACC_DYNAMIC_SHARED(char, sdata_ptr)
     double* sdata_x = (double*)&sdata_ptr[0];
     double* sdata_y = (double*)&sdata_ptr[blockDim.x * sizeof(double)];
 

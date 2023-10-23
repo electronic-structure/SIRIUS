@@ -21,8 +21,11 @@
  *
  *  \brief Contains implementation of CUDA kernels to scale matrix elements (rows or columns).
  */
-#include "acc_common.hpp"
-#include "acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 template <typename T>
 __global__ void scale_matrix_columns_gpu_kernel(int nrow, gpu_complex_type<T>* mtrx, T* a);

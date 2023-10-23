@@ -438,13 +438,13 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
 
                 H0_.template apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == sddk::device_t::GPU) {
-                    halm_col_atom.copy_to(sddk::memory_t::device, stream_id(tid));
+                    halm_col_atom.copy_to(sddk::memory_t::device, acc::stream_id(tid));
                 }
 
                 /* generate conjugated matching coefficients */
                 kp_.alm_coeffs_row().template generate<true>(atom, alm_row_atom);
                 if (pu == sddk::device_t::GPU) {
-                    alm_row_atom.copy_to(sddk::memory_t::device, stream_id(tid));
+                    alm_row_atom.copy_to(sddk::memory_t::device, acc::stream_id(tid));
                 }
 
                 /* setup apw-lo and lo-apw blocks */
@@ -458,10 +458,10 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
                 }
 
                 if (pu == sddk::device_t::GPU) {
-                    alm_col_atom.copy_to(sddk::memory_t::device, stream_id(tid));
+                    alm_col_atom.copy_to(sddk::memory_t::device, acc::stream_id(tid));
                 }
             }
-            acc::sync_stream(stream_id(tid));
+            acc::sync_stream(acc::stream_id(tid));
         }
         // acc::sync_stream(stream_id(omp_get_max_threads()));
 
@@ -881,7 +881,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
                               &la::constant<Tc>::zero(),
                               h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
-                              stream_id(tid));
+                              acc::stream_id(tid));
         }
         if (is_device_memory(mem)) {
             h_apw_lo__.copy_to(sddk::memory_t::host);
@@ -939,7 +939,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
                               &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
-                              stream_id(tid));
+                              acc::stream_id(tid));
         }
     };
 
@@ -996,7 +996,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
                               &la::constant<Tc>::zero(),
                               halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
-                              stream_id(tid));
+                              acc::stream_id(tid));
         }
     };
 
@@ -1021,7 +1021,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
                               &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
-                              stream_id(tid));
+                              acc::stream_id(tid));
         }
     };
 

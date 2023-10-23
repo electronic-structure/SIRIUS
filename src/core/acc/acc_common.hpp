@@ -30,6 +30,25 @@
 #include "acc_runtime.hpp"
 #include "core/typedefs.hpp"
 
+namespace sirius {
+
+template<>
+struct Real<gpu_complex_type<float>>
+{
+    using type = float;
+};
+
+template<>
+struct Real<gpu_complex_type<double>>
+{
+    using type = double;
+};
+
+template <typename T>
+using real_type = typename Real<T>::type;
+
+namespace acc {
+
 const double twopi = 6.2831853071795864769;
 
 inline __device__ size_t array2D_offset(int i0, int i1, int ld0)
@@ -169,19 +188,7 @@ inline bool __device__ is_zero(double x)
     return x == 0.0;
 }
 
-template<>
-struct Real<gpu_complex_type<float>>
-{
-    using type = float;
-};
-
-template<>
-struct Real<gpu_complex_type<double>>
-{
-    using type = double;
-};
-
-template <typename T>
-using real_type = typename Real<T>::type;
+}
+}
 
 #endif

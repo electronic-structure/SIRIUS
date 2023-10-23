@@ -1,4 +1,3 @@
-
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
@@ -25,13 +24,13 @@
 
 #ifndef __CUDA_TIMER_HPP__
 #define __CUDA_TIMER_HPP__
-#include <execinfo.h>
-#include <signal.h>
-#include <assert.h>
+
 #include <map>
 #include <vector>
 #include <string>
 #include <stdio.h>
+
+namespace sirius {
 
 class CUDA_timers_wrapper
 {
@@ -123,5 +122,7 @@ class CUDA_timer
             return cuda_timers_wrapper_;
         }
 };
+
+} // namespace sirius
 
 #endif

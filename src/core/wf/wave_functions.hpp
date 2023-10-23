@@ -36,6 +36,9 @@
 #include "utils/env.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/rte.hpp"
+#include "SDDK/memory.hpp"
+
+namespace sirius {
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -110,8 +113,6 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
 #endif
     return cs;
 }
-
-namespace sirius {
 
 /// Namespace for the wave-functions.
 namespace wf {
@@ -1571,9 +1572,9 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
     if (is_device_memory(mem__)) {
 #if defined(SIRIUS_GPU)
         if (std::is_same<T, double>::value) {
-            accblas::dscal(m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), ld);
+            acc::blas::dscal(m, reinterpret_cast<double*>(scale__), reinterpret_cast<double*>(ptr), ld);
         } else if (std::is_same<T, float>::value) {
-            accblas::sscal(m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), ld);
+            acc::blas::sscal(m, reinterpret_cast<float*>(scale__), reinterpret_cast<float*>(ptr), ld);
         }
 #else
         RTE_THROW("not compiled with GPU support!");
@@ -1931,13 +1932,13 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
                 }
 
                 la::wrap(la1).trmm('R', 'U', 'N', ld, n, &la::constant<F>::one(),
-                        o__.at(mem__), o__.ld(), ptr, ld, stream_id(sid++));
+                        o__.at(mem__), o__.ld(), ptr, ld, acc::stream_id(sid++));
             }
         }
         if (la1 == la::lib_t::gpublas || la1 == la::lib_t::cublasxt || la1 == la::lib_t::magma) {
             /* sync stream only if processing unit is GPU */
             for (int i = 0; i < sid; i++) {
-                acc::sync_stream(stream_id(i));
+                acc::sync_stream(acc::stream_id(i));
             }
         }
         if (pp) {

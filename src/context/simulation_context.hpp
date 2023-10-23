@@ -32,12 +32,12 @@
 #include "simulation_parameters.hpp"
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
+#include "core/acc/acc.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/env.hpp"
 #include "utils/system_tools.hpp"
 #include "density/augmentation_operator.hpp"
-#include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
 #include "lapw/step_function.hpp"
 

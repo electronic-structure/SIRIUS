@@ -5,7 +5,7 @@
 #include <random>
 
 using double_complex = std::complex<double>;
-using namespace sddk;
+using namespace sirius::sddk;
 
 void test2()
 {

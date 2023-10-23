@@ -22,8 +22,11 @@
  *  \brief CUDA kernel to multiply effective potential by the phase factors.
  */
 
-#include "gpu/acc_common.hpp"
-#include "gpu/acc_runtime.hpp"
+#include "core/acc/acc_common.hpp"
+#include "core/acc/acc_runtime.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
                                                        acc_complex_double_t const* veff__, 
