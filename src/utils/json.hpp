@@ -4,7 +4,7 @@
 #include <fstream>
 #define JSON_USE_IMPLICIT_CONVERSIONS 0
 #include "nlohmann_json.hpp"
-#include "rte.hpp"
+#include "core/rte.hpp"
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */

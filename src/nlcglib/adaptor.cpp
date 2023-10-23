@@ -23,7 +23,7 @@
  */
 
 #include "SDDK/memory.hpp"
-#include "utils/rte.hpp"
+#include "core/rte.hpp"
 #include "core/wf/wave_functions.hpp"
 #ifdef SIRIUS_NLCGLIB
 #include <stdexcept>

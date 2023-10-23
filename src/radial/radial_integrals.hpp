@@ -27,8 +27,8 @@
 
 #include "unit_cell/unit_cell.hpp"
 #include "core/sf/sbessel.hpp"
-#include "utils/rte.hpp"
-#include "utils/env.hpp"
+#include "core/rte.hpp"
+#include "core/env.hpp"
 #include "utils/ostream_tools.hpp"
 
 namespace sirius {

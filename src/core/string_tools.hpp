@@ -25,6 +25,8 @@
 #ifndef __STRING_TOOLS_HPP__
 #define __STRING_TOOLS_HPP__
 
+namespace sirius {
+
 /// Split multi-line string into a list of strings.
 inline auto split(std::string const str__, char delim__)
 {
@@ -56,4 +58,5 @@ inline std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\
     return ltrim(rtrim(str, chars), chars);
 }
 
+}
 #endif

@@ -26,8 +26,8 @@
 #define __EIGENPROBLEM_HPP__
 
 #include "utils/profiler.hpp"
-#include "utils/rte.hpp"
 #include "linalg.hpp"
+#include "core/rte.hpp"
 #include "core/omp.hpp"
 #include "eigensolver.hpp"
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)

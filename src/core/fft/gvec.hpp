@@ -35,9 +35,9 @@
 #include "core/splindex.hpp"
 #include "core/serializer.hpp"
 #include "core/mpi/pstdout.hpp"
+#include "core/rte.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/profiler.hpp"
-#include "utils/rte.hpp"
 
 namespace sirius {
 

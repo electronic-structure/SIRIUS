@@ -27,7 +27,7 @@
 
 #include "SDDK/memory.hpp"
 #include "core/r3/r3.hpp"
-#include "utils/rte.hpp"
+#include "core/rte.hpp"
 #include "core/constants.hpp"
 
 namespace sirius {

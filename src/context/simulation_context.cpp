@@ -29,7 +29,7 @@
 #include "symmetry/crystal_symmetry.hpp"
 #include "symmetry/check_gvec.hpp"
 #include "utils/profiler.hpp"
-#include "utils/env.hpp"
+#include "core/env.hpp"
 #include "core/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"

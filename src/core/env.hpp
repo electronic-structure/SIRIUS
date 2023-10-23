@@ -32,6 +32,8 @@
 #include <memory>
 #include <sstream>
 
+namespace sirius {
+
 namespace env {
 
 /// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
@@ -151,4 +153,5 @@ check_scf_density()
 
 } // namespace env
 
+} // namespace sirius
 #endif

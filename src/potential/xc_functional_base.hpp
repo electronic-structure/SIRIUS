@@ -31,7 +31,7 @@
 #include <map>
 #include <stdexcept>
 #include <iostream>
-#include "utils/rte.hpp"
+#include "core/rte.hpp"
 #include "utils/ostream_tools.hpp"
 
 namespace sirius {

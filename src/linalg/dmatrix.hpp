@@ -33,8 +33,8 @@
 #include "core/splindex.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/typedefs.hpp"
+#include "core/rte.hpp"
 #include "SDDK/memory.hpp"
-#include "utils/rte.hpp"
 #include "utils/json.hpp"
 
 namespace sirius {

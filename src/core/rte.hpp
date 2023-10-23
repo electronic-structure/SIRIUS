@@ -33,6 +33,8 @@
 #include <iostream>
 #include "string_tools.hpp"
 
+namespace sirius {
+
 namespace rte {
 
 inline void message_impl(bool fatal__, const char* func__, const char* file__, int line__, std::string const& msg__)
@@ -104,12 +106,12 @@ class ostream : public std::ostringstream
 
 #define RTE_THROW(...) \
 {\
-    ::rte::message_impl(true, __func__, __FILE__, __LINE__, __VA_ARGS__);\
+    ::sirius::rte::message_impl(true, __func__, __FILE__, __LINE__, __VA_ARGS__);\
 }
 
 #define RTE_WARNING(...) \
 {\
-    ::rte::message_impl(false, __func__, __FILE__, __LINE__, __VA_ARGS__);\
+    ::sirius::rte::message_impl(false, __func__, __FILE__, __LINE__, __VA_ARGS__);\
 }
 
 #ifdef NDEBUG
@@ -128,6 +130,8 @@ class ostream : public std::ostringstream
 
 #define RTE_OUT(_out) rte::ostream(_out, std::string(__func__))
 
-}
+} // rte
+
+} // sirius
 
 #endif

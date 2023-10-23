@@ -27,8 +27,8 @@
 
 #include <memory>
 #include "core/mpi/mpi_grid.hpp"
+#include "core/rte.hpp"
 #include "linalg_base.hpp"
-#include "utils/rte.hpp"
 
 namespace sirius {
 
