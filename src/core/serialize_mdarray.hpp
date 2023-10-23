@@ -26,7 +26,7 @@
 #define __SERIALIZE_MDARRAY_HPP__
 
 #include "SDDK/memory.hpp"
-#include "utils/json.hpp"
+#include "core/json.hpp"
 
 namespace sirius {
 

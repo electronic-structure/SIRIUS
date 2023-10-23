@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/sht/sht.hpp"
-#include "utils/math_tools.hpp"
+#include "core/math_tools.hpp"
 
 namespace sirius {
 

@@ -25,7 +25,7 @@
 #include <ctype.h>
 #include <iostream>
 #include "SDDK/memory.hpp"
-#include "utils/any_ptr.hpp"
+#include "core/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
 #ifdef SIRIUS_NLCGLIB
@@ -303,7 +303,7 @@ get_sim_ctx(void* const* h)
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing simulation context handler");
     }
-    return static_cast<utils::any_ptr*>(*h)->get<Simulation_context>();
+    return static_cast<any_ptr*>(*h)->get<Simulation_context>();
 }
 
 DFT_ground_state&
@@ -312,7 +312,7 @@ get_gs(void* const* h)
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing DFT ground state handler");
     }
-    return static_cast<utils::any_ptr*>(*h)->get<DFT_ground_state>();
+    return static_cast<any_ptr*>(*h)->get<DFT_ground_state>();
 }
 
 K_point_set&
@@ -321,7 +321,7 @@ get_ks(void* const* h)
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing K-point set handler");
     }
-    return static_cast<utils::any_ptr*>(*h)->get<K_point_set>();
+    return static_cast<any_ptr*>(*h)->get<K_point_set>();
 }
 
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
@@ -605,7 +605,7 @@ sirius_create_context(int fcomm__, void** handler__, int* fcomm_k__, int* fcomm_
             auto& comm_k = (fcomm_k__) ? mpi::Communicator::map_fcomm(*fcomm_k__) : mpi::Communicator();
             auto const& comm_band =
                 (fcomm_band__) ? mpi::Communicator::map_fcomm(*fcomm_band__) : mpi::Communicator();
-            *handler__ = new utils::any_ptr(new Simulation_context(comm, comm_k, comm_band));
+            *handler__ = new any_ptr(new Simulation_context(comm, comm_k, comm_band));
         },
         error_code__);
 }
@@ -1279,7 +1279,7 @@ sirius_free_object_handler(void** handler__, int* error_code__)
     call_sirius(
         [&]() {
             if (*handler__ != nullptr) {
-                delete static_cast<utils::any_ptr*>(*handler__);
+                delete static_cast<any_ptr*>(*handler__);
             }
             *handler__ = nullptr;
         },
@@ -1608,7 +1608,7 @@ sirius_create_kset(void* const* handler__, int const* num_kpoints__, double* kpo
             if (*init_kset__) {
                 new_kset->initialize();
             }
-            *kset_handler__ = new utils::any_ptr(new_kset);
+            *kset_handler__ = new any_ptr(new_kset);
         },
         error_code__);
 }
@@ -1664,7 +1664,7 @@ sirius_create_kset_from_grid(void* const* handler__, int const* k_grid__, int co
 
             K_point_set* new_kset = new K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
 
-            *kset_handler__ = new utils::any_ptr(new_kset);
+            *kset_handler__ = new any_ptr(new_kset);
         },
         error_code__);
 }
@@ -1695,7 +1695,7 @@ sirius_create_ground_state(void* const* ks_handler__, void** gs_handler__, int* 
         [&]() {
             auto& ks = get_ks(ks_handler__);
 
-            *gs_handler__ = new utils::any_ptr(new DFT_ground_state(ks));
+            *gs_handler__ = new any_ptr(new DFT_ground_state(ks));
         },
         error_code__);
 }

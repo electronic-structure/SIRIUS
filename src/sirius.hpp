@@ -35,7 +35,7 @@
 #endif
 #include "linalg/linalg_spla.hpp"
 #include "core/cmd_args.hpp"
-#include "utils/json.hpp"
+#include "core/json.hpp"
 #include "utils/profiler.hpp"
 using json = nlohmann::json;
 #if defined(SIRIUS_USE_POWER_COUNTER)

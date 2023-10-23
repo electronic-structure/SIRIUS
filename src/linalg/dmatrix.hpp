@@ -34,8 +34,8 @@
 #include "core/hdf5_tree.hpp"
 #include "core/typedefs.hpp"
 #include "core/rte/rte.hpp"
+#include "core/json.hpp"
 #include "SDDK/memory.hpp"
-#include "utils/json.hpp"
 
 namespace sirius {
 

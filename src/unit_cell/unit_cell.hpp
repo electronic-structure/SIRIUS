@@ -28,8 +28,8 @@
 #include <algorithm>
 #include "atom.hpp"
 #include "core/mpi/mpi_grid.hpp"
+#include "core/json.hpp"
 #include "context/simulation_parameters.hpp"
-#include "utils/json.hpp"
 
 namespace sirius {
 

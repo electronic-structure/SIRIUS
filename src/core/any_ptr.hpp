@@ -27,7 +27,7 @@
 
 #include <functional>
 
-namespace utils {
+namespace sirius {
 
 /// Handle deallocation of a poiniter to an object of any type.
 /** Example:
@@ -99,6 +99,6 @@ class any_ptr
     }
 };
 
-} // namespace utils
+} // namespace sirius
 
 #endif

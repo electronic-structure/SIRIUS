@@ -35,7 +35,7 @@
 #include "mixer/mixer.hpp"
 #include "occupation_matrix.hpp"
 #include "density_matrix.hpp"
-#include "utils/math_tools.hpp"
+#include "core/math_tools.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
