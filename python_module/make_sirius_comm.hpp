@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "core/mpi/communicator.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 
