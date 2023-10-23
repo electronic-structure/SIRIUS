@@ -21,7 +21,7 @@
 #define __ACC_LAPACK_HPP__
 
 #include "acc_blas.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 
 #if defined(SIRIUS_CUDA)
 #include "core/acc/cusolver.hpp"

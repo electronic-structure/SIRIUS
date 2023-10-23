@@ -34,7 +34,7 @@
 #include "core/acc/cusolver.hpp"
 #endif
 #include "linalg/linalg_spla.hpp"
-#include "utils/cmd_args.hpp"
+#include "core/cmd_args.hpp"
 #include "utils/json.hpp"
 #include "utils/profiler.hpp"
 using json = nlohmann::json;

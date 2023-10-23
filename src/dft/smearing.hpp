@@ -34,6 +34,7 @@
 
 namespace sirius {
 
+/// Occupancy smearing functions.
 namespace smearing {
 
 enum class smearing_t

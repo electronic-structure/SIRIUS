@@ -24,7 +24,7 @@
 
 #include <algorithm>
 #include "core/r3/r3.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 
 #ifndef __LATTICE_HPP__
 #define __LATTICE_HPP__

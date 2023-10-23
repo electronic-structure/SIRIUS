@@ -33,7 +33,7 @@
 #include "core/splindex.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/typedefs.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/json.hpp"
 

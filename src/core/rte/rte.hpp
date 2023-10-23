@@ -31,15 +31,15 @@
 #include <ostream>
 #include <vector>
 #include <iostream>
-#include "string_tools.hpp"
+#include "core/string_tools.hpp"
 
 namespace sirius {
 
+/// Run-time error and warning handling.
 namespace rte {
 
 inline void message_impl(bool fatal__, const char* func__, const char* file__, int line__, std::string const& msg__)
 {
-    //auto split_msg = ::rte::split(msg__);
     std::stringstream s;
 
     if (!fatal__) {
@@ -50,9 +50,6 @@ inline void message_impl(bool fatal__, const char* func__, const char* file__, i
     s << " in function \"" << func__ << "\" at " << file__ << ":" << line__ << std::endl;
     s << msg__;
 
-    //for (auto e: split_msg) {
-    //    s << "[" << func__ << "] " << e << std::endl;
-    //}
     if (fatal__) {
         throw std::runtime_error(s.str());
     } else {

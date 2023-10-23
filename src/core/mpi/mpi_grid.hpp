@@ -26,7 +26,7 @@
 #define __MPI_GRID_HPP__
 
 #include "communicator.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 

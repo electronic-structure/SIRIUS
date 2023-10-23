@@ -34,6 +34,7 @@
 
 namespace sirius {
 
+/// Get environment variables.
 namespace env {
 
 /// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.

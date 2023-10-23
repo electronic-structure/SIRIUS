@@ -27,7 +27,7 @@
 
 #include "utils/profiler.hpp"
 #include "linalg.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 #include "core/omp.hpp"
 #include "eigensolver.hpp"
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)

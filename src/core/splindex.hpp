@@ -26,7 +26,7 @@
 #define __SPLINDEX_HPP__
 
 #include "core/strong_type.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 #include <cstddef>
 #include <numeric>
 

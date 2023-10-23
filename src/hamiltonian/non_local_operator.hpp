@@ -26,7 +26,7 @@
 #define __NON_LOCAL_OPERATOR_HPP__
 
 #include "core/omp.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 #include "SDDK/memory.hpp"
 #include "non_local_operator_base.hpp"
 #include "context/simulation_context.hpp"

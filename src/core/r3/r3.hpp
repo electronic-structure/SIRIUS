@@ -36,6 +36,7 @@
 
 namespace sirius {
 
+/// Work with 3D vectors and matrices.
 namespace r3 {
 
 /// Simple implementation of 3d vector.

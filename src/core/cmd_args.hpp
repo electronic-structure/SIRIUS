@@ -32,6 +32,8 @@
 #include <algorithm>
 #include <iostream>
 
+namespace sirius {
+
 /// Simple command line arguments handler.
 class cmd_args
 {
@@ -202,29 +204,6 @@ inline std::vector<int> cmd_args::value<std::vector<int>>(const std::string key_
     return get_vector<int>(key__);
 }
 
-//template <std::size_t N>
-//inline std::array<double, N> cmd_args::value<std::array<double, N>>(const std::string key__) const
-//{
-//    check_for_key(key__);
-//    return get_array<double, N>(key__);
-//}
-//
-//template <std::size_t N>
-//inline std::array<int, N> cmd_args::value<std::array<int, N>>(const std::string key__) const
-//{
-//    check_for_key(key__);
-//    return get_array<int, N>(key__);
-//}
-
-
-//template <>
-//inline std::vector<int> cmd_args::value<std::vector<int>>(std::string const key__,
-//                                                          std::vector<int> const default_val__) const
-//{
-//    if (!exist(key__)) {
-//        return default_val__;
-//    }
-//    return get_vector<int>(key__);
-//}
+} // namespace sirius
 
 #endif // __CMD_ARGS_HPP__

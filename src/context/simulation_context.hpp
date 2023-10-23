@@ -33,7 +33,7 @@
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/acc/acc.hpp"
-#include "core/env.hpp"
+#include "core/env/env.hpp"
 #include "radial/radial_integrals.hpp"
 #include "utils/time_tools.hpp"
 #include "utils/system_tools.hpp"

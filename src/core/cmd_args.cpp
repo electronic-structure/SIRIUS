@@ -23,7 +23,9 @@
  *
  */
 
-#include "utils/cmd_args.hpp"
+#include "core/cmd_args.hpp"
+
+namespace sirius {
 
 void cmd_args::check_for_key(std::string const key__) const
 {
@@ -138,3 +140,5 @@ void cmd_args::print_help()
         std::printf("%s\n", key_desc_[i].second.c_str());
     }
 }
+
+} // namespace sirius

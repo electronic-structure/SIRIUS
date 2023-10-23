@@ -35,7 +35,7 @@
 #include "core/splindex.hpp"
 #include "core/serializer.hpp"
 #include "core/mpi/pstdout.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 #include "SDDK/memory.hpp"
 #include "utils/profiler.hpp"
 

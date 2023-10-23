@@ -33,8 +33,8 @@
 #include "core/strong_type.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/fft/gvec.hpp"
-#include "core/env.hpp"
-#include "core/rte.hpp"
+#include "core/env/env.hpp"
+#include "core/rte/rte.hpp"
 #include "utils/time_tools.hpp"
 #include "SDDK/memory.hpp"
 

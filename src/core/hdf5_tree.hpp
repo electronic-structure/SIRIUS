@@ -31,7 +31,7 @@
 #include <string>
 #include <initializer_list>
 #include "SDDK/memory.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 

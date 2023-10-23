@@ -31,7 +31,7 @@
 #include <gsl/gsl_sf_hermite.h>
 #include "core/typedefs.hpp"
 #include "core/constants.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 #include "core/r3/r3.hpp"
 #include "SDDK/memory.hpp"
 
