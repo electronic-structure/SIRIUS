@@ -1,4 +1,4 @@
-#include <utils/cmd_args.hpp>
+#include <core/cmd_args.hpp>
 #include <SDDK/memory.hpp>
 #include <complex>
 #include <sys/time.h>
@@ -6,6 +6,7 @@
 
 using double_complex = std::complex<double>;
 using namespace sirius::sddk;
+using namespace sirius;
 
 void test2()
 {
