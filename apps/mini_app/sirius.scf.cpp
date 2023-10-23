@@ -1,8 +1,7 @@
 #include <sirius.hpp>
 #include <cfenv>
 #include "utils/profiler.hpp"
-#include "utils/filesystem.hpp"
-#include "utils/json.hpp"
+#include "core/json.hpp"
 #include "dft/lattice_relaxation.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
@@ -10,6 +9,7 @@
 using namespace sirius;
 using json = nlohmann::json;
 using namespace sddk;
+namespace fs = std::filesystem;
 
 const std::string aiida_output_file = "output_aiida.json";
 

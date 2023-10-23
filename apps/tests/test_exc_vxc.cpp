@@ -1,6 +1,6 @@
 #include "radial/spline.hpp"
 #include "potential/xc_functional.hpp"
-#include "utils/math_tools.hpp"
+#include "core/math_tools.hpp"
 
 using namespace sirius;
 
