@@ -27,8 +27,8 @@
 
 #include "acc.hpp"
 #include "acc_blas_api.hpp"
-#include <rocsolver.h>
-#include <rocblas.h>
+#include <rocsolver/rocsolver.h>
+#include <rocblas/rocblas.h>
 #include <unistd.h>
 #include "utils/rte.hpp"
 
@@ -52,7 +52,7 @@ namespace rocsolver {
         }                                                                                                              \
     }
 
-acc::blas::handle_t& rocsolver_handle();
+acc::blas_api::handle_t& rocsolver_handle();
 
 inline rocblas_operation
 get_rocblas_operation(char trans)

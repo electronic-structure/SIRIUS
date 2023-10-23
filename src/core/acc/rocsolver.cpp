@@ -29,10 +29,10 @@ namespace acc {
 
 namespace rocsolver {
 
-acc::blas::handle_t&
+acc::blas_api::handle_t&
 rocsolver_handle()
 {
-    return blas::null_stream_handle();
+    return acc::blas::null_stream_handle();
 }
 
 /// Linear Solvers
