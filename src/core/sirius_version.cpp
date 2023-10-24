@@ -23,7 +23,7 @@
  */
 
 #include <string>
-#include "version.hpp"
+#include "core/version.hpp"
 
 namespace sirius {
 
