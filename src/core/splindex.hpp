@@ -56,7 +56,7 @@ inline auto split_in_blocks(int length__, int block_size__)
     }
     /* check for correctness */
     if (std::accumulate(result.begin(), result.end(), 0) != length__) {
-        throw std::runtime_error("error in utils::split_in_blocks()");
+        throw std::runtime_error("error in sirius::split_in_blocks()");
     }
 
     return result;

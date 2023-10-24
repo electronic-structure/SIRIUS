@@ -39,7 +39,7 @@
 #include "core/profiler.hpp"
 using json = nlohmann::json;
 #if defined(SIRIUS_USE_POWER_COUNTER)
-#include "utils/power.hpp"
+#include "core/power.hpp"
 #endif
 
 #include "core/sht/sht.hpp"
@@ -87,8 +87,8 @@ inline void initialize(bool call_mpi_init__ = true)
         RTE_THROW("SIRIUS library is already initialized");
     }
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    energy() = -utils::power::energy();
-    energy_acc() = -utils::power::device_energy();
+    energy() = -power::energy();
+    energy_acc() = -power::device_energy();
 #endif
     if (call_mpi_init__) {
         mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
@@ -172,8 +172,8 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     apex::finalize();
 #endif
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    double e = energy() + utils::power::energy();
-    double e_acc = energy_acc() + utils::power::device_energy();
+    double e = energy() + power::energy();
+    double e_acc = energy_acc() + power::device_energy();
     if (mpi::Communicator::world().rank() == 0) {
         printf("=== Energy consumption (root MPI rank) ===\n");
         printf("energy     : %9.2f Joules\n", e);
@@ -181,7 +181,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     }
     mpi::Communicator::world().allreduce(&e, 1);
     mpi::Communicator::world().allreduce(&e_acc, 1);
-    int nn = utils::power::num_nodes();
+    int nn = power::num_nodes();
     if (Communicator::world().rank() == 0 && nn > 0) {
         printf("=== Energy consumption (all nodes) ===\n");
         printf("energy     : %9.2f Joules\n", e * nn / Communicator::world().size());

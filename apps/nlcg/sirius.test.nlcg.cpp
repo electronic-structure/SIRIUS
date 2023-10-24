@@ -1,6 +1,6 @@
-#include "utils/profiler.hpp"
-#include <sirius.h>
-#include <utils/json.hpp>
+#include <sirius.hpp>
+#include "core/profiler.hpp"
+#include "core/json.hpp"
 #include "nlcglib/adaptor.hpp"
 
 using namespace sirius;

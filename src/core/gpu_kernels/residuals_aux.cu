@@ -78,127 +78,13 @@ __global__ void compute_residuals_gpu_kernel<float>
     }
 }
 
-//== __global__ void compute_residuals_norm_gpu_kernel
-//== (
-//==     int num_gkvec_row,
-//==     int* res_idx,
-//==     acc_complex_double_t const* res,
-//==     double* res_norm,
-//==     int reduced,
-//==     int mpi_rank
-//== )
-//== {
-//==     int N = num_blocks(num_gkvec_row, blockDim.x);
-//== 
-//==     ACC_DYNAMIC_SHARED( char, sdata_ptr)
-//==     double* sdata = (double*)&sdata_ptr[0];
-//== 
-//==     sdata[threadIdx.x] = 0.0;
-//== 
-//==     for (int n = 0; n < N; n++)
-//==     {
-//==         int igk = n * blockDim.x + threadIdx.x;
-//==         if (igk < num_gkvec_row)
-//==         {
-//==             int k = array2D_offset(igk, blockIdx.x, num_gkvec_row);
-//==             sdata[threadIdx.x] += res[k].x * res[k].x + res[k].y * res[k].y;
-//==         }
-//==     }
-//==     __syncthreads();
-//== 
-//==     for (int s = 1; s < blockDim.x; s *= 2)
-//==     {
-//==         if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] = sdata[threadIdx.x] + sdata[threadIdx.x + s];
-//==         __syncthreads();
-//==     }
-//== 
-//==     if (!reduced)
-//==     {
-//==         res_norm[res_idx[blockIdx.x]] = sdata[0];
-//==     }
-//==     else
-//==     {
-//==         if (mpi_rank == 0)
-//==         {
-//==             double x = res[array2D_offset(0, blockIdx.x, num_gkvec_row)].x;
-//==             res_norm[res_idx[blockIdx.x]] = 2 * sdata[0] - x * x;
-//==         }
-//==         else
-//==         {
-//==             res_norm[res_idx[blockIdx.x]] = 2 * sdata[0];
-//==         }
-//==     }
-//== }
-//== 
-//== extern "C" void residuals_aux_gpu(int num_gvec_loc__,
-//==                                   int num_res_local__,
-//==                                   int* res_idx__,
-//==                                   double* eval__,
-//==                                   acc_complex_double_t const* hpsi__,
-//==                                   acc_complex_double_t const* opsi__,
-//==                                   double const* h_diag__,
-//==                                   double const* o_diag__,
-//==                                   acc_complex_double_t* res__,
-//==                                   double* res_norm__,
-//==                                   double* p_norm__,
-//==                                   int gkvec_reduced__,
-//==                                   int mpi_rank__)
-//== {
-//==     dim3 grid_t(64);
-//==     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_res_local__);
-//== 
-//==     compute_residuals_gpu_kernel <<<grid_b, grid_t>>>
-//==     (
-//==         num_gvec_loc__,
-//==         eval__,
-//==         hpsi__,
-//==         opsi__,
-//==         res__
-//==     );
-//== 
-//==     grid_b = dim3(num_res_local__);
-//== 
-//==     compute_residuals_norm_gpu_kernel <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
-//==     (
-//==         num_gvec_loc__,
-//==         res_idx__,
-//==         res__,
-//==         res_norm__,
-//==         gkvec_reduced__,
-//==         mpi_rank__
-//==     );
-//== 
-//==     grid_b = dim3(num_blocks(num_gvec_loc__, grid_t.x), num_res_local__);
-//== 
-//==     apply_preconditioner_gpu_kernel <<<grid_b, grid_t>>>
-//==     (
-//==         num_gvec_loc__,
-//==         res_idx__,
-//==         eval__,
-//==         h_diag__,
-//==         o_diag__,
-//==         res__
-//==     );
-//== 
-//==     grid_b = dim3(num_res_local__);
-//== 
-//==     compute_residuals_norm_gpu_kernel <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
-//==     (
-//==         num_gvec_loc__,
-//==         res_idx__,
-//==         res__,
-//==         p_norm__,
-//==         gkvec_reduced__,
-//==         mpi_rank__
-//==     );
-//== }
-
-extern "C" void compute_residuals_gpu_double(acc_complex_double_t* hpsi__,
-                                              acc_complex_double_t* opsi__,
-                                              acc_complex_double_t* res__,
-                                              int num_rows_loc__,
-                                              int num_bands__,
-                                              double* eval__)
+extern "C" { 
+void compute_residuals_gpu_double(acc_complex_double_t* hpsi__,
+                                  acc_complex_double_t* opsi__,
+                                  acc_complex_double_t* res__,
+                                  int num_rows_loc__,
+                                  int num_bands__,
+                                  double* eval__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
@@ -212,12 +98,12 @@ extern "C" void compute_residuals_gpu_double(acc_complex_double_t* hpsi__,
     );
 }
 
-extern "C" void compute_residuals_gpu_float(acc_complex_float_t* hpsi__,
-                                             acc_complex_float_t* opsi__,
-                                             acc_complex_float_t* res__,
-                                             int num_rows_loc__,
-                                             int num_bands__,
-                                             float* eval__)
+void compute_residuals_gpu_float(acc_complex_float_t* hpsi__,
+                                 acc_complex_float_t* opsi__,
+                                 acc_complex_float_t* res__,
+                                 int num_rows_loc__,
+                                 int num_bands__,
+                                 float* eval__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
@@ -229,6 +115,7 @@ extern "C" void compute_residuals_gpu_float(acc_complex_float_t* hpsi__,
                     opsi__,
                     res__
     );
+}
 }
 
 template <typename T>
@@ -279,12 +166,13 @@ __global__ void add_square_sum_gpu_kernel
     }
 }
 
-extern "C" void add_square_sum_gpu_double(acc_complex_double_t* wf__,
-                                   int num_rows_loc__,
-                                   int nwf__,
-                                   int reduced__,
-                                   int mpi_rank__,
-                                   double* result__)
+extern "C" {
+void add_square_sum_gpu_double(acc_complex_double_t* wf__,
+                               int num_rows_loc__,
+                               int nwf__,
+                               int reduced__,
+                               int mpi_rank__,
+                               double* result__)
 {
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
@@ -293,18 +181,19 @@ extern "C" void add_square_sum_gpu_double(acc_complex_double_t* wf__,
                     num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
 }
 
-extern "C" void add_square_sum_gpu_float(acc_complex_float_t* wf__,
-                                   int num_rows_loc__,
-                                   int nwf__,
-                                   int reduced__,
-                                   int mpi_rank__,
-                                   float* result__)
+void add_square_sum_gpu_float(acc_complex_float_t* wf__,
+                              int num_rows_loc__,
+                              int nwf__,
+                              int reduced__,
+                              int mpi_rank__,
+                              float* result__)
 {
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
 
     accLaunchKernel((add_square_sum_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(float), 0,
                     num_rows_loc__, wf__, reduced__, mpi_rank__, result__);
+}
 }
 
 template <typename T, typename F>
@@ -402,10 +291,6 @@ void inner_diag_local_gpu_double_double(gpu_complex_type<double>* wf1__, int ld1
 }
 
 
-
-
-
-
 /*
 inner_diag_local_gpu_float_float
 inner_diag_local_gpu_float_double
@@ -414,9 +299,6 @@ inner_diag_local_gpu_float_complex_double
 inner_diag_local_gpu_double_double
 inner_diag_local_gpu_double_complex_double
 */
-
-
-
 
 template <typename T>
 __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,
@@ -461,12 +343,13 @@ __global__ void apply_preconditioner_gpu_kernel<float>(int const num_rows_loc__,
     }
 }
 
-extern "C" void apply_preconditioner_gpu_double(acc_complex_double_t* res__,
-                                                 int num_rows_loc__,
-                                                 int num_bands__,
-                                                 double* eval__,
-                                                 const double* h_diag__,
-                                                 const double* o_diag__)
+extern "C" {
+void apply_preconditioner_gpu_double(acc_complex_double_t* res__,
+                                     int num_rows_loc__,
+                                     int num_bands__,
+                                     double* eval__,
+                                     const double* h_diag__,
+                                     const double* o_diag__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
@@ -474,17 +357,18 @@ extern "C" void apply_preconditioner_gpu_double(acc_complex_double_t* res__,
     accLaunchKernel((apply_preconditioner_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
 }
 
-extern "C" void apply_preconditioner_gpu_float(acc_complex_float_t* res__,
-                                                int num_rows_loc__,
-                                                int num_bands__,
-                                                float* eval__,
-                                                const float* h_diag__,
-                                                const float* o_diag__)
+void apply_preconditioner_gpu_float(acc_complex_float_t* res__,
+                                    int num_rows_loc__,
+                                    int num_bands__,
+                                    float* eval__,
+                                    const float* h_diag__,
+                                    const float* o_diag__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
 
     accLaunchKernel((apply_preconditioner_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
+}
 }
 
 template <typename T>
@@ -510,9 +394,8 @@ __global__ void make_real_g0_gpu_kernel<float>(acc_complex_float_t* res__,
     }
 }
 
-extern "C" void make_real_g0_gpu_double(acc_complex_double_t* res__,
-                                         int              ld__,
-                                         int              n__)
+extern "C" {
+void make_real_g0_gpu_double(acc_complex_double_t* res__, int ld__, int n__)
 {
     dim3 grid_t(32);
     dim3 grid_b(n__);
@@ -520,17 +403,14 @@ extern "C" void make_real_g0_gpu_double(acc_complex_double_t* res__,
     accLaunchKernel((make_real_g0_gpu_kernel<double>), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
 }
 
-extern "C" void make_real_g0_gpu_float(acc_complex_float_t* res__,
-                                        int              ld__,
-                                        int              n__)
+void make_real_g0_gpu_float(acc_complex_float_t* res__, int ld__, int n__)
 {
     dim3 grid_t(32);
     dim3 grid_b(n__);
 
     accLaunchKernel((make_real_g0_gpu_kernel<float>), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
 }
-
-
+}
 
 template <typename T, typename F>
 __global__ void axpby_gpu_kernel(F const* beta__, gpu_complex_type<T>* y__, int ld2__, int ngv_loc__)
@@ -573,23 +453,23 @@ __global__ void axpby_gpu_kernel(F const* alpha__, gpu_complex_type<T> const* x_
 
 template <typename T, typename F>
 __global__ void axpy_scatter_gpu_kernel(F const* alpha__, gpu_complex_type<T> const* x__, int ld1__,
-        int const* idx__, gpu_complex_type<T>* y__, int ld2__, int ngv_loc__)
-        {
-            /* index of wave-function coefficient */
-            int j = blockIdx.x * blockDim.x + threadIdx.x;
-            /* index of the band / unconverged vector */
-            int j_unconv = blockIdx.y;
+int const* idx__, gpu_complex_type<T>* y__, int ld2__, int ngv_loc__)
+{
+    /* index of wave-function coefficient */
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    /* index of the band / unconverged vector */
+    int j_unconv = blockIdx.y;
 
-            int jj = idx__[j_unconv];
-            auto alpha = alpha__[j_unconv];
-            if  (j < ngv_loc__) { // for all valid wf coefficients
+    int jj = idx__[j_unconv];
+    auto alpha = alpha__[j_unconv];
+    if  (j < ngv_loc__) { // for all valid wf coefficients
 
-                int k1 = array2D_offset(j, j_unconv, ld1__);
-                int k2 = array2D_offset(j, jj, ld2__);
+        int k1 = array2D_offset(j, j_unconv, ld1__);
+        int k2 = array2D_offset(j, jj, ld2__);
 
-                y__[k2] = add_accNumbers(mul_accNumbers(alpha, x__[k1]), y__[k2]);
-            }
-        }
+        y__[k2] = add_accNumbers(mul_accNumbers(alpha, x__[k1]), y__[k2]);
+    }
+}
 
 extern "C" {
 

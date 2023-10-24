@@ -1,5 +1,5 @@
 #include <sirius.hpp>
-#include <utils/json.hpp>
+#include "core/json.hpp"
 #include "nlcglib/call_nlcg.hpp"
 
 using namespace sirius;

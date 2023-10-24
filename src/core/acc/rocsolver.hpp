@@ -25,12 +25,12 @@
 #ifndef __ROCSOLVER_HPP__
 #define __ROCSOLVER_HPP__
 
-#include "acc.hpp"
-#include "acc_blas_api.hpp"
 #include <rocsolver/rocsolver.h>
 #include <rocblas/rocblas.h>
 #include <unistd.h>
-#include "utils/rte.hpp"
+#include "acc.hpp"
+#include "acc_blas_api.hpp"
+#include "core/rte.hpp"
 
 namespace sirius {
 

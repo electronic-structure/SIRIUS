@@ -31,90 +31,90 @@ extern sirius::acc_stream_t* streams;
 using namespace sirius;
 using namespace sirius::acc;
 
-__global__ void compute_chebyshev_order1_gpu_kernel
-(
-    int num_gkvec__,
-    double c__,
-    double r__,
-    acc_complex_double_t* phi0__,
-    acc_complex_double_t* phi1__
-)
-{
-    int igk = blockDim.x * blockIdx.x + threadIdx.x;
-    int j = blockIdx.y;
-
-    if (igk < num_gkvec__)
-    {
-        int i = array2D_offset(igk, j, num_gkvec__);
-        // phi0 * c
-        acc_complex_double_t z1 = accCmul(phi0__[i], make_accDoubleComplex(c__, 0));
-        // phi1 - phi0 * c
-        acc_complex_double_t z2 = accCsub(phi1__[i], z1);
-        // (phi1 - phi0 * c) / r
-        phi1__[i] = accCdiv(z2, make_accDoubleComplex(r__, 0));
-    }
-}
-
-__global__ void compute_chebyshev_orderk_gpu_kernel
-(
-    int num_gkvec__,
-    double c__,
-    double r__,
-    acc_complex_double_t* phi0__,
-    acc_complex_double_t* phi1__,
-    acc_complex_double_t* phi2__
-)
-{
-    int igk = blockDim.x * blockIdx.x + threadIdx.x;
-    int j = blockIdx.y;
-
-    if (igk < num_gkvec__)
-    {
-        int i = array2D_offset(igk, j, num_gkvec__);
-        // phi1 * c
-        acc_complex_double_t z1 = accCmul(phi1__[i], make_accDoubleComplex(c__, 0));
-        // phi2 - phi1 * c
-        acc_complex_double_t z2 = accCsub(phi2__[i], z1);
-        // (phi2 - phi1 * c) * 2 / r
-        acc_complex_double_t z3 = accCmul(z2, make_accDoubleComplex(2.0 / r__, 0));
-        // (phi2 - phi1 * c) * 2 / r - phi0
-        phi2__[i] = accCsub(z3, phi0__[i]);
-    }
-}
-
-extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
-                                                 int n,
-                                                 double c,
-                                                 double r,
-                                                 acc_complex_double_t* phi0,
-                                                 acc_complex_double_t* phi1,
-                                                 acc_complex_double_t* phi2)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(num_gkvec, grid_t.x), n);
-
-    if (phi2 == NULL)
-    {
-        accLaunchKernel((compute_chebyshev_order1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
-            num_gkvec,
-            c,
-            r,
-            phi0,
-            phi1
-        );
-    }
-    else
-    {
-        accLaunchKernel((compute_chebyshev_orderk_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
-            num_gkvec,
-            c,
-            r,
-            phi0,
-            phi1,
-            phi2
-        );
-    }
-}
+//__global__ void compute_chebyshev_order1_gpu_kernel
+//(
+//    int num_gkvec__,
+//    double c__,
+//    double r__,
+//    acc_complex_double_t* phi0__,
+//    acc_complex_double_t* phi1__
+//)
+//{
+//    int igk = blockDim.x * blockIdx.x + threadIdx.x;
+//    int j = blockIdx.y;
+//
+//    if (igk < num_gkvec__)
+//    {
+//        int i = array2D_offset(igk, j, num_gkvec__);
+//        // phi0 * c
+//        acc_complex_double_t z1 = accCmul(phi0__[i], make_accDoubleComplex(c__, 0));
+//        // phi1 - phi0 * c
+//        acc_complex_double_t z2 = accCsub(phi1__[i], z1);
+//        // (phi1 - phi0 * c) / r
+//        phi1__[i] = accCdiv(z2, make_accDoubleComplex(r__, 0));
+//    }
+//}
+//
+//__global__ void compute_chebyshev_orderk_gpu_kernel
+//(
+//    int num_gkvec__,
+//    double c__,
+//    double r__,
+//    acc_complex_double_t* phi0__,
+//    acc_complex_double_t* phi1__,
+//    acc_complex_double_t* phi2__
+//)
+//{
+//    int igk = blockDim.x * blockIdx.x + threadIdx.x;
+//    int j = blockIdx.y;
+//
+//    if (igk < num_gkvec__)
+//    {
+//        int i = array2D_offset(igk, j, num_gkvec__);
+//        // phi1 * c
+//        acc_complex_double_t z1 = accCmul(phi1__[i], make_accDoubleComplex(c__, 0));
+//        // phi2 - phi1 * c
+//        acc_complex_double_t z2 = accCsub(phi2__[i], z1);
+//        // (phi2 - phi1 * c) * 2 / r
+//        acc_complex_double_t z3 = accCmul(z2, make_accDoubleComplex(2.0 / r__, 0));
+//        // (phi2 - phi1 * c) * 2 / r - phi0
+//        phi2__[i] = accCsub(z3, phi0__[i]);
+//    }
+//}
+//
+//extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
+//                                                 int n,
+//                                                 double c,
+//                                                 double r,
+//                                                 acc_complex_double_t* phi0,
+//                                                 acc_complex_double_t* phi1,
+//                                                 acc_complex_double_t* phi2)
+//{
+//    dim3 grid_t(64);
+//    dim3 grid_b(num_blocks(num_gkvec, grid_t.x), n);
+//
+//    if (phi2 == NULL)
+//    {
+//        accLaunchKernel((compute_chebyshev_order1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+//            num_gkvec,
+//            c,
+//            r,
+//            phi0,
+//            phi1
+//        );
+//    }
+//    else
+//    {
+//        accLaunchKernel((compute_chebyshev_orderk_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+//            num_gkvec,
+//            c,
+//            r,
+//            phi0,
+//            phi1,
+//            phi2
+//        );
+//    }
+//}
 
 
 //== #define BLOCK_SIZE 32
@@ -255,58 +255,58 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //    );
 //}
 
-__global__ void compute_inner_product_gpu_kernel
-(
-    int num_gkvec_row,
-    acc_complex_double_t const* f1,
-    acc_complex_double_t const* f2,
-    double* prod
-)
-{
-    int N = num_blocks(num_gkvec_row, blockDim.x);
-
-    ACC_DYNAMIC_SHARED( char, sdata_ptr)
-    double* sdata = (double*)&sdata_ptr[0];
-
-    sdata[threadIdx.x] = 0.0;
-
-    for (int n = 0; n < N; n++)
-    {
-        int igk = n * blockDim.x + threadIdx.x;
-        if (igk < num_gkvec_row)
-        {
-            int k = array2D_offset(igk, blockIdx.x, num_gkvec_row);
-            sdata[threadIdx.x] += f1[k].x * f2[k].x + f1[k].y *f2[k].y;
-        }
-    }
-
-    __syncthreads();
-
-    for (int s = 1; s < blockDim.x; s *= 2) 
-    {
-        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] = sdata[threadIdx.x] + sdata[threadIdx.x + s];
-        __syncthreads();
-    }
-    
-    prod[blockIdx.x] = sdata[0];
-}
-
-extern "C" void compute_inner_product_gpu(int num_gkvec_row,
-                                          int n,
-                                          acc_complex_double_t const* f1,
-                                          acc_complex_double_t const* f2,
-                                          double* prod)
-{
-    dim3 grid_t(64);
-    dim3 grid_b(n);
-
-    accLaunchKernel((compute_inner_product_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
-        num_gkvec_row,
-        f1,
-        f2,
-        prod
-    );
-}
+//__global__ void compute_inner_product_gpu_kernel
+//(
+//    int num_gkvec_row,
+//    acc_complex_double_t const* f1,
+//    acc_complex_double_t const* f2,
+//    double* prod
+//)
+//{
+//    int N = num_blocks(num_gkvec_row, blockDim.x);
+//
+//    ACC_DYNAMIC_SHARED( char, sdata_ptr)
+//    double* sdata = (double*)&sdata_ptr[0];
+//
+//    sdata[threadIdx.x] = 0.0;
+//
+//    for (int n = 0; n < N; n++)
+//    {
+//        int igk = n * blockDim.x + threadIdx.x;
+//        if (igk < num_gkvec_row)
+//        {
+//            int k = array2D_offset(igk, blockIdx.x, num_gkvec_row);
+//            sdata[threadIdx.x] += f1[k].x * f2[k].x + f1[k].y *f2[k].y;
+//        }
+//    }
+//
+//    __syncthreads();
+//
+//    for (int s = 1; s < blockDim.x; s *= 2) 
+//    {
+//        if (threadIdx.x % (2 * s) == 0) sdata[threadIdx.x] = sdata[threadIdx.x] + sdata[threadIdx.x + s];
+//        __syncthreads();
+//    }
+//    
+//    prod[blockIdx.x] = sdata[0];
+//}
+//
+//extern "C" void compute_inner_product_gpu(int num_gkvec_row,
+//                                          int n,
+//                                          acc_complex_double_t const* f1,
+//                                          acc_complex_double_t const* f2,
+//                                          double* prod)
+//{
+//    dim3 grid_t(64);
+//    dim3 grid_b(n);
+//
+//    accLaunchKernel((compute_inner_product_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
+//        num_gkvec_row,
+//        f1,
+//        f2,
+//        prod
+//    );
+//}
 
 template <typename T>
 __global__ void add_checksum_gpu_kernel(gpu_complex_type<T> const* ptr__, int ld__, int n__,
