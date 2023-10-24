@@ -42,15 +42,15 @@ using json = nlohmann::json;
 #include "utils/power.hpp"
 #endif
 
-#include "context/simulation_context.hpp"
-#include "hamiltonian/local_operator.hpp"
-#include "radial/radial_solver.hpp"
 #include "core/sht/sht.hpp"
 #include "core/sht/gaunt.hpp"
 #include "core/hdf5_tree.hpp"
+#include "core/sirius_version.hpp"
+#include "context/simulation_context.hpp"
+#include "hamiltonian/local_operator.hpp"
+#include "radial/radial_solver.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "linalg/eigenproblem.hpp"
-#include "sirius_version.hpp"
 
 /// Namespace of the SIRIUS library.
 namespace sirius {

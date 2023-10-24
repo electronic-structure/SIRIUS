@@ -23,14 +23,14 @@
  */
 
 #include <gsl/gsl_sf_bessel.h>
-#include "sirius_version.hpp"
+#include "core/profiler.hpp"
+#include "core/env/env.hpp"
+#include "core/omp.hpp"
+#include "core/sirius_version.hpp"
 #include "simulation_context.hpp"
 #include "symmetry/lattice.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "symmetry/check_gvec.hpp"
-#include "core/profiler.hpp"
-#include "core/env/env.hpp"
-#include "core/omp.hpp"
 #include "potential/xc_functional.hpp"
 #include "linalg/linalg_spla.hpp"
 #include "lapw/step_function.hpp"

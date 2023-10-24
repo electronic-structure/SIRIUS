@@ -65,7 +65,6 @@ set(_SOURCES
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
   "SDDK/memory.cpp"
-  "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
   "linalg/eigenproblem.cpp"
@@ -86,6 +85,7 @@ set(_SOURCES
   "core/profiler.cpp"
   "core/rt_graph.cpp"
   "core/ostream_tools.cpp"
+  "core/sirius_version.cpp"
   )
 
 
@@ -168,6 +168,6 @@ install(EXPORT sirius_targets
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
         FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp"
+install(FILES "${PROJECT_BINARY_DIR}/src/core/version.hpp"
               "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
