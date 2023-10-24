@@ -233,8 +233,8 @@ else()
   set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
   set(SIRIUS_SHA "https://api.github.com/repos/electronic-structure/SIRIUS/git/ref/tags/v${SIRIUS_VERSION}")
 endif()
-configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/version.hpp"
+configure_file("${PROJECT_SOURCE_DIR}/src/core/version.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/core/version.hpp"
                @ONLY)
 
 # generate schema
