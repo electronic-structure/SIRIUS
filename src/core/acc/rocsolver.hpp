@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include "acc.hpp"
 #include "acc_blas_api.hpp"
-#include "core/rte.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 
