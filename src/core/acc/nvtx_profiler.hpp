@@ -3,8 +3,12 @@
 
 #if defined(SIRIUS_CUDA_NVTX)
 
-#include "nvToolsExt.h"
 #include <unordered_map>
+#include "nvToolsExt.h"
+
+namespace sirius {
+
+namespace acc {
 
 namespace nvtxprofiler {
 
@@ -47,6 +51,7 @@ private:
 };
 
 }
-
+}
+} // namespace sirius
 #endif
 #endif

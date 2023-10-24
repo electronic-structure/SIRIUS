@@ -26,8 +26,8 @@
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
 #include "core/fft/gvec.hpp"
+#include "core/profiler.hpp"
 #include "SDDK/memory.hpp"
-#include "utils/profiler.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__

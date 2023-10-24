@@ -26,7 +26,7 @@
 #include <iostream>
 #include "SDDK/memory.hpp"
 #include "core/any_ptr.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "error_codes.hpp"
 #ifdef SIRIUS_NLCGLIB
 #include "nlcglib/adaptor.hpp"
@@ -452,7 +452,7 @@ sirius_start_timer:
 void
 sirius_start_timer(char const* name__, int* error_code__)
 {
-    call_sirius([&]() { ::utils::global_rtgraph_timer.start(name__); }, error_code__);
+    call_sirius([&]() { global_rtgraph_timer.start(name__); }, error_code__);
 }
 
 /*
@@ -473,7 +473,7 @@ sirius_stop_timer:
 void
 sirius_stop_timer(char const* name__, int* error_code__)
 {
-    call_sirius([&]() { ::utils::global_rtgraph_timer.stop(name__); }, error_code__);
+    call_sirius([&]() { global_rtgraph_timer.stop(name__); }, error_code__);
 }
 
 /*
@@ -496,7 +496,7 @@ sirius_print_timers(bool* flatten__, int* error_code__)
 {
     call_sirius(
         [&]() {
-            auto timing_result = ::utils::global_rtgraph_timer.process();
+            auto timing_result = global_rtgraph_timer.process();
             if (*flatten__) {
                 timing_result = timing_result.flatten(1).sort_nodes();
             }
@@ -527,7 +527,7 @@ sirius_serialize_timers(char const* fname__, int* error_code__)
 {
     call_sirius(
         [&]() {
-            auto timing_result = ::utils::global_rtgraph_timer.process();
+            auto timing_result = global_rtgraph_timer.process();
             std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
             ofs << timing_result.json();
         },

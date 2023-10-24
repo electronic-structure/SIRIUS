@@ -33,7 +33,7 @@ extern "C" {
 
 #include "SDDK/memory.hpp"
 #include "core/r3/r3.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 
 namespace sirius {
 

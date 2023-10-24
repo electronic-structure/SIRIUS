@@ -64,9 +64,6 @@ set(_SOURCES
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
-  "utils/rt_graph.cpp"
-  "utils/profiler.cpp"
-  "utils/ostream_tools.cpp"
   "SDDK/memory.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
@@ -86,6 +83,9 @@ set(_SOURCES
   "core/acc/acc_blas.cpp"
   "core/acc/cusolver.cpp"
   "core/acc/rocsolver.cpp"
+  "core/profiler.cpp"
+  "core/rt_graph.cpp"
+  "core/ostream_tools.cpp"
   )
 
 

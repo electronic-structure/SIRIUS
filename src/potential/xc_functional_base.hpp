@@ -32,7 +32,7 @@
 #include <stdexcept>
 #include <iostream>
 #include "core/rte/rte.hpp"
-#include "utils/ostream_tools.hpp"
+#include "core/ostream_tools.hpp"
 
 namespace sirius {
 

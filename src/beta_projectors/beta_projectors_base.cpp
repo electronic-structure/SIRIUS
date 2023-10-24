@@ -22,12 +22,12 @@
  *  \brief Contains implementation of sirius::Beta_projectors_base class.
  */
 
+#include <stdexcept>
 #include "linalg/linalg_base.hpp"
 #include "beta_projectors_base.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "core/env/env.hpp"
 #include "core/wf/wave_functions.hpp"
-#include <stdexcept>
 
 namespace sirius {
 

@@ -36,7 +36,7 @@
 #include "linalg/linalg_spla.hpp"
 #include "core/cmd_args.hpp"
 #include "core/json.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 using json = nlohmann::json;
 #if defined(SIRIUS_USE_POWER_COUNTER)
 #include "utils/power.hpp"
@@ -203,7 +203,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
     auto pt = env::print_timing();
     if (pt && rank == 0) {
-        auto timing_result = ::utils::global_rtgraph_timer.process();
+        auto timing_result = global_rtgraph_timer.process();
 
         if (pt & 1) {
             std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,

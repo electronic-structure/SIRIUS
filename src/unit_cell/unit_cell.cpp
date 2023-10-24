@@ -25,7 +25,7 @@
 #include <iomanip>
 #include "unit_cell.hpp"
 #include "symmetry/crystal_symmetry.hpp"
-#include "utils/ostream_tools.hpp"
+#include "core/ostream_tools.hpp"
 
 namespace sirius {
 

@@ -26,7 +26,7 @@
 #include "crystal_symmetry.hpp"
 #include "lattice.hpp"
 #include "rotation.hpp"
-#include "utils/ostream_tools.hpp"
+#include "core/ostream_tools.hpp"
 
 namespace sirius {
 

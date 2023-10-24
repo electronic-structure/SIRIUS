@@ -26,9 +26,9 @@
 #define __ATOM_HPP__
 
 #include "core/sht/gaunt.hpp"
+#include "core/profiler.hpp"
 #include "atom_symmetry_class.hpp"
 #include "function3d/spheric_function.hpp"
-#include "utils/profiler.hpp"
 
 namespace sirius {
 

@@ -23,7 +23,7 @@
  */
 
 #include "potential.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "lapw/sum_fg_fl_yg.hpp"
 
 namespace sirius {

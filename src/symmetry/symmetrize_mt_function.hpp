@@ -26,6 +26,7 @@
 #define __SYMMETRIZE_MT_FUNCTION_HPP__
 
 #include "crystal_symmetry.hpp"
+#include "function3d/spheric_function_set.hpp"
 
 namespace sirius {
 

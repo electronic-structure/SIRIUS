@@ -23,12 +23,12 @@
  */
 
 #include "core/r3/r3.hpp"
+#include "core/profiler.hpp"
 #include "k_point/k_point.hpp"
-#include "stress.hpp"
 #include "non_local_functor.hpp"
-#include "utils/profiler.hpp"
 #include "dft/energy.hpp"
 #include "symmetry/symmetrize_stress_tensor.hpp"
+#include "stress.hpp"
 
 namespace sirius {
 

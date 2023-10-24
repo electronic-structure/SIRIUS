@@ -22,6 +22,9 @@
  *  \brief Occupation matrix of the LDA+U method.
  */
 
+#ifndef __OCCUPATION_MATRIX_HPP__
+#define __OCCUPATION_MATRIX_HPP__
+
 #include "SDDK/memory.hpp"
 #include "k_point/k_point.hpp"
 #include "hubbard/hubbard_matrix.hpp"
@@ -139,3 +142,4 @@ copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
 }
 
 } // namespace sirius
+#endif

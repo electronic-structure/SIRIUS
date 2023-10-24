@@ -25,7 +25,7 @@
 #include "local_operator.hpp"
 #include "potential/potential.hpp"
 #include "function3d/smooth_periodic_function.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "core/wf/wave_functions.hpp"
 
 namespace sirius {

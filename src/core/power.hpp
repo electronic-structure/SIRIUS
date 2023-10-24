@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 
-namespace utils {
+namespace sirius {
 namespace power {
 
 static double read_pm_file(const std::string& fname)
@@ -51,4 +51,4 @@ static int num_nodes()
 }
 
 } // namespace power
-} // namespace utils
+} // namespace sirius

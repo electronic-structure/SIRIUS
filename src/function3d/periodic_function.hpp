@@ -29,7 +29,7 @@
 #include "spheric_function.hpp"
 #include "spheric_function_set.hpp"
 #include "smooth_periodic_function.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 
 namespace sirius {
 

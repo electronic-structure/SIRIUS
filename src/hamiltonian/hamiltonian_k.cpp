@@ -29,8 +29,8 @@
 #include "potential/potential.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "core/omp.hpp"
+#include "core/profiler.hpp"
 #include "k_point/k_point.hpp"
-#include "utils/profiler.hpp"
 #include "lapw/generate_alm_block.hpp"
 #include <chrono>
 

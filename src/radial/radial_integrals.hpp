@@ -29,7 +29,7 @@
 #include "core/sf/sbessel.hpp"
 #include "core/rte/rte.hpp"
 #include "core/env/env.hpp"
-#include "utils/ostream_tools.hpp"
+#include "core/ostream_tools.hpp"
 
 namespace sirius {
 

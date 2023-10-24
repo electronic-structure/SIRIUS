@@ -25,6 +25,9 @@
 #ifndef __SYMMETRIZE_PW_FUNCTION_HPP__
 #define __SYMMETRIZE_PW_FUNCTION_HPP__
 
+#include "function3d/spheric_function.hpp"
+#include "function3d/smooth_periodic_function.hpp"
+
 namespace sirius {
 
 /// Symmetrize scalar or vector function.

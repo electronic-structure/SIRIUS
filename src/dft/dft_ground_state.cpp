@@ -24,7 +24,7 @@
 
 #include <iomanip>
 #include "dft_ground_state.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 

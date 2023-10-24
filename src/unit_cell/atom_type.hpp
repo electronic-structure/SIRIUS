@@ -34,8 +34,8 @@
 #include "core/sht/sht.hpp"
 #include "core/sht/gaunt.hpp"
 #include "core/r3/r3.hpp"
-#include "utils/profiler.hpp"
-#include "utils/packed_index.hpp"
+#include "core/profiler.hpp"
+#include "core/packed_index.hpp"
 
 namespace sirius {
 

@@ -30,17 +30,17 @@
 #if defined(__APEX)
 #include <apex_api.hpp>
 #endif
-#include "rt_graph.hpp"
+#include "core/rt_graph.hpp"
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA_NVTX)
-#include "nvtx_profiler.hpp"
+#include "core/acc/nvtx_profiler.hpp"
 #endif
 
-namespace utils {
+namespace sirius {
 
 extern ::rt_graph::Timer global_rtgraph_timer;
 
 #if defined(SIRIUS_CUDA_NVTX)
-extern ::nvtxprofiler::Timer global_nvtx_timer;
+extern acc::nvtxprofiler::Timer global_nvtx_timer;
 #endif
 
 // TODO: add calls to apex and cudaNvtx
@@ -51,21 +51,21 @@ extern ::nvtxprofiler::Timer global_nvtx_timer;
 
 #if defined(SIRIUS_CUDA_NVTX)
     #define PROFILE(identifier) \
-        ::nvtxprofiler::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_nvtx_timer); \
-        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_rtgraph_timer);
+        acc::nvtxprofiler::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, global_nvtx_timer); \
+        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, global_rtgraph_timer);
     #define PROFILE_START(identifier) \
-        ::utils::global_nvtx_timer.start(identifier); \
-        ::utils::global_rtgraph_timer.start(identifier);
+        global_nvtx_timer.start(identifier); \
+        global_rtgraph_timer.start(identifier);
     #define PROFILE_STOP(identifier) \
-        ::utils::global_rtgraph_timer.stop(identifier); \
-        ::utils::global_nvtx_timer.stop(identifier);
+        global_rtgraph_timer.stop(identifier); \
+        global_nvtx_timer.stop(identifier);
 #else
     #define PROFILE(identifier) \
-        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_rtgraph_timer);
+        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, global_rtgraph_timer);
     #define PROFILE_START(identifier) \
-        ::utils::global_rtgraph_timer.start(identifier);
+        global_rtgraph_timer.start(identifier);
     #define PROFILE_STOP(identifier) \
-        ::utils::global_rtgraph_timer.stop(identifier);
+        global_rtgraph_timer.stop(identifier);
 #endif
 
 #else
@@ -74,6 +74,6 @@ extern ::nvtxprofiler::Timer global_nvtx_timer;
     #define PROFILE_STOP(...)
 #endif
 
-} // namespace utils
+} // namespace sirius
 
 #endif

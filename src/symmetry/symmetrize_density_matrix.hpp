@@ -25,6 +25,8 @@
 #ifndef __SYMMETRIZE_DENSITY_MATRIX_HPP__
 #define __SYMMETRIZE_DENSITY_MATRIX_HPP__
 
+#include "density/density_matrix.hpp"
+
 namespace sirius {
 
 inline void

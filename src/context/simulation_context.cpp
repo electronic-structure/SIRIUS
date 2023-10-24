@@ -28,7 +28,7 @@
 #include "symmetry/lattice.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "symmetry/check_gvec.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "core/env/env.hpp"
 #include "core/omp.hpp"
 #include "potential/xc_functional.hpp"

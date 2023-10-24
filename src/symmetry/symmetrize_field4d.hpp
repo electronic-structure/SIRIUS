@@ -27,6 +27,7 @@
 
 #include "symmetrize_mt_function.hpp"
 #include "symmetrize_pw_function.hpp"
+#include "function3d/field4d.hpp"
 
 namespace sirius {
 

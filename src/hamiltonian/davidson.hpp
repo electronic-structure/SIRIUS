@@ -27,7 +27,7 @@
 
 #include "hamiltonian/hamiltonian.hpp"
 #include "k_point/k_point.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "residuals.hpp"
 #include "generate_subspace_matrix.hpp"
 

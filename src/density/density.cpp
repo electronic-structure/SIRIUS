@@ -23,18 +23,18 @@
  *  \brief Contains implementation of sirius::Density class.
  */
 
-#include "density.hpp"
+#include "core/profiler.hpp"
+#include "core/serialize_mdarray.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
 #include "symmetry/symmetrize_density_matrix.hpp"
 #include "symmetry/symmetrize_occupation_matrix.hpp"
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
-#include "utils/profiler.hpp"
-#include "core/serialize_mdarray.hpp"
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/sum_fg_fl_yg.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
+#include "density.hpp"
 
 namespace sirius {
 

@@ -34,7 +34,7 @@
 #include "core/wf/wave_functions.hpp"
 #include "core/r3/r3.hpp"
 #include "core/cmd_args.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "context/simulation_context.hpp"
 
 namespace sirius {
