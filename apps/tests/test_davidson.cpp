@@ -196,7 +196,7 @@ int main(int argn, char** argv)
                                {"mpi_grid=",      "(int[2]) dimensions of the MPI grid for band diagonalization"},
                                {"solver=",        "(string) eigen-value solver"},
                                {"res_tol=",       "(double) residual L2-norm tolerance"},
-                               {"eval_tol=",      "(double) eigan-value tolerance"},
+                               {"eval_tol=",      "(double) eigen-value tolerance"},
                                {"subspace_size=", "(int) size of the diagonalization subspace"},
                                {"use_res_norm",   "use residual norm to estimate the convergence"},
                                {"extra_ortho",    "use second orthogonalisation"},

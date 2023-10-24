@@ -179,8 +179,9 @@ int main(int argc, char ** argv) {
         // Save all the resnorms
         bool done = true;
         for (size_t i = 0; i < n; ++i) {
-            done &= iter_resnorms[i].back() <= tol;
-            all_resnorms[i].insert(all_resnorms[i].end(), iter_resnorms[i].begin(), iter_resnorms[i].end());
+            done &= iter_resnorms.residual_history[i].back() <= tol;
+            all_resnorms[i].insert(all_resnorms[i].end(), iter_resnorms.residual_history[i].begin(),
+                    iter_resnorms.residual_history[i].end());
         }
         if (done) break;
     }
@@ -198,7 +199,7 @@ int main(int argc, char ** argv) {
         m * n, tol, true
     );
 
-    for (auto r : resnorms_64[0])
+    for (auto r : resnorms_64.residual_history[0])
         std::cout << r << '\n';
     std::cout << '\n';
 }

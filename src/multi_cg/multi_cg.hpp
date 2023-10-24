@@ -47,11 +47,12 @@ void repack(std::vector<T> &data, std::vector<int> const&ids) {
     }
 }
 
-template<class Matrix, class Prec, class StateVec>
-std::vector<std::vector<typename StateVec::value_type>> multi_cg(
-    Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
-    size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false
-) {
+
+template<typename Matrix, typename Prec, typename StateVec>
+auto
+multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
+    int maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false) {
+
     PROFILE("sirius_api::sirius_linear_solver::multi_cg");
     auto n = X.cols();
 
@@ -78,7 +79,9 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
     size_t num_unconverged = n;
 
     auto residual_history = std::vector<std::vector<typename StateVec::value_type>>(n);
-    for (size_t iter = 0; iter < maxiters; ++iter) {
+    int niter{0};
+    for (int iter = 0; iter < maxiters; ++iter) {
+        niter = iter;
         // Check the residual norms in the P-norm
         // that means whenever P is approximately inv(A)
         // since (r, Pr) = (Ae, PAe) ~= (e, Ae)
@@ -164,7 +167,10 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
     }
-    return residual_history;
+    struct {
+        std::vector<std::vector<typename StateVec::value_type>> residual_history;
+        int niter; } result{residual_history, niter};
+    return result;
 }
 }
 
