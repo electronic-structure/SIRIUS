@@ -375,11 +375,6 @@ void run_tasks(cmd_args const& args)
         task_id == task_t::ground_state_new_vcrelax) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        //if (ctx->comm().rank() == 0) {
-        //    auto dict = ctx->serialize();
-        //    std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
-        //    ofs << dict.dump(4);
-        //}
         int write_output{1};
         ground_state(*ctx, task_id, args, write_output);
     }
@@ -412,43 +407,12 @@ void run_tasks(cmd_args const& args)
             }
         }
     }
-    //if (task_id == task_t::read_config) {
-    //    //int count{0};
-    //    //while (true) {
-    //    //    std::stringstream s;
-    //    //    s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
-    //    //    fname = s.str();
-    //    //    try {
-    //    //        auto dict = utils::read_json_from_file_or_string(fname);
-    //    //        Simulation_context ctx(dict["config"].dump());
-    //    //    } catch(...) {
-    //    //        break;
-    //    //    }
-    //    //    count++;
-    //    //}
-    //    auto dict1 = read_json_from_file_or_string("sirius000030.json");
-    //    Simulation_context ctx1(dict1["config"].dump());
-    //    ctx1.initialize();
-
-    //    auto dict2 = read_json_from_file_or_string("sirius000031.json");
-    //    Simulation_context ctx2(dict1["config"].dump());
-    //    ctx2.initialize();
-
-    //    ctx1.unit_cell().set_lattice_vectors(ctx2.unit_cell().lattice_vectors());
-    //    for (int ia = 0; ia < ctx2.unit_cell().num_atoms(); ia++) {
-    //        ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
-    //    }
-    //    ctx1.update();
-    //}
 
     if (task_id == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->cfg().iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
         ctx->initialize();
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        //}
 
         Potential potential(*ctx);
 
