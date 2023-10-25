@@ -10,7 +10,7 @@ if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
   set(_CUSOURCES
     "core/gpu_kernels/augmentation_operator.cu"
     "core/gpu_kernels/create_beta_gk.cu"
-    "core/gpu_kernels/cuda_uspp_kernels.cu"
+    "core/gpu_kernels/checksum.cu"
     "core/gpu_kernels/density_rg.cu"
     "core/gpu_kernels/generate_dm_pw.cu"
     "core/gpu_kernels/generate_phase_factors.cu"
