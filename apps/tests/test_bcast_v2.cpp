@@ -5,14 +5,14 @@ using namespace sddk;
 
 int test1(int size)
 {
-    double t = -utils::wtime();
+    double t = -wtime();
     sddk::mdarray<char, 1> buf(size);
     buf.zero();
 
     for (int r = 0; r < mpi::Communicator::world().size(); r++) {
         mpi::Communicator::world().bcast(buf.at(memory_t::host), size, r);
     }
-    t += utils::wtime();
+    t += wtime();
     if (mpi::Communicator::world().rank() == 0) {
         printf("time : %f sec.\n", t);
     }

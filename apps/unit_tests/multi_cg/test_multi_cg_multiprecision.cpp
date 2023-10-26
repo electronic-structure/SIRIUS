@@ -5,6 +5,7 @@
 #include <iostream>
 
 using namespace Eigen;
+using namespace sirius;
 
 template<typename T>
 struct BlockVector {

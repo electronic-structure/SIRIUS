@@ -5,7 +5,7 @@ using namespace sirius;
 template <int touch, int pin, sddk::device_t pu>
 void test_alloc(int size__)
 {
-    auto t0 = utils::time_now();
+    auto t0 = time_now();
     if (pu == sddk::device_t::CPU) {
         sddk::mdarray<char, 1> a(1024 * 1024 * size__, pin ? sddk::memory_t::host_pinned : sddk::memory_t::host);
         if (touch) {
@@ -21,7 +21,7 @@ void test_alloc(int size__)
         }
     }
     #endif
-    double tval = utils::time_interval(t0);
+    double tval = time_interval(t0);
     printf("time: %f microseconds\n", tval * 1e6);
     printf("effective speed: %f GB/sec.\n", size__ / 1024.0 / tval);
 }

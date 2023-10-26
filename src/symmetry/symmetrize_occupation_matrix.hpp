@@ -25,6 +25,8 @@
 #ifndef __SYMMETRIZE_OCCUPATION_MATRIX_HPP__
 #define __SYMMETRIZE_OCCUPATION_MATRIX_HPP__
 
+#include "density/occupation_matrix.hpp"
+
 namespace sirius {
 
 inline void

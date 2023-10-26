@@ -52,7 +52,7 @@ class K_point_set
 #endif
 
     /// Split index of k-points.
-    sddk::splindex_chunk<kp_index_t> spl_num_kpoints_;
+    splindex_chunk<kp_index_t> spl_num_kpoints_;
 
     /// Fermi energy which is searched in find_band_occupancies().
     double energy_fermi_{0};

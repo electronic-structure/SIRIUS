@@ -55,7 +55,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     if (blacs_grid__.comm().rank() == 0) {
         sirius::print_memory_usage(std::cout, FILE_LINE);
     }
-    double t = -utils::wtime();
+    double t = -wtime();
     if (test_gen__) {
         if (n__ == nev__) {
             solver.solve(n__, A, B, eval.data(), Z);
@@ -69,7 +69,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
             solver.solve(n__, nev__, A, eval.data(), Z);
         }
     }
-    t += utils::wtime();
+    t += wtime();
     if (blacs_grid__.comm().rank() == 0) {
         sirius::print_memory_usage(std::cout, FILE_LINE);
     }
@@ -141,12 +141,12 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
     sddk::matrix<std::complex<double>> full_mtrx;
     int n;
     if (blacs_grid__.comm().rank() == 0) {
-        sddk::HDF5_tree h5(fname__, sddk::hdf5_access_t::read_only);
+        sirius::HDF5_tree h5(fname__, sirius::hdf5_access_t::read_only);
         h5.read("/nrow", &n, 1);
         int m;
         h5.read("/ncol", &m, 1);
         if (n != m) {
-            TERMINATE("not a square matrix");
+            RTE_THROW("not a square matrix");
         }
         full_mtrx = sddk::matrix<std::complex<double>>(n, n);
         h5.read("/mtrx", full_mtrx);
@@ -172,7 +172,7 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
     }
 
     if (solver->solve(n, A, eval.data(), Z)) {
-        TERMINATE("diagonalization failed");
+        RTE_THROW("diagonalization failed");
     }
     if (blacs_grid__.comm().rank() == 0) {
         printf("lowest eigen-value: %18.12f\n", eval[0]);

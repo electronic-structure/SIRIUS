@@ -1,6 +1,6 @@
 #include <sirius.hpp>
 #include <spla/spla.hpp>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 
 using namespace sirius;
 using namespace sddk;
@@ -90,7 +90,7 @@ spfft_transform_type<double> spfft(
    and fill with random numbers */
 mdarray<std::complex<double>, 1> f(gvp.count());
 f = [](int64_t){
-  return utils::random<std::complex<double>>();
+  return random<std::complex<double>>();
 };
 /* transform to real space */
 spfft.backward(reinterpret_cast<double const*>(
@@ -140,7 +140,7 @@ wf::Wave_functions<double> wf(gvec, wf::num_mag_dims(0), wf::num_bands(N), memor
 for (int i = 0; i < N; i++) {
     for (int j = 0; j < gvec->count(); j++) {
         wf.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) =
-            utils::random<std::complex<double>>();
+            random<std::complex<double>>();
     }
 }
 /* create a 2x2 BLACS grid */

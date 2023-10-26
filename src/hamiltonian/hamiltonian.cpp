@@ -80,11 +80,11 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
                     }
                 }
                 if (pu == sddk::device_t::GPU) {
-                    hmt_[ia].allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device, stream_id(tid));
+                    hmt_[ia].allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device, acc::stream_id(tid));
                 }
             }
             if (pu == sddk::device_t::GPU) {
-                acc::sync_stream(stream_id(tid));
+                acc::sync_stream(acc::stream_id(tid));
             }
         }
     }

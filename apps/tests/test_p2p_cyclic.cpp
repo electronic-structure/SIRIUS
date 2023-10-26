@@ -5,7 +5,7 @@ using namespace sddk;
 
 int test1(int size)
 {
-    double t = -utils::wtime();
+    double t = -wtime();
     sddk::mdarray<char, 1> buf(size);
     sddk::mdarray<char, 1> buf1(size);
     buf.zero();
@@ -21,7 +21,7 @@ int test1(int size)
         mpi::Communicator::world().recv(buf1.at(memory_t::host), size, rank2, mpi::Communicator::get_tag(rank, rank2));
         req.wait();
     }
-    t += utils::wtime();
+    t += wtime();
     if (mpi::Communicator::world().rank() == 0) {
         printf("time : %f sec.\n", t);
     }

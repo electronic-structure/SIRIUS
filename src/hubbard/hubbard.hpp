@@ -30,7 +30,7 @@
 #include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "beta_projectors/beta_projectors_gradient.hpp"

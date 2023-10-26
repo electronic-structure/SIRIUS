@@ -18,7 +18,7 @@
 #include <omp.h>
 #endif
 
-#include "utils/json.hpp"
+#include "core/json.hpp"
 #include "dft/energy.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "nlcglib/inverse_overlap.hpp"

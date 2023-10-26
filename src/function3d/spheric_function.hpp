@@ -29,8 +29,9 @@
 #include <array>
 #include <typeinfo>
 #include "radial/spline.hpp"
-#include "sht/sht.hpp"
-#include "memory.hpp"
+#include "core/sht/sht.hpp"
+#include "core/math_tools.hpp"
+#include "SDDK/memory.hpp"
 
 namespace sirius {
 
@@ -188,7 +189,7 @@ class Spheric_function: public sddk::mdarray<T, 2>
     {
         RTE_ASSERT(domain_t == function_domain_t::spectral);
 
-        int lmax = utils::lmax(angular_domain_size_);
+        int lmax = sf::lmax(angular_domain_size_);
         std::vector<T> ylm(angular_domain_size_);
         sf::spherical_harmonics(lmax, theta__, phi__, &ylm[0]);
         T p = 0.0;
@@ -378,7 +379,7 @@ inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> con
         int lmmax = std::min(f1.angular_domain_size(), f2.angular_domain_size());
         for (int ir = 0; ir < s.num_points(); ir++) {
             for (int lm = 0; lm < lmmax; lm++) {
-                s(ir) += utils::conj(f1(lm, ir)) * f2(lm, ir);
+                s(ir) += conj(f1(lm, ir)) * f2(lm, ir);
             }
             s(ir) *= std::pow(f1.radial_grid().x(ir), 2);
         }
@@ -402,14 +403,14 @@ laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)
     Spheric_function<function_domain_t::spectral, T> g;
     auto& rgrid = f__.radial_grid();
     int lmmax = f__.angular_domain_size();
-    int lmax = utils::lmax(lmmax);
+    int lmax = sf::lmax(lmmax);
     g = Spheric_function<function_domain_t::spectral, T>(lmmax, rgrid);
 
     Spline<T> s1(rgrid);
     for (int l = 0; l <= lmax; l++) {
         int ll = l * (l + 1);
         for (int m = -l; m <= l; m++) {
-            int lm = utils::lm(l, m);
+            int lm = sf::lm(l, m);
             /* get lm component */
             auto s = f__.component(lm);
             /* compute 1st derivative */
@@ -433,14 +434,14 @@ inline void
 convert(Spheric_function<function_domain_t::spectral, std::complex<double>> const& f__,
         Spheric_function<function_domain_t::spectral, double>& g__)
 {
-    int lmax = utils::lmax(f__.angular_domain_size());
+    int lmax = sf::lmax(f__.angular_domain_size());
 
     /* cache transformation arrays */
     std::vector<std::complex<double>> tpp(f__.angular_domain_size());
     std::vector<std::complex<double>> tpm(f__.angular_domain_size());
     for (int l = 0; l <= lmax; l++) {
         for (int m = -l; m <= l; m++) {
-            int lm = utils::lm(l, m);
+            int lm = sf::lm(l, m);
             tpp[lm] = SHT::rlm_dot_ylm(l, m, m);
             tpm[lm] = SHT::rlm_dot_ylm(l, m, -m);
         }
@@ -453,7 +454,7 @@ convert(Spheric_function<function_domain_t::spectral, std::complex<double>> cons
                 if (m == 0) {
                     g__(lm, ir) = std::real(f__(lm, ir));
                 } else {
-                    int lm1 = utils::lm(l, -m);
+                    int lm1 = sf::lm(l, -m);
                     g__(lm, ir) = std::real(tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir));
                 }
                 lm++;
@@ -476,14 +477,14 @@ inline void
 convert(Spheric_function<function_domain_t::spectral, double> const& f__,
         Spheric_function<function_domain_t::spectral, std::complex<double>>& g__)
 {
-    int lmax = utils::lmax(f__.angular_domain_size());
+    int lmax = sf::lmax(f__.angular_domain_size());
 
     /* cache transformation arrays */
     std::vector<std::complex<double>> tpp(f__.angular_domain_size());
     std::vector<std::complex<double>> tpm(f__.angular_domain_size());
     for (int l = 0; l <= lmax; l++) {
         for (int m = -l; m <= l; m++) {
-            int lm = utils::lm(l, m);
+            int lm = sf::lm(l, m);
             tpp[lm] = SHT::ylm_dot_rlm(l, m, m);
             tpm[lm] = SHT::ylm_dot_rlm(l, m, -m);
         }
@@ -496,7 +497,7 @@ convert(Spheric_function<function_domain_t::spectral, double> const& f__,
                 if (m == 0) {
                     g__(lm, ir) = f__(lm, ir);
                 } else {
-                    int lm1 = utils::lm(l, -m);
+                    int lm1 = sf::lm(l, -m);
                     g__(lm, ir) = tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir);
                 }
                 lm++;
@@ -560,28 +561,28 @@ gradient(Spheric_function<function_domain_t::spectral, std::complex<double>> con
         g[i].zero();
     }
 
-    int lmax = utils::lmax(f.angular_domain_size());
+    int lmax = sf::lmax(f.angular_domain_size());
 
     for (int l = 0; l <= lmax; l++) {
         double d1 = std::sqrt(double(l + 1) / double(2 * l + 3));
         double d2 = std::sqrt(double(l) / double(2 * l - 1));
 
         for (int m = -l; m <= l; m++) {
-            int lm = utils::lm(l, m);
+            int lm = sf::lm(l, m);
             auto s = f.component(lm);
 
             for (int mu = -1; mu <= 1; mu++) {
                 int j = (mu + 2) % 3; // map -1,0,1 to 1,2,0 (to y,z,x)
 
                 if ((l + 1) <= lmax && std::abs(m + mu) <= l + 1) {
-                    int lm1 = utils::lm(l + 1, m + mu); 
+                    int lm1 = sf::lm(l + 1, m + mu); 
                     double d = d1 * SHT::clebsch_gordan(l, 1, l + 1, m, mu, m + mu);
                     for (int ir = 0; ir < f.radial_grid().num_points(); ir++) {
                         g[j](lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;
                     }
                 }
                 if ((l - 1) >= 0 && std::abs(m + mu) <= l - 1) {
-                    int lm1 = utils::lm(l - 1, m + mu); 
+                    int lm1 = sf::lm(l - 1, m + mu); 
                     double d = d2 * SHT::clebsch_gordan(l, 1, l - 1, m, mu, m + mu); 
                     for (int ir = 0; ir < f.radial_grid().num_points(); ir++) {
                         g[j](lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
@@ -610,7 +611,7 @@ gradient(Spheric_function<function_domain_t::spectral, std::complex<double>> con
 inline auto
 gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
-    int lmax = utils::lmax(f__.angular_domain_size());
+    int lmax = sf::lmax(f__.angular_domain_size());
     SHT sht(sddk::device_t::CPU, lmax);
     auto zf = convert(f__);
     auto zg = gradient(zf);

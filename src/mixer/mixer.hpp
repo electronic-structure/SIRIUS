@@ -36,6 +36,8 @@
 #include <numeric>
 
 namespace sirius {
+
+/// Mixer functions and objects.
 namespace mixer {
 
 /// Describes operations on a function type used for mixing.

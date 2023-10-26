@@ -254,7 +254,7 @@ class Potential : public Field4D
         /* get form-factors for all G shells */
         auto const ff = ctx_.ri().vloc_->values(q, ctx_.comm());
         /* make Vloc(G) */
-        auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
                 ctx_.phase_factors_t(), ff);
 
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
@@ -264,8 +264,8 @@ class Potential : public Field4D
         if (env::print_checksum()) {
             auto cs = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
-            utils::print_checksum("local_potential_pw", cs, ctx_.out());
-            utils::print_checksum("local_potential_rg", cs1, ctx_.out());
+            print_checksum("local_potential_pw", cs, ctx_.out());
+            print_checksum("local_potential_rg", cs1, ctx_.out());
         }
     }
 
@@ -841,7 +841,7 @@ class Potential : public Field4D
 
     auto& vsigma(int idx__)
     {
-        assert(idx__ >= 0 && idx__ < 3);
+        RTE_ASSERT(idx__ >= 0 && idx__ < 3);
         return (*vsigma_[idx__].get());
     }
 

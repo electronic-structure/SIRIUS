@@ -85,7 +85,7 @@ get_irreducible_reciprocal_mesh(Crystal_symmetry const& sym__, r3::vector<int> k
         n++;
     }
     if (n != nk) {
-        TERMINATE("wrong number of k-points");
+        RTE_THROW("wrong number of k-points");
     }
 
     return std::make_tuple(nk, wk, kp);

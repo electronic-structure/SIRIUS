@@ -26,9 +26,9 @@
 #define __BETA_PROJECTORS_BASE_HPP__
 
 #include "context/simulation_context.hpp"
-#include "SDDK/wave_functions.hpp"
-#include "memory.hpp"
-#include "mpi/communicator.hpp"
+#include "core/wf/wave_functions.hpp"
+#include "SDDK/memory.hpp"
+#include "core/mpi/communicator.hpp"
 #include <spla/context.hpp>
 
 namespace sirius {

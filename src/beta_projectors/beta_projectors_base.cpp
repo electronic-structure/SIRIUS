@@ -22,12 +22,12 @@
  *  \brief Contains implementation of beta-projectors generator.
  */
 
-#include "linalg/linalg_base.hpp"
-#include "utils/env.hpp"
-#include "beta_projectors_base.hpp"
-#include "utils/profiler.hpp"
-#include "wave_functions.hpp"
 #include <stdexcept>
+#include "linalg/linalg_base.hpp"
+#include "beta_projectors_base.hpp"
+#include "core/profiler.hpp"
+#include "core/env/env.hpp"
+#include "core/wf/wave_functions.hpp"
 
 namespace sirius {
 
@@ -73,7 +73,7 @@ beta_projectors_generate_cpu(sddk::matrix<std::complex<T>>& pw_coeffs_a,
 
         std::vector<double_complex> phase_gk(num_gkvec_loc);
         for (int igk_loc = 0; igk_loc < num_gkvec_loc; igk_loc++) {
-            auto G = gkvec.gvec<sddk::index_domain_t::local>(igk_loc);
+            auto G = gkvec.gvec<index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(ctx.gvec_phase_factor(G, ia) * phase_k);
         }
@@ -239,7 +239,7 @@ Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, fft::Gv
         gkvec_coord_.allocate(sddk::memory_t::device);
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto vgk = gkvec_.template gkvec<sddk::index_domain_t::local>(igk_loc);
+            auto vgk = gkvec_.template gkvec<index_domain_t::local>(igk_loc);
             for (auto x : {0, 1, 2}) {
                 gkvec_coord_(x, igk_loc) = vgk[x];
             }

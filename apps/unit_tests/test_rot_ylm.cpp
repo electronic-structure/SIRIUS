@@ -50,35 +50,35 @@ int run_test_impl(cmd_args& args)
             auto scoord2 = r3::spherical_coordinates(coord2);
 
             int lmax{10};
-            sddk::mdarray<T, 1> ylm(utils::lmmax(lmax));
+            sddk::mdarray<T, 1> ylm(sf::lmmax(lmax));
             /* compute spherical harmonics at original coordinate */
             sf::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
 
-            sddk::mdarray<T, 1> ylm2(utils::lmmax(lmax));
+            sddk::mdarray<T, 1> ylm2(sf::lmmax(lmax));
             /* compute spherical harmonics at rotated coordinates */
             sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
 
             /* generate rotation matrices; they are block-diagonal in l- index */
-            sddk::mdarray<T, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
+            sddk::mdarray<T, 2> ylm_rot_mtrx(sf::lmmax(lmax), sf::lmmax(lmax));
             sht::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
 
-            sddk::mdarray<T, 1> ylm1(utils::lmmax(lmax));
+            sddk::mdarray<T, 1> ylm1(sf::lmmax(lmax));
             ylm1.zero();
 
             /* rotate original sperical harmonics with P^{-1} */
-            for (int i = 0; i < utils::lmmax(lmax); i++) {
-                for (int j = 0; j < utils::lmmax(lmax); j++) {
-                    ylm1(i) += utils::conj(ylm_rot_mtrx(i, j)) * ylm(j);
+            for (int i = 0; i < sf::lmmax(lmax); i++) {
+                for (int j = 0; j < sf::lmmax(lmax); j++) {
+                    ylm1(i) += conj(ylm_rot_mtrx(i, j)) * ylm(j);
                 }
             }
 
             /* compute the difference with the reference */
             double d1{0};
-            for (int i = 0; i < utils::lmmax(lmax); i++) {
+            for (int i = 0; i < sf::lmmax(lmax); i++) {
                 d1 += std::abs(ylm1(i) - ylm2(i));
             }
             if (d1 > 1e-10) {
-                for (int i = 0; i < utils::lmmax(lmax); i++) {
+                for (int i = 0; i < sf::lmmax(lmax); i++) {
                     if (std::abs(ylm1(i) - ylm2(i)) > 1e-10) {
                         std::cout << "lm="<< i << " " << ylm1(i) << " " << ylm2(i) << " " << std::abs(ylm1(i) - ylm2(i)) << std::endl;
                     }

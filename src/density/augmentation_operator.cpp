@@ -39,7 +39,7 @@ void Augmentation_operator::generate_pw_coeffs()
 
     /* maximum l of beta-projectors */
     int lmax_beta = atom_type_.indexr().lmax();
-    int lmmax     = utils::lmmax(2 * lmax_beta);
+    int lmmax     = sf::lmmax(2 * lmax_beta);
 
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
@@ -110,7 +110,7 @@ void Augmentation_operator::generate_pw_coeffs()
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
-                int idx12         = utils::packed_index(xi1, xi2);
+                int idx12         = packed_index(xi1, xi2);
                 q_mtrx_(xi1, xi2) = q_mtrx_(xi2, xi1) = gvec_.omega() * q_pw_(idx12, 0);
             }
         }
@@ -123,8 +123,8 @@ void Augmentation_operator::generate_pw_coeffs()
         auto cs1 = q_mtrx_.checksum();
         gvec_.comm().allreduce(&cs, 1);
         if (gvec_.comm().rank() == 0) {
-            utils::print_checksum("q_pw", cs, std::cout);
-            utils::print_checksum("q_mtrx", cs1, std::cout);
+            print_checksum("q_pw", cs, std::cout);
+            print_checksum("q_mtrx", cs1, std::cout);
         }
     }
 }
@@ -140,7 +140,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
 
     /* maximum l of beta-projectors */
     int lmax_beta = atom_type_.indexr().lmax();
-    int lmmax     = utils::lmmax(2 * lmax_beta);
+    int lmmax     = sf::lmmax(2 * lmax_beta);
 
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
@@ -157,7 +157,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
                 /* index of the G-vector shell */
                 int igsh = gvec_.gvec_shell_idx_local(igloc);
 
-                auto gvc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
+                auto gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
                 double gvc_nu = gvc[nu__];
 
                 std::vector<double> rlm(lmmax);

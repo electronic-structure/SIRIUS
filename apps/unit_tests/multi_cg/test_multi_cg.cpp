@@ -7,6 +7,7 @@
 #include <iomanip>
 
 using namespace Eigen;
+using namespace sirius;
 
 struct BlockVector;
 

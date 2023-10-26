@@ -32,6 +32,8 @@
 #include "scalapack.h"
 #include <mpi.h>
 
+namespace sirius {
+
 namespace la {
 
 template <typename T>
@@ -309,5 +311,7 @@ class linalg_base
 };
 
 } // namespace
+
+}
 
 #endif // __LINALG_BASE_HPP__

@@ -22,9 +22,9 @@
  *  \brief Contains implementation of the interface to nlcglib.
  */
 
-#include "memory.hpp"
-#include "utils/rte.hpp"
-#include "wave_functions.hpp"
+#include "SDDK/memory.hpp"
+#include "core/rte/rte.hpp"
+#include "core/wf/wave_functions.hpp"
 #ifdef SIRIUS_NLCGLIB
 #include <stdexcept>
 
@@ -283,7 +283,7 @@ Energy::get_gkvec_ekin()
             auto& gkvec     = kp.gkvec();
             std::vector<double> gkvec_local(gkvec_count);
             for (int i = 0; i < gkvec_count; ++i) {
-                gkvec_local[i] = gkvec.gkvec_cart<sddk::index_domain_t::global>(i).length();
+                gkvec_local[i] = gkvec.gkvec_cart<index_domain_t::global>(i).length();
             }
             gkvec_cart.push_back(std::move(gkvec_local));
             kindices.emplace_back(it.i.get(), ispn);

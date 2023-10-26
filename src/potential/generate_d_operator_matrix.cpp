@@ -45,7 +45,7 @@ void Potential::generate_D_operator_matrix()
 
     /* local number of G-vectors */
     int gvec_count = ctx_.gvec().count();
-    auto spl_ngv_loc = utils::split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
+    auto spl_ngv_loc = split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
     sddk::memory_pool* mpd{nullptr};
@@ -161,11 +161,11 @@ void Potential::generate_D_operator_matrix()
                                   veff_a.at(sddk::memory_t::device, 0, 0, iv), veff_a.ld(),
                                   &la::constant<double>::one(),
                                   d_tmp.at(sddk::memory_t::device, 0, 0, iv), d_tmp.ld(),
-                                  stream_id(1 + iv));
+                                  acc::stream_id(1 + iv));
 #endif
                     } // iv
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        acc::sync_stream(stream_id(1 + iv));
+                        acc::sync_stream(acc::stream_id(1 + iv));
                     }
                     break;
                 }

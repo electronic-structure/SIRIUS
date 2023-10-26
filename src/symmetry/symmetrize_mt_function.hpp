@@ -26,6 +26,7 @@
 #define __SYMMETRIZE_MT_FUNCTION_HPP__
 
 #include "crystal_symmetry.hpp"
+#include "function3d/spheric_function_set.hpp"
 
 namespace sirius {
 
@@ -44,10 +45,10 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     for (auto ia : frlm.atoms()) {
         lmmax = std::max(lmmax, frlm[ia].angular_domain_size());
     }
-    int lmax = utils::lmax(lmmax);
+    int lmax = sf::lmax(lmmax);
 
     /* split atoms between MPI ranks */
-    sddk::splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));
+    splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));
 
     /* space for real Rlm rotation matrix */
     sddk::mdarray<double, 2> rotm(lmmax, lmmax);

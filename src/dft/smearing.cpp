@@ -1,7 +1,9 @@
-#include "smearing.hpp"
-#include "constants.hpp"
-#include "specfunc/specfunc.hpp"
 #include <cmath>
+#include "smearing.hpp"
+#include "core/constants.hpp"
+#include "core/sf/specfunc.hpp"
+
+namespace sirius {
 
 namespace smearing {
 
@@ -195,3 +197,5 @@ methfessel_paxton::entropy(double x__, double width__, int n__)
 }
 
 } // namespace smearing
+
+} // namespace sirius

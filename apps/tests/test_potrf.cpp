@@ -1,12 +1,13 @@
 #include <sirius.hpp>
 #include <testing.hpp>
 #if defined(SIRIUS_CUDA)
-#include "gpu/cusolver.hpp"
+#include "core/acc/cusolver.hpp"
 #endif
 
 /* template for unit tests */
 
 using namespace sirius;
+using namespace sirius::acc;
 
 int run_test(cmd_args const& args)
 {

@@ -51,7 +51,7 @@ class Lattice_relaxation
 
         int na = dft_.ctx().unit_cell().num_atoms();
 
-        std::unique_ptr<PES_optimizer::periodic_optimizer> geom_opt;
+        std::unique_ptr<vcsqnm::PES_optimizer::periodic_optimizer> geom_opt;
         Eigen::MatrixXd r(3, na);
         Eigen::MatrixXd f(3, na);
         Eigen::Vector3d lat_a, lat_b, lat_c;
@@ -83,11 +83,11 @@ class Lattice_relaxation
         double alpha0 = inp.alpha0();
         double eps_subsp = inp.eps_subsp();
         if (compute_forces && compute_stress) {
-            geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, lat_a, lat_b, lat_c, initial_step_size,
-                    nhist_max, lattice_weight, alpha0, eps_subsp);
+            geom_opt = std::make_unique<vcsqnm::PES_optimizer::periodic_optimizer>(na, lat_a, lat_b, lat_c,
+                    initial_step_size, nhist_max, lattice_weight, alpha0, eps_subsp);
         } else if (compute_forces) {
-            geom_opt = std::make_unique<PES_optimizer::periodic_optimizer>(na, initial_step_size, nhist_max, alpha0,
-                    eps_subsp);
+            geom_opt = std::make_unique<vcsqnm::PES_optimizer::periodic_optimizer>(na, initial_step_size,
+                    nhist_max, alpha0, eps_subsp);
         }
 
         bool stress_converged{true};

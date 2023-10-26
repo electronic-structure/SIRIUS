@@ -1,12 +1,12 @@
 #include "python_module_includes.hpp"
 #include <mpi.h>
 
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
-#include "wave_functions.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 
 using namespace pybind11::literals;
@@ -497,7 +497,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
     py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec")
         .def("count", &fft::Gvec::count)
-        .def("gkvec_cart", &fft::Gvec::gkvec_cart<sddk::index_domain_t::global>);
+        .def("gkvec_cart", &fft::Gvec::gkvec_cart<index_domain_t::global>);
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::device_memory_guard>(m, "device_memory_guard");
 

@@ -4,7 +4,7 @@
 #include "linalg/dmatrix.hpp"
 #include "linalg/eigensolver.hpp"
 #include "linalg/linalg.hpp"
-#include "utils/rte.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 

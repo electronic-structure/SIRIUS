@@ -56,7 +56,7 @@ Potential::Potential(Simulation_context& ctx__)
         if (ctx_.cfg().control().verification() >= 1)  {
             sht_->check();
         }
-        l_by_lm_ = utils::l_by_lm(lmax);
+        l_by_lm_ = sf::l_by_lm(lmax);
 
         /* precompute i^l */
         zil_.resize(lmax + 1);
@@ -64,7 +64,7 @@ Potential::Potential(Simulation_context& ctx__)
             zil_[l] = std::pow(std::complex<double>(0, 1), l);
         }
 
-        zilm_.resize(utils::lmmax(lmax));
+        zilm_.resize(sf::lmmax(lmax));
         for (int l = 0, lm = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++, lm++) {
                 zilm_[lm] = zil_[l];
@@ -185,7 +185,7 @@ void Potential::update()
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             #pragma omp parallel for schedule(static)
             for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-                auto len = ctx_.gvec().gvec_cart<sddk::index_domain_t::local>(igloc).length();
+                auto len = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc).length();
                 for (int l = 0; l <= ctx_.lmax_rho(); l++) {
                     sbessel_mom_(l, igloc, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) *
                                                   sbessel_mt_(l + 1, igloc, iat) / len;
@@ -270,9 +270,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
         if (env::print_hash()) {
             auto h = effective_potential().rg().hash_f_rg();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("Vha", h);
-            }
+            print_hash("Vha", h, ctx_.out());
         }
 
         if (ctx_.full_potential()) {
@@ -288,9 +286,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
         if (env::print_hash()) {
             auto h = effective_potential().rg().hash_f_rg();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("Vha+Vxc", h);
-            }
+            print_hash("Vha+Vxc", h, ctx_.out());
         }
 
         if (ctx_.full_potential()) {
@@ -326,9 +322,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
 
     if (env::print_hash()) {
         auto h = effective_potential().rg().hash_f_pw();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("V(G)", h);
-        }
+        print_hash("V(G)", h, ctx_.out());
     }
 
     if (!ctx_.full_potential()) {
@@ -345,7 +339,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
                     for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                         out << "    ";
                         for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                            out << utils::ffmt(8, 3) << density__.density_matrix(ia)(ib1, ib2, imagn);
+                            out << ffmt(8, 3) << density__.density_matrix(ia)(ib1, ib2, imagn);
                         }
                         out << std::endl;
                     }
@@ -361,7 +355,7 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
                     for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                         out << "    ";
                         for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                            out << utils::ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
+                            out << ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
                         }
                         out << std::endl;
                     }
@@ -390,7 +384,7 @@ void Potential::save(std::string name__)
         effective_magnetic_field(j).hdf5_write(name__,  "effective_magnetic_field/" + std::to_string(j));
     }
     if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
-        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
         for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
             if (ctx_.unit_cell().atom(j).mt_basis_size() != 0) {
                 fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
@@ -402,7 +396,7 @@ void Potential::save(std::string name__)
 
 void Potential::load(std::string name__)
 {
-    sddk::HDF5_tree fin(name__, sddk::hdf5_access_t::read_only);
+    HDF5_tree fin(name__, hdf5_access_t::read_only);
 
     int ngv;
     fin.read("/parameters/num_gvec", &ngv, 1);

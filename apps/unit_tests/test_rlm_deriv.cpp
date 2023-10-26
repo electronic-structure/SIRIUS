@@ -66,7 +66,7 @@ int test1()
     std::vector<r3::vector<double>> v({{1, 2, 3}, {-2, 2, 0.12}, {2, -1, 0}, {0, 1, -5}, {-4, -4, -2}, {-2, 0, 1}});
 
     int lmax = 8;
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
 
     mdarray<double, 2> data(lmmax, 3);
 
@@ -328,7 +328,7 @@ int test2()
     std::vector<r3::vector<double>> v({{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}});
 
     int lmax = 8;
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
 
     mdarray<double, 2> data(lmmax, 3);
 
@@ -472,15 +472,15 @@ int test2()
 int test3()
 {
     int lmax = 8;
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
 
     mdarray<double, 2> data(lmmax, 3);
     double max_diff{0};
 
     for (int i = 0; i < 300; i++) {
-        r3::vector<double> v(1 + 10 * utils::random<double>(),
-                           1 + 10 * utils::random<double>(),
-                           1 + 10 * utils::random<double>());
+        r3::vector<double> v(1 + 10 * random<double>(),
+                             1 + 10 * random<double>(),
+                             1 + 10 * random<double>());
 
         auto rtp = r3::spherical_coordinates(v);
 

@@ -23,7 +23,8 @@
 #include "unit_cell/atomic_conf.hpp"
 #include "potential/xc_functional.hpp"
 
-using namespace sddk;
+using namespace sirius;
+using namespace sirius::sddk;
 
 double const rmin{1e-5};
 
@@ -269,7 +270,7 @@ class Free_atom : public sirius::Atom_type
             s << "atom " << symbol() << " is not converged" << std::endl
               << "  energy difference : " << energy_diff << std::endl
               << "  charge difference : " << charge_rms;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 
         free_atom_density_spline_ = sirius::Spline<double>(radial_grid_, rho.values());
@@ -296,7 +297,7 @@ class Free_atom : public sirius::Atom_type
         std::printf("NIST  : %20.12f\n", Eref);
 
         /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-        double dE = (utils::round(energy_tot, 6) - Eref);
+        double dE = (round(energy_tot, 6) - Eref);
         std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
 
         return energy_tot;

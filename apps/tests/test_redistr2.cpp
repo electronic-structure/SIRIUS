@@ -5,7 +5,7 @@ using namespace sirius;
 void test_redistr(std::vector<int> mpi_grid_dims, int M, int N, int bs)
 {
     if (mpi_grid_dims.size() != 2) {
-        TERMINATE("2d MPI grid is expected");
+        RTE_THROW("2d MPI grid is expected");
     }
 
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims[0], mpi_grid_dims[1]);
@@ -27,7 +27,7 @@ void test_redistr(std::vector<int> mpi_grid_dims, int M, int N, int bs)
         for (int j = 0; j < spl_row.local_size(); j++) {
             int jglob = spl_row[j];
             if (std::abs(mtrx2.prime(j, i) - double((jglob + 1) * (i + 1))) > 1e-14) {
-                TERMINATE("error");
+                RTE_THROW("error");
             }
         }
     }

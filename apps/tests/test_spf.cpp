@@ -51,7 +51,7 @@ void test_spf(std::vector<int> mpi_grid_dims__,
         if (std::abs(spf.f_pw_local(i) - tmp[i]) > 1e-12) {
             std::stringstream s;
             s << "large difference: " << std::abs(spf.f_pw_local(i) - tmp[i]);
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }
 
@@ -67,7 +67,7 @@ void test_spf(std::vector<int> mpi_grid_dims__,
         if (std::abs(fpw[i] - fpw1[i]) > 1e-12) {
             std::stringstream s;
             s << "large difference: " << std::abs(fpw[i] - fpw1[i]);
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }
 }

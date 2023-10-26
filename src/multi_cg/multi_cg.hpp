@@ -31,22 +31,24 @@
 #include <cmath>
 #include <iostream>
 #include <complex>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "hamiltonian/residuals.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "k_point/k_point.hpp"
 
 namespace sirius {
+/// Conjugate-gradient solver.
 namespace cg {
 
 template <class T>
-void repack(std::vector<T> &data, std::vector<int> const&ids) {
+void
+repack(std::vector<T> &data, std::vector<int> const&ids)
+{
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
 }
-
 
 template<typename Matrix, typename Prec, typename StateVec>
 auto
@@ -54,6 +56,7 @@ multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
     int maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false) {
 
     PROFILE("sirius::multi_cg");
+  
     auto n = X.cols();
 
     U.zero();
@@ -174,6 +177,7 @@ multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
 }
 }
 
+/// Linear respone functions and objects.
 namespace lr {
 
 struct Wave_functions_wrap {
@@ -274,7 +278,6 @@ struct Smoothed_diagonal_preconditioner {
         }
     }
 };
-
 
 struct Linear_response_operator {
     sirius::Simulation_context &ctx;

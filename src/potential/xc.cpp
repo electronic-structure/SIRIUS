@@ -25,9 +25,9 @@
 #include <vector>
 
 #include "potential.hpp"
-#include "typedefs.hpp"
-#include "utils/profiler.hpp"
-#include "SDDK/omp.hpp"
+#include "core/typedefs.hpp"
+#include "core/omp.hpp"
+#include "core/profiler.hpp"
 #include "xc_functional.hpp"
 
 namespace sirius {
@@ -72,19 +72,17 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        WARNING(s);
+        RTE_WARNING(s);
     }
 
     if (env::print_hash()) {
         auto h = rho.hash_f_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("rho", h);
-        }
+        print_hash("rho", h, ctx_.out());
     }
 
     if (env::print_checksum()) {
         auto cs = density__.rho().rg().checksum_rg();
-        utils::print_checksum("rho_rg", cs, ctx_.out());
+        print_checksum("rho_rg", cs, ctx_.out());
     }
 
     Smooth_periodic_vector_function<double> grad_rho;
@@ -117,10 +115,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         if (env::print_hash()) {
             //auto h1 = lapl_rho.hash_f_rg();
             auto h2 = grad_rho_grad_rho.hash_f_rg();
-            if (ctx_.comm().rank() == 0) {
-                //utils::print_hash("lapl_rho", h1);
-                utils::print_hash("grad_rho_grad_rho", h2);
-            }
+            //utils::print_hash("lapl_rho", h1);
+            print_hash("grad_rho_grad_rho", h2, ctx_.out());
         }
     }
 
@@ -147,14 +143,14 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
-            TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
+            RTE_THROW("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
 #endif
         } else {
             if (num_points) {
             #pragma omp parallel
             {
                 /* split local size between threads */
-                sddk::splindex_block <>spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
+                splindex_block <>spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho.value(spl_t.global_offset()),
@@ -243,7 +239,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     if (env::print_checksum()) {
         auto cs = xc_potential_->rg().checksum_rg();
-        utils::print_checksum("exc", cs, ctx_.out());
+        print_checksum("exc", cs, ctx_.out());
     }
 }
 
@@ -264,10 +260,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
     if (env::print_hash()) {
         auto h1 = rho_up.hash_f_rg();
         auto h2 = rho_dn.hash_f_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("rho_up", h1);
-            utils::print_hash("rho_dn", h2);
-        }
+        print_hash("rho_up", h1, ctx_.out());
+        print_hash("rho_dn", h2, ctx_.out());
     }
 
     Smooth_periodic_vector_function<double> grad_rho_up;
@@ -302,11 +296,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
             auto h4 = grad_rho_up_grad_rho_dn.hash_f_rg();
             auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
 
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("grad_rho_up_grad_rho_up", h3);
-                utils::print_hash("grad_rho_up_grad_rho_dn", h4);
-                utils::print_hash("grad_rho_dn_grad_rho_dn", h5);
-            }
+            print_hash("grad_rho_up_grad_rho_up", h3, ctx_.out());
+            print_hash("grad_rho_up_grad_rho_dn", h4, ctx_.out());
+            print_hash("grad_rho_dn_grad_rho_dn", h5, ctx_.out());
         }
     }
 
@@ -344,14 +336,14 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
 #else
-            TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
+            RTE_THROW("You should not be there since sirius is not compiled with libVDWXC\n");
 #endif
         } else {
             if (num_points) {
             #pragma omp parallel
             {
                 /* split local size between threads */
-                sddk::splindex_block<> spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
+                splindex_block<> spl_t(num_points, n_blocks(omp_get_num_threads()), block_id(omp_get_thread_num()));
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho_up.value(spl_t.global_offset()),
@@ -422,7 +414,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
             double bxc = 0.5 * (vxc_up(irloc) - vxc_dn(irloc));
 
             /* get the sign between mag and B */
-            auto s = utils::sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
+            auto s = sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
 
             r3::vector<double> m;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
@@ -467,9 +459,7 @@ void Potential::xc(Density const& density__)
 
     if (env::print_hash()) {
         auto h = xc_energy_density_->rg().hash_f_rg();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("Exc", h);
-        }
+        print_hash("Exc", h, ctx_.out());
     }
 }
 

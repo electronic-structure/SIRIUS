@@ -7,7 +7,7 @@ void test_allgather()
     int N = 11;
     std::vector<double> vec(N, 0.0);
 
-    sddk::splindex_block<> spl(N, n_blocks(mpi::Communicator::world().size()), block_id(mpi::Communicator::world().rank()));
+    splindex_block<> spl(N, n_blocks(mpi::Communicator::world().size()), block_id(mpi::Communicator::world().rank()));
 
     for (int i = 0; i < spl.local_size(); i++) {
         vec[spl.global_index(i)] = mpi::Communicator::world().rank() + 1.0;

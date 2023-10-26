@@ -26,8 +26,11 @@
 #define __BLACS_GRID_HPP__
 
 #include <memory>
-#include "mpi/mpi_grid.hpp"
+#include "core/mpi/mpi_grid.hpp"
+#include "core/rte/rte.hpp"
 #include "linalg_base.hpp"
+
+namespace sirius {
 
 namespace la {
 
@@ -85,7 +88,7 @@ class BLACS_grid
               << " mpi_grid " << rank_row() << " " << rank_col() << " " << num_ranks_row() << " " << num_ranks_col()
               << std::endl
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
 #else
         for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
@@ -164,5 +167,7 @@ class BLACS_grid
 };
 
 } // namespace
+
+} // namespace sirius
 
 #endif // __BLACS_GRID_HPP__
