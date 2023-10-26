@@ -122,10 +122,11 @@ int main() {
     );
 
     // check the residual norms according to the algorithm
-    for (size_t i = 0; i < resnorms.size(); ++i) {
-        std::cout << "shift " << i << " needed " << resnorms[i].size() << " iterations " << std::abs(resnorms[i].back()) << "\n";
+    for (size_t i = 0; i < resnorms.residual_history.size(); ++i) {
+        std::cout << "shift " << i << " needed " << resnorms.residual_history[i].size() <<
+            " iterations " << std::abs(resnorms.residual_history[i].back()) << "\n";
 
-        if (std::abs(resnorms[i].back()) > tol) {
+        if (std::abs(resnorms.residual_history[i].back()) > tol) {
             return 1;
         }
     }

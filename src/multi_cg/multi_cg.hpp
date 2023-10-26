@@ -50,12 +50,13 @@ repack(std::vector<T> &data, std::vector<int> const&ids)
     }
 }
 
-template<class Matrix, class Prec, class StateVec>
+template<typename Matrix, typename Prec, typename StateVec>
 auto
 multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
-    size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false) 
-{
-    PROFILE("siriusi::multi_cg");
+    int maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false) {
+
+    PROFILE("sirius::multi_cg");
+  
     auto n = X.cols();
 
     U.zero();
@@ -81,7 +82,9 @@ multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
     size_t num_unconverged = n;
 
     auto residual_history = std::vector<std::vector<typename StateVec::value_type>>(n);
-    for (size_t iter = 0; iter < maxiters; ++iter) {
+    int niter{0};
+    for (int iter = 0; iter < maxiters; ++iter) {
+        niter = iter;
         // Check the residual norms in the P-norm
         // that means whenever P is approximately inv(A)
         // since (r, Pr) = (Ae, PAe) ~= (e, Ae)
@@ -167,7 +170,10 @@ multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
     }
-    return residual_history;
+    struct {
+        std::vector<std::vector<typename StateVec::value_type>> residual_history;
+        int niter; } result{residual_history, niter};
+    return result;
 }
 }
 
@@ -323,7 +329,7 @@ struct Linear_response_operator {
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
     // where SQ is S * eigenvectors.
     void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
-        PROFILE("sirius_api::sirius_linear_solver::LR_operator::multiply");
+        PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<std::complex<double>>(
             sr,
