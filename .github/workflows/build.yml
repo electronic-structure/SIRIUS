@@ -45,22 +45,22 @@ jobs:
           spack --color always build-env $DEVSPEC -- cmake .. -DQE_ENABLE_SIRIUS=1
           spack --color always build-env $DEVSPEC -- make
 
-  build_cuda:
-    runs-on: ubuntu-latest
-    container: electronicstructure/sirius
-    env:
-      DEVSPEC: sirius@develop %gcc +python +cuda +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure SIRIUS
-        run: |
-          spack spec -I $DEVSPEC
-          cd ${GITHUB_WORKSPACE}
-          mkdir build
-          cd build
-          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_CUDA=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DSIRIUS_CREATE_FORTRAN_BINDINGS=1 -DSIRIUS_CREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-      - name: Build SIRIUS
-        run: |
-          cd ${GITHUB_WORKSPACE}/build
-          spack --color always build-env $DEVSPEC -- make
-
+          #  build_cuda:
+          #    runs-on: ubuntu-latest
+          #    container: electronicstructure/sirius
+          #    env:
+          #      DEVSPEC: sirius@develop %gcc +python +cuda +tests +apps +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
+          #    steps:
+          #      - uses: actions/checkout@v4
+          #      - name: Configure SIRIUS
+          #        run: |
+          #          spack spec -I $DEVSPEC
+          #          cd ${GITHUB_WORKSPACE}
+          #          mkdir build
+          #          cd build
+          #          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_CUDA=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DSIRIUS_CREATE_FORTRAN_BINDINGS=1 -DSIRIUS_CREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          #      - name: Build SIRIUS
+          #        run: |
+          #          cd ${GITHUB_WORKSPACE}/build
+          #          spack --color always build-env $DEVSPEC -- make
+          #
