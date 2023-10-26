@@ -66,9 +66,9 @@ class Beta_projectors : public Beta_projectors_base<T>
         #pragma omp parallel for
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
             /* vs = {r, theta, phi} */
-            auto vs = r3::spherical_coordinates(this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc));
+            auto vs = r3::spherical_coordinates(this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc));
             /* compute real spherical harmonics for G+k vector */
-            std::vector<double> gkvec_rlm(utils::lmmax(uc.lmax()));
+            std::vector<double> gkvec_rlm(sf::lmmax(uc.lmax()));
             sf::spherical_harmonics(uc.lmax(), vs[1], vs[2], &gkvec_rlm[0]);
             for (int iat = 0; iat < uc.num_atom_types(); iat++) {
                 auto& atom_type = uc.atom_type(iat);
@@ -89,7 +89,7 @@ class Beta_projectors : public Beta_projectors_base<T>
             auto c1 = this->pw_coeffs_t_.checksum();
             comm.allreduce(&c1, 1);
             if (comm.rank() == 0) {
-                utils::print_checksum("beta_pw_coeffs_t", c1, std::cout);
+                print_checksum("beta_pw_coeffs_t", c1, std::cout);
             }
         }
     }

@@ -59,7 +59,7 @@ void test_fft_perf(std::vector<int> mpi_grid_dims__, double cutoff__, int repeat
     }
 
     if (diff != diff) {
-        TERMINATE("NaN");
+        RTE_THROW("NaN");
     }
     mpi_comm_world().allreduce(&diff, 1);
     if (mpi_comm_world().rank() == 0) {

@@ -23,7 +23,7 @@
  */
 
 #include "simulation_parameters.hpp"
-#include "mpi/communicator.hpp"
+#include "core/mpi/communicator.hpp"
 #include "context/input_schema.hpp"
 
 #include <unordered_set>
@@ -114,7 +114,7 @@ compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohman
         std::stringstream ss;
         ss << "The following configuration parameters were not recognized and ignored: ";
         std::copy(visited.begin(), visited.end(), std::ostream_iterator<std::string>(ss, " "));
-        WARNING(ss)
+        RTE_WARNING(ss)
     }
 }
 
@@ -154,7 +154,7 @@ get_section_options(std::string const& section__)
 void
 Simulation_parameters::import(std::string const& str__)
 {
-    auto json = utils::read_json_from_file_or_string(str__);
+    auto json = read_json_from_file_or_string(str__);
     import(json);
 }
 
@@ -236,7 +236,7 @@ Simulation_parameters::electronic_structure_method(std::string name__)
     if (m.count(name__) == 0) {
         std::stringstream s;
         s << "wrong type of electronic structure method: " << name__;
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     electronic_structure_method_ = m[name__];
 }

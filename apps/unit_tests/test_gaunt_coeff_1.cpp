@@ -350,7 +350,7 @@ int test1()
                 for (int m2 = -l2; m2 <= l2; m2++) {
                     for (int l3 = 0; l3 <= lmax; l3++ ) {
                         for (int m3 = -l3; m3 <= l3; m3++) {
-                            d += std::abs(ref_val[utils::lm(l1, m1)][utils::lm(l2, m2)][utils::lm(l3, m3)] -
+                            d += std::abs(ref_val[sf::lm(l1, m1)][sf::lm(l2, m2)][sf::lm(l3, m3)] -
                                     SHT::gaunt_yyy(l1, l2, l3, m1, m2, m3));
                         }
                     }

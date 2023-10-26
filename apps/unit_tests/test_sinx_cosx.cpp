@@ -9,7 +9,7 @@ int run_test(cmd_args& args)
     int n{10};
 
     for (int i = 0; i < 20; i++) {
-        double phi = utils::random<double>() * fourpi;
+        double phi = random<double>() * fourpi;
         auto cosxn = sf::cosxn(n, phi);
         auto sinxn = sf::sinxn(n, phi);
         for (int l = 0; l < n; l++) {

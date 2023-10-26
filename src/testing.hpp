@@ -29,12 +29,12 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "SDDK/wave_functions.hpp"
 #include "linalg/linalg.hpp"
 #include "linalg/dmatrix.hpp"
-#include "linalg/r3.hpp"
-#include "utils/cmd_args.hpp"
-#include "utils/profiler.hpp"
+#include "core/wf/wave_functions.hpp"
+#include "core/r3/r3.hpp"
+#include "core/cmd_args.hpp"
+#include "core/profiler.hpp"
 #include "context/simulation_context.hpp"
 
 namespace sirius {
@@ -116,7 +116,7 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
     la::dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = utils::random<T>();
+            A(i, j) = random<T>();
         }
     }
 
@@ -125,7 +125,7 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
-            B(i, j) = utils::conj(A(j, i));
+            B(i, j) = conj(A(j, i));
         }
     }
 #endif
@@ -154,7 +154,7 @@ random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const *blacs_gri
     auto B = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = p * utils::random<T>();
+            A(i, j) = p * random<T>();
         }
     }
 
@@ -203,8 +203,8 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
             for (int l = 0; l <= 2; l++) {
                 for (int i = 0; i <= icut; i++) {
                     double x = atype.radial_grid(i);
-                    beta[i] = utils::confined_polynomial(x, rcut, l, l + 1, 0);
-                    beta1[i] = utils::confined_polynomial(x, rcut, l, l + 2, 0);
+                    beta[i] = confined_polynomial(x, rcut, l, l + 1, 0);
+                    beta1[i] = confined_polynomial(x, rcut, l, l + 2, 0);
                 }
                 /* add radial function for l */
                 atype.add_beta_radial_function(angular_momentum(l), beta);
@@ -265,7 +265,7 @@ randomize(wf::Wave_functions<T>& wf__)
         for (int s = 0; s < wf__.num_sc().get(); s++) {
             auto ptr = wf__.at(sddk::memory_t::host, 0, wf::spin_index(s), wf::band_index(i));
             for (int j = 0; j < wf__.ld(); j++) {
-                ptr[j] = utils::random<std::complex<double>>();
+                ptr[j] = random<std::complex<double>>();
             }
         }
     }

@@ -16,7 +16,7 @@ int test1()
     std::complex<double> d1(4.464663636,10.37374992921);
 
     mdarray<double, 2> m1(4, 5);
-    m1 = [](uint64_t i1, uint64_t i2){return utils::random<double>();};
+    m1 = [](uint64_t i1, uint64_t i2){return random<double>();};
 
     r3::vector<double> v1{1.1, 2.2, 3.3};
     r3::matrix<double> u1{{4.4, 5.5, 6.6}, {1.2, 2.43334, 4.56666}, {400.333, 1e14, 2.33e20}};

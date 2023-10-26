@@ -10,7 +10,7 @@ void init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, in
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
-        tmp[i] = utils::random<double>();
+        tmp[i] = random<double>();
     }
 
     phi__.zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
@@ -74,7 +74,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     if (mpi::Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
         for (int i = 0; i < kp.num_gkvec(); i++) {
-            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<sddk::index_domain_t::global>(i).length2();
+            ekin[i] = 0.5 * kp.gkvec().template gkvec_cart<index_domain_t::global>(i).length2();
         }
         std::sort(ekin.begin(), ekin.end());
 
@@ -216,7 +216,7 @@ int main(int argn, char** argv)
     int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (rank == 0)  {
-        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        const auto timing_result = global_rtgraph_timer.process();
         std::cout<< timing_result.print();
     }
 }

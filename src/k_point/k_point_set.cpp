@@ -138,11 +138,11 @@ void K_point_set::initialize(std::vector<int> const& counts)
     PROFILE("sirius::K_point_set::initialize");
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
-        sddk::splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
-        spl_num_kpoints_ = sddk::splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
+        splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
+        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
                 block_id(comm().rank()), spl_tmp.counts());
     } else {
-        spl_num_kpoints_ = sddk::splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
+        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
                 block_id(comm().rank()), counts);
     }
 
@@ -183,7 +183,7 @@ double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
         if (step > maxstep) {
             std::stringstream s;
             s << "search of band occupancies failed after 10000 steps";
-            TERMINATE(s);
+            RTE_THROW(s);
         }
         step++;
     }
@@ -334,7 +334,7 @@ void K_point_set::find_band_occupancies()
     comm().allreduce<double, mpi::op_t::min>(&emin, 1);
     comm().allreduce<double, mpi::op_t::max>(&emax, 1);
 
-    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
@@ -451,7 +451,7 @@ double K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
 
-    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     for (auto it : spl_num_kpoints_) {
         auto const& kp = this->get<T>(it.i);
@@ -499,7 +499,7 @@ double K_point_set::entropy_sum() const
 
     auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
-    sddk::splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
     for (auto it : spl_num_kpoints_) {
         auto const& kp = this->get<T>(it.i);
@@ -538,19 +538,19 @@ void K_point_set::print_info()
     if (ctx_.comm().rank() == 0) {
         pout << std::endl;
         pout << "total number of k-points : " << num_kpoints() << std::endl;
-        pout << utils::hbar(80, '-') << std::endl;
+        pout << hbar(80, '-') << std::endl;
         pout << std::endl;
         pout << "  ik                vk                    weight  num_gkvec";
         if (ctx_.full_potential()) {
             pout << "   gklo_basis_size";
         }
-        pout << std::endl << utils::hbar(80, '-') << std::endl;
+        pout << std::endl << hbar(80, '-') << std::endl;
     }
 
     for (auto it : spl_num_kpoints()) {
         int ik = it.i;
-        pout << std::setw(4) << ik << utils::ffmt(9, 4) << kpoints_[ik]->vk()[0] << utils::ffmt(9, 4)
-             << kpoints_[ik]->vk()[1] << utils::ffmt(9, 4) << kpoints_[ik]->vk()[2] << utils::ffmt(17, 6)
+        pout << std::setw(4) << ik << ffmt(9, 4) << kpoints_[ik]->vk()[0] << ffmt(9, 4)
+             << kpoints_[ik]->vk()[1] << ffmt(9, 4) << kpoints_[ik]->vk()[2] << ffmt(17, 6)
              << kpoints_[ik]->weight() << std::setw(11) << kpoints_[ik]->num_gkvec();
 
         if (ctx_.full_potential()) {
@@ -564,10 +564,10 @@ void K_point_set::print_info()
 void K_point_set::save(std::string const& name__) const
 {
     if (ctx_.comm().rank() == 0) {
-        if (!utils::file_exists(name__)) {
-            sddk::HDF5_tree(name__, sddk::hdf5_access_t::truncate);
+        if (!file_exists(name__)) {
+            HDF5_tree(name__, hdf5_access_t::truncate);
         }
-        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
         fout.create_node("K_point_set");
         fout["K_point_set"].write("num_kpoints", num_kpoints());
     }
@@ -585,7 +585,7 @@ void K_point_set::save(std::string const& name__) const
 /// \todo check parameters of saved data in a separate function
 void K_point_set::load()
 {
-    STOP();
+    RTE_THROW("not implemented");
 
     //== HDF5_tree fin(storage_file_name, false);
 

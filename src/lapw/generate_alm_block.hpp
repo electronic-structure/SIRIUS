@@ -60,12 +60,12 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
             /* generate LAPW matching coefficients on the CPU */
             alm__.template generate<conjugate>(atom, alm_atom);
             if (ctx__.processing_unit() == sddk::device_t::GPU) {
-                alm_atom.copy_to(sddk::memory_t::device, stream_id(tid));
+                alm_atom.copy_to(sddk::memory_t::device, acc::stream_id(tid));
             }
 
         }
         if (ctx__.processing_unit() == sddk::device_t::GPU) {
-            acc::sync_stream(stream_id(tid));
+            acc::sync_stream(acc::stream_id(tid));
         }
     }
     return result;

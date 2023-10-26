@@ -24,7 +24,7 @@
 
 #include <iomanip>
 #include "dft_ground_state.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 
@@ -86,7 +86,7 @@ DFT_ground_state::energy_kin_sum_pw() const
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-            auto Gk = kp->gkvec().gkvec_cart<sddk::index_domain_t::local>(igloc);
+            auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
             double d{0};
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
@@ -347,11 +347,11 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         if (!ctx_.full_potential()) {
             out << std::endl
                 << "Hartree energy of density residual : " << eha_res << std::endl
-                << "bands are converged : " << utils::boolstr(result.converged);
+                << "bands are converged : " << boolstr(result.converged);
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
             out << std::endl
-                << "iterative solver converged : " << utils::boolstr(iter_solver_converged);
+                << "iterative solver converged : " << boolstr(iter_solver_converged);
         }
 
         ctx_.message(2, __func__, out);
@@ -458,7 +458,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
 
     out__ << std::endl;
     out__ << "Energy" << std::endl
-          << utils::hbar(80, '-') << std::endl;
+          << hbar(80, '-') << std::endl;
 
     auto write_energy = [&](std::string label__, double value__) {
         out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)

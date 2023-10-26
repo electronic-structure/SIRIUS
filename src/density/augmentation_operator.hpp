@@ -26,7 +26,7 @@
 #define __AUGMENTATION_OPERATOR_HPP__
 
 #include "radial/radial_integrals.hpp"
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -142,10 +142,10 @@ class Augmentation_operator
     {
         int lmax_beta = atom_type_.indexr().lmax();
         int lmax      = 2 * lmax_beta;
-        int lmmax     = utils::lmmax(lmax);
+        int lmmax     = sf::lmmax(lmax);
 
         /* compute l of lm index */
-        auto l_by_lm = utils::l_by_lm(lmax);
+        auto l_by_lm = sf::l_by_lm(lmax);
         l_by_lm_ = sddk::mdarray<int, 1>(lmmax);
         std::copy(l_by_lm.begin(), l_by_lm.end(), &l_by_lm_[0]);
 
@@ -175,9 +175,9 @@ class Augmentation_operator
                 int idxrf1 = atom_type_.indexb(xi1).idxrf;
 
                 /* packed orbital index */
-                int idx12 = utils::packed_index(xi1, xi2);
+                int idx12 = packed_index(xi1, xi2);
                 /* packed radial-function index */
-                int idxrf12 = utils::packed_index(idxrf1, idxrf2);
+                int idxrf12 = packed_index(idxrf1, idxrf2);
 
                 idx_(0, idx12) = lm1;
                 idx_(1, idx12) = lm2;
@@ -185,7 +185,7 @@ class Augmentation_operator
             }
         }
 
-        ri_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
+        ri_values_    = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
         ri_dq_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
         #pragma omp parallel for
         for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
@@ -203,7 +203,7 @@ class Augmentation_operator
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
-                int idx12          = utils::packed_index(xi1, xi2);
+                int idx12          = packed_index(xi1, xi2);
                 sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
             }
         }
@@ -230,7 +230,7 @@ class Augmentation_operator
 //
 //        /* maximum l of beta-projectors */
 //        int lmax_beta = atom_type_.indexr().lmax();
-//        int lmmax     = utils::lmmax(2 * lmax_beta);
+//        int lmmax     = sf::lmmax(2 * lmax_beta);
 //        /* number of beta-projectors */
 //        int nbf = atom_type_.mt_basis_size();
 //        /* only half of Q_{xi,xi'}(G) matrix is stored */

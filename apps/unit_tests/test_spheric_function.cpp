@@ -16,7 +16,7 @@ int test1()
 
     for (int ir = 0; ir < r.num_points(); ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<T>();
+            f1(lm, ir) = random<T>();
         }
     }
     auto f2 = convert(f1);
@@ -38,7 +38,7 @@ int test1()
 template <typename T>
 int test2(int lmax, int nr)
 {
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
 
     SHT sht(device_t::CPU, lmax);
@@ -46,7 +46,7 @@ int test2(int lmax, int nr)
 
     for (int ir = 0; ir < nr; ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<T>();
+            f1(lm, ir) = random<T>();
         }
     }
     auto f2 = transform(sht, f1);
@@ -67,7 +67,7 @@ int test2(int lmax, int nr)
 
 int test3(int lmax, int nr)
 {
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
     SHT sht(sddk::device_t::CPU, lmax);
 
@@ -77,7 +77,7 @@ int test3(int lmax, int nr)
     /* real Rlm coefficients */
     for (int ir = 0; ir < nr; ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            f1(lm, ir) = utils::random<double>();
+            f1(lm, ir) = random<double>();
         }
     }
     /* reansform to (theta, phi) */
@@ -285,7 +285,7 @@ int test5()
         for (int m1 = -l1; m1 <= l1; m1++) {
             f.zero();
             for (int ir = 0; ir < nr; ir++) {
-                f(utils::lm(l1, m1), ir) = std::exp(-r[ir]) * std::pow(r[ir], l1);
+                f(sf::lm(l1, m1), ir) = std::exp(-r[ir]) * std::pow(r[ir], l1);
             }
             auto grad_f = gradient(f);
 
@@ -293,11 +293,11 @@ int test5()
                 for (int m2 = -l2; m2 <= l2; m2++) {
                     f.zero();
                     for (int ir = 0; ir < nr; ir++) {
-                        f(utils::lm(l2, m2), ir) = std::exp(-r[ir]) * std::pow(r[ir], l2);
+                        f(sf::lm(l2, m2), ir) = std::exp(-r[ir]) * std::pow(r[ir], l2);
                     }
 
                     for (int x = 0; x < 3; x++) {
-                        val[utils::lm(l1, m1)][utils::lm(l2, m2)][x] = inner(f, grad_f[x]);
+                        val[sf::lm(l1, m1)][sf::lm(l2, m2)][x] = inner(f, grad_f[x]);
                     }
                 }
             }
@@ -327,8 +327,8 @@ int test6()
 
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
         for (int lm = 0; lm < 64; lm++) {
-            rho_up_lm(lm, ir) = utils::random<double>();
-            rho_dn_lm(lm, ir) = utils::random<double>();
+            rho_up_lm(lm, ir) = random<double>();
+            rho_dn_lm(lm, ir) = random<double>();
         }
     }
 

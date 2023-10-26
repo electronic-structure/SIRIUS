@@ -143,7 +143,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
     if (ctx_.num_mag_dims() != 3) {
         int mmax = 2 * l + 1;
         for (int is = 0; is < ctx_.num_spins(); is++) {
-            out__ << utils::hbar(width * mmax, '-') << std::endl;
+            out__ << hbar(width * mmax, '-') << std::endl;
             bool has_imag{false};
             for (int m = 0; m < mmax; m++) {
                 for (int mp = 0; mp < mmax; mp++) {
@@ -164,10 +164,10 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
                 }
             }
         }
-        out__ << utils::hbar(width * mmax, '-') << std::endl;
+        out__ << hbar(width * mmax, '-') << std::endl;
     } else {
         int mmax = 2 * l + 1;
-        out__ << utils::hbar(2 * width * mmax + 3, '-') << std::endl;
+        out__ << hbar(2 * width * mmax + 3, '-') << std::endl;
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
                 print_number(std::real(this->local(at_lvl__)(m, mp, 0)));
@@ -178,7 +178,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
             }
             out__ << std::endl;
         }
-        out__ << utils::hbar(2 * width * mmax + 3, '-') << std::endl;
+        out__ << hbar(2 * width * mmax + 3, '-') << std::endl;
         for (int m = 0; m < mmax; m++) {
             for (int mp = 0; mp < mmax; mp++) {
                 print_number(std::real(this->local(at_lvl__)(m, mp, 3)));
@@ -189,7 +189,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
             }
             out__ << std::endl;
         }
-        out__ << utils::hbar(2 * width * mmax + 3, '-') << std::endl;
+        out__ << hbar(2 * width * mmax + 3, '-') << std::endl;
     }
 }
 
@@ -219,7 +219,7 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
 
     if (ctx_.num_mag_dims() != 3) {
         for (int is = 0; is < ctx_.num_spins(); is++) {
-            out__ << utils::hbar(width * jb, '-') << std::endl;
+            out__ << hbar(width * jb, '-') << std::endl;
             bool has_imag{false};
             for (int m = 0; m < ib; m++) {
                 for (int mp = 0; mp < jb; mp++) {
@@ -240,7 +240,7 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
                 }
             }
         }
-        out__ << utils::hbar(width * jb, '-') << std::endl;
+        out__ << hbar(width * jb, '-') << std::endl;
     }
     //} else {
     //    int l = atom.type().indexr_hub().am(0).l();

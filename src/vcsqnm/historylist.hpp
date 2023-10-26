@@ -10,6 +10,8 @@
 #define HISTORYLIST_HPP
 #include <Eigen/Dense>
 
+namespace vcsqnm {
+
 namespace hlist_space{
   class HistoryList {
     private:
@@ -62,5 +64,8 @@ namespace hlist_space{
         }
       }
     };
-  }
+}
+
+}
+
 #endif

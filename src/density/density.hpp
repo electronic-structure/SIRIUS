@@ -35,6 +35,7 @@
 #include "mixer/mixer.hpp"
 #include "occupation_matrix.hpp"
 #include "density_matrix.hpp"
+#include "core/math_tools.hpp"
 
 #if defined(SIRIUS_GPU)
 extern "C" {
@@ -87,7 +88,7 @@ get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
         mag = mag__[0];
         /* fix numerical noise at high values of magnetization */
         if (std::abs(mag) > rho__) {
-            mag = utils::sign(mag) * rho__;
+            mag = sign(mag) * rho__;
         }
     } else { /* non-collinear case */
         /* fix numerical noise at high values of magnetization */
@@ -332,7 +333,7 @@ class Density : public Field4D
         /* get form-factors for all G shells */
         auto const ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
         /* make rho_core(G) */
-        auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
                 ctx_.phase_factors_t(), ff);
 
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
@@ -577,12 +578,12 @@ class Density : public Field4D
 
     void load(std::string name__)
     {
-        sddk::HDF5_tree fin(name__, sddk::hdf5_access_t::read_only);
+        HDF5_tree fin(name__, hdf5_access_t::read_only);
 
         int ngv;
         fin.read("/parameters/num_gvec", &ngv, 1);
         if (ngv != ctx_.gvec().num_gvec()) {
-            TERMINATE("wrong number of G-vectors");
+            RTE_THROW("wrong number of G-vectors");
         }
         sddk::mdarray<int, 2> gv(3, ngv);
         fin.read("/parameters/gvec", gv);
@@ -796,7 +797,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
-        WARNING(s);
+        RTE_WARNING(s);
     }
     std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> result;
     result[0] = std::move(rho_up);

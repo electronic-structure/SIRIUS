@@ -124,7 +124,7 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
     Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
     std::vector<Flm>& vxc__, Flm& exclm__)
 {
-    int lmmax = utils::lmmax(lmax__);
+    int lmmax = sf::lmmax(lmax__);
 
     /* new array to store core and valence densities */
     Flm rho0(lmmax, rgrid__);
@@ -196,7 +196,7 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
 
     std::vector<Flm> vxc;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        vxc.emplace_back(utils::lmmax(l_max), rgrid);
+        vxc.emplace_back(sf::lmmax(l_max), rgrid);
     }
 
     sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc, (*paw_ae_exc_)[ia__]);
@@ -228,9 +228,9 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
 
     /* get lm size for density */
     int lmax  = atom_type.indexr().lmax();
-    int lmmax = utils::lmmax(2 * lmax);
+    int lmmax = sf::lmmax(2 * lmax);
 
-    auto l_by_lm = utils::l_by_lm(2 * lmax);
+    auto l_by_lm = sf::l_by_lm(2 * lmax);
 
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
 
@@ -263,7 +263,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
                     }
 
                     /* integrate */
-                    integrals(lm3, utils::packed_index(irb1, irb2), imagn) = Spline<double>(rgrid, intdata).integrate(0);
+                    integrals(lm3, packed_index(irb1, irb2), imagn) = Spline<double>(rgrid, intdata).integrate(0);
                 }
             }
         }
@@ -282,7 +282,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
             int irb2 = atom_type.indexb(ib2).idxrf;
 
             /* common index */
-            int iqij = utils::packed_index(irb1, irb2);
+            int iqij = packed_index(irb1, irb2);
 
             /* get num of non-zero GC */
             int num_non_zero_gk = GC.num_gaunt(lm1, lm2);
@@ -313,7 +313,7 @@ Potential::calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<double, 2>
     for (int ib2 = 0; ib2 < atom__.mt_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 < atom__.mt_basis_size(); ib1++) {
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                energy += density_matrix__(utils::packed_index(ib1, ib2), imagn) * paw_dij__(ib1, ib2, imagn);
+                energy += density_matrix__(packed_index(ib1, ib2), imagn) * paw_dij__(ib1, ib2, imagn);
             }
         }
     }

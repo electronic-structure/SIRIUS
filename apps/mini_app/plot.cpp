@@ -22,7 +22,7 @@ void plot(cmd_args& args)
         cart = true;
     } else {
         if (coords != "frac") {
-            TERMINATE("wrong type of coordinates");
+            RTE_THROW("wrong type of coordinates");
         }
     }
 

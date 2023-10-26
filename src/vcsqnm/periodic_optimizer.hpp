@@ -12,6 +12,8 @@
 #include <iostream>
 #include "sqnm.hpp"
 
+/// Variable cell stable quasi-Newton lattice optimizer.
+namespace vcsqnm {
 
 namespace PES_optimizer{
 
@@ -265,5 +267,7 @@ namespace PES_optimizer{
       this->opt_lattice = true;
     }
   };
+}
+
 }
 #endif

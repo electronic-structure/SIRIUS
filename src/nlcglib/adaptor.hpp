@@ -33,7 +33,7 @@
 #include "k_point/k_point_set.hpp"
 #include "density/density.hpp"
 #include "potential/potential.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 
 namespace sirius {
 

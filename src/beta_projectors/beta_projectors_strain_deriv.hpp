@@ -57,7 +57,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         auto& beta_ri1 = *this->ctx_.ri().beta_djl_;
 
         int lmax  = uc.lmax();
-        int lmmax = utils::lmmax(lmax);
+        int lmmax = sf::lmmax(lmax);
 
         sddk::mdarray<double, 2> rlm_g(lmmax, this->num_gkvec_loc());
         sddk::mdarray<double, 3> rlm_dg(lmmax, 3, this->num_gkvec_loc());
@@ -65,7 +65,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            auto gvc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
+            auto gvc = this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc);
             auto rtp = r3::spherical_coordinates(gvc);
 
             double theta = rtp[1];
@@ -81,7 +81,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-            auto gvc = this->gkvec_.template gkvec_cart<sddk::index_domain_t::local>(igkloc);
+            auto gvc = this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc);
             /* vs = {r, theta, phi} */
             auto gvs = r3::spherical_coordinates(gvc);
 

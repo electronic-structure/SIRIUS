@@ -27,8 +27,8 @@
 
 #include <tuple>
 #include "spline.hpp"
-#include "constants.hpp"
-#include "typedefs.hpp"
+#include "core/constants.hpp"
+#include "core/typedefs.hpp"
 
 namespace sirius {
 

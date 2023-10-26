@@ -95,7 +95,7 @@ void test_sym(cmd_args const& args__)
                 for (int m1 = 0; m1 < 5; m1++) {
                     for (int m2 = 0; m2 < 5; m2++) {
                         for (int ig = 0; ig < kset_nosym.get<double>(ik1)->num_gkvec(); ig++) {
-                            double w = 1.0 / (1.0 + kset_nosym.get<double>(ik1)->gkvec().gkvec_cart<sddk::index_domain_t::global>(ig).length());
+                            double w = 1.0 / (1.0 + kset_nosym.get<double>(ik1)->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
                             auto z1 = phi_nosym[ik1].pw_coeffs(ig, wf::spin_index(0), wf::band_index(m1 + ib));
                             auto z2 = phi_nosym[ik1].pw_coeffs(ig, wf::spin_index(0), wf::band_index(m2 + ib));
                             dm(m1, m2, ia) += std::conj(z1) * z2 * w;
@@ -149,7 +149,7 @@ void test_sym(cmd_args const& args__)
                 for (int m1 = 0; m1 < 5; m1++) {
                     for (int m2 = 0; m2 < 5; m2++) {
                         for (int ig = 0; ig < kset_sym.get<double>(ik)->num_gkvec(); ig++) {
-                            double w = 1.0 / (1.0 + kset_sym.get<double>(ik)->gkvec().gkvec_cart<sddk::index_domain_t::global>(ig).length());
+                            double w = 1.0 / (1.0 + kset_sym.get<double>(ik)->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
                             auto z1 = phi1.pw_coeffs(ig, wf::spin_index(0), wf::band_index(m1 + ib));
                             auto z2 = phi1.pw_coeffs(ig, wf::spin_index(0), wf::band_index(m2 + ib));
                             dm1(m1, m2, ia) += std::conj(z1) * z2 * w;
@@ -218,7 +218,7 @@ int main(int argn, char** argv)
     int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (rank == 0)  {
-        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        const auto timing_result = global_rtgraph_timer.process();
         std::cout << timing_result.print();
     }
 }

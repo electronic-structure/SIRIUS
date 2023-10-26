@@ -39,7 +39,7 @@ K_point<T>::initialize()
         zil_[l] = std::pow(std::complex<T>(0, 1), l);
     }
 
-    l_by_lm_ = utils::l_by_lm(ctx_.unit_cell().lmax_apw());
+    l_by_lm_ = sf::l_by_lm(ctx_.unit_cell().lmax_apw());
 
     int bs = ctx_.cyclic_block_size();
 
@@ -211,7 +211,7 @@ K_point<T>::generate_hubbard_orbitals()
     if (pcs) {
         auto cs = atomic_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
-            utils::print_checksum("atomic_wave_functions", cs, RTE_OUT(std::cout));
+            print_checksum("atomic_wave_functions", cs, RTE_OUT(std::cout));
         }
     }
 
@@ -282,7 +282,7 @@ K_point<T>::generate_hubbard_orbitals()
     if (pcs) {
         auto cs = atomic_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
-            utils::print_checksum("atomic_wave_functions_S", cs, RTE_OUT(std::cout));
+            print_checksum("atomic_wave_functions_S", cs, RTE_OUT(std::cout));
         }
     }
 
@@ -329,8 +329,8 @@ K_point<T>::generate_hubbard_orbitals()
         auto cs2 = hubbard_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0),
                 wf::band_range(0, num_hubbard_wf.first));
         if (comm().rank() == 0) {
-            utils::print_checksum("hubbard_wave_functions", cs1, RTE_OUT(std::cout));
-            utils::print_checksum("hubbard_wave_functions_S", cs2, RTE_OUT(std::cout));
+            print_checksum("hubbard_wave_functions", cs1, RTE_OUT(std::cout));
+            print_checksum("hubbard_wave_functions_S", cs2, RTE_OUT(std::cout));
         }
     }
 }
@@ -353,12 +353,12 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->count(), SPFFT_INDEX_TRIPLETS,
         gv.at(sddk::memory_t::host))));
 
-    sddk::splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
+    splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
             ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
     sddk::mdarray<int, 2> gkvec_row(3, num_gkvec_row_);
 
-    sddk::splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
+    splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
             ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
     sddk::mdarray<int, 2> gkvec_col(3, num_gkvec_col_);
@@ -444,8 +444,9 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "Error in getting plane-wave coefficients";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 
     try {
@@ -471,8 +472,9 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
         }
     } catch(std::exception const& e) {
         std::stringstream s;
+        s << e.what() << std::endl;
         s << "Error in getting muffin-tin coefficients";
-        RTE_THROW(s, e.what());
+        RTE_THROW(s);
     }
 }
 
@@ -539,7 +541,7 @@ K_point<T>::save(std::string const& name__, int id__) const
     /* rank 0 creates placeholders in the HDF5 file */
     if (comm().rank() == 0) {
         /* open file with write access */
-        sddk::HDF5_tree fout(name__, sddk::hdf5_access_t::read_write);
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
         /* create /K_point_set/ik */
         fout["K_point_set"].create_node(id__);
         fout["K_point_set"][id__].write("vk", &vk_[0], 3);
@@ -555,7 +557,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* save the order of G-vectors */
         sddk::mdarray<int, 2> gv(3, num_gkvec());
         for (int i = 0; i < num_gkvec(); i++) {
-            auto v = gkvec().template gvec<sddk::index_domain_t::global>(i);
+            auto v = gkvec().template gvec<index_domain_t::global>(i);
             for (int x : {0, 1, 2}) {
                 gv(x, i) = v[x];
             }
@@ -600,9 +602,9 @@ K_point<T>::save(std::string const& name__, int id__) const
 
 template <typename T>
 void
-K_point<T>::load(sddk::HDF5_tree h5in, int id)
+K_point<T>::load(HDF5_tree h5in, int id)
 {
-    STOP();
+    RTE_THROW("not implemented");
     //== band_energies_.resize(ctx_.num_bands());
     //== h5in[id].read("band_energies", band_energies_);
 
@@ -680,12 +682,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
 
     int lmax{3};
-    int lmmax = utils::lmmax(lmax);
-    // for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-    //    auto& atom_type = unit_cell_.atom_type(iat);
-    //    lmax            = std::max(lmax, atom_type.lmax_ps_atomic_wf());
-    //}
-    // lmax = std::max(lmax, unit_cell_.lmax());
+    int lmmax = sf::lmmax(lmax);
 
     /* compute offset for each atom */
     std::vector<int> offset;
@@ -709,7 +706,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* vs = {r, theta, phi} */
-        auto vs = r3::spherical_coordinates(this->gkvec().template gkvec_cart<sddk::index_domain_t::local>(igk_loc));
+        auto vs = r3::spherical_coordinates(this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
@@ -744,7 +741,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
         #pragma omp parallel for
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto G = gkvec().template gvec<sddk::index_domain_t::local>(igk_loc);
+            auto G = gkvec().template gvec<index_domain_t::local>(igk_loc);
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }
@@ -766,19 +763,19 @@ void
 K_point<T>::generate_gklo_basis()
 {
     /* find local number of row G+k vectors */
-    sddk::splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
+    splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
             ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
 
     /* find local number of column G+k vectors */
-    sddk::splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
+    splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
             ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
 
     if (ctx_.full_potential()) {
-        sddk::splindex_block_cyclic<> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),
+        splindex_block_cyclic<> spl_nlo_row(num_gkvec() + unit_cell_.mt_lo_basis_size(),
                 n_blocks(num_ranks_row_), block_id(rank_row_), ctx_.cyclic_block_size());
-        sddk::splindex_block_cyclic<> spl_nlo_col(num_gkvec() + unit_cell_.mt_lo_basis_size(),
+        splindex_block_cyclic<> spl_nlo_col(num_gkvec() + unit_cell_.mt_lo_basis_size(),
                 n_blocks(num_ranks_col_), block_id(rank_col_), ctx_.cyclic_block_size());
 
         lo_basis_descriptor lo_desc;

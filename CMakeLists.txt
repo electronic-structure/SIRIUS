@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 
 include(CMakePackageConfigHelpers)
 
@@ -14,7 +14,6 @@ if(POLICY CMP0104)
 endif()
 
 # user variables
-
 option(SIRIUS_CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
 option(SIRIUS_CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
 option(SIRIUS_BUILD_DOCS              "build doxygen doc" OFF)
@@ -33,7 +32,7 @@ option(SIRIUS_USE_OPENMP              "use OpenMP" ON)
 option(SIRIUS_USE_PROFILER            "measure execution of functions with timer" ON)
 option(SIRIUS_USE_MEMORY_POOL         "use memory pool" ON)
 option(SIRIUS_USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
-option(BUILD_TESTING                   "build test executables" OFF) # override default setting in CTest module
+option(BUILD_TESTING                  "build test executables" OFF) # override default setting in CTest module
 option(SIRIUS_USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
 
 set(SIRIUS_GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
@@ -50,7 +49,7 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 
-# This ensures that -std=c++14 is passed to nvcc. See
+# This ensures that -std=c++17 is passed to nvcc. See
 # https://github.com/electronic-structure/SIRIUS/issues/716 for details.
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -68,7 +67,6 @@ add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
-
 
 include(GitSubmodule)    # include custom defined FindPackage modules
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
@@ -214,7 +212,6 @@ if(SIRIUS_USE_MEMORY_POOL)
   find_package(umpire)
 endif()
 
-
 # check if git command exists
 find_program(GIT_EXE NAMES git)
 
@@ -236,8 +233,8 @@ else()
   set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
   set(SIRIUS_SHA "https://api.github.com/repos/electronic-structure/SIRIUS/git/ref/tags/v${SIRIUS_VERSION}")
 endif()
-configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/version.hpp"
+configure_file("${PROJECT_SOURCE_DIR}/src/core/version.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/core/version.hpp"
                @ONLY)
 
 # generate schema

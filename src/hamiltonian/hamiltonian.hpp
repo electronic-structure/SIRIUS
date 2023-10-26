@@ -28,10 +28,10 @@
 #include <memory>
 #include <complex>
 #include "SDDK/memory.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
+#include "core/typedefs.hpp"
+#include "core/fft/fft.hpp"
 #include "linalg/dmatrix.hpp"
-#include "typedefs.hpp"
-#include "fft/fft.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
 
@@ -453,10 +453,10 @@ class Hamiltonian_k
 
         if (pcs) {
             auto cs = phi__.checksum(mem, br__);
-            utils::print_checksum("phi", cs, RTE_OUT(H0().ctx().out()));
+            print_checksum("phi", cs, RTE_OUT(H0().ctx().out()));
             if (hphi__) {
                 auto cs = hphi__->checksum(mem, br__);
-                utils::print_checksum("hloc_phi", cs, RTE_OUT(H0().ctx().out()));
+                print_checksum("hloc_phi", cs, RTE_OUT(H0().ctx().out()));
             }
         }
 
@@ -484,11 +484,11 @@ class Hamiltonian_k
         if (pcs) {
             if (hphi__) {
                 auto cs = hphi__->checksum(mem, br__);
-                utils::print_checksum("hphi", cs, RTE_OUT(H0().ctx().out()));
+                print_checksum("hphi", cs, RTE_OUT(H0().ctx().out()));
             }
             if (sphi__) {
                 auto cs = sphi__->checksum(mem, br__);
-                utils::print_checksum("hsphi", cs, RTE_OUT(H0().ctx().out()));
+                print_checksum("hsphi", cs, RTE_OUT(H0().ctx().out()));
             }
         }
     }

@@ -23,8 +23,11 @@
  */
 
 #include "diag_mm.hpp"
-#include "gpu/acc_runtime.hpp"
-#include "gpu/acc.hpp"
+#include "core/acc/acc_runtime.hpp"
+#include "core/acc/acc.hpp"
+
+using namespace sirius;
+using namespace sirius::acc;
 
 template <class T>
 __global__ std::enable_if_t<!std::is_same<acc_complex_double_t, T>::value>

@@ -1,6 +1,8 @@
 #include <sirius.hpp>
 #include <testing.hpp>
 
+using namespace sirius;
+
 template <typename T>
 void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
 {
@@ -24,7 +26,7 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), sddk::memory_t::host);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.ld(); j++) {
-            phi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) = utils::random<std::complex<T>>();
+            phi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) = random<std::complex<T>>();
         }
         phi.pw_coeffs(0, wf::spin_index(0), wf::band_index(i)) = 1.0;
     }
@@ -51,13 +53,13 @@ void test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.ld(); j++) {
             int ig = gvec->offset() + j;
-            auto gc = gvec->gvec_cart<sddk::index_domain_t::global>(ig);
+            auto gc = gvec->gvec_cart<index_domain_t::global>(ig);
             diff += std::pow(std::abs(static_cast<T>(2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(j, wf::spin_index(0),
                             wf::band_index(i)) - hphi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i))), 2);
         }
     }
     if (diff != diff) {
-        TERMINATE("NaN");
+        RTE_THROW("NaN");
     }
     mpi::Communicator::world().allreduce(&diff, 1);
     diff = std::sqrt(diff / 4 / num_bands__ / gvec->num_gvec());
@@ -133,7 +135,7 @@ int main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0)  {
-        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        const auto timing_result = global_rtgraph_timer.process();
         std::cout << timing_result.print();
     }
 }

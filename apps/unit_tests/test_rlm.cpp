@@ -306,8 +306,8 @@ int run_test(cmd_args& args)
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 auto val = SphericalHarmonicR(l, m, theta, phi);
-                diff += std::abs(rlm[utils::lm(l, m)] - rlm_ref[utils::lm(l, m)]);
-                diff += std::abs(rlm[utils::lm(l, m)] - val);
+                diff += std::abs(rlm[sf::lm(l, m)] - rlm_ref[sf::lm(l, m)]);
+                diff += std::abs(rlm[sf::lm(l, m)] - val);
             }
         }
         if (diff > 1e-10) {

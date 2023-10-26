@@ -86,8 +86,8 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     if (pcs) {
         auto z1 = h.checksum(ngklo, ngklo);
         auto z2 = o.checksum(ngklo, ngklo);
-        utils::print_checksum("h_lapw", z1, ctx.out());
-        utils::print_checksum("o_lapw", z2, ctx.out());
+        print_checksum("h_lapw", z1, ctx.out());
+        print_checksum("o_lapw", z2, ctx.out());
     }
 
     RTE_ASSERT(kp__.gklo_basis_size() > ctx.num_fv_states());
@@ -116,7 +116,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
 
     if (pcs) {
         auto z1 = kp__.fv_eigen_vectors().checksum(kp__.gklo_basis_size(), ctx.num_fv_states());
-        utils::print_checksum("fv_eigen_vectors", z1, kp__.out(1));
+        print_checksum("fv_eigen_vectors", z1, kp__.out(1));
     }
 
     /* remap to slab */
@@ -139,7 +139,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     if (pcs) {
         auto z1 = kp__.fv_eigen_vectors_slab().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
         auto z2 = kp__.fv_eigen_vectors_slab().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
-        utils::print_checksum("fv_eigen_vectors_slab", z1 + z2, kp__.out(1));
+        print_checksum("fv_eigen_vectors_slab", z1 + z2, kp__.out(1));
     }
 
     /* renormalize wave-functions */
@@ -323,7 +323,7 @@ diagonalize_fp_fv_davidson(Hamiltonian_k<double> const& Hk__, K_point<double>& k
     if (env::print_checksum()) {
         auto cs = phi_extra_new->checksum(sddk::memory_t::host, wf::band_range(0, nlo + ncomp));
         if (kp__.comm().rank() == 0) {
-            utils::print_checksum("phi_extra", cs, RTE_OUT(ctx.out()));
+            print_checksum("phi_extra", cs, RTE_OUT(ctx.out()));
         }
     }
 
@@ -386,8 +386,8 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
         auto cs1 = kp.fv_states().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         auto cs2 = kp.fv_states().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         if (kp.comm().rank() == 0) {
-            utils::print_checksum("psi_pw", cs1, RTE_OUT(ctx.out()));
-            utils::print_checksum("psi_mt", cs2, RTE_OUT(ctx.out()));
+            print_checksum("psi_pw", cs1, RTE_OUT(ctx.out()));
+            print_checksum("psi_mt", cs2, RTE_OUT(ctx.out()));
         }
     }
 
@@ -443,10 +443,10 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
                 if (kp.comm().rank() == 0) {
                     std::stringstream s1;
                     s1 << "hpsi_pw_" << ispn;
-                    utils::print_checksum(s1.str(), cs1, RTE_OUT(ctx.out()));
+                    print_checksum(s1.str(), cs1, RTE_OUT(ctx.out()));
                     std::stringstream s2;
                     s2 << "hpsi_mt_" << ispn;
-                    utils::print_checksum(s2.str(), cs2, RTE_OUT(ctx.out()));
+                    print_checksum(s2.str(), cs2, RTE_OUT(ctx.out()));
                 }
             }
             /* compute <wf_i | h * wf_j> */

@@ -28,7 +28,7 @@ void test_gvec_distr(double cutoff__)
     pout.flush();
 
     if (gvec1.num_gvec() != gvec2.num_gvec()) {
-        TERMINATE("wrong number of G-vectors in gvec2");
+        RTE_THROW("wrong number of G-vectors in gvec2");
     }
 
     for (int igloc = 0; igloc < gvec_coarse.count(); igloc++) {

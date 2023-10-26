@@ -2,7 +2,7 @@
 #define __SPHERIC_FUNCTION_SET_HPP__
 
 #include "unit_cell/unit_cell.hpp"
-#include "strong_type.hpp"
+#include "core/strong_type.hpp"
 
 namespace sirius {
 
@@ -20,7 +20,7 @@ class Spheric_function_set
     std::vector<int> atoms_;
     /// Split the number of atoms between MPI ranks.
     /** If the pointer is null, spheric functions set is treated as global, without MPI distribution */
-    sddk::splindex_block<I> const* spl_atoms_{nullptr};
+    splindex_block<I> const* spl_atoms_{nullptr};
     /// List of spheric functions.
     std::vector<Spheric_function<function_domain_t::spectral, T>> func_;
 
@@ -37,7 +37,7 @@ class Spheric_function_set
                             sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia,
                             sptr__->lmmax, unit_cell_->atom(ia).radial_grid());
             } else {
-                func_[ia] = Spheric_function<function_domain_t::spectral, T>(utils::lmmax(lmax__(ia)),
+                func_[ia] = Spheric_function<function_domain_t::spectral, T>(sf::lmmax(lmax__(ia)),
                             unit_cell_->atom(ia).radial_grid());
             }
         };
@@ -60,7 +60,7 @@ class Spheric_function_set
 
     /// Constructor for all atoms.
     Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::function<lmax_t(int)> lmax__,
-            sddk::splindex_block<I> const* spl_atoms__ = nullptr,
+            splindex_block<I> const* spl_atoms__ = nullptr,
             spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
         : unit_cell_{&unit_cell__}
         , label_{label__}
@@ -79,7 +79,7 @@ class Spheric_function_set
 
     /// Constructor for a subset of atoms.
     Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::vector<int> atoms__,
-            std::function<lmax_t(int)> lmax__, sddk::splindex_block<I> const* spl_atoms__ = nullptr)
+            std::function<lmax_t(int)> lmax__, splindex_block<I> const* spl_atoms__ = nullptr)
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , atoms_{atoms__}
@@ -128,7 +128,7 @@ class Spheric_function_set
     /// Synchronize global function.
     /** Assuming that each MPI rank was handling part of the global spherical function, broadcast data
      *  from each rank. As a result, each rank stores a full and identical copy of global spherical function. */
-    inline void sync(sddk::splindex_block<I> const& spl_atoms__)
+    inline void sync(splindex_block<I> const& spl_atoms__)
     {
         for (int i = 0; i < spl_atoms__.size(); i++) {
             auto loc = spl_atoms__.location(typename I::global(i));
@@ -192,7 +192,7 @@ inline T inner(Spheric_function_set<T, I> const& f1__, Spheric_function_set<T, I
             result += inner(f1__[ia], f2__[ia]);
         }
     } else {
-        sddk::splindex_block<I> spl_atoms(f1__.atoms_.size(), n_blocks(comm.size()), block_id(comm.rank()));
+        splindex_block<I> spl_atoms(f1__.atoms_.size(), n_blocks(comm.size()), block_id(comm.rank()));
         for (int i = 0; i < spl_atoms.local_size(); i++) {
             int ia = f1__.atoms_[spl_atoms.global_index(typename I::local(i))];
             result += inner(f1__[ia], f2__[ia]);

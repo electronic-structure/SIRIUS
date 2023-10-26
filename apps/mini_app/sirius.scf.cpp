@@ -1,8 +1,7 @@
 #include <sirius.hpp>
 #include <cfenv>
-#include "utils/profiler.hpp"
-#include "utils/filesystem.hpp"
-#include "utils/json.hpp"
+#include "core/profiler.hpp"
+#include "core/json.hpp"
 #include "dft/lattice_relaxation.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
@@ -10,6 +9,7 @@
 using namespace sirius;
 using json = nlohmann::json;
 using namespace sddk;
+namespace fs = std::filesystem;
 
 const std::string aiida_output_file = "output_aiida.json";
 
@@ -58,12 +58,12 @@ nlohmann::json preprocess_json_input(std::string fname__)
 {
     if (fname__.find("{") == std::string::npos) {
         // If it's a file, set the working directory to that file.
-        auto json = utils::read_json_from_file(fname__);
+        auto json = read_json_from_file(fname__);
         rewrite_relative_paths(json, fs::path{fname__}.parent_path());
         return json;
     } else {
         // Raw JSON input
-        auto json = utils::read_json_from_string(fname__);
+        auto json = read_json_from_string(fname__);
         rewrite_relative_paths(json);
         return json;
     }
@@ -79,7 +79,7 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
 
     auto& inp = ctx.cfg().parameters();
     if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
+        RTE_THROW("this is not a Gamma-point calculation")
     }
 
     ctx.import(args__);
@@ -135,7 +135,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     auto& density = dft.density();
 
     if (task_id == task_t::ground_state_restart) {
-        if (!utils::file_exists(storage_file_name)) {
+        if (!file_exists(storage_file_name)) {
             RTE_THROW("storage file is not found");
         }
         density.load(storage_file_name);
@@ -375,11 +375,6 @@ void run_tasks(cmd_args const& args)
         task_id == task_t::ground_state_new_vcrelax) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        //if (ctx->comm().rank() == 0) {
-        //    auto dict = ctx->serialize();
-        //    std::ofstream ofs("setup.json", std::ofstream::out | std::ofstream::trunc);
-        //    ofs << dict.dump(4);
-        //}
         int write_output{1};
         ground_state(*ctx, task_id, args, write_output);
     }
@@ -412,43 +407,12 @@ void run_tasks(cmd_args const& args)
             }
         }
     }
-    if (task_id == task_t::read_config) {
-        //int count{0};
-        //while (true) {
-        //    std::stringstream s;
-        //    s << "sirius" << std::setfill('0') << std::setw(6) << count << ".json";
-        //    fname = s.str();
-        //    try {
-        //        auto dict = utils::read_json_from_file_or_string(fname);
-        //        Simulation_context ctx(dict["config"].dump());
-        //    } catch(...) {
-        //        break;
-        //    }
-        //    count++;
-        //}
-        auto dict1 = utils::read_json_from_file_or_string("sirius000030.json");
-        Simulation_context ctx1(dict1["config"].dump());
-        ctx1.initialize();
-
-        auto dict2 = utils::read_json_from_file_or_string("sirius000031.json");
-        Simulation_context ctx2(dict1["config"].dump());
-        ctx2.initialize();
-
-        ctx1.unit_cell().set_lattice_vectors(ctx2.unit_cell().lattice_vectors());
-        for (int ia = 0; ia < ctx2.unit_cell().num_atoms(); ia++) {
-            ctx1.unit_cell().atom(ia).set_position(ctx2.unit_cell().atom(ia).position());
-        }
-        ctx1.update();
-    }
 
     if (task_id == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->cfg().iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
         ctx->initialize();
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        //}
 
         Potential potential(*ctx);
 
@@ -604,7 +568,7 @@ int main(int argn, char** argv)
 
     if (my_rank == 0)  {
         //auto timing_result = ::utils::global_rtgraph_timer.process().flatten(1).sort_nodes();
-        auto timing_result = ::utils::global_rtgraph_timer.process();
+        auto timing_result = global_rtgraph_timer.process();
         std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
                                           rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
                                           rt_graph::Stat::Max});

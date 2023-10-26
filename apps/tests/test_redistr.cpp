@@ -5,7 +5,7 @@ using namespace sirius;
 void test_redistr(std::vector<int> mpi_grid_dims, int M, int N)
 {
     if (mpi_grid_dims.size() != 2) {
-        TERMINATE("2d MPI grid is expected");
+        RTE_THROW("2d MPI grid is expected");
     }
 
     MPI_Win win;
@@ -48,7 +48,7 @@ void test_redistr(std::vector<int> mpi_grid_dims, int M, int N)
         for (int j = 0; j < spl_row.local_size(); j++) {
             int jglob = spl_row[j];
             if (std::abs(mtrx2(j, i) - double((jglob + 1) * (i + 1))) > 1e-14) {
-                TERMINATE("error");
+                RTE_THROW("error");
             }
             //pout.printf("%4i ", mtrx2(j, i));
         }
@@ -202,7 +202,7 @@ void test_redistr3()
 void test_redistr4(std::vector<int> mpi_grid_dims, int M, int N)
 {
     if (mpi_grid_dims.size() != 2) {
-        TERMINATE("2d MPI grid is expected");
+        RTE_THROW("2d MPI grid is expected");
     }
 
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims[0], mpi_grid_dims[1]);
@@ -295,7 +295,7 @@ void test_redistr4(std::vector<int> mpi_grid_dims, int M, int N)
         for (int j = 0; j < spl_row.local_size(); j++) {
             int jglob = spl_row[j];
             if (std::abs(mtrx2(j, i) - double((jglob + 1) * (i + 1))) > 1e-14) {
-                TERMINATE("error");
+                RTE_THROW("error");
             }
             //pout.printf("%4i ", mtrx2(j, i));
         }
@@ -308,7 +308,7 @@ void test_redistr4(std::vector<int> mpi_grid_dims, int M, int N)
 void test_redistr5(std::vector<int> mpi_grid_dims, int M, int N)
 {
     if (mpi_grid_dims.size() != 2) {
-        TERMINATE("2d MPI grid is expected");
+        RTE_THROW("2d MPI grid is expected");
     }
 
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims[0], mpi_grid_dims[1]);
@@ -459,7 +459,7 @@ void test_redistr5(std::vector<int> mpi_grid_dims, int M, int N)
     //    for (int j = 0; j < spl_row.local_size(); j++) {
     //        int jglob = spl_row[j];
     //        if (std::abs(mtrx2(j, i) - double((jglob + 1) * (i + 1))) > 1e-14) {
-    //            TERMINATE("error");
+    //            RTE_THROW("error");
     //        }
     //        //pout.printf("%4i ", mtrx2(j, i));
     //    }

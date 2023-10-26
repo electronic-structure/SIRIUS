@@ -27,7 +27,7 @@
 
 #include "context/simulation_context.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "traits.hpp"
+#include "core/traits.hpp"
 
 namespace sirius {
 
@@ -168,7 +168,7 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
                                   reinterpret_cast<F const*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)),
                                   nbf, reinterpret_cast<F const*>(beta_phi__.at(mem__, offs, 0)), beta_phi__.ld(),
                                   &la::constant<F>::zero(), reinterpret_cast<F*>(work.at(mem__, offs, 0)), nbeta,
-                                  stream_id(omp_get_thread_num()));
+                                  acc::stream_id(omp_get_thread_num()));
             }
         }
     }
@@ -176,7 +176,7 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
         case sddk::device_t::GPU: {
             /* wait for previous zgemms */
             #pragma omp parallel
-            acc::sync_stream(stream_id(omp_get_thread_num()));
+            acc::sync_stream(acc::stream_id(omp_get_thread_num()));
             break;
         }
         case sddk::device_t::CPU: {
@@ -195,7 +195,7 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
 
     switch (pu) {
         case sddk::device_t::GPU: {
-            acc::sync_stream(stream_id(-1));
+            acc::sync_stream(acc::stream_id(-1));
             break;
         }
         case sddk::device_t::CPU: {
@@ -253,7 +253,7 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, atom_index_t::lo
         }
         case sddk::device_t::GPU: {
 #ifdef SIRIUS_GPU
-            acc::sync_stream(stream_id(-1));
+            acc::sync_stream(acc::stream_id(-1));
 #endif
             break;
         }

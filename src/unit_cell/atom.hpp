@@ -25,10 +25,10 @@
 #ifndef __ATOM_HPP__
 #define __ATOM_HPP__
 
-#include "sht/gaunt.hpp"
+#include "core/sht/gaunt.hpp"
+#include "core/profiler.hpp"
 #include "atom_symmetry_class.hpp"
 #include "function3d/spheric_function.hpp"
-#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -100,7 +100,7 @@ class Atom
         lmax_pot_ = type().parameters().lmax_pot();
 
         if (type().parameters().full_potential()) {
-            int lmmax = utils::lmmax(lmax_pot_);
+            int lmmax = sf::lmmax(lmax_pot_);
             int nrf   = type().indexr().size();
 
             h_radial_integrals_ = sddk::mdarray<double, 3>(lmmax, nrf, nrf);
@@ -142,7 +142,7 @@ class Atom
     {
         PROFILE("sirius::Atom::generate_radial_integrals");
 
-        int lmmax        = utils::lmmax(lmax_pot_);
+        int lmmax        = sf::lmmax(lmax_pot_);
         int nmtp         = type().num_mt_points();
         int nrf          = type().indexr().size();
         int num_mag_dims = type().parameters().num_mag_dims();
@@ -151,9 +151,9 @@ class Atom
             RTE_THROW("not yet mpi parallel");
         }
 
-        sddk::splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
+        splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
 
-        auto l_by_lm = utils::l_by_lm(lmax_pot_);
+        auto l_by_lm = sf::l_by_lm(lmax_pot_);
 
         h_radial_integrals_.zero();
         if (num_mag_dims) {
@@ -217,7 +217,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.copy_to(sddk::memory_t::device, stream_id(-1));
+            rf_coef.copy_to(sddk::memory_t::device, acc::stream_id(-1));
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -374,9 +374,9 @@ class Atom
     /// Set muffin-tin potential and magnetic field.
     inline void set_nonspherical_potential(double* veff__, double* beff__[3])
     {
-        veff_ = sddk::mdarray<double, 2>(veff__, utils::lmmax(lmax_pot_), type().num_mt_points());
+        veff_ = sddk::mdarray<double, 2>(veff__, sf::lmmax(lmax_pot_), type().num_mt_points());
         for (int j = 0; j < 3; j++) {
-            beff_[j] = sddk::mdarray<double, 2>(beff__[j], utils::lmmax(lmax_pot_), type().num_mt_points());
+            beff_[j] = sddk::mdarray<double, 2>(beff__[j], sf::lmmax(lmax_pot_), type().num_mt_points());
         }
     }
 

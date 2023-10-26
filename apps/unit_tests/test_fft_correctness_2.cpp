@@ -38,7 +38,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     sddk::mdarray<std::complex<T>, 1> f(gvp.count());
     for (int ig = 0; ig < gvp.count(); ig++) {
-        f[ig] = utils::random<std::complex<T>>();
+        f[ig] = random<std::complex<T>>();
     }
     sddk::mdarray<std::complex<T>, 1> g(gvp.count());
 

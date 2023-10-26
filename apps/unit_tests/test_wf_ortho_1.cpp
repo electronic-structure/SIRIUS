@@ -2,7 +2,7 @@
 #include <testing.hpp>
 #include <spla/spla.hpp>
 #include <spla/context.hpp>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 
 using namespace sirius;
 

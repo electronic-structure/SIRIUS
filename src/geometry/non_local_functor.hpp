@@ -29,7 +29,7 @@
 #include "k_point/k_point.hpp"
 #include "density/augmentation_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 
 namespace sirius {
 
@@ -89,7 +89,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
                     ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), beta_coeffs_base,
                     kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
-                sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
+                splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
                 int nbnd_loc = spl_nbnd.local_size();
 

@@ -111,12 +111,12 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
 
                 result += std::real(std::conj(x.rg().f_pw_local(ig1)) * y.rg().f_pw_local(ig1)) /
-                    std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(ig1), 2);
+                    std::pow(x.ctx().gvec().gvec_len<index_domain_t::local>(ig1), 2);
             }
         } else {
             for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
                 result += std::real(std::conj(x.rg().f_pw_local(igloc)) * y.rg().f_pw_local(igloc)) /
-                    std::pow(x.ctx().gvec().gvec_len<sddk::index_domain_t::local>(igloc), 2);
+                    std::pow(x.ctx().gvec().gvec_len<index_domain_t::local>(igloc), 2);
             }
         }
         if (x.ctx().gvec().reduced()) {

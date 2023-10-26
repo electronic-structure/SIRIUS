@@ -22,6 +22,9 @@
  *  \brief Occupation matrix of the LDA+U method.
  */
 
+#ifndef __OCCUPATION_MATRIX_HPP__
+#define __OCCUPATION_MATRIX_HPP__
+
 #include "SDDK/memory.hpp"
 #include "k_point/k_point.hpp"
 #include "hubbard/hubbard_matrix.hpp"
@@ -128,14 +131,15 @@ inline void
 copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
 {
     for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
-        ::sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
+        sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
-        ::sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
+        sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
     for (auto& e : src__.occ_mtrx_T()) {
-        ::sddk::copy(e.second, dest__.occ_mtrx_T_.at(e.first));
+        sddk::copy(e.second, dest__.occ_mtrx_T_.at(e.first));
     }
 }
 
 } // namespace sirius
+#endif

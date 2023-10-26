@@ -1,7 +1,9 @@
 #include <cmath>
-#include "utils/cmd_args.hpp"
+#include "core/cmd_args.hpp"
 
 /* test for NaN and IEEE arithmetics */
+
+using namespace sirius;
 
 int run_test(cmd_args& args)
 {

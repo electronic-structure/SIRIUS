@@ -26,15 +26,16 @@
 #define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
-#include "linalg/r3.hpp"
 #include "radial/radial_solver.hpp"
 #include "context/simulation_parameters.hpp"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
-#include "sht/sht.hpp"
-#include "sht/gaunt.hpp"
-#include "utils/profiler.hpp"
+#include "core/sht/sht.hpp"
+#include "core/sht/gaunt.hpp"
+#include "core/r3/r3.hpp"
+#include "core/profiler.hpp"
+#include "core/packed_index.hpp"
 
 namespace sirius {
 
@@ -560,7 +561,7 @@ class Atom_type
             }
         }
 
-        int ijv                         = utils::packed_index(idxrf1__, idxrf2__);
+        int ijv                         = packed_index(idxrf1__, idxrf2__);
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 
@@ -1087,7 +1088,7 @@ class Atom_type
 
     inline int lmmax_apw() const
     {
-        return utils::lmmax(this->lmax_apw());
+        return sf::lmmax(this->lmax_apw());
     }
 
     inline int lmax_lo() const
