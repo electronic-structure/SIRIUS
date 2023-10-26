@@ -25,16 +25,17 @@
 #ifndef __EIGENPROBLEM_HPP__
 #define __EIGENPROBLEM_HPP__
 
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
+#include "core/rte/rte.hpp"
+#include "core/omp.hpp"
 #include "linalg.hpp"
-#include "SDDK/omp.hpp"
 #include "eigensolver.hpp"
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
-#include "gpu/magma.hpp"
+#include "core/acc/magma.hpp"
 #endif
 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-#include "gpu/cusolver.hpp"
+#include "core/acc/cusolver.hpp"
 #endif
 
 #if defined(SIRIUS_ELPA)
@@ -45,6 +46,8 @@
 #include <dlaf_c/eigensolver/eigensolver.h>
 #include <dlaf_c/eigensolver/gen_eigensolver.h>
 #endif
+
+namespace sirius {
 
 namespace la {
 
@@ -248,7 +251,7 @@ class Eigensolver_lapack : public Eigensolver
               << "nb : " << nb << std::endl
               << "liwork : " << liwork << std::endl
               << "lwork : " << lwork << std::endl;
-            WARNING(s);
+            RTE_WARNING(s);
             return 1;
         }
 
@@ -373,7 +376,7 @@ class Eigensolver_lapack : public Eigensolver
             s << "not all eigen-values are found" << std::endl
               << "target number of eigen-values: " << nev__ << std::endl
               << "number of eigen-values found: " << m;
-            WARNING(s);
+            RTE_WARNING(s);
             return 1;
         }
 
@@ -412,10 +415,10 @@ class Eigensolver_elpa : public Eigensolver
     //          << std::endl
     //          << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows()
     //          << std::endl;
-    //        TERMINATE(s);
+    //        RTE_THROW(s);
     //    }
     //    if (A__.bs_row() != A__.bs_col()) {
-    //        TERMINATE("wrong block size");
+    //        RTE_THROW("wrong block size");
     //    }
 
     //    /* Cholesky factorization B = U^{H}*U */
@@ -740,7 +743,7 @@ class Eigensolver_scalapack : public Eigensolver
         }
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -762,7 +765,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -771,7 +774,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, float>::value) {
                 s << "pssyevx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -870,7 +873,7 @@ class Eigensolver_scalapack : public Eigensolver
         }
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -892,7 +895,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -901,7 +904,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, std::complex<float>>::value) {
                 s << "pcheevx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -994,7 +997,7 @@ class Eigensolver_scalapack : public Eigensolver
         }
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -1016,7 +1019,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -1025,7 +1028,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, float>::value) {
                 s << "pssygvx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -1138,7 +1141,7 @@ class Eigensolver_scalapack : public Eigensolver
 
 
         if ((m != nev__) || (nz != nev__)) {
-            WARNING("Not all eigen-vectors or eigen-values are found.");
+            RTE_WARNING("Not all eigen-vectors or eigen-values are found.");
             return 1;
         }
 
@@ -1160,7 +1163,7 @@ class Eigensolver_scalapack : public Eigensolver
                 for (int i = 0; i < k; i++) {
                     s << iclustr.get()[2 * i] << " : " << iclustr.get()[2 * i + 1] << std::endl;
                 }
-                WARNING(s);
+                RTE_WARNING(s);
             }
 
             std::stringstream s;
@@ -1169,7 +1172,7 @@ class Eigensolver_scalapack : public Eigensolver
             } else if (std::is_same<T, std::complex<float>>::value) {
                 s << "pchegvx returned " << info;
             }
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::copy(w.get(), w.get() + nev__, eval__);
         }
@@ -1431,7 +1434,7 @@ class Eigensolver_magma: public Eigensolver
 
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1483,7 +1486,7 @@ class Eigensolver_magma: public Eigensolver
                              rwork.get(), lrwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1533,7 +1536,7 @@ class Eigensolver_magma: public Eigensolver
                       nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1580,7 +1583,7 @@ class Eigensolver_magma: public Eigensolver
                       lrwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1644,7 +1647,7 @@ class Eigensolver_magma_gpu: public Eigensolver
                           liwork, &info);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1692,7 +1695,7 @@ class Eigensolver_magma_gpu: public Eigensolver
                           &info /*info*/);
 
         if (nt != omp_get_max_threads()) {
-            TERMINATE("magma has changed the number of threads");
+            RTE_THROW("magma has changed the number of threads");
         }
 
         if (m < nev__) {
@@ -1755,19 +1758,19 @@ class Eigensolver_cuda: public Eigensolver
         auto vu = std::numeric_limits<real_type<T>>::infinity();
 
         if (std::is_same<T, double>::value) {
-            CALL_CUSOLVER(cusolverDnDsyevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnDsyevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, float>::value) {
-            CALL_CUSOLVER(cusolverDnSsyevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnSsyevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(), vl,
                                                          vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<double>>::value) {
-            CALL_CUSOLVER(cusolverDnZheevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnZheevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)),
                                                          A__.ld(), vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<float>>::value) {
-            CALL_CUSOLVER(cusolverDnCheevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnCheevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)),
                                                          A__.ld(), vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         }
@@ -1777,20 +1780,20 @@ class Eigensolver_cuda: public Eigensolver
         int info;
         auto dinfo = mpd.get_unique_ptr<int>(1);
         if (std::is_same<T, double>::value) {
-            CALL_CUSOLVER(cusolverDnDsyevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnDsyevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                               reinterpret_cast<double*>(w.get()), reinterpret_cast<double*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, float>::value) {
-            CALL_CUSOLVER(cusolverDnSsyevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnSsyevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                               reinterpret_cast<float*>(w.get()), reinterpret_cast<float*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<double>>::value) {
-            CALL_CUSOLVER(cusolverDnZheevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnZheevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()),
                                               reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<float>>::value) {
-            CALL_CUSOLVER(cusolverDnCheevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnCheevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()),
                                               reinterpret_cast<cuFloatComplex*>(work.get()), lwork, dinfo.get()));
@@ -1848,22 +1851,22 @@ class Eigensolver_cuda: public Eigensolver
         auto vu = std::numeric_limits<real_type<T>>::infinity();
 
         if (std::is_same<T, double>::value) {
-            CALL_CUSOLVER(cusolverDnDsygvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnDsygvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                                          reinterpret_cast<double*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, float>::value) {
-            CALL_CUSOLVER(cusolverDnSsygvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnSsygvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                                          reinterpret_cast<float*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<double>>::value) {
-            CALL_CUSOLVER(cusolverDnZhegvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnZhegvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                                          reinterpret_cast<cuDoubleComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<float>>::value) {
-            CALL_CUSOLVER(cusolverDnChegvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnChegvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                          reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                                          reinterpret_cast<cuFloatComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
@@ -1874,25 +1877,25 @@ class Eigensolver_cuda: public Eigensolver
         int info;
         auto dinfo = mpd.get_unique_ptr<int>(1);
         if (std::is_same<T, double>::value) {
-            CALL_CUSOLVER(cusolverDnDsygvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnDsygvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                               reinterpret_cast<double*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()),
                                               reinterpret_cast<double*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, float>::value) {
-            CALL_CUSOLVER(cusolverDnSsygvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnSsygvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                               reinterpret_cast<float*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()),
                                               reinterpret_cast<float*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<double>>::value) {
-            CALL_CUSOLVER(cusolverDnZhegvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnZhegvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                               reinterpret_cast<cuDoubleComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()),
                                               reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<float>>::value) {
-            CALL_CUSOLVER(cusolverDnChegvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
+            CALL_CUSOLVER(cusolverDnChegvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                               reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
                                               reinterpret_cast<cuFloatComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()),
@@ -1968,45 +1971,8 @@ class Eigensolver_cuda: public Eigensolver
 };
 #endif
 
-//== #ifdef __PLASMA
-//== extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
-//==                                       int32_t ldz, double* eval);
-//== #endif
-//==
-//== /// Interface for PLASMA eigen-value solvers.
-//== class Eigenproblem_plasma: public Eigenproblem
-//== {
-//==     public:
-//==
-//==         Eigenproblem_plasma()
-//==         {
-//==         }
-//==
-//==         #ifdef __PLASMA
-//==         void solve(int32_t matrix_size, std::complex<double>* A, int32_t lda, double* eval, std::complex<double>* Z, int32_t
-//ldz) const
-//==         {
-//==             //plasma_set_num_threads(1);
-//==             //omp_set_num_threads(1);
-//==             //printf("before call to plasma_zheevd_wrapper\n");
-//==             plasma_zheevd_wrapper(matrix_size, a, lda, z, lda, eval);
-//==             //printf("after call to plasma_zheevd_wrapper\n");
-//==             //plasma_set_num_threads(8);
-//==             //omp_set_num_threads(8);
-//==         }
-//==         #endif
-//==
-//==         bool parallel() const
-//==         {
-//==             return false;
-//==         }
-//==
-//==         ev_solver_t type() const
-//==         {
-//==             return ev_plasma;
-//==         }
-//== };
-
 } // namespace
+
+} // namespace sirius
 
 #endif // __EIGENPROBLEM_HPP__

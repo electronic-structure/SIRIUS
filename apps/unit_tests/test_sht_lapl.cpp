@@ -8,7 +8,7 @@ double test()
 {
     int lmax{10};
     SHT sht(sddk::device_t::CPU, lmax);
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
@@ -18,7 +18,7 @@ double test()
         double x = r[ir];
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
-                int lm = utils::lm(l, m);
+                int lm = sf::lm(l, m);
                 f(lm, ir) = std::exp(-0.1 * (lm + 1) * x) * std::pow(x, l);
             }
         }
@@ -32,7 +32,7 @@ double test()
     Spline<double> s(r);
     Spline<double> s1(r);
     for (int ir = 0; ir < r.num_points(); ir++) {
-        for (int lm = 0; lm < utils::lmmax(lmax - 1); lm++) {
+        for (int lm = 0; lm < sf::lmmax(lmax - 1); lm++) {
             s(ir) += std::abs(lapl_f(lm, ir) - div_grad_f(lm, ir));
             s1(ir) += std::abs(lapl_f(lm, ir)) + std::abs(div_grad_f(lm, ir));
         }

@@ -5,13 +5,13 @@ double test_alltoall(int num_gkvec__, int num_bands__, int num_groups__)
     int np = mpi_comm_world().size() / num_groups__;
     if (np * num_groups__ != mpi_comm_world().size())
     {
-        TERMINATE("wrong number of MPI ranks");
+        RTE_THROW("wrong number of MPI ranks");
     }
 
     int num_bands = num_bands__ / num_groups__;
     if (num_bands * num_groups__ != num_bands__)
     {
-        TERMINATE("wrong number of bands");
+        RTE_THROW("wrong number of bands");
     }
 
     std::vector<int> mpi_grid_dims = {np, num_groups__};

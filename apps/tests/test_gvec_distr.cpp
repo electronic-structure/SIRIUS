@@ -87,7 +87,7 @@ void test_gvec_distr(double cutoff__)
     a2a_from_gvec.calc_offsets();
 
     if (a2a_from_gvec.size() != gvec.count()) {
-        TERMINATE("wrong number of G-vectors");
+        RTE_THROW("wrong number of G-vectors");
     }
 
     /* repack data */
@@ -137,7 +137,7 @@ void test_gvec_distr(double cutoff__)
 
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         if (std::abs(test_data[ig] - test_data1[ig]) > 1e-12) {
-            TERMINATE("wrong data was collected");
+            RTE_THROW("wrong data was collected");
         }
     }
         
@@ -172,7 +172,7 @@ void test_gvec(double cutoff__, bool reduce__)
             s << "wrong reverce index" << std::endl
               << "direct index: " << ig << std::endl
               << "reverce index: " << idx;
-            TERMINATE(s);
+            RTE_THROW(s);
         }
     }
 }

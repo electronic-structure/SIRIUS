@@ -46,7 +46,7 @@ struct basis_function_index_descriptor
     basis_function_index_descriptor(angular_momentum am, int m, int order, rf_lo_index idxlo, rf_index idxrf)
         : am(am)
         , m(m)
-        , lm(utils::lm(am.l(), m))
+        , lm(sf::lm(am.l(), m))
         , order(order)
         , idxlo(idxlo)
         , idxrf(idxrf)
@@ -91,7 +91,7 @@ class basis_functions_index
         }
 
         if (!expand_full_j__) {
-            index_by_lm_order_ = sddk::mdarray<int, 2>(utils::lmmax(indexr_.lmax()), indexr_.max_order());
+            index_by_lm_order_ = sddk::mdarray<int, 2>(sf::lmmax(indexr_.lmax()), indexr_.max_order());
             std::fill(index_by_lm_order_.begin(), index_by_lm_order_.end(), -1);
             /* loop over radial functions */
             for (auto e : indexr_) {
@@ -114,14 +114,14 @@ class basis_functions_index
                     vbd_.push_back(basis_function_index_descriptor(am, m, e.order, e.idxlo, e.idxrf));
                     vbd_.back().xi = bf_index(size);
                     /* reverse mapping */
-                    index_by_lm_order_(utils::lm(am.l(), m), e.order) = size;
+                    index_by_lm_order_(sf::lm(am.l(), m), e.order) = size;
                     size++;
                 }
             }
         } else { /* for the full-j expansion */
             /* several things have to be done here:
              *  - packing of jmj index for l+1/2 and l-1/2 subshells has to be introduced
-             *    like existing utils::lm(l, m) function
+             *    like existing sf::lm(l, m) function
              *  - indexing within l-shell has to be implemented; l shell now contains 2(2l+1) spin orbitals
              *  - order of s=-1 and s=1 components has to be agreed upon and respected
              */
@@ -156,7 +156,7 @@ class basis_functions_index
 
     inline int index_by_l_m_order(int l, int m, int order) const
     {
-        return index_by_lm_order_(utils::lm(l, m), order);
+        return index_by_lm_order_(sf::lm(l, m), order);
     }
 
     inline int index_by_lm_order(int lm, int order) const

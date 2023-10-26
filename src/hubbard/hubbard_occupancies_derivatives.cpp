@@ -33,7 +33,7 @@
 
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "hubbard.hpp"
-#include "memory.hpp"
+#include "SDDK/memory.hpp"
 #include "linalg/inverse_sqrt.hpp"
 #include "geometry/wavefunction_strain_deriv.hpp"
 
@@ -213,7 +213,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
         for (int i = 0; i < nawf; i++) {
             for (int igloc = 0; igloc < kp__.num_gkvec_loc(); igloc++) {
                 /* G+k vector in Cartesian coordinates */
-                auto gk = kp__.gkvec().template gkvec_cart<sddk::index_domain_t::local>(igloc);
+                auto gk = kp__.gkvec().template gkvec_cart<index_domain_t::local>(igloc);
                 /* gradient of phi_atomic */
                 phi_atomic_tmp->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = std::complex<double>(0.0, -gk[x]) *
                     phi_atomic.pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i));
@@ -404,7 +404,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     auto bp_coeffs = bp_gen.prepare();
 
     const int lmax  = ctx_.unit_cell().lmax();
-    const int lmmax = utils::lmmax(lmax);
+    const int lmmax = sf::lmmax(lmax);
 
     sddk::mdarray<double, 2> rlm_g(lmmax, kp__.num_gkvec_loc());
     sddk::mdarray<double, 3> rlm_dg(lmmax, 3, kp__.num_gkvec_loc());
@@ -413,7 +413,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
         /* gvs = {r, theta, phi} */
-        auto gvc = kp__.gkvec().gkvec_cart<sddk::index_domain_t::local>(igkloc);
+        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         auto rtp = r3::spherical_coordinates(gvc);
 
         sf::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));

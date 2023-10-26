@@ -27,7 +27,7 @@
 
 #include <gsl/gsl_sf_bessel.h>
 #include "unit_cell/unit_cell.hpp"
-#include "fft/gvec.hpp"
+#include "core/fft/gvec.hpp"
 
 namespace sirius {
 
@@ -114,7 +114,7 @@ class Matching_coefficients // TODO: compute on GPU
         , gkvec_(gkvec__)
     {
         int lmax_apw  = unit_cell__.lmax_apw();
-        int lmmax_apw = utils::lmmax(lmax_apw);
+        int lmmax_apw = sf::lmmax(lmax_apw);
 
         gkvec_ylm_ = sddk::mdarray<std::complex<double>, 2>(gkvec_.count(), lmmax_apw);
         gkvec_len_.resize(gkvec_.count());
@@ -126,7 +126,7 @@ class Matching_coefficients // TODO: compute on GPU
 
             #pragma omp for
             for (int i = 0; i < gkvec_.count(); i++) {
-                auto gkvec_cart = gkvec_.gkvec_cart<sddk::index_domain_t::local>(i);
+                auto gkvec_cart = gkvec_.gkvec_cart<index_domain_t::local>(i);
                 /* get r, theta, phi */
                 auto vs = r3::spherical_coordinates(gkvec_cart);
                 gkvec_len_[i] = vs[0];
@@ -194,13 +194,13 @@ class Matching_coefficients // TODO: compute on GPU
     {
         auto& type = atom__.type();
 
-        assert(type.max_aw_order() <= 3);
+        RTE_ASSERT(type.max_aw_order() <= 3);
 
         int iat = type.id();
 
         std::vector<std::complex<double>> phase_factors(gkvec_.count());
         for (int i = 0; i < gkvec_.count(); i++) {
-            double phase     = twopi * dot(gkvec_.template gkvec<sddk::index_domain_t::local>(i), atom__.position());
+            double phase     = twopi * dot(gkvec_.template gkvec<index_domain_t::local>(i), atom__.position());
             phase_factors[i] = std::exp(std::complex<double>(0, phase));
         }
 
@@ -227,7 +227,7 @@ class Matching_coefficients // TODO: compute on GPU
                             s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
                               << std::endl
                               << "  radial function value at the MT boundary : " << A(0, 0);
-                            WARNING(s.str());
+                            RTE_WARNING(s.str());
                         }
                     }
 
@@ -243,7 +243,7 @@ class Matching_coefficients // TODO: compute on GPU
                             s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
                               << std::endl
                               << "  radial function value at the MT boundary : " << A(0, 0);
-                            WARNING(s.str());
+                            RTE_WARNING(s.str());
                         }
                     }
 
@@ -287,7 +287,7 @@ class Matching_coefficients // TODO: compute on GPU
                     break;
                 }
                 default: {
-                    TERMINATE("wrong order of augmented wave");
+                    RTE_THROW("wrong order of augmented wave");
                 }
             }
         }

@@ -44,7 +44,9 @@
 #include <umpire/strategy/AlignedAllocator.hpp>
 #endif
 
-#include "gpu/acc.hpp"
+#include "core/acc/acc.hpp"
+
+namespace sirius {
 
 namespace sddk {
 
@@ -1334,7 +1336,7 @@ class mdarray
     }
 
     /// Copy n elements starting from idx0 from one memory type to another.
-    inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, stream_id sid = stream_id(-1))
+    inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, acc::stream_id sid = acc::stream_id(-1))
     {
         if (n__ == 0) {
             return;
@@ -1371,7 +1373,7 @@ class mdarray
     }
 
     /// Copy entire array from one memory type to another.
-    inline void copy_to(memory_t mem__, stream_id sid = stream_id(-1))
+    inline void copy_to(memory_t mem__, acc::stream_id sid = acc::stream_id(-1))
     {
         this->copy_to(mem__, 0, size(), sid);
     }
@@ -1568,5 +1570,7 @@ empty_like(const mdarray<T, N>& src, memory_pool& mempool)
 }
 
 } // namespace sddk
+
+} // namespace sirius
 
 #endif // __MEMORY_HPP__

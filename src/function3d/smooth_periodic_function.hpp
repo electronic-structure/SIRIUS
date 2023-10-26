@@ -23,12 +23,11 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
-#include "fft/fft.hpp"
-#include "fft/gvec.hpp"
-#include "memory.hpp"
-#include "utils/utils.hpp"
-#include "utils/profiler.hpp"
-#include "typedefs.hpp"
+#include "core/typedefs.hpp"
+#include "core/fft/fft.hpp"
+#include "core/fft/gvec.hpp"
+#include "core/profiler.hpp"
+#include "SDDK/memory.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
@@ -229,19 +228,19 @@ class Smooth_periodic_function
 
     auto& spfft()
     {
-        assert(spfft_ != nullptr);
+        RTE_ASSERT(spfft_ != nullptr);
         return *spfft_;
     }
 
     auto const& spfft() const
     {
-        assert(spfft_ != nullptr);
+        RTE_ASSERT(spfft_ != nullptr);
         return *spfft_;
     }
 
     auto& gvec() const
     {
-        assert(gvecp_ != nullptr);
+        RTE_ASSERT(gvecp_ != nullptr);
         return gvecp_->gvec();
     }
 
@@ -254,7 +253,7 @@ class Smooth_periodic_function
     {
         PROFILE("sirius::Smooth_periodic_function::fft_transform");
 
-        assert(gvecp_ != nullptr);
+        RTE_ASSERT(gvecp_ != nullptr);
 
         auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
 
@@ -409,13 +408,13 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 
     spfft::Transform& spfft() const
     {
-        assert(spfft_ != nullptr);
+        RTE_ASSERT(spfft_ != nullptr);
         return *spfft_;
     }
 
     auto gvec_fft() const
     {
-        assert(gvecp_ != nullptr);
+        RTE_ASSERT(gvecp_ != nullptr);
         return gvecp_;
     }
 };
@@ -432,7 +431,7 @@ inline Smooth_periodic_vector_function<T> gradient(Smooth_periodic_function<T>& 
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        auto G = f__.gvec().template gvec_cart<sddk::index_domain_t::local>(igloc);
+        auto G = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
         for (int x : {0, 1, 2}) {
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<T>(0, G[x]);
         }
@@ -452,7 +451,7 @@ inline Smooth_periodic_function<T> divergence(Smooth_periodic_vector_function<T>
     f.zero();
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
-            auto G = f.gvec().template gvec_cart<sddk::index_domain_t::local>(igloc);
+            auto G = f.gvec().template gvec_cart<index_domain_t::local>(igloc);
             f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * std::complex<T>(0, G[x]);
         }
     }
@@ -470,7 +469,7 @@ inline Smooth_periodic_function<T> laplacian(Smooth_periodic_function<T>& f__)
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        auto G              = f__.gvec().template gvec_cart<sddk::index_domain_t::local>(igloc);
+        auto G              = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<T>(-std::pow(G.length(), 2), 0);
     }
 
@@ -509,7 +508,7 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 
     //#pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
-        result_rg += utils::conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
+        result_rg += conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
     }
 
     result_rg *= (f__.gvec().omega() / fft::spfft_grid_size(f__.spfft()));

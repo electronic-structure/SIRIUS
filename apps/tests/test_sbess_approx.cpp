@@ -85,7 +85,7 @@ void test_sbess_approx()
     //                  << "obtained value: " << v << std::endl
     //                  << "target value: " << sbf(l)[ir] << std::endl
     //                  << "ir: " << ir << ", l: " << l;
-    //                TERMINATE(s);
+    //                RTE_THROW(s);
     //            }
     //        }
     //    }
@@ -172,7 +172,7 @@ void test_sbess_approx2()
     //                  << "obtained value: " << v << std::endl
     //                  << "target value: " << sbf(l)[ir] << std::endl
     //                  << "ir: " << ir << ", l: " << l;
-    //                TERMINATE(s);
+    //                RTE_THROW(s);
     //            }
     //        }
     //    }

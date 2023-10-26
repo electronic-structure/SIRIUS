@@ -1,6 +1,8 @@
 #include <array>
-#include "utils/cmd_args.hpp"
+#include "core/cmd_args.hpp"
 #include "testing.hpp"
+
+using namespace sirius;
 
 int run_test(cmd_args const& args)
 {

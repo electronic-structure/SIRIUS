@@ -30,14 +30,15 @@
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
-#include "mpi/mpi_grid.hpp"
+#include "core/fft/fft.hpp"
+#include "core/mpi/mpi_grid.hpp"
+#include "core/acc/acc.hpp"
+#include "core/env/env.hpp"
+#include "core/time_tools.hpp"
+#include "core/system_tools.hpp"
 #include "radial/radial_integrals.hpp"
-#include "utils/utils.hpp"
-#include "utils/env.hpp"
 #include "density/augmentation_operator.hpp"
-#include "gpu/acc.hpp"
 #include "symmetry/rotation.hpp"
-#include "fft/fft.hpp"
 #include "lapw/step_function.hpp"
 
 #ifdef SIRIUS_GPU
@@ -55,14 +56,13 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
         return;
     }
 
-    size_t VmRSS, VmHWM;
-    utils::get_proc_status(&VmHWM, &VmRSS);
+    auto res = get_proc_status();
 
     std::stringstream s;
     s << "rank" << std::setfill('0') << std::setw(4) << mpi::Communicator::world().rank();
     out__ << "[" << s.str() << " at " << file_and_line__ << "] "
-          << "VmHWM: " << (VmHWM >> 20) << " Mb, "
-          << "VmRSS: " << (VmRSS >> 20) << " Mb";
+          << "VmHWM: " << (res.VmHWM >> 20) << " Mb, "
+          << "VmRSS: " << (res.VmRSS >> 20) << " Mb";
 
     if (acc::num_devices() > 0) {
         size_t gpu_mem = acc::get_free_mem();
@@ -316,7 +316,7 @@ class Simulation_context : public Simulation_parameters
     void init_common()
     {
         gettimeofday(&start_time_, NULL);
-        start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
+        start_time_tag_ = timestamp("%Y%m%d_%H%M%S");
 
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
 
@@ -557,7 +557,7 @@ class Simulation_context : public Simulation_parameters
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
     inline auto gvec_phase_factor(int ig__, int ia__) const
     {
-        return gvec_phase_factor(gvec().gvec<sddk::index_domain_t::global>(ig__), ia__);
+        return gvec_phase_factor(gvec().gvec<index_domain_t::global>(ig__), ia__);
     }
 
     inline auto const& gvec_coord() const
@@ -744,7 +744,7 @@ class Simulation_context : public Simulation_parameters
         if (this->verbosity() >= level__) {
             return this->out();
         } else {
-            return utils::null_stream();
+            return null_stream();
         }
     }
 
@@ -753,7 +753,7 @@ class Simulation_context : public Simulation_parameters
         if (this->verbosity() >= level__) {
             return rte::ostream(this->out(), label__);
         } else {
-            return rte::ostream(utils::null_stream(), label__);
+            return rte::ostream(null_stream(), label__);
         }
     }
 
@@ -761,7 +761,7 @@ class Simulation_context : public Simulation_parameters
     inline void message(int level__, char const* label__, std::stringstream const& s) const
     {
         if (this->verbosity() >= level__) {
-            auto strings = ::rte::split(s.str());
+            auto strings = split(s.str(), '\n');
             for (auto& e : strings) {
                 this->out() << "[" << label__ << "] " << e << std::endl;
             }

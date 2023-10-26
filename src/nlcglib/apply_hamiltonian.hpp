@@ -28,7 +28,7 @@
 #include "potential/potential.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "density/density.hpp"
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include <memory>
 #include <complex>
 

@@ -65,7 +65,7 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
             RTE_THROW("um is not Hermitian");
         }
         if (env::print_checksum()) {
-            utils::print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
+            print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
         }
         if (ctx_.processing_unit() == sddk::device_t::GPU) {
             um_[is].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);

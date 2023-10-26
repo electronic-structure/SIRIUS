@@ -1,12 +1,12 @@
-#include <utils/cmd_args.hpp>
-#include <utils/utils.hpp>
-#include <memory.hpp>
+#include <core/cmd_args.hpp>
+#include <SDDK/memory.hpp>
 #include <complex>
 #include <sys/time.h>
 #include <random>
 
 using double_complex = std::complex<double>;
-using namespace sddk;
+using namespace sirius::sddk;
+using namespace sirius;
 
 void test2()
 {
@@ -148,7 +148,7 @@ void test7()
     std::vector<double*> v(N);
     for (int k = 0; k < 30; k++) {
         for (int i = 0; i < N; i++) {
-            auto n = (utils::rand() & 0b1111111111) + 1;
+            auto n = (rand() & 0b1111111111) + 1;
             v[i] = mp.allocate<double>(n);
         }
         std::random_device rd;

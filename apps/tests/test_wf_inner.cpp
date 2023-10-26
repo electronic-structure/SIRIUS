@@ -49,10 +49,10 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
     mpi::Communicator::world().barrier();
 
-    double t = -utils::wtime();
+    double t = -wtime();
     wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
     mpi::Communicator::world().barrier();
-    t += utils::wtime();
+    t += wtime();
 
     double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() / t;
     if (mpi::Communicator::world().rank() == 0) {
@@ -134,7 +134,7 @@ int main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0)  {
-        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        const auto timing_result = global_rtgraph_timer.process();
         std::cout << timing_result.print();
         //std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
         //ofs << timing_result.json();

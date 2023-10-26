@@ -28,6 +28,8 @@
 #include "SDDK/memory.hpp"
 #include "linalg/dmatrix.hpp"
 
+namespace sirius {
+
 namespace la {
 
 /// Type of eigen-value solver.
@@ -51,9 +53,6 @@ enum class ev_solver_t
     /// MAGMA with GPU pointers
     magma_gpu,
 
-    /// PLASMA
-    plasma,
-
     /// CUDA eigen-solver
     cusolver
 };
@@ -66,7 +65,7 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     static const std::map<std::string, ev_solver_t> map_to_type = {
         {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa},
         {"elpa2", ev_solver_t::elpa}, {"dlaf", ev_solver_t::dlaf}, {"magma", ev_solver_t::magma}, {"magma_gpu", ev_solver_t::magma_gpu},
-        {"plasma", ev_solver_t::plasma}, {"cusolver", ev_solver_t::cusolver}};
+        {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {
         std::stringstream s;
@@ -262,5 +261,7 @@ std::unique_ptr<Eigensolver>
 Eigensolver_factory(std::string name__);
 
 } // namespace
+
+}
 
 #endif

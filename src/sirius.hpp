@@ -29,32 +29,28 @@
 #include <apex_api.hpp>
 #endif
 
-#include "SDDK/omp.hpp"
+#include "core/omp.hpp"
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
-#include "gpu/cusolver.hpp"
+#include "core/acc/cusolver.hpp"
 #endif
 #include "linalg/linalg_spla.hpp"
-#include "utils/cmd_args.hpp"
-#include "utils/json.hpp"
-#include "utils/profiler.hpp"
+#include "core/cmd_args.hpp"
+#include "core/json.hpp"
+#include "core/profiler.hpp"
 using json = nlohmann::json;
 #if defined(SIRIUS_USE_POWER_COUNTER)
-#include "utils/power.hpp"
+#include "core/power.hpp"
 #endif
 
+#include "core/sht/sht.hpp"
+#include "core/sht/gaunt.hpp"
+#include "core/hdf5_tree.hpp"
+#include "core/sirius_version.hpp"
 #include "context/simulation_context.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"
-#include "sht/sht.hpp"
-#include "sht/gaunt.hpp"
-#include "hdf5_tree.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "linalg/eigenproblem.hpp"
-#include "sirius_version.hpp"
-
-#if defined(__PLASMA)
-extern "C" void plasma_init(int num_cores);
-#endif
 
 /// Namespace of the SIRIUS library.
 namespace sirius {
@@ -88,11 +84,11 @@ inline void initialize(bool call_mpi_init__ = true)
     PROFILE_START("sirius");
     PROFILE("sirius::initialize");
     if (is_initialized()) {
-        TERMINATE("SIRIUS library is already initialized");
+        RTE_THROW("SIRIUS library is already initialized");
     }
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    energy() = -utils::power::energy();
-    energy_acc() = -utils::power::device_energy();
+    energy() = -power::energy();
+    energy_acc() = -power::device_energy();
 #endif
     if (call_mpi_init__) {
         mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
@@ -118,20 +114,17 @@ inline void initialize(bool call_mpi_init__ = true)
            number of OMP threads */
         acc::create_streams(std::max(omp_get_max_threads(), 6));
 #if defined(SIRIUS_GPU)
-        accblas::create_stream_handles();
+        acc::blas::create_stream_handles();
 #endif
 #if defined(SIRIUS_CUDA)
-        accblas::xt::create_handle();
-        cusolver::create_handle();
+        acc::blas::xt::create_handle();
+        acc::cusolver::create_handle();
 #endif
     }
     splablas::reset_handle();
 
 #if defined(SIRIUS_MAGMA)
     magma::init();
-#endif
-#if defined(__PLASMA)
-    plasma_init(omp_get_max_threads());
 #endif
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::initialize();
@@ -140,8 +133,8 @@ inline void initialize(bool call_mpi_init__ = true)
     la::Eigensolver_dlaf::initialize();
 #endif
     /* for the fortran interface to blas/lapack */
-    assert(sizeof(int) == 4);
-    assert(sizeof(double) == 8);
+    RTE_ASSERT(sizeof(int) == 4);
+    RTE_ASSERT(sizeof(double) == 8);
 
     is_initialized() = true;
 }
@@ -151,7 +144,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 {
     PROFILE_START("sirius::finalize");
     if (!is_initialized()) {
-        TERMINATE("SIRIUS library was not initialized");
+        RTE_THROW("SIRIUS library was not initialized");
     }
 #if defined(SIRIUS_MAGMA)
     magma::finalize();
@@ -166,11 +159,11 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         sddk::get_memory_pool(sddk::memory_t::host_pinned).clear();
         sddk::get_memory_pool(sddk::memory_t::device).clear();
 #if defined(SIRIUS_GPU)
-        accblas::destroy_stream_handles();
+        acc::blas::destroy_stream_handles();
 #endif
 #if defined(SIRIUS_CUDA)
-        cusolver::destroy_handle();
-        accblas::xt::destroy_handle();
+        acc::cusolver::destroy_handle();
+        acc::blas::xt::destroy_handle();
 #endif
         acc::destroy_streams();
         if (reset_device__) {
@@ -182,8 +175,8 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     apex::finalize();
 #endif
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    double e = energy() + utils::power::energy();
-    double e_acc = energy_acc() + utils::power::device_energy();
+    double e = energy() + power::energy();
+    double e_acc = energy_acc() + power::device_energy();
     if (mpi::Communicator::world().rank() == 0) {
         printf("=== Energy consumption (root MPI rank) ===\n");
         printf("energy     : %9.2f Joules\n", e);
@@ -191,7 +184,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     }
     mpi::Communicator::world().allreduce(&e, 1);
     mpi::Communicator::world().allreduce(&e_acc, 1);
-    int nn = utils::power::num_nodes();
+    int nn = power::num_nodes();
     if (Communicator::world().rank() == 0 && nn > 0) {
         printf("=== Energy consumption (all nodes) ===\n");
         printf("energy     : %9.2f Joules\n", e * nn / Communicator::world().size());
@@ -216,7 +209,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
     auto pt = env::print_timing();
     if (pt && rank == 0) {
-        auto timing_result = ::utils::global_rtgraph_timer.process();
+        auto timing_result = global_rtgraph_timer.process();
 
         if (pt & 1) {
             std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
@@ -257,7 +250,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
      - \b atoms - utility program to generate FP-LAPW atomic species files
      - \b bands - band plotting
      - \b cif_input - CIF parser
-     - \b dft_loop - DFT miniapp
+     - \b mini_app - DFT miniapp
      - \b hydrogen - solve hydrogen-like atom using Schrödinger equation
      - \b tests - tests of various functionality
      - \b timers - scripts to analyze timer outputs

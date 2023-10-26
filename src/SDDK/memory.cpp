@@ -1,5 +1,7 @@
 #include "memory.hpp"
 
+namespace sirius {
+
 namespace sddk {
 
 /// Return a memory pool.
@@ -15,3 +17,5 @@ get_memory_pool(sddk::memory_t M__)
 }
 
 } // namespace sddk
+
+} // namespace sirius

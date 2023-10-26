@@ -27,9 +27,9 @@
 
 #include <xc.h>
 #include <string.h>
-#include "linalg/r3.hpp"
+#include "core/r3/r3.hpp"
 #include "xc_functional_base.hpp"
-#include "fft/fft.hpp"
+#include "core/fft/fft.hpp"
 #if defined(SIRIUS_USE_VDWXC)
 #include <vdwxc.h>
 #if SIRIUS_HAVE_VDWXC_MPI
@@ -101,7 +101,7 @@ class XC_functional : public XC_functional_base
                 if (!handler_vdw_) {
                     std::stringstream s;
                     s << "VDW functional lib could not be initialized";
-                    TERMINATE(s);
+                    RTE_THROW(s);
                 }
 
                 double v1[3] = { lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0) };
@@ -129,7 +129,7 @@ class XC_functional : public XC_functional_base
                 /* it means that the functional does not exist either in vdw or xc libraries */
                 std::stringstream s;
                 s << "XC functional " << libxc_name__ << " is unknown";
-                TERMINATE(s);
+                RTE_THROW(s);
             }
 #else
             if (this->libxc_initialized_) {
@@ -138,7 +138,7 @@ class XC_functional : public XC_functional_base
                 /* it means that the functional does not exist either in vdw or xc libraries */
                 std::stringstream s;
                 s << "XC functional " << libxc_name__ << " is unknown";
-                TERMINATE(s);
+                RTE_THROW(s);
             }
 #endif /* SIRIUS_USE_VDWXC */
         }
@@ -236,7 +236,7 @@ class XC_functional : public XC_functional_base
                  double* energy__)
         {
             if (!is_vdw()) {
-                TERMINATE("Error wrong vdw XC");
+                RTE_THROW("Error wrong vdw XC");
             }
             energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, vrho, vsigma);
         }
@@ -249,7 +249,7 @@ class XC_functional : public XC_functional_base
                  double *energy__)
         {
             if (!is_vdw()) {
-                TERMINATE("Error wrong XC");
+                RTE_THROW("Error wrong XC");
             }
 
             energy__[0] = vdwxc_calculate_spin(handler_vdw_, rho_up, rho_down,

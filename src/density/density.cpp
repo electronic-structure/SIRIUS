@@ -23,18 +23,18 @@
  *  \brief Contains implementation of sirius::Density class.
  */
 
-#include "density.hpp"
+#include "core/profiler.hpp"
+#include "core/serialize_mdarray.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
 #include "symmetry/symmetrize_density_matrix.hpp"
 #include "symmetry/symmetrize_occupation_matrix.hpp"
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
-#include "utils/profiler.hpp"
-#include "SDDK/serialize_mdarray.hpp"
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/sum_fg_fl_yg.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
+#include "density.hpp"
 
 namespace sirius {
 
@@ -101,7 +101,7 @@ Density::Density(Simulation_context& ctx__)
         rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
     }
 
-    l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
+    l_by_lm_ = sf::l_by_lm(ctx_.lmax_rho());
 
     density_matrix_ = std::make_unique<density_matrix_t>(ctx_.unit_cell(), ctx_.num_mag_comp());
 
@@ -178,19 +178,19 @@ Density::initial_density_pseudo()
     // TODO: MPI parallelise over G-shells
     auto const ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
     /* make Vloc(G) */
-    auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
+    auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
                 ctx_.phase_factors_t(), ff);
 
     if (env::print_checksum()) {
         auto z1 = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
-        utils::print_checksum("rho_pw_init", z1, ctx_.out());
+        print_checksum("rho_pw_init", z1, ctx_.out());
     }
     std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
 
-    if (env::print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash()) {
         auto h = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).hash();
-        utils::print_hash("rho_pw_init", h);
+        print_hash("rho_pw_init", h, ctx_.out());
     }
 
     double charge = rho().rg().f_0().real() * unit_cell_.omega();
@@ -201,13 +201,13 @@ Density::initial_density_pseudo()
           << "  integral of the density : " << std::setprecision(12) << charge << std::endl
           << "  target number of electrons : " << std::setprecision(12) << unit_cell_.num_valence_electrons();
         if (ctx_.comm().rank() == 0) {
-            WARNING(s);
+            RTE_WARNING(s);
         }
     }
     rho().rg().fft_transform(1);
-    if (env::print_hash() && ctx_.comm().rank() == 0) {
+    if (env::print_hash()) {
         auto h = rho().rg().values().hash();
-        utils::print_hash("rho_rg_init", h);
+        print_hash("rho_rg_init", h, ctx_.out());
     }
 
     /* remove possible negative noise */
@@ -219,7 +219,7 @@ Density::initial_density_pseudo()
 
     if (env::print_checksum()) {
         auto cs = rho().rg().checksum_rg();
-        utils::print_checksum("rho_rg_init", cs, ctx_.out());
+        print_checksum("rho_rg_init", cs, ctx_.out());
     }
 
     /* initialize the magnetization */
@@ -258,10 +258,10 @@ Density::initial_density_pseudo()
             auto cs1 = component(i).rg().checksum_pw();
             std::stringstream s;
             s << "component[" << i << "]_rg";
-            utils::print_checksum(s.str(), cs, ctx_.out());
+            print_checksum(s.str(), cs, ctx_.out());
             std::stringstream s1;
             s1 << "component[" << i << "]_pw";
-            utils::print_checksum(s1.str(), cs1, ctx_.out());
+            print_checksum(s1.str(), cs1, ctx_.out());
         }
     }
 }
@@ -278,7 +278,7 @@ Density::initial_density_full_pot()
     Radial_integrals_rho_free_atom ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 40);
 
     /* compute contribution from free atoms to the interstitial density */
-    auto v = make_periodic_function<sddk::index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
+    auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
             [&ri](int iat, double g) { return ri.value(iat, g); });
 
     /* initialize density of free atoms (not smoothed) */
@@ -289,7 +289,7 @@ Density::initial_density_full_pot()
     if (env::print_checksum()) {
         auto z = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
-        utils::print_checksum("rho_pw", z, ctx_.out());
+        print_checksum("rho_pw", z, ctx_.out());
     }
 
     /* set plane-wave coefficients of the charge density */
@@ -299,7 +299,7 @@ Density::initial_density_full_pot()
 
     if (env::print_checksum()) {
         auto cs = rho().rg().checksum_rg();
-        utils::print_checksum("rho_rg", cs, ctx_.out());
+        print_checksum("rho_rg", cs, ctx_.out());
     }
 
     /* remove possible negative noise */
@@ -318,9 +318,9 @@ Density::initial_density_full_pot()
     }
 
     int lmax  = ctx_.lmax_rho();
-    int lmmax = utils::lmmax(lmax);
+    int lmmax = sf::lmmax(lmax);
 
-    auto l_by_lm = utils::l_by_lm(lmax);
+    auto l_by_lm = sf::l_by_lm(lmax);
 
     std::vector<std::complex<double>> zil(lmax + 1);
     for (int l = 0; l <= lmax; l++) {
@@ -488,7 +488,7 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 
     auto lmax = atom_type.indexr().lmax();
 
-    auto l_by_lm = utils::l_by_lm(2 * lmax);
+    auto l_by_lm = sf::l_by_lm(2 * lmax);
 
     /* get gaunt coefficients */
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
@@ -521,7 +521,7 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 
                 double diag_coef = (xi1 == xi2) ? 1.0 : 2.0;
 
-                auto idx = utils::packed_index(xi1, xi2);
+                auto idx = packed_index(xi1, xi2);
 
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gc; inz++) {
@@ -832,7 +832,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
                     bp_coeffs__, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
-        sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
+        splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
         int nbnd_loc = spl_nbnd.local_size();
         if (nbnd_loc) { // TODO: this part can also be moved to GPU
@@ -882,7 +882,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
     /* total number of occupied bands */
     int nbnd = kp__.num_occupied_bands();
 
-    sddk::splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
+    splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
     int nbnd_loc = spl_nbnd.local_size();
 
     /* auxiliary arrays */
@@ -1076,7 +1076,7 @@ Density::check_num_electrons() const
                 s << std::endl << "    atom class : " << ic << ", core leakage : " << core_leakage(ic);
             }
         }
-        WARNING(s);
+        RTE_WARNING(s);
         return false;
     } else {
         return true;
@@ -1257,7 +1257,7 @@ Density::generate_valence(K_point_set const& ks__)
           << "  required : " << unit_cell_.num_valence_electrons() - ctx_.cfg().parameters().extra_charge() << std::endl
           << "  difference : "
           << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge());
-        WARNING(s);
+        RTE_WARNING(s);
     }
 
     density_matrix_->zero();
@@ -1329,7 +1329,7 @@ Density::generate_valence(K_point_set const& ks__)
         if (env::print_checksum()) {
             auto cs = sddk::mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
             mpi::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
-            utils::print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
+            print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
@@ -1347,9 +1347,9 @@ Density::generate_valence(K_point_set const& ks__)
             rho().rg().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
-        if (env::print_hash() && ctx_.comm().rank() == 0) {
+        if (env::print_hash()) {
             auto h = sddk::mdarray<std::complex<double>, 1>(&rho().rg().f_pw_local(0), ctx_.gvec().count()).hash();
-            utils::print_hash("rho", h);
+            print_hash("rho", h, ctx_.out());
         }
 
         double nel = rho().rg().f_0().real() * unit_cell_.omega();
@@ -1360,7 +1360,7 @@ Density::generate_valence(K_point_set const& ks__)
               << "  obtained value : " << std::scientific << nel << std::endl
               << "  target value : " << std::scientific << unit_cell_.num_electrons() << std::endl
               << "  difference : " << std::scientific << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
-            WARNING(s);
+            RTE_WARNING(s);
         }
     }
 
@@ -1377,7 +1377,7 @@ Density::generate_rho_aug() const
 
     /* local number of G-vectors */
     int gvec_count = ctx_.gvec().count();
-    auto spl_ngv_loc = utils::split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
+    auto spl_ngv_loc = split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
     auto& mph = get_memory_pool(sddk::memory_t::host);
     sddk::memory_pool* mpd{nullptr};
@@ -1414,7 +1414,7 @@ Density::generate_rho_aug() const
 
         if (env::print_checksum()) {
             auto cs = dm.checksum();
-            utils::print_checksum("density_matrix_aux", cs, ctx_.out());
+            print_checksum("density_matrix_aux", cs, ctx_.out());
         }
 
         int ndm_pw = (ctx_.processing_unit() == sddk::device_t::CPU) ? 1 : ctx_.num_mag_dims() + 1;
@@ -1508,7 +1508,7 @@ Density::generate_rho_aug() const
                                            rho_aug.at(sddk::memory_t::device, g_begin, iv), 1 + iv);
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        acc::sync_stream(stream_id(1 + iv));
+                        acc::sync_stream(acc::stream_id(1 + iv));
                     }
 #endif
                     break;
@@ -1526,14 +1526,12 @@ Density::generate_rho_aug() const
     if (env::print_checksum()) {
         auto cs = rho_aug.checksum();
         ctx_.comm().allreduce(&cs, 1);
-        utils::print_checksum("rho_aug", cs, ctx_.out());
+        print_checksum("rho_aug", cs, ctx_.out());
     }
 
     if (env::print_hash()) {
         auto h = rho_aug.hash();
-        if (ctx_.comm().rank() == 0) {
-            utils::print_hash("rho_aug", h);
-        }
+        print_hash("rho_aug", h, ctx_.out());
     }
 
     return rho_aug;
@@ -1553,9 +1551,9 @@ void Density::reduce_density_matrix(Atom_type const& atom_type__, sddk::mdarray<
             int l1   = atom_type__.indexr(idxrf1).am.l();
 
             int xi2 = atom_type__.indexb().index_of(rf_index(idxrf2));
-            for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {
+            for (int lm2 = sf::lm(l2, -l2); lm2 <= sf::lm(l2, l2); lm2++, xi2++) {
                 int xi1 = atom_type__.indexb().index_of(rf_index(idxrf1));
-                for (int lm1 = utils::lm(l1, -l1); lm1 <= utils::lm(l1, l1); lm1++, xi1++) {
+                for (int lm1 = sf::lm(l1, -l1); lm1 <= sf::lm(l1, l1); lm1++, xi1++) {
                     for (int k = 0; k < atom_type__.gaunt_coefs().num_gaunt(lm1, lm2); k++) {
                         int lm3 = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).lm3;
                         auto gc = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).coef;
@@ -1585,7 +1583,7 @@ Density::generate_valence_mt()
 
     /* compute occupation matrix */
     if (ctx_.hubbard_correction()) {
-        STOP();
+        RTE_THROW("LDA+U in LAPW is not implemented");
 
         // TODO: fix the way how occupation matrix is calculated
 
@@ -1785,7 +1783,7 @@ Density::density_matrix_aux(typename atom_index_t::global ia__) const
     sddk::mdarray<double, 2> dm(nbf * (nbf + 1) / 2, ctx_.num_mag_dims() + 1);
     for (int xi2 = 0; xi2 < nbf; xi2++) {
         for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            auto idx12 = utils::packed_index(xi1, xi2);
+            auto idx12 = packed_index(xi1, xi2);
             switch (ctx_.num_mag_dims()) {
                 case 3: {
                     dm(idx12, 2) = 2 * std::real(this->density_matrix(ia__)(xi2, xi1, 2));
@@ -1963,14 +1961,14 @@ void Density::print_info(std::ostream& out__) const
     };
 
     out__ << "Charges and magnetic moments" << std::endl
-          << utils::hbar(80, '-') << std::endl;
+          << hbar(80, '-') << std::endl;
     if (ctx_.full_potential()) {
         double total_core_leakage{0.0};
         out__ << "atom      charge    core leakage";
         if (ctx_.num_mag_dims()) {
             out__ << "                 moment                |moment|";
         }
-        out__ << std::endl << utils::hbar(80, '-') << std::endl;
+        out__ << std::endl << hbar(80, '-') << std::endl;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
@@ -1998,7 +1996,7 @@ void Density::print_info(std::ostream& out__) const
     } else {
         if (ctx_.num_mag_dims()) {
             out__ << "atom                moment                |moment|" << std::endl
-                  << utils::hbar(80, '-') << std::endl;
+                  << hbar(80, '-') << std::endl;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 r3::vector<double> v(mt_mag[ia]);

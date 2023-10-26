@@ -1,12 +1,11 @@
 #include <sirius.hpp>
 
-#include <string>
-#include <vector>
+using namespace sirius;
 
 void
 test1()
 {
-    sddk::HDF5_tree f("f1.h5", sddk::hdf5_access_t::truncate);
+    sirius::HDF5_tree f("f1.h5", sirius::hdf5_access_t::truncate);
 
     sddk::mdarray<double, 2> dat(2, 4);
     dat.zero();
@@ -32,7 +31,7 @@ test1()
 void
 test2()
 {
-    sddk::HDF5_tree f("f2.h5", sddk::hdf5_access_t::truncate);
+    sirius::HDF5_tree f("f2.h5", sirius::hdf5_access_t::truncate);
     f.create_node("node1");
 
     sddk::mdarray<double, 2> md1(2, 4);
@@ -54,7 +53,7 @@ test2()
 void
 test3()
 {
-    sddk::HDF5_tree f("f2.h5", sddk::hdf5_access_t::read_only);
+    sirius::HDF5_tree f("f2.h5", sirius::hdf5_access_t::read_only);
 
     sddk::mdarray<double, 2> md1(2, 4);
     f["node1"].read("md1", md1);
@@ -75,7 +74,7 @@ void
 test4()
 {
     using namespace std::string_literals;
-    sddk::HDF5_tree f("qe.h5", sddk::hdf5_access_t::truncate);
+    sirius::HDF5_tree f("qe.h5", sirius::hdf5_access_t::truncate);
 
     sddk::mdarray<int, 2> miller(2, 3); // Dataset
     miller.zero();

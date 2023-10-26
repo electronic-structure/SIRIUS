@@ -8,7 +8,7 @@ void test1()
     std::vector<r3::vector<double>> a(N);
 
     for (int i = 0; i < N; i++) {
-        double r = utils::random<double>();
+        double r = random<double>();
         a[i] = {r, r, r};
     }
     std::vector<std::complex<double>> phase(N, 0);

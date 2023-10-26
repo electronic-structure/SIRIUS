@@ -28,8 +28,8 @@
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
-#include "fft/fft.hpp"
-#include "wave_functions.hpp"
+#include "core/fft/fft.hpp"
+#include "core/wf/wave_functions.hpp"
 
 namespace sirius {
 
@@ -332,7 +332,7 @@ class K_point
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
 
-    void load(sddk::HDF5_tree h5in, int id);
+    void load(HDF5_tree h5in, int id);
 
     //== void save_wave_functions(int id);
 
@@ -731,7 +731,7 @@ class K_point
         if (ctx_.verbosity() >= level__ && this->comm().rank() == 0) {
             return std::cout;
         } else {
-            return utils::null_stream();
+            return null_stream();
         }
     }
 

@@ -29,7 +29,7 @@
 #include "spheric_function.hpp"
 #include "spheric_function_set.hpp"
 #include "smooth_periodic_function.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 
 namespace sirius {
 
@@ -88,7 +88,7 @@ class Periodic_function
 
     /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
     Periodic_function(Simulation_context const& ctx__, std::function<lmax_t(int)> lmax__,
-            sddk::splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
+            splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
             smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
             spheric_function_set_ptr_t<T> const* mt_ptr__ = nullptr)
         : ctx_(ctx__)
@@ -180,7 +180,7 @@ class Periodic_function
     {
         auto v = this->rg().gather_f_pw();
         if (ctx_.comm().rank() == 0) {
-            sddk::HDF5_tree fout(file_name__, sddk::hdf5_access_t::read_write);
+            HDF5_tree fout(file_name__, hdf5_access_t::read_write);
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -193,7 +193,7 @@ class Periodic_function
 
     void hdf5_read(std::string file_name__, std::string path__, sddk::mdarray<int, 2> const& gvec__)
     {
-        sddk::HDF5_tree h5f(file_name__, sddk::hdf5_access_t::read_only);
+        HDF5_tree h5f(file_name__, hdf5_access_t::read_only);
 
         /* read the PW coeffs. */
         std::vector<std::complex<T>> v(gvec_.num_gvec());
@@ -225,7 +225,7 @@ class Periodic_function
     {
         T p{0};
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            auto vgc = gvec_.gvec_cart<sddk::index_domain_t::local>(igloc);
+            auto vgc = gvec_.gvec_cart<index_domain_t::local>(igloc);
             p += std::real(this->rg().f_pw_local(igloc) * std::exp(std::complex<T>(0.0, dot(vc, vgc))));
         }
         gvec_.comm().allreduce(&p, 1);
@@ -239,7 +239,7 @@ class Periodic_function
 
         if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
             auto& frlm = mt_component_[ja];
-            int lmax = utils::lmax(frlm.angular_domain_size());
+            int lmax = sf::lmax(frlm.angular_domain_size());
             std::vector<T> rlm(frlm.angular_domain_size());
             sf::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
             T p{0};

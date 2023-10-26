@@ -47,7 +47,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             std::stringstream s;
             s << "S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
-            WARNING(s);
+            RTE_WARNING(s);
         } else {
             std::stringstream s;
             s << "S-matrix is OK! Minimum eigen-value : " << eval[0];
@@ -88,9 +88,9 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     /* generate some random noise */
     std::vector<T> tmp(4096);
-    utils::rnd(true);
+    random_uint32(true);
     for (int i = 0; i < 4096; i++) {
-        tmp[i] = 1e-5 * utils::random<T>();
+        tmp[i] = 1e-5 * random<T>();
     }
     PROFILE_START("sirius::initialize_subspace|kp|wf");
     /* fill remaining wave-functions with pseudo-random guess */
@@ -176,7 +176,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             if (kp__.comm().rank() == 0) {
                 std::stringstream s;
                 s << "initial_phi" << ispn;
-                utils::print_checksum(s.str(), cs, RTE_OUT(std::cout));
+                print_checksum(s.str(), cs, RTE_OUT(std::cout));
             }
         }
     }
@@ -201,18 +201,18 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
         //        if (max_diff > 1e-12) {
         //            std::stringstream s;
         //            s << "overlap matrix is not hermitian, max_err = " << max_diff;
-        //            WARNING(s);
+        //            RTE_WARNING(s);
         //        }
         //        std::vector<real_type<T>> eo(num_phi_tot);
         //        auto& std_solver = ctx_.std_evp_solver();
         //        if (std_solver.solve(num_phi_tot, num_phi_tot, ovlp, eo.data(), evec)) {
         //            std::stringstream s;
         //            s << "error in diagonalization";
-        //            WARNING(s);
+        //            RTE_WARNING(s);
         //        }
         //        Hk__.kp().message(1, __function_name__, "minimum eigen-value of the overlap matrix: %18.12f\n",
         //        eo[0]); if (eo[0] < 0) {
-        //            WARNING("overlap matrix is not positively defined");
+        //            RTE_WARNING("overlap matrix is not positively defined");
         //        }
         //    }
 
@@ -224,8 +224,8 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             auto cs1 = hmlt.checksum(num_phi_tot, num_phi_tot);
             auto cs2 = ovlp.checksum(num_phi_tot, num_phi_tot);
             if (kp__.comm().rank() == 0) {
-                utils::print_checksum("hmlt", cs1, RTE_OUT(std::cout));
-                utils::print_checksum("ovlp", cs2, RTE_OUT(std::cout));
+                print_checksum("hmlt", cs1, RTE_OUT(std::cout));
+                print_checksum("ovlp", cs2, RTE_OUT(std::cout));
             }
         }
 
@@ -279,7 +279,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;
             if (kp__.comm().rank() == 0) {
-                utils::print_checksum(s.str(), cs, RTE_OUT(std::cout));
+                print_checksum(s.str(), cs, RTE_OUT(std::cout));
             }
         }
     }

@@ -286,7 +286,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
             }
             s << std::endl;
             s << "surface derivative : " << surface_derivatives_(0, idxrf);
-            WARNING(s);
+            RTE_WARNING(s);
         }
     }
 

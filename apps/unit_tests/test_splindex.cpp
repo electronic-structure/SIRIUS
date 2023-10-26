@@ -48,7 +48,7 @@ int test2()
     for (int bs = 1; bs < 17; bs++) {
         for (int num_ranks = 1; num_ranks < 13; num_ranks++) {
             for (int N = 1; N < 1113; N++) {
-                sddk::splindex_block_cyclic<> spl(N, n_blocks(num_ranks), block_id(0), bs);
+                splindex_block_cyclic<> spl(N, n_blocks(num_ranks), block_id(0), bs);
                 int sz = 0;
                 for (int i = 0; i < num_ranks; i++) {
                     sz += (int)spl.local_size(block_id(i));

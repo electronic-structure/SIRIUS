@@ -8,23 +8,19 @@ endif()
 
 if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
   set(_CUSOURCES
-    "gpu/augmentation_operator.cu"
-    "gpu/checksum.cu"
-    "gpu/create_beta_gk.cu"
-    "gpu/cuda_uspp_kernels.cu"
-    "gpu/density_rg.cu"
-    "gpu/fft_kernels.cu"
-    "gpu/generate_dm_pw.cu"
-    "gpu/generate_phase_factors.cu"
-    "gpu/local_operator.cu"
-    "gpu/mul_by_veff.cu"
-    "gpu/mul_veff_with_phase_factors.cu"
-    "gpu/random.cu"
-    "gpu/residuals_aux.cu"
-    "gpu/scale_matrix.cu"
-    "gpu/spherical_harmonics.cu"
-    "gpu/spline.cu"
-    "gpu/sum_q_pw_dm_pw.cu"
+    "core/gpu_kernels/augmentation_operator.cu"
+    "core/gpu_kernels/create_beta_gk.cu"
+    "core/gpu_kernels/checksum.cu"
+    "core/gpu_kernels/density_rg.cu"
+    "core/gpu_kernels/generate_dm_pw.cu"
+    "core/gpu_kernels/generate_phase_factors.cu"
+    "core/gpu_kernels/local_operator.cu"
+    "core/gpu_kernels/mul_veff_with_phase_factors.cu"
+    "core/gpu_kernels/residuals_aux.cu"
+    "core/gpu_kernels/scale_matrix.cu"
+    "core/gpu_kernels/spherical_harmonics.cu"
+    "core/gpu_kernels/spline.cu"
+    "core/gpu_kernels/sum_q_pw_dm_pw.cu"
     "nlcglib/preconditioner/diag_mm.cu"
   )
 endif()
@@ -65,19 +61,7 @@ set(_SOURCES
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
-  "specfunc/sbessel.cpp"
-  "utils/cmd_args.cpp"
-  "utils/utils.cpp"
-  "utils/rt_graph.cpp"
-  "utils/profiler.cpp"
-  "mpi/communicator.cpp"
   "SDDK/memory.cpp"
-  "gpu/acc.cpp"
-  "gpu/acc_blas.cpp"
-  "gpu/cusolver.cpp"
-  "gpu/rocsolver.cpp"
-  "sht/sht.cpp"
-  "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
   "linalg/eigenproblem.cpp"
@@ -86,7 +70,19 @@ set(_SOURCES
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
-  "fft/gvec.cpp"
+  "core/cmd_args.cpp"
+  "core/sht/sht.cpp"
+  "core/fft/gvec.cpp"
+  "core/mpi/communicator.cpp"
+  "core/sf/sbessel.cpp"
+  "core/acc/acc.cpp"
+  "core/acc/acc_blas.cpp"
+  "core/acc/cusolver.cpp"
+  "core/acc/rocsolver.cpp"
+  "core/profiler.cpp"
+  "core/rt_graph.cpp"
+  "core/ostream_tools.cpp"
+  "core/sirius_version.cpp"
   )
 
 
@@ -132,7 +128,6 @@ target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
 )
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-                                         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 target_compile_definitions(sirius PUBLIC
@@ -164,8 +159,7 @@ install(TARGETS sirius
         EXPORT sirius_targets
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
-                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src/SDDK")
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
 install(EXPORT sirius_targets
         FILE siriusTargets.cmake
         NAMESPACE sirius::
@@ -173,6 +167,6 @@ install(EXPORT sirius_targets
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
         FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp"
+install(FILES "${PROJECT_BINARY_DIR}/src/core/version.hpp"
               "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")

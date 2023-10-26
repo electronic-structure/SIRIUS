@@ -23,8 +23,8 @@
  */
 
 #include <algorithm>
-#include "linalg/r3.hpp"
-#include "utils/rte.hpp"
+#include "core/r3/r3.hpp"
+#include "core/rte/rte.hpp"
 
 #ifndef __LATTICE_HPP__
 #define __LATTICE_HPP__

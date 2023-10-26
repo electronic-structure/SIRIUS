@@ -31,28 +31,31 @@
 #include <cmath>
 #include <iostream>
 #include <complex>
-#include "SDDK/wave_functions.hpp"
+#include "core/wf/wave_functions.hpp"
 #include "hamiltonian/residuals.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "k_point/k_point.hpp"
 
 namespace sirius {
+/// Conjugate-gradient solver.
 namespace cg {
 
 template <class T>
-void repack(std::vector<T> &data, std::vector<int> const&ids) {
+void
+repack(std::vector<T> &data, std::vector<int> const&ids)
+{
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
 }
 
 template<class Matrix, class Prec, class StateVec>
-std::vector<std::vector<typename StateVec::value_type>> multi_cg(
-    Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
-    size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false
-) {
-    PROFILE("sirius_api::sirius_linear_solver::multi_cg");
+auto
+multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
+    size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false) 
+{
+    PROFILE("siriusi::multi_cg");
     auto n = X.cols();
 
     U.zero();
@@ -168,6 +171,7 @@ std::vector<std::vector<typename StateVec::value_type>> multi_cg(
 }
 }
 
+/// Linear respone functions and objects.
 namespace lr {
 
 struct Wave_functions_wrap {
@@ -194,7 +198,7 @@ struct Wave_functions_wrap {
 
     void repack(std::vector<int> const& ids__)
     {
-        PROFILE("sirius_api::sirius_linear_solver::multi_cg::repack_wf_wrap");
+        PROFILE("sirius::Wave_functions_wrap::repack");
         int j{0};
         for (auto i : ids__) {
             if (j != i) {
@@ -268,7 +272,6 @@ struct Smoothed_diagonal_preconditioner {
         }
     }
 };
-
 
 struct Linear_response_operator {
     sirius::Simulation_context &ctx;

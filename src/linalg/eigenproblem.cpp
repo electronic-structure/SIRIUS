@@ -8,6 +8,8 @@
 #include <dlaf_c/init.h>
 #endif
 
+namespace sirius {
+
 namespace la {
 
 #if defined(SIRIUS_ELPA)
@@ -17,14 +19,14 @@ Eigensolver_elpa::Eigensolver_elpa(int stage__)
     , stage_(stage__)
 {
     if (!(stage_ == 1 || stage_ == 2)) {
-        TERMINATE("wrong type of ELPA solver");
+        RTE_THROW("wrong type of ELPA solver");
     }
 }
 
 void Eigensolver_elpa::initialize()
 {
     if (elpa_init(20170403) != ELPA_OK) {
-        TERMINATE("ELPA API version not supported");
+        RTE_THROW("ELPA API version not supported");
     }
 }
 
@@ -43,7 +45,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     int nt = omp_get_max_threads();
 
     if (A__.num_cols_local() != Z__.num_cols_local()) {
-        TERMINATE("number of columns in A and Z don't match");
+        RTE_THROW("number of columns in A and Z don't match");
     }
 
     PROFILE_START("Eigensolver_elpa|solve_gen|setup");
@@ -80,7 +82,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
           << "  new number of threads : " <<  omp_get_max_threads();
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     return 0;
@@ -106,7 +108,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     int nt = omp_get_max_threads();
 
     if (A__.num_cols_local() != Z__.num_cols_local()) {
-        TERMINATE("number of columns in A and Z don't match");
+        RTE_THROW("number of columns in A and Z don't match");
     }
 
     PROFILE_START("Eigensolver_elpa|solve_gen|setup");
@@ -143,7 +145,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
           << "  new number of threads : " <<  omp_get_max_threads();
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     return 0;
@@ -180,7 +182,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     int nt = omp_get_max_threads();
 
     if (A__.num_cols_local() != Z__.num_cols_local()) {
-        TERMINATE("number of columns in A and Z don't match");
+        RTE_THROW("number of columns in A and Z don't match");
     }
 
     PROFILE_START("Eigensolver_elpa|solve_std|setup");
@@ -209,7 +211,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
           << "  new number of threads : " <<  omp_get_max_threads();
-        TERMINATE(s);
+        RTE_THROW(s);
     }
     return 0;
 }
@@ -223,7 +225,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     int nt = omp_get_max_threads();
 
     if (A__.num_cols_local() != Z__.num_cols_local()) {
-        TERMINATE("number of columns in A and Z don't match");
+        RTE_THROW("number of columns in A and Z don't match");
     }
 
     PROFILE_START("Eigensolver_elpa|solve_std|setup");
@@ -255,7 +257,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
           << "  new number of threads : " <<  omp_get_max_threads();
-        TERMINATE(s);
+        RTE_THROW(s);
     }
 
     return 0;
@@ -290,5 +292,7 @@ void Eigensolver_dlaf::finalize()
 }
 
 #endif
+
+}
 
 }

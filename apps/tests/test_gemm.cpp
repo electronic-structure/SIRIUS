@@ -1,6 +1,8 @@
 #include "sirius.hpp"
 #include "testing.hpp"
 
+using namespace sirius;
+
 #ifdef __TEST_REAL
 typedef double gemm_type;
 int const nop_gemm = 2;
@@ -27,13 +29,13 @@ double test_gemm(int M, int N, int K, int transa)
 
     for (int j = 0; j < jmax; j++) {
         for (int i = 0; i < imax; i++) {
-            a(i, j) = utils::random<gemm_type>();
+            a(i, j) = random<gemm_type>();
         }
     }
 
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < K; i++) {
-            b(i, j) = utils::random<gemm_type>();
+            b(i, j) = random<gemm_type>();
         }
     }
 
@@ -44,11 +46,11 @@ double test_gemm(int M, int N, int K, int transa)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     const char ta[] = {'N', 'T', 'C'};
-    double t = -utils::wtime();
+    double t = -::sirius::wtime();
     la::wrap(la::lib_t::blas).gemm(ta[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
         a.at(sddk::memory_t::host), a.ld(), b.at(sddk::memory_t::host), b.ld(), &la::constant<gemm_type>::zero(),
         c.at(sddk::memory_t::host), c.ld());
-    t += utils::wtime();
+    t += ::sirius::wtime();
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
     printf("performance (GFlops) : %12.6f\n", perf);
@@ -80,13 +82,13 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 
     for (int ic = 0; ic < a.num_cols_local(); ic++) {
         for (int ir = 0; ir < a.num_rows_local(); ir++) {
-            a(ir, ic) = utils::random<gemm_type>();
+            a(ir, ic) = random<gemm_type>();
         }
     }
 
     for (int ic = 0; ic < b.num_cols_local(); ic++) {
         for (int ir = 0; ir < b.num_rows_local(); ir++) {
-            b(ir, ic) = utils::random<gemm_type>();
+            b(ir, ic) = random<gemm_type>();
         }
     }
 
@@ -96,7 +98,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
-    double t = -utils::wtime();
+    double t = -::sirius::wtime();
     gemm_type one = 1;
     gemm_type zero = 0;
     const char TA [] = {'N', 'T', 'C'};
@@ -104,7 +106,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
-    t += utils::wtime();
+    t += ::sirius::wtime();
     double perf = nop_gemm * 1e-9 * M * (N - n) * K / t / nrow / ncol;
     if (mpi::Communicator::world().rank() == 0) {
         printf("execution time : %12.6f seconds\n", t);

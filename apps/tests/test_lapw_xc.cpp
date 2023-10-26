@@ -96,7 +96,7 @@ int main(int argn, char** argv)
     int rank = mpi::Communicator::world().rank();
     sirius::finalize();
     if (!rank) {
-        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        const auto timing_result = global_rtgraph_timer.process();
         std::cout<< timing_result.print();
     }
 }

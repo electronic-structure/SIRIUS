@@ -27,7 +27,7 @@
 
 #include "hamiltonian/hamiltonian.hpp"
 #include "k_point/k_point.hpp"
-#include "utils/profiler.hpp"
+#include "core/profiler.hpp"
 #include "residuals.hpp"
 #include "generate_subspace_matrix.hpp"
 
@@ -250,7 +250,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
         mg.emplace_back(sphi_extra->memory_guard(mem));
         if (pcs) {
             auto cs = phi_extra__->checksum(mem, wf::band_range(0, num_extra_phi));
-            utils::print_checksum("phi_extra", cs, RTE_OUT(out__));
+            print_checksum("phi_extra", cs, RTE_OUT(out__));
         }
     }
 
@@ -302,10 +302,10 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
         auto cs2 = h_o_diag.second.checksum();
         kp__.comm().allreduce(&cs1, 1);
         kp__.comm().allreduce(&cs2, 1);
-        utils::print_checksum("h_diag", cs1, RTE_OUT(out__));
-        utils::print_checksum("o_diag", cs2, RTE_OUT(out__));
+        print_checksum("h_diag", cs1, RTE_OUT(out__));
+        print_checksum("o_diag", cs2, RTE_OUT(out__));
         auto cs = psi__.checksum(mem, wf::band_range(0, num_bands__.get()));
-        utils::print_checksum("input spinor_wave_functions", cs, RTE_OUT(out__));
+        print_checksum("input spinor_wave_functions", cs, RTE_OUT(out__));
     }
 
     auto& std_solver = ctx.std_evp_solver();
@@ -369,10 +369,10 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
         if (pcs) {
             if (phi_extra__) {
                 auto cs = phi_extra__->checksum(mem, wf::band_range(0, num_extra_phi));
-                utils::print_checksum("extra phi", cs, RTE_OUT(out__));
+                print_checksum("extra phi", cs, RTE_OUT(out__));
             }
             auto cs = phi->checksum(mem, wf::band_range(0, num_bands__.get()));
-            utils::print_checksum("input phi", cs, RTE_OUT(out__));
+            print_checksum("input phi", cs, RTE_OUT(out__));
         }
 
         /* current subspace size */
@@ -427,7 +427,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                     std::stringstream s;
                     s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                       << "  happened before entering the iterative loop" << std::endl;
-                    WARNING(s);
+                    RTE_WARNING(s);
                     if (N <= 20) {
                         auto s1 = H.serialize("davidson:H_first", N, N);
                         if (kp__.comm().rank() == 0) {
@@ -443,7 +443,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                 std::stringstream s;
                 s << "O matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
-                WARNING(s);
+                RTE_WARNING(s);
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:O_first", N, N);
                     if (kp__.comm().rank() == 0) {
@@ -456,13 +456,13 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
 
         if (pcs) {
             auto cs = phi->checksum(mem, wf::band_range(0, N));
-            utils::print_checksum("phi", cs, RTE_OUT(out__));
+            print_checksum("phi", cs, RTE_OUT(out__));
             if (hphi) {
                 cs = hphi->checksum(mem, wf::band_range(0, N));
-                utils::print_checksum("hphi", cs, RTE_OUT(out__));
+                print_checksum("hphi", cs, RTE_OUT(out__));
             }
             cs = sphi->checksum(mem, wf::band_range(0, N));
-            utils::print_checksum("sphi", cs, RTE_OUT(out__));
+            print_checksum("sphi", cs, RTE_OUT(out__));
         }
 
         if (verbosity__ >= 1) {
@@ -478,13 +478,13 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                 /* checksum info */
                 if (pcs) {
                     auto cs = phi->checksum(mem, wf::band_range(0, N));
-                    utils::print_checksum("phi", cs, RTE_OUT(out__));
+                    print_checksum("phi", cs, RTE_OUT(out__));
                     if (hphi) {
                         cs = hphi->checksum(mem, wf::band_range(0, N));
-                        utils::print_checksum("hphi", cs, RTE_OUT(out__));
+                        print_checksum("hphi", cs, RTE_OUT(out__));
                     }
                     cs = sphi->checksum(mem, wf::band_range(0, N));
-                    utils::print_checksum("sphi", cs, RTE_OUT(out__));
+                    print_checksum("sphi", cs, RTE_OUT(out__));
                 }
                 /* setup eigen-value problem */
                 generate_subspace_matrix(ctx, 0, N, 0, *phi, *hphi, H, &H_old);
@@ -511,7 +511,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                 std::stringstream s;
                 s << "H matrix is not Hermitian, max_err = " << max_diff << std::endl
                   << "  happened before entering the iterative loop" << std::endl;
-                WARNING(s);
+                RTE_WARNING(s);
                 if (N <= 20) {
                     auto s1 = H.serialize("davidson:H", N, N);
                     if (kp__.comm().rank() == 0) {
@@ -603,9 +603,9 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                     auto cs_pw = res->checksum_pw(mem, wf::spin_index(0), br);
                     auto cs_mt = res->checksum_mt(mem, wf::spin_index(0), br);
                     auto cs = res->checksum(mem, br);
-                    utils::print_checksum("res_pw", cs_pw, RTE_OUT(out__));
-                    utils::print_checksum("res_mt", cs_mt, RTE_OUT(out__));
-                    utils::print_checksum("res", cs, RTE_OUT(out__));
+                    print_checksum("res_pw", cs_pw, RTE_OUT(out__));
+                    print_checksum("res_mt", cs_mt, RTE_OUT(out__));
+                    print_checksum("res", cs, RTE_OUT(out__));
                 }
             }
 

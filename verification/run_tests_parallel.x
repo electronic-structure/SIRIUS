@@ -2,7 +2,7 @@
 
 if [ -z "$SIRIUS_BINARIES" ];
 then
-    export SIRIUS_BINARIES=$(pwd)/../build/apps/dft_loop
+    export SIRIUS_BINARIES=$(pwd)/../build/apps/mini_app
 fi
 
 exe=${SIRIUS_BINARIES}/sirius.scf

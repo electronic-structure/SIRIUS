@@ -27,9 +27,9 @@
 
 #include <algorithm>
 #include "atom.hpp"
-#include "mpi/mpi_grid.hpp"
+#include "core/mpi/mpi_grid.hpp"
+#include "core/json.hpp"
 #include "context/simulation_parameters.hpp"
-#include "utils/json.hpp"
 
 namespace sirius {
 
@@ -58,16 +58,16 @@ class Unit_cell
     std::vector<std::shared_ptr<Atom>> atoms_;
 
     /// Split index of atoms.
-    sddk::splindex_block<atom_index_t> spl_num_atoms_;
+    splindex_block<atom_index_t> spl_num_atoms_;
 
     /// Global index of atom by index of PAW atom.
     std::vector<int> paw_atom_index_;
 
     /// Split index of PAW atoms.
-    sddk::splindex_block<paw_atom_index_t> spl_num_paw_atoms_;
+    splindex_block<paw_atom_index_t> spl_num_paw_atoms_;
 
     /// Split index of atom symmetry classes.
-    sddk::splindex_block<atom_symmetry_class_index_t> spl_num_atom_symmetry_classes_;
+    splindex_block<atom_symmetry_class_index_t> spl_num_atom_symmetry_classes_;
 
     /// Bravais lattice vectors in column order.
     /** The following convention is used to transform fractional coordinates to Cartesian:

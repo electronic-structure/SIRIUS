@@ -57,7 +57,7 @@ inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(config_t::mixer_t const& m
         mixer.reset(new Broyden2<FUNCS...>(mix_cfg.max_history(), mix_cfg.beta(), mix_cfg.beta0(),
                                            mix_cfg.beta_scaling_factor(), mix_cfg.linear_mix_rms_tol()));
     } else {
-        TERMINATE("wrong type of mixer");
+        RTE_THROW("wrong type of mixer");
     }
     return mixer;
 }
