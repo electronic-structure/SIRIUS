@@ -174,7 +174,7 @@ void init_wf(K_point<T> const& kp__, wf::Wave_functions<T>& phi__, int num_bands
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
-        tmp[i] = utils::random<double>();
+        tmp[i] = random<double>();
     }
 
     phi__.zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
