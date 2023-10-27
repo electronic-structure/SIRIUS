@@ -19,7 +19,7 @@
 
 /** \file beta_projectors_base.cpp
  *
- *  \brief Contains implementation of sirius::Beta_projectors_base class.
+ *  \brief Contains implementation of beta-projectors generator.
  */
 
 #include <stdexcept>
@@ -47,6 +47,7 @@ create_beta_gk_gpu(int num_atoms, int num_gkvec, int const* beta_desc, std::comp
 }
 #endif
 
+/// Internal implementation of beta-projectors generator.
 namespace local {
 
 template <class T>
@@ -55,7 +56,7 @@ beta_projectors_generate_cpu(sddk::matrix<std::complex<T>>& pw_coeffs_a,
         sddk::mdarray<std::complex<T>, 3> const& pw_coeffs_t, int ichunk__, int j__, beta_chunk_t const& beta_chunk,
         Simulation_context const& ctx, fft::Gvec const& gkvec)
 {
-    PROFILE("sirius::Beta_projectors_base::generate");
+    PROFILE("beta_projectors_generate_cpu");
 
     using numeric_t      = std::complex<T>;
     using double_complex = std::complex<double>;
@@ -109,7 +110,7 @@ beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
                              fft::Gvec const& gkvec, sddk::mdarray<double, 2> const& gkvec_coord_,
                              beta_chunk_t const& beta_chunk, int j__)
 {
-    PROFILE("sirius::Beta_projectors_base::generate");
+    PROFILE("beta_projectors_generate_gpu");
 #if defined(SIRIUS_GPU)
     int num_gkvec_loc = gkvec.count();
     auto& desc = beta_chunk.desc_;
@@ -251,10 +252,10 @@ template <class T>
 void
 Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichunk__) const
 {
-    PROFILE("sirius::Beta_projectors_base::generate");
+    PROFILE("sirius::Beta_projector_generator");
     using numeric_t = std::complex<T>;
 
-    int j__        = 0;
+    int j{0};
     out.beta_chunk_ = beta_chunks_.at(ichunk__);
 
     auto num_beta = out.beta_chunk_.num_beta_;
@@ -271,7 +272,7 @@ Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichu
             out.pw_coeffs_a_ =
                 sddk::matrix<numeric_t>(nullptr, out.pw_coeffs_a_buffer_.device_data(), gk_size, num_beta);
             local::beta_projectors_generate_gpu(out, pw_coeffs_t_device_, pw_coeffs_t_host_, ctx_, gkvec_, gkvec_coord_,
-                                                beta_chunks_[ichunk__], j__);
+                                                beta_chunks_[ichunk__], j);
             break;
         }
     }
@@ -281,7 +282,7 @@ template <class T>
 void
 Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichunk__, int j__) const
 {
-    PROFILE("sirius::Beta_projectors_base::generate");
+    PROFILE("sirius::Beta_projector_generator");
     using numeric_t = std::complex<T>;
 
     out.beta_chunk_ = beta_chunks_.at(ichunk__);
