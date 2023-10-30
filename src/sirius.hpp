@@ -129,6 +129,9 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::initialize();
 #endif
+#if defined(SIRIUS_DLAF)
+    la::Eigensolver_dlaf::initialize();
+#endif
     /* for the fortran interface to blas/lapack */
     RTE_ASSERT(sizeof(int) == 4);
     RTE_ASSERT(sizeof(double) == 8);
@@ -194,6 +197,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     }
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::finalize();
+#endif
+#if defined(SIRIUS_DLAF)
+    la::Eigensolver_dlaf::finalize();
 #endif
 
     is_initialized() = false;

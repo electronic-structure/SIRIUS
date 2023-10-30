@@ -59,6 +59,10 @@ if(NOT TARGET sirius::sirius)
   if(@SIRIUS_USE_ELPA@)
     find_package(Elpa ${mode})
   endif()
+  
+  if(@SIRIUS_USE_DLAF@)
+    find_package(DLAF ${mode})
+  endif()
 
   if(@SIRIUS_USE_MAGMA@)
     find_package(MAGMA ${mode})

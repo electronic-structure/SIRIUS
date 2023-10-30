@@ -322,7 +322,7 @@
                 "cyclic_block_size" : {
                     "type" : "integer",
                     "default" : -1,
-                    "title" : "Block size for ScaLAPACK and ELPA."
+                    "title" : "Block size for ScaLAPACK, ELPA, and DLA-Future."
                 },
                 "reduce_gvec" : {
                     "type" : "boolean",
@@ -333,13 +333,13 @@
                 "std_evp_solver_name" : {
                     "type" : "string",
                     "default" : "auto",
-                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "cusolver"],
+                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "dlaf", "magma", "magma_gpu", "cusolver"],
                     "title" : "Standard eigen-value solver to use."
                 },
                 "gen_evp_solver_name" : {
                     "type" : "string",
                     "default" : "auto",
-                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "cusolver"],
+                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "dlaf", "magma", "magma_gpu", "cusolver"],
                     "title" : "Generalized eigen-value solver to use."
                 },
                 "fft_mode" : {

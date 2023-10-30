@@ -30,6 +30,10 @@
 #include "core/rte/rte.hpp"
 #include "linalg_base.hpp"
 
+#ifdef SIRIUS_DLAF
+#include "dlaf_c/grid.h"
+#endif
+
 namespace sirius {
 
 namespace la {
@@ -90,12 +94,20 @@ class BLACS_grid
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
             RTE_THROW(s);
         }
+
+#ifdef SIRIUS_DLAF
+        dlaf_create_grid_from_blacs(blacs_context_);
+#endif
+
 #else
         for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
           rank_map_[i] = i;
         }
-
+#ifdef SIRIUS_DLAF
+        blacs_context_ = dlaf_create_grid(comm_.native(), num_ranks_row__, num_ranks_col__, 'R');
 #endif
+#endif
+
     }
 
     ~BLACS_grid()
@@ -108,6 +120,9 @@ class BLACS_grid
             linalg_base::free_blacs_handler(blacs_handler_);
 #endif
         }
+#ifdef SIRIUS_DLAF
+        dlaf_free_grid(blacs_context_);
+#endif
     }
 
     inline int context() const

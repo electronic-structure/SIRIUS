@@ -43,6 +43,9 @@ enum class ev_solver_t
 
     /// ELPA solver
     elpa,
+    
+    /// DLA-Future solver
+    dlaf,
 
     /// MAGMA with CPU pointers
     magma,
@@ -61,7 +64,7 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
         {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa},
-        {"elpa2", ev_solver_t::elpa},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
+        {"elpa2", ev_solver_t::elpa}, {"dlaf", ev_solver_t::dlaf}, {"magma", ev_solver_t::magma}, {"magma_gpu", ev_solver_t::magma_gpu},
         {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {

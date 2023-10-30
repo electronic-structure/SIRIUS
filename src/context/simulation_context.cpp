@@ -371,6 +371,11 @@ Simulation_context::initialize()
 #else
     bool is_elpa{false};
 #endif
+#if defined(SIRIUS_DLAF)
+    bool is_dlaf{true};
+#else
+    bool is_dlaf{false};
+#endif
 
     if (processing_unit() == sddk::device_t::CPU || acc::num_devices() == 0) {
         is_cuda  = false;
@@ -408,6 +413,9 @@ Simulation_context::initialize()
                 }
                 if (is_elpa) {
                     evsn[i] = "elpa1";
+                }
+                if (is_dlaf) {
+                    evsn[i] = "dlaf";
                 }
             }
         }
@@ -635,6 +643,7 @@ Simulation_context::print_info(std::ostream& out__) const
             {la::ev_solver_t::lapack, "LAPACK"},
             {la::ev_solver_t::scalapack, "ScaLAPACK"},
             {la::ev_solver_t::elpa, "ELPA"},
+            {la::ev_solver_t::dlaf, "DLA-Future"},
             {la::ev_solver_t::magma, "MAGMA"},
             {la::ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
             {la::ev_solver_t::cusolver, "cuSOLVER"}

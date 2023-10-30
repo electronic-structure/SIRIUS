@@ -4,6 +4,10 @@
 #include <elpa/elpa.h>
 #endif
 
+#if defined(SIRIUS_DLAF)
+#include <dlaf_c/init.h>
+#endif
+
 namespace sirius {
 
 namespace la {
@@ -269,6 +273,22 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, dou
 int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__, double* eval__, la::dmatrix<std::complex<double>>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
+}
+
+#endif
+
+#if defined(SIRIUS_DLAF)
+
+void Eigensolver_dlaf::initialize()
+{
+    const char* pika_argv[] = {"sirius", "--pika:print-bind"};
+    const char* dlaf_argv[] = {"sirius"};
+    dlaf_initialize(2, pika_argv, 1, dlaf_argv);
+}
+
+void Eigensolver_dlaf::finalize()
+{
+    dlaf_finalize();
 }
 
 #endif

@@ -46,6 +46,12 @@ Eigensolver_factory(std::string name__)
             break;
         }
 #endif
+#if defined(SIRIUS_DLAF)
+        case ev_solver_t::dlaf: {
+            ptr = new Eigensolver_dlaf();
+            break;
+        }
+#endif
 #if defined(SIRIUS_ELPA)
         case ev_solver_t::elpa: {
             if (name__ == "elpa1") {
