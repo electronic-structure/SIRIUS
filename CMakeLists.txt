@@ -43,9 +43,9 @@ set_property(CACHE SIRIUS_USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
-if(SIRIUS_CREATE_FORTRAN_BINDINGS)
-  enable_language(Fortran)
-endif()
+#if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+#  enable_language(Fortran)
+#endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)

@@ -2,9 +2,9 @@
 # working correctly
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
-if(SIRIUS_CREATE_FORTRAN_BINDINGS)
-  set(_FSOURCES "api/sirius_api.cpp;api/sirius.f90")
-endif()
+#if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+#  set(_FSOURCES "api/sirius_api.cpp;api/sirius.f90")
+#endif()
 
 if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
   set(_CUSOURCES
@@ -26,6 +26,7 @@ if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
 endif()
 
 set(_SOURCES
+  "api/sirius_api.cpp"
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
@@ -149,11 +150,11 @@ target_compile_definitions(sirius PUBLIC
   $<$<AND:$<BOOL:${SIRIUS_USE_MAGMA}>,$<BOOL:${SIRIUS_USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )
 
-if(SIRIUS_CREATE_FORTRAN_BINDINGS)
-  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
-          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
-endif()
+#if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+#  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+#  install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
+#          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
+#endif()
 
 install(TARGETS sirius
         EXPORT sirius_targets
