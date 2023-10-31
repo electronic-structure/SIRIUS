@@ -200,7 +200,8 @@ PYBIND11_MODULE(py_sirius, m)
             py::return_value_policy::reference_internal)
         .def(
             "comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
-            py::return_value_policy::reference_internal);
+            py::return_value_policy::reference_internal)
+        .def("fft_grid", &Simulation_context::fft_grid, py::return_value_policy::reference_internal);
 
     py::class_<Atom>(m, "Atom")
         .def("position", &Atom::position)
