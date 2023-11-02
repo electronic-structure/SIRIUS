@@ -40,6 +40,7 @@
 #include "hamiltonian/check_wave_functions.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
+#include "dft/dft_ground_state.hpp"
 #include "sirius.hpp"
 
 using namespace sirius;
