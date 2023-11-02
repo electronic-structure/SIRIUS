@@ -23,8 +23,8 @@
  */
 
 #include <stdexcept>
-#include "linalg/linalg_base.hpp"
 #include "beta_projectors_base.hpp"
+#include "core/la/linalg_base.hpp"
 #include "core/profiler.hpp"
 #include "core/env/env.hpp"
 #include "core/wf/wave_functions.hpp"

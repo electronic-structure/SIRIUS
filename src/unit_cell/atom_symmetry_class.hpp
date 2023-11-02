@@ -26,7 +26,7 @@
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
 #include "atom_type.hpp"
-#include "linalg/eigensolver.hpp"
+#include "core/la/eigensolver.hpp"
 #include "core/mpi/pstdout.hpp"
 
 namespace sirius {

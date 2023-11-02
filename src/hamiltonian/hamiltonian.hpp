@@ -31,7 +31,7 @@
 #include "core/wf/wave_functions.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
-#include "linalg/dmatrix.hpp"
+#include "core/la/dmatrix.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
 

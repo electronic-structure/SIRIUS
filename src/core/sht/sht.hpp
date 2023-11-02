@@ -37,7 +37,7 @@
 #include "core/typedefs.hpp"
 #include "core/r3/r3.hpp"
 #include "core/sf/specfunc.hpp"
-#include "linalg/linalg.hpp"
+#include "core/la/linalg.hpp"
 #include "lebedev_grids.hpp"
 
 namespace sirius {

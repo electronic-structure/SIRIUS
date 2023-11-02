@@ -26,7 +26,7 @@
 #define __EIGENSOLVER_HPP__
 
 #include "SDDK/memory.hpp"
-#include "linalg/dmatrix.hpp"
+#include "core/la/dmatrix.hpp"
 
 namespace sirius {
 
@@ -43,7 +43,7 @@ enum class ev_solver_t
 
     /// ELPA solver
     elpa,
-    
+
     /// DLA-Future solver
     dlaf,
 

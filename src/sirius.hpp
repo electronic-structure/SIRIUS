@@ -33,7 +33,7 @@
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
 #include "core/acc/cusolver.hpp"
 #endif
-#include "linalg/linalg_spla.hpp"
+#include "core/la/linalg_spla.hpp"
 #include "core/cmd_args.hpp"
 #include "core/json.hpp"
 #include "core/profiler.hpp"
@@ -46,11 +46,11 @@ using json = nlohmann::json;
 #include "core/sht/gaunt.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/sirius_version.hpp"
+#include "core/la/eigenproblem.hpp"
 #include "context/simulation_context.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"
 #include "dft/dft_ground_state.hpp"
-#include "linalg/eigenproblem.hpp"
 
 /// Namespace of the SIRIUS library.
 namespace sirius {

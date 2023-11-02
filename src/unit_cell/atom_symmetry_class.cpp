@@ -23,7 +23,7 @@
  */
 
 #include "atom_symmetry_class.hpp"
-#include "linalg/eigensolver.hpp"
+#include "core/la/eigensolver.hpp"
 
 namespace sirius {
 

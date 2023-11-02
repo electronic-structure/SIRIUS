@@ -25,11 +25,11 @@
 #ifndef __RESIDUALS_HPP__
 #define __RESIDUALS_HPP__
 
-#include "core/typedefs.hpp"
 #include "SDDK/memory.hpp"
-#include "linalg/linalg.hpp"
-#include "context/simulation_context.hpp"
+#include "core/typedefs.hpp"
+#include "core/la/linalg.hpp"
 #include "core/wf/wave_functions.hpp"
+#include "context/simulation_context.hpp"
 
 struct residual_result_t
 {

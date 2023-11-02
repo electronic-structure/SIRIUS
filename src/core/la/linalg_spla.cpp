@@ -21,6 +21,7 @@
 #include <spla/spla.hpp>
 #include "linalg_spla.hpp"
 
+namespace sirius {
 namespace splablas {
 
 std::shared_ptr<::spla::Context>&
@@ -30,4 +31,5 @@ get_handle_ptr()
   return handle;
 }
 
+}
 }

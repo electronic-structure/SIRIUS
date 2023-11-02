@@ -29,8 +29,8 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include "linalg/linalg.hpp"
-#include "linalg/dmatrix.hpp"
+#include "core/la/linalg.hpp"
+#include "core/la/dmatrix.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "core/r3/r3.hpp"
 #include "core/cmd_args.hpp"
