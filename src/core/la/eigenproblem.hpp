@@ -38,10 +38,6 @@
 #include "core/acc/cusolver.hpp"
 #endif
 
-#if defined(SIRIUS_ELPA)
-#include <elpa/elpa.h>
-#endif
-
 #if defined(SIRIUS_DLAF)
 #include <dlaf_c/eigensolver/eigensolver.h>
 #include <dlaf_c/eigensolver/gen_eigensolver.h>
@@ -450,32 +446,6 @@ class Eigensolver_elpa : public Eigensolver
     //    A__ >> Z__;
 
     //}
-    template <typename M>
-    void setup_handler(elpa_t& handle__, M const& m__, int na__, int nev__)
-    {
-        int error;
-        int nt = omp_get_max_threads();
-
-        elpa_set_integer(handle__, "na", na__, &error);
-        elpa_set_integer(handle__, "nev", nev__, &error);
-        elpa_set_integer(handle__, "local_nrows", m__.num_rows_local(), &error);
-        elpa_set_integer(handle__, "local_ncols", m__.num_cols_local(), &error);
-        elpa_set_integer(handle__, "nblk", m__.bs_row(), &error);
-        elpa_set_integer(handle__, "mpi_comm_parent", MPI_Comm_c2f(m__.blacs_grid().comm().native()), &error);
-        elpa_set_integer(handle__, "process_row", m__.blacs_grid().comm_row().rank(), &error);
-        elpa_set_integer(handle__, "process_col", m__.blacs_grid().comm_col().rank(), &error);
-        elpa_set_integer(handle__, "blacs_context", m__.blacs_grid().context(), &error);
-        elpa_set_integer(handle__, "omp_threads", nt, &error);
-        if (acc::num_devices() != 0) {
-            elpa_set_integer(handle__, "nvidia-gpu", 1, &error);
-        }
-        if (stage_ == 1) {
-            elpa_set_integer(handle__, "solver", ELPA_SOLVER_1STAGE, &error);
-        } else {
-            elpa_set_integer(handle__, "solver", ELPA_SOLVER_2STAGE, &error);
-        }
-        elpa_setup(handle__);
-    }
   public:
     Eigensolver_elpa(int stage__);
     static void initialize();
