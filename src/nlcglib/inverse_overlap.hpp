@@ -30,7 +30,7 @@
 #include <spla/types.h>
 #include <stdexcept>
 
-#include "linalg/linalg_base.hpp"
+#include "core/la/linalg_base.hpp"
 #include "SDDK/memory.hpp"
 #include "core/mpi/communicator.hpp"
 #include "hamiltonian/non_local_operator.hpp"
