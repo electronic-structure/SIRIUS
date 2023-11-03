@@ -24,7 +24,7 @@
 
 #include "k_point/k_point.hpp"
 #include "hamiltonian/non_local_operator.hpp"
-#include "linalg/inverse_sqrt.hpp"
+#include "core/la/inverse_sqrt.hpp"
 
 namespace sirius {
 

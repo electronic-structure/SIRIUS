@@ -30,7 +30,6 @@
 #include <omp.h>
 
 #else
-
 inline int omp_get_max_threads()
 {
     return 1;
@@ -54,7 +53,6 @@ inline double omp_get_wtime()
 {
     return 0;
 }
-
 #endif
 
 #endif

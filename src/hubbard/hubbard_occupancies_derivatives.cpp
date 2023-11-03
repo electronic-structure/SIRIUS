@@ -34,7 +34,7 @@
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "hubbard.hpp"
 #include "SDDK/memory.hpp"
-#include "linalg/inverse_sqrt.hpp"
+#include "core/la/inverse_sqrt.hpp"
 #include "geometry/wavefunction_strain_deriv.hpp"
 
 namespace sirius {

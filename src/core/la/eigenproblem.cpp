@@ -14,6 +14,33 @@ namespace la {
 
 #if defined(SIRIUS_ELPA)
 
+template <typename M>
+void setup_handler(elpa_t& handle__, int stage__, M const& m__, int na__, int nev__)
+{
+    int error;
+    int nt = omp_get_max_threads();
+
+    elpa_set_integer(handle__, "na", na__, &error);
+    elpa_set_integer(handle__, "nev", nev__, &error);
+    elpa_set_integer(handle__, "local_nrows", m__.num_rows_local(), &error);
+    elpa_set_integer(handle__, "local_ncols", m__.num_cols_local(), &error);
+    elpa_set_integer(handle__, "nblk", m__.bs_row(), &error);
+    elpa_set_integer(handle__, "mpi_comm_parent", MPI_Comm_c2f(m__.blacs_grid().comm().native()), &error);
+    elpa_set_integer(handle__, "process_row", m__.blacs_grid().comm_row().rank(), &error);
+    elpa_set_integer(handle__, "process_col", m__.blacs_grid().comm_col().rank(), &error);
+    elpa_set_integer(handle__, "blacs_context", m__.blacs_grid().context(), &error);
+    elpa_set_integer(handle__, "omp_threads", nt, &error);
+    if (acc::num_devices() != 0) {
+        elpa_set_integer(handle__, "nvidia-gpu", 1, &error);
+    }
+    if (stage__ == 1) {
+        elpa_set_integer(handle__, "solver", ELPA_SOLVER_1STAGE, &error);
+    } else {
+        elpa_set_integer(handle__, "solver", ELPA_SOLVER_2STAGE, &error);
+    }
+    elpa_setup(handle__);
+}
+
 Eigensolver_elpa::Eigensolver_elpa(int stage__)
     : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
     , stage_(stage__)
@@ -57,7 +84,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     if (error != ELPA_OK) {
         return 1;
     }
-    setup_handler(handle, A__, matrix_size__, nev__);
+    setup_handler(handle, stage_, A__, matrix_size__, nev__);
 
     PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
@@ -120,7 +147,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     if (error != ELPA_OK) {
         return 1;
     }
-    setup_handler(handle, A__, matrix_size__, nev__);
+    setup_handler(handle, stage_, A__, matrix_size__, nev__);
 
     PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
@@ -194,7 +221,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     if (error != ELPA_OK) {
         return 1;
     }
-    setup_handler(handle, A__, matrix_size__, nev__);
+    setup_handler(handle, stage_, A__, matrix_size__, nev__);
 
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
@@ -237,7 +264,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     if (error != ELPA_OK) {
         return 1;
     }
-    setup_handler(handle, A__, matrix_size__, nev__);
+    setup_handler(handle, stage_, A__, matrix_size__, nev__);
 
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 

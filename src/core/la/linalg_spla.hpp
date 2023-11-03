@@ -29,6 +29,8 @@
 #include <spla/spla.hpp>
 #include "blas_lapack.h"
 
+namespace sirius {
+
 namespace splablas {
 
 inline SplaOperation
@@ -101,5 +103,6 @@ zgemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double_comp
                  *get_handle_ptr());
 }
 } // namespace splablas
+} // namespace sirius
 
 #endif // __LINALG_SPLA_HPP__

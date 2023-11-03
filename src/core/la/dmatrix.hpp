@@ -29,7 +29,7 @@
 #include <spla/spla.hpp>
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
-#include "linalg/blacs_grid.hpp"
+#include "core/la/blacs_grid.hpp"
 #include "core/splindex.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/typedefs.hpp"

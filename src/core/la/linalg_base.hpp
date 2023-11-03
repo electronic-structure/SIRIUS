@@ -34,6 +34,7 @@
 
 namespace sirius {
 
+/// Interface to linear algebra BLAS/LAPACK functions.
 namespace la {
 
 template <typename T>

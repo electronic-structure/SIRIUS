@@ -29,7 +29,7 @@
 #include <iostream>
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
-#include "linalg/linalg.hpp"
+#include "core/la/linalg.hpp"
 #include "core/strong_type.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/fft/gvec.hpp"

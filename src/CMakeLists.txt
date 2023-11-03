@@ -63,10 +63,6 @@ set(_SOURCES
   "radial/radial_integrals.cpp"
   "SDDK/memory.cpp"
   "mixer/mixer_functions.cpp"
-  "linalg/eigensolver.cpp"
-  "linalg/eigenproblem.cpp"
-  "linalg/linalg_spla.cpp"
-  "linalg/dmatrix.cpp"
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
@@ -83,6 +79,10 @@ set(_SOURCES
   "core/rt_graph.cpp"
   "core/ostream_tools.cpp"
   "core/sirius_version.cpp"
+  "core/la/eigensolver.cpp"
+  "core/la/eigenproblem.cpp"
+  "core/la/linalg_spla.cpp"
+  "core/la/dmatrix.cpp"
   )
 
 
