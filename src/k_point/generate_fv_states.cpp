@@ -66,10 +66,10 @@ void K_point<T>::generate_fv_states()
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
         spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_TRANSPOSE, 1.0,
-                alm.at(sddk::memory_t::host), alm.ld(),
+                alm.at(memory_t::host), alm.ld(),
                 &fv_eigen_vectors_slab().pw_coeffs(0, wf::spin_index(0), wf::band_index(0)),
                 fv_eigen_vectors_slab().ld(),
-                0.0, alm_fv.at(sddk::memory_t::host), alm_fv.ld(), mt_aw_offset, 0, alm_fv.spla_distribution(),
+                0.0, alm_fv.at(memory_t::host), alm_fv.ld(), mt_aw_offset, 0, alm_fv.spla_distribution(),
                 ctx_.spla_context());
 
         atom_begin += na;
@@ -81,7 +81,7 @@ void K_point<T>::generate_fv_states()
         num_mt_apw_coeffs[ia] = uc.atom(ia).mt_aw_basis_size();
     }
     wf::Wave_functions_mt<T> alm_fv_slab(this->comm(), num_mt_apw_coeffs, wf::num_mag_dims(0),
-            wf::num_bands(ctx_.num_fv_states()), sddk::memory_t::host);
+            wf::num_bands(ctx_.num_fv_states()), memory_t::host);
 
     auto& one = la::constant<std::complex<T>>::one();
     auto& zero = la::constant<std::complex<T>>::zero();
@@ -112,8 +112,8 @@ void K_point<T>::generate_fv_states()
         }
     }
     if (pcs) {
-        auto z1 = fv_states_->checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
-        auto z2 = fv_states_->checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        auto z1 = fv_states_->checksum_pw(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+        auto z2 = fv_states_->checksum_mt(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
         print_checksum("fv_states_pw", z1, RTE_OUT(this->out(0)));
         print_checksum("fv_states_mt", z2, RTE_OUT(this->out(0)));
 

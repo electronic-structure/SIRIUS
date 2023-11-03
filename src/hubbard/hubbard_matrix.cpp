@@ -46,7 +46,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             }
         }
 
-        local_ = std::vector<sddk::mdarray<std::complex<double>, 3>>(num_atomic_level);
+        local_ = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_level);
 
         /* the offsets here match the offsets of the hubbard wave functions but
          * are more fine grained. The offsets of the hubbard wave functions are
@@ -66,19 +66,19 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             int l           = atom_type.lo_descriptor_hub(lo_ind).l();
             int mmax        = 2 * l + 1;
 
-            local_[at_lvl] = sddk::mdarray<std::complex<double>, 3>(mmax, mmax, 4, sddk::memory_t::host, "local_hubbard");
+            local_[at_lvl] = mdarray<std::complex<double>, 3>({mmax, mmax, 4}, mdarray_label("local_hubbard"));
             local_[at_lvl].zero();
             size += mmax;
         }
 
         nonlocal_.clear();
-        nonlocal_ = std::vector<sddk::mdarray<std::complex<double>, 3>>(ctx_.cfg().hubbard().nonlocal().size());
+        nonlocal_ = std::vector<mdarray<std::complex<double>, 3>>(ctx_.cfg().hubbard().nonlocal().size());
         for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
             auto nl      = ctx_.cfg().hubbard().nonlocal(i);
             int il       = nl.l()[0];
             int jl       = nl.l()[1];
-            nonlocal_[i] = sddk::mdarray<std::complex<double>, 3>(2 * il + 1, 2 * jl + 1, ctx_.num_spins(),
-                    sddk::memory_t::host, "nonlocal_hubbard");
+            nonlocal_[i] = mdarray<std::complex<double>, 3>({2 * il + 1, 2 * jl + 1, ctx_.num_spins()},
+                    mdarray_label("nonlocal_hubbard"));
             nonlocal_[i].zero();
         }
     }
@@ -93,12 +93,12 @@ Hubbard_matrix::access(std::string const& what__, std::complex<double>* occ__, i
         RTE_THROW(s);
     }
 
-    sddk::mdarray<std::complex<double>, 4> occ_mtrx;
+    mdarray<std::complex<double>, 4> occ_mtrx;
     /* in non-collinear case the occupancy matrix is complex */
     if (ctx_.num_mag_dims() == 3) {
-        occ_mtrx = sddk::mdarray<std::complex<double>, 4>(occ__, ld__, ld__, 4, ctx_.unit_cell().num_atoms());
+        occ_mtrx = mdarray<std::complex<double>, 4>({ld__, ld__, 4, ctx_.unit_cell().num_atoms()}, occ__);
     } else {
-        occ_mtrx = sddk::mdarray<std::complex<double>, 4>(occ__, ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+        occ_mtrx = mdarray<std::complex<double>, 4>({ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms()}, occ__);
     }
     if (what__ == "get") {
         occ_mtrx.zero();

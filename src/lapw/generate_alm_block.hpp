@@ -20,17 +20,17 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
         num_mt_aw += ctx__.unit_cell().atom(atom_begin__ + ia).mt_aw_basis_size();
     }
 
-    sddk::mdarray<std::complex<T>, 2> result;
+    mdarray<std::complex<T>, 2> result;
     switch (ctx__.processing_unit()) {
-        case sddk::device_t::CPU: {
-            result = sddk::mdarray<std::complex<T>, 2>(alm__.gkvec().count(), num_mt_aw,
-                    get_memory_pool(sddk::memory_t::host), "alm_block");
+        case device_t::CPU: {
+            result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
+                    get_memory_pool(memory_t::host), mdarray_label("alm_block"));
             break;
         }
-        case sddk::device_t::GPU: {
-            result = sddk::mdarray<std::complex<T>, 2>(alm__.gkvec().count(), num_mt_aw,
-                    get_memory_pool(sddk::memory_t::host_pinned), "alm_block");
-            result.allocate(get_memory_pool(sddk::memory_t::device));
+        case device_t::GPU: {
+            result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
+                    get_memory_pool(memory_t::host_pinned), mdarray_label("alm_block"));
+            result.allocate(get_memory_pool(memory_t::device));
             break;
         }
     }
@@ -43,28 +43,28 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
             auto& atom = ctx__.unit_cell().atom(atom_begin__ + i);
             auto& type = atom.type();
             /* wrap matching coefficients of a single atom */
-            sddk::mdarray<std::complex<T>, 2> alm_atom;
+            mdarray<std::complex<T>, 2> alm_atom;
             switch (ctx__.processing_unit()) {
-                case sddk::device_t::CPU: {
-                    alm_atom = sddk::mdarray<std::complex<T>, 2>(result.at(sddk::memory_t::host, 0, mt_aw_offset[i]),
-                                                                 alm__.gkvec().count(), type.mt_aw_basis_size(), "alm_atom");
+                case device_t::CPU: {
+                    alm_atom = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), type.mt_aw_basis_size()},
+                            result.at(memory_t::host, 0, mt_aw_offset[i]), mdarray_label("alm_atom"));
                     break;
                 }
-                case sddk::device_t::GPU: {
-                    alm_atom = sddk::mdarray<std::complex<T>, 2>(result.at(sddk::memory_t::host, 0, mt_aw_offset[i]),
-                                                                 result.at(sddk::memory_t::device, 0, mt_aw_offset[i]),
-                                                                 alm__.gkvec().count(), type.mt_aw_basis_size(), "alm_atom");
+                case device_t::GPU: {
+                    alm_atom = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), type.mt_aw_basis_size()},
+                            result.at(memory_t::host, 0, mt_aw_offset[i]),
+                            result.at(memory_t::device, 0, mt_aw_offset[i]), mdarray_label("alm_atom"));
                     break;
                 }
             }
             /* generate LAPW matching coefficients on the CPU */
             alm__.template generate<conjugate>(atom, alm_atom);
-            if (ctx__.processing_unit() == sddk::device_t::GPU) {
-                alm_atom.copy_to(sddk::memory_t::device, acc::stream_id(tid));
+            if (ctx__.processing_unit() == device_t::GPU) {
+                alm_atom.copy_to(memory_t::device, acc::stream_id(tid));
             }
 
         }
-        if (ctx__.processing_unit() == sddk::device_t::GPU) {
+        if (ctx__.processing_unit() == device_t::GPU) {
             acc::sync_stream(acc::stream_id(tid));
         }
     }

@@ -39,21 +39,21 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
     int max_order = atom_type_.indexr().max_order();
     int nrf = atom_type_.mt_radial_basis_size();
 
-    surface_derivatives_ = sddk::mdarray<double, 2>(3, nrf);
+    surface_derivatives_ = mdarray<double, 2>({3, nrf});
 
-    radial_functions_ = sddk::mdarray<double, 3>(atom_type_.num_mt_points(), nrf, 2);
+    radial_functions_ = mdarray<double, 3>({atom_type_.num_mt_points(), nrf, 2});
 
-    h_spherical_integrals_ = sddk::mdarray<double, 2>(nrf, nrf);
+    h_spherical_integrals_ = mdarray<double, 2>({nrf, nrf});
     h_spherical_integrals_.zero();
 
-    o_radial_integrals_ = sddk::mdarray<double, 3>(nl, max_order, max_order);
+    o_radial_integrals_ = mdarray<double, 3>({nl, max_order, max_order});
     o_radial_integrals_.zero();
 
-    so_radial_integrals_ = sddk::mdarray<double, 3>(nl, max_order, max_order);
+    so_radial_integrals_ = mdarray<double, 3>({nl, max_order, max_order});
     so_radial_integrals_.zero();
 
     if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
-        o1_radial_integrals_ = sddk::mdarray<double, 2>(nrf, nrf);
+        o1_radial_integrals_ = mdarray<double, 2>({nrf, nrf});
         o1_radial_integrals_.zero();
     }
 
@@ -373,8 +373,8 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
         }
     }
 
-    sddk::mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
-    sddk::copy(loprod, ovlp);
+    mdarray<double, 2> ovlp({num_lo_descriptors(), num_lo_descriptors()});
+    copy(loprod, ovlp);
 
     auto stdevp = la::Eigensolver_factory("lapack");
 
@@ -575,19 +575,19 @@ Atom_symmetry_class::sync_radial_functions(mpi::Communicator const& comm__, int 
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    comm__.bcast(radial_functions_.at(sddk::memory_t::host), size, rank__);
-    comm__.bcast(surface_derivatives_.at(sddk::memory_t::host), (int)surface_derivatives_.size(), rank__);
+    comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
+    comm__.bcast(surface_derivatives_.at(memory_t::host), (int)surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 
 void
 Atom_symmetry_class::sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
 {
-    comm__.bcast(h_spherical_integrals_.at(sddk::memory_t::host), (int)h_spherical_integrals_.size(), rank__);
-    comm__.bcast(o_radial_integrals_.at(sddk::memory_t::host), (int)o_radial_integrals_.size(), rank__);
-    comm__.bcast(so_radial_integrals_.at(sddk::memory_t::host), (int)so_radial_integrals_.size(), rank__);
+    comm__.bcast(h_spherical_integrals_.at(memory_t::host), (int)h_spherical_integrals_.size(), rank__);
+    comm__.bcast(o_radial_integrals_.at(memory_t::host), (int)o_radial_integrals_.size(), rank__);
+    comm__.bcast(so_radial_integrals_.at(memory_t::host), (int)so_radial_integrals_.size(), rank__);
     if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
-        comm__.bcast(o1_radial_integrals_.at(sddk::memory_t::host), (int)o1_radial_integrals_.size(), rank__);
+        comm__.bcast(o1_radial_integrals_.at(memory_t::host), (int)o1_radial_integrals_.size(), rank__);
     }
 }
 
@@ -831,7 +831,7 @@ Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
         level_energy[ist] = -1.0 * atom_type_.zn() / 2 / std::pow(double(atom_type_.atomic_level(ist).n), 2);
     }
 
-    sddk::mdarray<double, 2> rho_t(rgrid.num_points(), atom_type_.num_atomic_levels());
+    mdarray<double, 2> rho_t({rgrid.num_points(), atom_type_.num_atomic_levels()});
     rho_t.zero();
     #pragma omp parallel for
     for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {

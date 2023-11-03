@@ -24,10 +24,10 @@ namespace sirius {
 
 namespace sht { // TODO: move most of this to special functions
 
-sddk::mdarray<double, 2>
+mdarray<double, 2>
 wigner_d_matrix(int l, double beta)
 {
-    sddk::mdarray<double, 2> d_mtrx(2 * l + 1, 2 * l + 1);
+    mdarray<double, 2> d_mtrx({2 * l + 1, 2 * l + 1});
 
     long double cos_b2 = std::cos((long double)beta / 2.0L);
     long double sin_b2 = std::sin((long double)beta / 2.0L);
@@ -52,10 +52,10 @@ wigner_d_matrix(int l, double beta)
 }
 
 template <>
-sddk::mdarray<std::complex<double>, 2>
+mdarray<std::complex<double>, 2>
 rotation_matrix_l<std::complex<double>>(int l, r3::vector<double> euler_angles, int proper_rotation)
 {
-    sddk::mdarray<std::complex<double>, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
+    mdarray<std::complex<double>, 2> rot_mtrx({2 * l + 1, 2 * l + 1});
 
     auto d_mtrx = wigner_d_matrix(l, euler_angles[1]);
 
@@ -70,12 +70,12 @@ rotation_matrix_l<std::complex<double>>(int l, r3::vector<double> euler_angles, 
 }
 
 template <>
-sddk::mdarray<double, 2>
+mdarray<double, 2>
 rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rotation)
 {
     auto rot_mtrx_ylm = rotation_matrix_l<std::complex<double>>(l, euler_angles, proper_rotation);
 
-    sddk::mdarray<double, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
+    mdarray<double, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
     rot_mtrx.zero();
 
     for (int m1 = -l; m1 <= l; m1++) {
@@ -102,7 +102,7 @@ rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rot
 template <typename T>
 void
 rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                sddk::mdarray<T, 2>& rotm)
+                mdarray<T, 2>& rotm)
 {
     rotm.zero();
 
@@ -119,18 +119,18 @@ rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation,
 template
 void
 rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                        sddk::mdarray<double, 2>& rotm);
+                        mdarray<double, 2>& rotm);
 
 template
 void
 rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                                sddk::mdarray<std::complex<double>, 2>& rotm);
+                                mdarray<std::complex<double>, 2>& rotm);
 
 template <typename T>
-std::vector<sddk::mdarray<T, 2>>
+std::vector<mdarray<T, 2>>
 rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
 {
-    std::vector<sddk::mdarray<T, 2>> result(lmax + 1);
+    std::vector<mdarray<T, 2>> result(lmax + 1);
 
     for (int l = 0; l <= lmax; l++) {
         result[l] = rotation_matrix_l<T>(l, euler_angles, proper_rotation);
@@ -139,11 +139,11 @@ rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
 }
 
 template
-std::vector<sddk::mdarray<double, 2>>
+std::vector<mdarray<double, 2>>
 rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 template
-std::vector<sddk::mdarray<std::complex<double>, 2>>
+std::vector<mdarray<std::complex<double>, 2>>
 rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 double

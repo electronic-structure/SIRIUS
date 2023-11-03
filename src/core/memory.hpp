@@ -760,6 +760,8 @@ class mdarray
 
     auto label() const;
 
+    auto dim(int idx__) const;
+
     /// Check if device pointer is available.
     inline bool on_device() const;
 
@@ -1253,6 +1255,13 @@ auto
 mdarray<T, N>::label() const
 {
     return label_;
+}
+
+template <typename T, int N>
+auto
+mdarray<T, N>::dim(int idx__) const
+{
+    return this->dims_[idx__];
 }
 
 template <typename T, int N>

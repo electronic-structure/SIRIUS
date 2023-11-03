@@ -98,7 +98,7 @@ class U_operator
         return um_[j](m1, m2);
     }
 
-    std::complex<T> const* at(sddk::memory_t mem__, const int idx1, const int idx2, const int idx3) const
+    std::complex<T> const* at(memory_t mem__, const int idx1, const int idx2, const int idx3) const
     {
         return um_[idx3].at(mem__, idx1, idx2);
     }
@@ -122,13 +122,13 @@ class U_operator
  **/
 template <typename T, typename F>
 void
-apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__,
+apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__,
                     Beta_projector_generator<T>& beta__, beta_projectors_coeffs_t<T>& beta_coeffs__,
                     wf::Wave_functions<T> const& phi__, D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__,
                     Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
 {
-    if (sddk::is_device_memory(mem__)) {
-        RTE_ASSERT(beta__.device_t() == sddk::device_t::GPU);
+    if (is_device_memory(mem__)) {
+        RTE_ASSERT(beta__.device_t() == device_t::GPU);
     }
 
     auto& ctx = beta__.ctx();
@@ -141,7 +141,7 @@ apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range
             auto sp = phi__.actual_spin_index(s);
             // auto beta_phi = beta__.template inner<F>(mem__, i, phi__, sp, br__);
             auto beta_phi = inner_prod_beta<F>(ctx.spla_context(), mem__, ctx.host_memory_t(),
-                                               sddk::is_device_memory(mem__), /* copy result back to gpu if true */
+                                               is_device_memory(mem__), /* copy result back to gpu if true */
                                                beta_coeffs__, phi__, sp, br__);
 
             if (hphi__ && d_op__) {
@@ -168,7 +168,7 @@ apply_non_local_D_Q(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range
 /// Compute |sphi> = (1 + Q)|phi>
 template <typename T, typename F>
 void
-apply_S_operator(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projector_generator<T>& beta__,
+apply_S_operator(memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projector_generator<T>& beta__,
                  beta_projectors_coeffs_t<T>& beta_coeffs__, wf::Wave_functions<T> const& phi__,
                  Q_operator<T> const* q_op__, wf::Wave_functions<T>& sphi__)
 {
@@ -193,7 +193,7 @@ void apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::ban
                       wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
                       wf::Wave_functions<T>& hphi__);
 /// Apply strain derivative of S-operator to all scalar functions.
-void apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
+void apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
                                    beta_projectors_coeffs_t<double>& bp_coeffs__,
                                    Beta_projector_generator<double>& bp_strain_deriv__,
                                    beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,

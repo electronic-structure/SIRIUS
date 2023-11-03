@@ -35,8 +35,8 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/memory.hpp"
 #include "mixer/mixer.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 namespace mixer {
@@ -105,8 +105,8 @@ class Broyden2 : public Mixer<FUNCS...>
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
         , linear_mix_rmse_tol_(linear_mix_rmse_tol)
-        , S_(max_history, max_history)
-        , gamma_(max_history)
+        , S_({max_history, max_history})
+        , gamma_({max_history})
     {
     }
 
@@ -189,8 +189,8 @@ class Broyden2 : public Mixer<FUNCS...>
     double beta0_;
     double beta_scaling_factor_;
     double linear_mix_rmse_tol_;
-    sddk::mdarray<double, 2> S_;
-    sddk::mdarray<double, 1> gamma_;
+    mdarray<double, 2> S_;
+    mdarray<double, 1> gamma_;
 };
 } // namespace mixer
 } // namespace sirius

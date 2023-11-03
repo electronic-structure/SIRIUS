@@ -46,8 +46,8 @@ double density_residual_hartree_energy(Density const& rho1__, Density const& rho
     return eh;
 }
 
-void Potential::poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qmt__,
-                                      sddk::mdarray<std::complex<double>, 2>& qit__,
+void Potential::poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__,
+                                      mdarray<std::complex<double>, 2>& qit__,
                                       std::complex<double>* rho_pw__)
 {
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
@@ -66,29 +66,29 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qm
         double R = unit_cell_.atom_type(iat).mt_radius();
         int na = unit_cell_.atom_type(iat).num_atoms();
 
-        sddk::mdarray<std::complex<double>, 2> pf;
-        sddk::mdarray<std::complex<double>, 2> qa;
-        sddk::mdarray<std::complex<double>, 2> qapf;
+        mdarray<std::complex<double>, 2> pf;
+        mdarray<std::complex<double>, 2> qa;
+        mdarray<std::complex<double>, 2> qapf;
 
         switch (ctx_.processing_unit()) {
-            case sddk::device_t::CPU: {
-                auto& mp = get_memory_pool(sddk::memory_t::host);
-                pf = sddk::mdarray<std::complex<double>, 2>(ngv, na, mp);
-                qa = sddk::mdarray<std::complex<double>, 2>(lmmax, na, mp);
-                qapf = sddk::mdarray<std::complex<double>, 2>(lmmax, ngv, mp);
+            case device_t::CPU: {
+                auto& mp = get_memory_pool(memory_t::host);
+                pf = mdarray<std::complex<double>, 2>({ngv, na}, mp);
+                qa = mdarray<std::complex<double>, 2>({lmmax, na}, mp);
+                qapf = mdarray<std::complex<double>, 2>({lmmax, ngv}, mp);
                 break;
             }
-            case sddk::device_t::GPU: {
-                auto& mp = get_memory_pool(sddk::memory_t::host);
-                auto& mpd = get_memory_pool(sddk::memory_t::device);
+            case device_t::GPU: {
+                auto& mp = get_memory_pool(memory_t::host);
+                auto& mpd = get_memory_pool(memory_t::device);
                 /* allocate on GPU */
-                pf = sddk::mdarray<std::complex<double>, 2>(nullptr, ngv, na);
+                pf = mdarray<std::complex<double>, 2>({ngv, na}, nullptr);
                 pf.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qa = sddk::mdarray<std::complex<double>, 2>(lmmax, na, mp);
+                qa = mdarray<std::complex<double>, 2>({lmmax, na}, mp);
                 qa.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qapf = sddk::mdarray<std::complex<double>, 2>(lmmax, ngv, mp);
+                qapf = mdarray<std::complex<double>, 2>({lmmax, ngv}, mp);
                 qapf.allocate(mpd);
                 break;
             }
@@ -104,20 +104,20 @@ void Potential::poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qm
         }
 
         switch (ctx_.processing_unit()) {
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 la::wrap(la::lib_t::blas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
                     unit_cell_.atom_type(iat).num_atoms(), &la::constant<std::complex<double>>::one(),
-                    qa.at(sddk::memory_t::host), qa.ld(), pf.at(sddk::memory_t::host), pf.ld(),
-                    &la::constant<std::complex<double>>::zero(), qapf.at(sddk::memory_t::host), qapf.ld());
+                    qa.at(memory_t::host), qa.ld(), pf.at(memory_t::host), pf.ld(),
+                    &la::constant<std::complex<double>>::zero(), qapf.at(memory_t::host), qapf.ld());
                 break;
             }
-            case sddk::device_t::GPU: {
-                qa.copy_to(sddk::memory_t::device);
+            case device_t::GPU: {
+                qa.copy_to(memory_t::device);
                 la::wrap(la::lib_t::gpublas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
                     unit_cell_.atom_type(iat).num_atoms(), &la::constant<std::complex<double>>::one(),
-                    qa.at(sddk::memory_t::device), qa.ld(), pf.at(sddk::memory_t::device), pf.ld(),
-                    &la::constant<std::complex<double>>::zero(), qapf.at(sddk::memory_t::device), qapf.ld());
-                qapf.copy_to(sddk::memory_t::host);
+                    qa.at(memory_t::device), qa.ld(), pf.at(memory_t::device), pf.ld(),
+                    &la::constant<std::complex<double>>::zero(), qapf.at(memory_t::device), qapf.ld());
+                qapf.copy_to(memory_t::host);
                 break;
             }
         }
@@ -235,7 +235,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
 
         /* add boundary condition and convert to Rlm */
         PROFILE("sirius::Potential::poisson|bc");
-        sddk::mdarray<double, 3> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1, unit_cell_.num_atom_types());
+        mdarray<double, 3> rRl({unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1, unit_cell_.num_atom_types()});
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             int nmtp = unit_cell_.atom_type(iat).num_mt_points();
             double R = unit_cell_.atom_type(iat).mt_radius();
@@ -270,7 +270,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
             vh_el_(it.i) = y00 * hartree_potential_->mt()[it.i](0, 0);
 #endif
         }
-        ctx_.comm().allgather(vh_el_.at(sddk::memory_t::host), unit_cell_.spl_num_atoms().local_size(),
+        ctx_.comm().allgather(vh_el_.at(memory_t::host), unit_cell_.spl_num_atoms().local_size(),
                 unit_cell_.spl_num_atoms().global_offset());
     }
 

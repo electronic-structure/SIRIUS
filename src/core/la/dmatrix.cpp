@@ -30,11 +30,11 @@ namespace la {
 
 template <typename T>
 dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
-                    sddk::memory_t mem_type__)
-    : sddk::matrix<T>(splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
+                    memory_t mem_type__)
+    : sddk::matrix<T>({splindex_block_cyclic<>(num_rows__, n_blocks(blacs_grid__.num_ranks_row()),
                 block_id(blacs_grid__.rank_row()), bs_row__).local_size(),
             splindex_block_cyclic<>(num_cols__, n_blocks(blacs_grid__.num_ranks_col()),
-                block_id(blacs_grid__.rank_col()), bs_col__).local_size(), mem_type__)
+                block_id(blacs_grid__.rank_col()), bs_col__).local_size()}, mem_type__)
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
     , bs_row_(bs_row__)
@@ -72,7 +72,7 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& 
 }
 
 template <typename T>
-dmatrix<T>::dmatrix(int num_rows__, int num_cols__, sddk::memory_t mem_type__)
+dmatrix<T>::dmatrix(int num_rows__, int num_cols__, memory_t mem_type__)
     : sddk::matrix<T>(num_rows__, num_cols__, mem_type__)
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
@@ -235,7 +235,7 @@ sddk::mdarray<T, 1> dmatrix<T>::get_diag(int n__)
             }
         }
     }
-    blacs_grid_->comm().allreduce(d.template at(sddk::memory_t::host), n__);
+    blacs_grid_->comm().allreduce(d.template at(memory_t::host), n__);
     return d;
 }
 
@@ -252,7 +252,7 @@ void dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
             }
         }
     }
-    this->comm().allreduce(full_mtrx.template at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()));
+    this->comm().allreduce(full_mtrx.template at(memory_t::host), static_cast<int>(full_mtrx.size()));
 
     if (this->blacs_grid().comm().rank() == 0) {
         sirius::HDF5_tree h5(name__, sirius::hdf5_access_t::truncate);

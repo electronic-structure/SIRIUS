@@ -95,7 +95,7 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
 {
     std::complex<T> cs{0};
 #if defined(SIRIUS_GPU)
-    mdarray<std::complex<T>, 1> cs1(nwf__, memory_t::host, "checksum");
+    mdarray<std::complex<T>, 1> cs1({nwf__}, mdarray_label("checksum"));
     cs1.allocate(memory_t::device).zero(memory_t::device);
 
     if (std::is_same<T, float>::value) {
@@ -911,9 +911,9 @@ class Wave_functions_fft : public Wave_functions_base<T>
             mdarray<std::complex<T>, 2> wf_tmp;
             if (wf_->ld() == wf_->num_pw_) { /* pure plane-wave coeffs */
                 auto ptr = (wf_->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin());
-                wf_tmp = mdarray<std::complex<T>, 2>(ptr, wf_->num_pw_, b__.size());
+                wf_tmp = mdarray<std::complex<T>, 2>({wf_->num_pw_, b__.size()}, ptr);
             } else {
-                wf_tmp = mdarray<std::complex<T>, 2>(wf_->num_pw_, b__.size(), get_memory_pool(memory_t::host));
+                wf_tmp = mdarray<std::complex<T>, 2>({wf_->num_pw_, b__.size()}, get_memory_pool(memory_t::host));
                 for (int i = 0; i < b__.size(); i++) {
                     auto in_ptr = wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin() + i);
                     std::copy(in_ptr, in_ptr + wf_->num_pw_, wf_tmp.at(memory_t::host, 0, i));
@@ -1258,7 +1258,7 @@ inner_diag_local(memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_fu
         if (std::is_same<F, real_type<F>>::value) {
             reduced = lhs__.comm().rank() + 1;
         }
-        mdarray<F, 1> result_gpu(num_wf__.get());
+        mdarray<F, 1> result_gpu({num_wf__.get()});
         result_gpu.allocate(mem__).zero(mem__);
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
@@ -1365,10 +1365,10 @@ void axpby(memory_t mem__, wf::spin_range spins__, wf::band_range br__, F const*
 
             mdarray<F, 1> alpha;
             if (x__) {
-                alpha = mdarray<F, 1>(const_cast<F*>(alpha__), br__.size());
+                alpha = mdarray<F, 1>({br__.size()}, const_cast<F*>(alpha__));
                 alpha.allocate(mem__).copy_to(mem__);
             }
-            mdarray<F, 1> beta(const_cast<F*>(beta__), br__.size());
+            mdarray<F, 1> beta({br__.size()}, const_cast<F*>(beta__));
             beta.allocate(mem__).copy_to(mem__);
 
             auto ldx = x__ ? x__->ld() : 0;

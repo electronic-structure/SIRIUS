@@ -127,7 +127,7 @@ class Spline : public Radial_grid<U>
     void init_grid(Radial_grid<U> const& radial_grid__)
     {
         /* copy the grid points */
-        this->x_ = mdarray<U, 1>(radial_grid__.num_points());
+        this->x_ = mdarray<U, 1>({radial_grid__.num_points()});
         copy(radial_grid__.x(), this->x_);
         this->init();
     }
@@ -141,14 +141,14 @@ class Spline : public Radial_grid<U>
     Spline(Radial_grid<U> const& radial_grid__)
     {
         init_grid(radial_grid__);
-        coeffs_ = mdarray<T, 2>(this->num_points(), 4);
+        coeffs_ = mdarray<T, 2>({this->num_points(), 4});
         coeffs_.zero();
     }
     /// Constructor of a spline from a function.
     Spline(Radial_grid<U> const& radial_grid__, std::function<T(U)> f__)
     {
         init_grid(radial_grid__);
-        coeffs_ = mdarray<T, 2>(this->num_points(), 4);
+        coeffs_ = mdarray<T, 2>({this->num_points(), 4});
         for (int i = 0; i < this->num_points(); i++) {
             coeffs_(i, 0) = f__(this->x(i));
         }
@@ -159,7 +159,7 @@ class Spline : public Radial_grid<U>
     {
         init_grid(radial_grid__);
         assert(static_cast<int>(y__.size()) <= this->num_points());
-        coeffs_ = mdarray<T, 2>(this->num_points(), 4);
+        coeffs_ = mdarray<T, 2>({this->num_points(), 4});
         coeffs_.zero();
         int i{0};
         for (auto e : y__) {

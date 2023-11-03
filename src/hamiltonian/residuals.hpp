@@ -25,7 +25,6 @@
 #ifndef __RESIDUALS_HPP__
 #define __RESIDUALS_HPP__
 
-#include "SDDK/memory.hpp"
 #include "core/typedefs.hpp"
 #include "core/la/linalg.hpp"
 #include "core/wf/wave_functions.hpp"
@@ -125,8 +124,8 @@ namespace sirius {
  */
 template <typename T>
 static void
-compute_residuals(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands num_bands__,
-        sddk::mdarray<T, 1> const& eval__, wf::Wave_functions<T> const& hpsi__, wf::Wave_functions<T> const& opsi__,
+compute_residuals(memory_t mem__, wf::spin_range spins__, wf::num_bands num_bands__,
+        mdarray<T, 1> const& eval__, wf::Wave_functions<T> const& hpsi__, wf::Wave_functions<T> const& opsi__,
         wf::Wave_functions<T>& res__)
 {
     RTE_ASSERT(hpsi__.ld() == opsi__.ld());
@@ -163,9 +162,9 @@ compute_residuals(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands nu
 /// Apply preconditioner to the residuals.
 template <typename T>
 void
-apply_preconditioner(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands num_bands__,
-        wf::Wave_functions<T>& res__, sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
-        sddk::mdarray<T, 1> const& eval__)
+apply_preconditioner(memory_t mem__, wf::spin_range spins__, wf::num_bands num_bands__,
+        wf::Wave_functions<T>& res__, mdarray<T, 2> const& h_diag__, mdarray<T, 2> const& o_diag__,
+        mdarray<T, 1> const& eval__)
 {
     PROFILE("sirius::apply_preconditioner");
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
@@ -191,10 +190,10 @@ apply_preconditioner(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands
 
 template <typename T, typename F>
 static auto
-normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__, wf::num_bands num_bands__,
-                                    sddk::mdarray<T, 1> const& eval__, wf::Wave_functions<T> const& hpsi__,
+normalized_preconditioned_residuals(memory_t mem__, wf::spin_range spins__, wf::num_bands num_bands__,
+                                    mdarray<T, 1> const& eval__, wf::Wave_functions<T> const& hpsi__,
                                     wf::Wave_functions<T> const& opsi__, wf::Wave_functions<T>& res__,
-                                    sddk::mdarray<T, 2> const& h_diag__, sddk::mdarray<T, 2> const& o_diag__,
+                                    mdarray<T, 2> const& h_diag__, mdarray<T, 2> const& o_diag__,
                                     T norm_tolerance__, bool gamma__)
 {
     PROFILE("sirius::normalized_preconditioned_residuals");
@@ -274,12 +273,12 @@ normalized_preconditioned_residuals(sddk::memory_t mem__, wf::spin_range spins__
  */
 template <typename T, typename F>
 auto
-residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
-          int N__, int num_bands__, int num_locked__, sddk::mdarray<real_type<F>, 1>& eval__, la::dmatrix<F>& evec__,
+residuals(Simulation_context& ctx__, memory_t mem__, wf::spin_range sr__,
+          int N__, int num_bands__, int num_locked__, mdarray<real_type<F>, 1>& eval__, la::dmatrix<F>& evec__,
           wf::Wave_functions<T>& hphi__, wf::Wave_functions<T>& ophi__,
           wf::Wave_functions<T>& hpsi__, wf::Wave_functions<T>& opsi__,
-          wf::Wave_functions<T>& res__, sddk::mdarray<T, 2> const& h_diag__,
-          sddk::mdarray<T, 2> const& o_diag__, bool estimate_eval__, T norm_tolerance__,
+          wf::Wave_functions<T>& res__, mdarray<T, 2> const& h_diag__,
+          mdarray<T, 2> const& o_diag__, bool estimate_eval__, T norm_tolerance__,
           std::function<bool(int, int)> is_converged__)
 {
     PROFILE("sirius::residuals");
@@ -290,7 +289,7 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
 
     la::dmatrix<F> evec_tmp;
 
-    sddk::mdarray<T, 1> eval(num_bands__);
+    mdarray<T, 1> eval({num_bands__});
     eval = [&](size_t j) -> T { return eval__[j]; };
 
     la::dmatrix<F>* evec_ptr{nullptr};
@@ -351,14 +350,14 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem__, wf::spin_range sr__,
             }
         }
         if (is_device_memory(mem__) && evec_tmp.blacs_grid().comm().size() == 1) {
-            evec_tmp.allocate(sddk::memory_t::device);
+            evec_tmp.allocate(memory_t::device);
         }
     } else {
         evec_ptr = &evec__;
         num_residuals = num_bands__;
     }
     if (is_device_memory(mem__)) {
-        eval.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+        eval.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     for (auto s = sr__.begin(); s != sr__.end(); s++) {

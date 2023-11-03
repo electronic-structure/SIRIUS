@@ -266,8 +266,8 @@ class Density : public Field4D
         \f]
      */
     template <int num_mag_dims>
-    void reduce_density_matrix(Atom_type const& atom_type__, sddk::mdarray<std::complex<double>, 3> const& zdens__,
-                               sddk::mdarray<double, 3>& mt_density_matrix__);
+    void reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::complex<double>, 3> const& zdens__,
+                               mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
     /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -298,7 +298,7 @@ class Density : public Field4D
         \tparam F  Type of the wave-functions inner product (used in pp-pw).
      */
     template <typename T, typename F>
-    void add_k_point_contribution_dm(K_point<T>& kp__, sddk::mdarray<std::complex<double>, 4>& density_matrix__);
+    void add_k_point_contribution_dm(K_point<T>& kp__, mdarray<std::complex<double>, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
@@ -404,7 +404,7 @@ class Density : public Field4D
     void augment();
 
     /// Generate augmentation charge density.
-    sddk::mdarray<std::complex<double>, 2> generate_rho_aug() const;
+    mdarray<std::complex<double>, 2> generate_rho_aug() const;
 
     /// Return core leakage for a specific atom symmetry class
     inline double core_leakage(int ic) const
@@ -494,14 +494,14 @@ class Density : public Field4D
     }
 
     /// Return density matrix for all atoms of a given type in auxiliary form.
-    sddk::mdarray<double, 3>
+    mdarray<double, 3>
     density_matrix_aux(Atom_type const& atom_type__) const;
 
-    sddk::mdarray<double, 2>
+    mdarray<double, 2>
     density_matrix_aux(typename atom_index_t::global ia__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    sddk::mdarray<double, 2>
+    mdarray<double, 2>
     compute_atomic_mag_mom() const;
 
     /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
@@ -585,7 +585,7 @@ class Density : public Field4D
         if (ngv != ctx_.gvec().num_gvec()) {
             RTE_THROW("wrong number of G-vectors");
         }
-        sddk::mdarray<int, 2> gv(3, ngv);
+        mdarray<int, 2> gv({3, ngv});
         fin.read("/parameters/gvec", gv);
 
         rho().hdf5_read(name__, "density", gv);

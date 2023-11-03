@@ -89,10 +89,10 @@ class Gaunt_coefficients
         lmmax3_ = sf::lmmax(lmax3_);
         lmmax2_ = sf::lmmax(lmax2_);
 
-        gaunt_packed_L1_L2_ = mdarray<std::vector<gaunt_L1_L2<T>>, 1>(lmmax3_);
+        gaunt_packed_L1_L2_ = mdarray<std::vector<gaunt_L1_L2<T>>, 1>({lmmax3_});
         gaunt_L1_L2<T> g12;
 
-        gaunt_packed_L3_ = mdarray<std::vector<gaunt_L3<T>>, 2>(lmmax1_, lmmax2_);
+        gaunt_packed_L3_ = mdarray<std::vector<gaunt_L3<T>>, 2>({lmmax1_, lmmax2_});
         gaunt_L3<T> g3;
 
         for (int l1 = 0, lm1 = 0; l1 <= lmax1_; l1++) {

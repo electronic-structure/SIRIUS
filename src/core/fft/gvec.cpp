@@ -49,7 +49,8 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
 {
     PROFILE("fft::Gvec::find_z_columns");
 
-    sddk::mdarray<int, 2> non_zero_columns(fft_box__.limits(0), fft_box__.limits(1));
+    mdarray<int, 2> non_zero_columns({index_range(fft_box__.limits(0).first, fft_box__.limits(0).second + 1),
+            index_range(fft_box__.limits(1).first, fft_box__.limits(1).second)});
     non_zero_columns.zero();
 
     num_gvec_ = 0;
@@ -130,7 +131,7 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
     if (bare_gvec_) {
         auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
-        std::fill(non_zero_columns.at(sddk::memory_t::host), non_zero_columns.at(sddk::memory_t::host) + non_zero_columns.size(), -1);
+        std::fill(non_zero_columns.at(memory_t::host), non_zero_columns.at(memory_t::host) + non_zero_columns.size(), -1);
         for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
             non_zero_columns(z_columns_[i].x, z_columns_[i].y) = i;
         }
@@ -283,7 +284,7 @@ void Gvec::find_gvec_shells()
     auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
     num_gvec_shells_ = 0;
-    gvec_shell_      = sddk::mdarray<int, 1>(num_gvec_, sddk::memory_t::host, "gvec_shell_");
+    gvec_shell_      = mdarray<int, 1>({num_gvec_}, mdarray_label("gvec_shell_"));
 
     std::fill(&gvec_shell_[0], &gvec_shell_[0] + num_gvec_, -1);
 
@@ -330,7 +331,7 @@ void Gvec::find_gvec_shells()
         }
     }
 
-    gvec_shell_len_ = sddk::mdarray<double, 1>(num_gvec_shells_, sddk::memory_t::host, "gvec_shell_len_");
+    gvec_shell_len_ = mdarray<double, 1>({num_gvec_shells_}, mdarray_label("gvec_shell_len_"));
     std::fill(&gvec_shell_len_[0], &gvec_shell_len_[0] + num_gvec_shells_, 0);
 
     std::vector<int> ngv_sh(num_gvec_shells_, 0);
@@ -371,8 +372,8 @@ void Gvec::find_gvec_shells()
 void
 Gvec::init_gvec_local()
 {
-    gvec_  = sddk::mdarray<int, 2>(3, count(), sddk::memory_t::host, "gvec_");
-    gkvec_ = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gkvec_");
+    gvec_  = mdarray<int, 2>({3, count()}, mdarray_label("gvec_"));
+    gkvec_ = mdarray<double, 2>({3, count()}, mdarray_label("gkvec_"));
 
     for (int igloc = 0; igloc < count(); igloc++) {
         int ig   = offset() + igloc;
@@ -387,13 +388,13 @@ Gvec::init_gvec_local()
 void
 Gvec::init_gvec_cart_local()
 {
-    gvec_cart_  = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gvec_cart_");
-    gkvec_cart_ = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gkvec_cart_");
+    gvec_cart_  = mdarray<double, 2>({3, count()}, mdarray_label("gvec_cart_"));
+    gkvec_cart_ = mdarray<double, 2>({3, count()}, mdarray_label("gkvec_cart_"));
     /* this arrays are allocated with GPU- friendly data layout */
-    gvec_tp_    = sddk::mdarray<double, 2>(count(), 2, sddk::memory_t::host, "gvec_tp_");
-    gkvec_tp_   = sddk::mdarray<double, 2>(count(), 2, sddk::memory_t::host, "gvec_tp_");
+    gvec_tp_    = mdarray<double, 2>({count(), 2}, mdarray_label("gvec_tp_"));
+    gkvec_tp_   = mdarray<double, 2>({count(), 2}, mdarray_label("gvec_tp_"));
     if (bare_gvec_) {
-        gvec_len_ = sddk::mdarray<double, 1>(count(), sddk::memory_t::host, "gvec_len_");
+        gvec_len_ = mdarray<double, 1>({count()}, mdarray_label("gvec_len_"));
     }
 
     for (int igloc = 0; igloc < count(); igloc++) {
@@ -426,12 +427,14 @@ Gvec::init(fft::Grid const& fft_grid)
     distribute_z_columns();
 
     gvec_index_by_xy_ =
-        sddk::mdarray<int, 3>(2, fft_grid.limits(0), fft_grid.limits(1), sddk::memory_t::host, "Gvec.gvec_index_by_xy_");
-    std::fill(gvec_index_by_xy_.at(sddk::memory_t::host), gvec_index_by_xy_.at(sddk::memory_t::host) + gvec_index_by_xy_.size(),
+        mdarray<int, 3>({2, index_range(fft_grid.limits(0).first, fft_grid.limits(0).second + 1),
+                index_range(fft_grid.limits(1).first, fft_grid.limits(1).second + 1)},
+                mdarray_label("Gvec.gvec_index_by_xy_"));
+    std::fill(gvec_index_by_xy_.at(memory_t::host), gvec_index_by_xy_.at(memory_t::host) + gvec_index_by_xy_.size(),
               -1);
 
     /* build the full G-vector index and reverse mapping */
-    gvec_full_index_ = sddk::mdarray<uint32_t, 1>(num_gvec_);
+    gvec_full_index_ = mdarray<uint32_t, 1>({num_gvec_});
     int ig{0};
     for (size_t i = 0; i < z_columns_.size(); i++) {
         /* starting G-vector index for a z-stick */
@@ -465,7 +468,7 @@ Gvec::init(fft::Grid const& fft_grid)
 
     if (gvec_base_) {
         /* the size of the mapping is equal to the local number of G-vectors in the base set */
-        gvec_base_mapping_ = sddk::mdarray<int, 1>(gvec_base_->count(), sddk::memory_t::host, "gvec_base_mapping_");
+        gvec_base_mapping_ = mdarray<int, 1>({gvec_base_->count()}, mdarray_label("gvec_base_mapping_"));
         /* loop over local G-vectors of a base set */
         for (int igloc = 0; igloc < gvec_base_->count(); igloc++) {
             /* G-vector in lattice coordinates */
@@ -619,8 +622,8 @@ void Gvec_fft::pile_gvec()
 
     RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[comm_fft().rank()]);
 
-    gvec_array_       = sddk::mdarray<int, 2>(3, this->count());
-    gkvec_cart_array_ = sddk::mdarray<double, 2>(3, this->count());
+    gvec_array_       = mdarray<int, 2>({3, this->count()});
+    gkvec_cart_array_ = mdarray<double, 2>({3, this->count()});
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         for (int j = 0; j < comm_fft_.size(); j++) {
             int r = rank_map_(j, i);
@@ -652,7 +655,7 @@ Gvec_fft::Gvec_fft(Gvec const& gvec__, mpi::Communicator const& comm_fft__, mpi:
           << "  gvec_.comm().size()    = " << gvec_.comm().size();
         RTE_THROW(s);
     }
-    rank_map_ = sddk::mdarray<int, 2>(comm_fft_.size(), comm_ortho_fft_.size());
+    rank_map_ = mdarray<int, 2>({comm_fft_.size(), comm_ortho_fft_.size()});
     rank_map_.zero();
     /* get a global rank */
     rank_map_(comm_fft_.rank(), comm_ortho_fft_.rank()) = gvec_.comm().rank();
@@ -708,8 +711,8 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     }
 
     /* local set of G-vectors in the remapped order */
-    gvec_remapped_       = sddk::mdarray<int, 2>(3, gvec_count_remapped(), sddk::memory_t::host, "gvec_remapped_");
-    gvec_shell_remapped_ = sddk::mdarray<int, 1>(gvec_count_remapped(), sddk::memory_t::host, "gvec_shell_remapped_");
+    gvec_remapped_       = mdarray<int, 2>({3, gvec_count_remapped()}, mdarray_label("gvec_remapped_"));
+    gvec_shell_remapped_ = mdarray<int, 1>({gvec_count_remapped()}, mdarray_label("gvec_shell_remapped_"));
     std::vector<int> counts(comm_.size(), 0);
     for (int r = 0; r < comm_.size(); r++) {
         for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {

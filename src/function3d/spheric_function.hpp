@@ -65,7 +65,7 @@ class Spheric_function: public mdarray<T, 2>
 
     /// Constructor.
     Spheric_function(int angular_domain_size__, Radial_grid<double> const& radial_grid__)
-        : mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points())
+        : mdarray<T, 2>({angular_domain_size__, radial_grid__.num_points()})
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
@@ -73,7 +73,7 @@ class Spheric_function: public mdarray<T, 2>
 
     /// Constructor.
     Spheric_function(T* ptr__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
-        : mdarray<T, 2>(ptr__, angular_domain_size__, radial_grid__.num_points())
+        : mdarray<T, 2>({angular_domain_size__, radial_grid__.num_points()}, ptr__)
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
@@ -81,7 +81,7 @@ class Spheric_function: public mdarray<T, 2>
 
     /// Constructor.
     Spheric_function(memory_pool& mp__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
-        : mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points(), mp__)
+        : mdarray<T, 2>({angular_domain_size__, radial_grid__.num_points()}, mp__)
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {

@@ -42,7 +42,7 @@ void setup_handler(elpa_t& handle__, int stage__, M const& m__, int na__, int ne
 }
 
 Eigensolver_elpa::Eigensolver_elpa(int stage__)
-    : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
+    : Eigensolver(ev_solver_t::elpa, true, memory_t::host, memory_t::host)
     , stage_(stage__)
 {
     if (!(stage_ == 1 || stage_ == 2)) {
@@ -88,12 +88,12 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
 
     PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
-    auto& mph = get_memory_pool(sddk::memory_t::host);
+    auto& mph = get_memory_pool(memory_t::host);
 
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_generalized_eigenvectors_d(handle, A__.at(sddk::memory_t::host), B__.at(sddk::memory_t::host),
-        w.get(), Z__.at(sddk::memory_t::host), 0, &error);
+    elpa_generalized_eigenvectors_d(handle, A__.at(memory_t::host), B__.at(memory_t::host),
+        w.get(), Z__.at(memory_t::host), 0, &error);
 
     if (error != ELPA_OK) {
         elpa_deallocate(handle, &error);
@@ -151,12 +151,12 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
 
     PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
-    auto& mph = get_memory_pool(sddk::memory_t::host);
+    auto& mph = get_memory_pool(memory_t::host);
 
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_generalized_eigenvectors_dc(handle, A__.at(sddk::memory_t::host), B__.at(sddk::memory_t::host),
-        w.get(), Z__.at(sddk::memory_t::host), 0, &error);
+    elpa_generalized_eigenvectors_dc(handle, A__.at(memory_t::host), B__.at(memory_t::host),
+        w.get(), Z__.at(memory_t::host), 0, &error);
 
     if (error != ELPA_OK) {
         elpa_deallocate(handle, &error);
@@ -225,10 +225,10 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
 
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
-    auto& mph = get_memory_pool(sddk::memory_t::host);
+    auto& mph = get_memory_pool(memory_t::host);
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_eigenvectors_a_h_a_d(handle, A__.at(sddk::memory_t::host), w.get(), Z__.at(sddk::memory_t::host), &error);
+    elpa_eigenvectors_a_h_a_d(handle, A__.at(memory_t::host), w.get(), Z__.at(memory_t::host), &error);
 
     elpa_deallocate(handle, &error);
 
@@ -268,11 +268,11 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
 
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
-    auto& mph = get_memory_pool(sddk::memory_t::host);
+    auto& mph = get_memory_pool(memory_t::host);
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    auto A_ptr = A__.size_local() ? A__.at(sddk::memory_t::host) : nullptr;
-    auto Z_ptr = Z__.size_local() ? Z__.at(sddk::memory_t::host) : nullptr;
+    auto A_ptr = A__.size_local() ? A__.at(memory_t::host) : nullptr;
+    auto Z_ptr = Z__.size_local() ? Z__.at(memory_t::host) : nullptr;
     elpa_eigenvectors_a_h_a_dc(handle, A_ptr, w.get(), Z_ptr, &error);
 
     elpa_deallocate(handle, &error);

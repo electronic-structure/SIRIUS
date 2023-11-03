@@ -50,7 +50,7 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
             auto Ttot = sym[isym].spg_op.inv_sym_atom_T[ja] - sym[isym].spg_op.inv_sym_atom_T[ia] +
                         dot(sym[isym].spg_op.invR, r3::vector<int>(T));
             if (!occ_mtrx_T_.count(Ttot)) {
-                occ_mtrx_T_[Ttot] = sddk::mdarray<std::complex<double>, 3>(nhwf, nhwf, ctx_.num_mag_comp());
+                occ_mtrx_T_[Ttot] = mdarray<std::complex<double>, 3>({nhwf, nhwf, ctx_.num_mag_comp()});
                 occ_mtrx_T_[Ttot].zero();
             }
         }
@@ -67,12 +67,12 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
     PROFILE("sirius::Occupation_matrix::add_k_point_contribution");
 
-    sddk::memory_t mem_host{sddk::memory_t::host};
-    sddk::memory_t mem{sddk::memory_t::host};
+    memory_t mem_host{memory_t::host};
+    memory_t mem{memory_t::host};
     la::lib_t la{la::lib_t::blas};
-    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        mem      = sddk::memory_t::device;
-        mem_host = sddk::memory_t::host_pinned;
+    if (ctx_.processing_unit() == device_t::GPU) {
+        mem      = memory_t::device;
+        mem_host = memory_t::host_pinned;
         la       = la::lib_t::gpublas;
     }
 
@@ -81,7 +81,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
     int nwfu = r.first;
 
-    sddk::matrix<std::complex<T>> occ_mtrx(nwfu, nwfu, get_memory_pool(sddk::memory_t::host), "occ_mtrx");
+    matrix<std::complex<T>> occ_mtrx({nwfu, nwfu}, get_memory_pool(memory_t::host), mdarray_label("occ_mtrx"));
     if (is_device_memory(mem)) {
         occ_mtrx.allocate(get_memory_pool(mem));
     }
@@ -114,7 +114,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         la::wrap(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
                         dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
         if (is_device_memory(mem)) {
-            occ_mtrx.copy_to(sddk::memory_t::host);
+            occ_mtrx.copy_to(memory_t::host);
         }
 
         #pragma omp parallel for schedule(static)
@@ -182,7 +182,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                             dm1.at(mem), dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem),
                             occ_mtrx.ld());
             if (is_device_memory(mem)) {
-                occ_mtrx.copy_to(sddk::memory_t::host);
+                occ_mtrx.copy_to(memory_t::host);
             }
 
             #pragma omp parallel for

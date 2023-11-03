@@ -91,7 +91,7 @@ class Radial_grid
     /// Constructor.
     Radial_grid(int num_points__)
     {
-        x_ = mdarray<T, 1>(num_points__, memory_t::host, "Radial_grid::x");
+        x_ = mdarray<T, 1>({num_points__}, mdarray_label("Radial_grid::x"));
     }
 
     Radial_grid(Radial_grid<T>&& src__) = default;

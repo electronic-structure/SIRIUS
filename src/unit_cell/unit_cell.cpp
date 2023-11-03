@@ -688,12 +688,12 @@ Unit_cell::initialize()
     for (int iat = 0; iat < num_atom_types(); iat++) {
         int nat = atom_type(iat).num_atoms();
         if (nat > 0) {
-            atom_coord_.push_back(sddk::mdarray<double, 2>(nat, 3, sddk::memory_t::host));
-            if (parameters_.processing_unit() == sddk::device_t::GPU) {
-                atom_coord_.back().allocate(sddk::memory_t::device);
+            atom_coord_.push_back(mdarray<double, 2>({nat, 3}));
+            if (parameters_.processing_unit() == device_t::GPU) {
+                atom_coord_.back().allocate(memory_t::device);
             }
         } else {
-            atom_coord_.push_back(sddk::mdarray<double, 2>());
+            atom_coord_.push_back(mdarray<double, 2>());
         }
     }
 
@@ -738,8 +738,8 @@ Unit_cell::get_symmetry()
         }
     }
 
-    sddk::mdarray<double, 2> positions(3, num_atoms());
-    sddk::mdarray<double, 2> spins(3, num_atoms());
+    mdarray<double, 2> positions({3, num_atoms()});
+    mdarray<double, 2> spins({3, num_atoms()});
     std::vector<int> types(num_atoms());
     for (int ia = 0; ia < num_atoms(); ia++) {
         auto vp = atom(ia).position();
@@ -900,8 +900,8 @@ Unit_cell::update()
                     atom_coord_[iat](i, x) = atom(ia).position()[x];
                 }
             }
-            if (parameters_.processing_unit() == sddk::device_t::GPU) {
-                atom_coord_[iat].copy_to(sddk::memory_t::device);
+            if (parameters_.processing_unit() == device_t::GPU) {
+                atom_coord_[iat].copy_to(memory_t::device);
             }
         }
     }

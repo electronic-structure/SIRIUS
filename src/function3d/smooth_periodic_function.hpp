@@ -141,22 +141,25 @@ class Smooth_periodic_function
 
             int offs = (is_local_rg) ? 0 : spfft__.dim_x() * spfft__.dim_y() * spfft__.local_z_offset();
             /* wrap the pointer */
-            f_rg_ = mdarray<T, 1>(&sptr__->ptr[offs], fft::spfft_grid_size_local(spfft__));
+            f_rg_ = mdarray<T, 1>({fft::spfft_grid_size_local(spfft__)}, &sptr__->ptr[offs],
+                    mdarray_label("Smooth_periodic_function.f_rg_"));
 
         } else {
-            f_rg_ = mdarray<T, 1>(fft::spfft_grid_size_local(spfft__), mp, "Smooth_periodic_function.f_rg_");
+            f_rg_ = mdarray<T, 1>({fft::spfft_grid_size_local(spfft__)}, mp,
+                    mdarray_label("Smooth_periodic_function.f_rg_"));
         }
         f_rg_.zero();
 
-        f_pw_local_ = mdarray<std::complex<T>, 1>(gvecp_->gvec().count(), mp,
-                                                        "Smooth_periodic_function.f_pw_local_");
+        f_pw_local_ = mdarray<std::complex<T>, 1>({gvecp_->gvec().count()}, mp,
+                                            mdarray_label("Smooth_periodic_function.f_pw_local_"));
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
-            f_pw_fft_ = mdarray<std::complex<T>, 1>(gvecp_->count(), mp, "Smooth_periodic_function.f_pw_fft_");
+            f_pw_fft_ = mdarray<std::complex<T>, 1>({gvecp_->count()}, mp,
+                    mdarray_label("Smooth_periodic_function.f_pw_fft_"));
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
-            f_pw_fft_ = mdarray<std::complex<T>, 1>(&f_pw_local_[0], gvecp_->gvec().count());
+            f_pw_fft_ = mdarray<std::complex<T>, 1>({gvecp_->gvec().count()}, &f_pw_local_[0]);
         }
     }
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;

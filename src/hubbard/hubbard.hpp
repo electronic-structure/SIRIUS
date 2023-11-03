@@ -165,7 +165,7 @@ class Hubbard
      *    - compute \f$ \frac{\partial}{\partial {\bf r}_{\alpha}} {\bf O}^{-1/2} = -{\bf U}\tilde {\bf X}{\bf U}^{H} \f$
      */
     void compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                         sddk::mdarray<std::complex<double>, 5>& dn__);
+                                         mdarray<std::complex<double>, 5>& dn__);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
@@ -173,7 +173,7 @@ class Hubbard
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
     void compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                                sddk::mdarray<std::complex<double>, 4>& dn__);
+                                                mdarray<std::complex<double>, 4>& dn__);
 
     void set_hubbard_U_plus_V()
     {

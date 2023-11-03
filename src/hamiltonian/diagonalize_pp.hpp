@@ -104,10 +104,11 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
     auto& Dop = Hk__.H0().D();
     auto& Qop = Hk__.H0().Q();
 
-    sddk::mdarray<F, 2> dop(ctx.unit_cell().max_mt_basis_size(), ctx.unit_cell().max_mt_basis_size());
-    sddk::mdarray<F, 2> qop(ctx.unit_cell().max_mt_basis_size(), ctx.unit_cell().max_mt_basis_size());
+    int const nmt = ctx.unit_cell().max_mt_basis_size();
+    mdarray<F, 2> dop({nmt, nmt});
+    mdarray<F, 2> qop({nmt, ctx.unit_cell().max_mt_basis_size()});
 
-    sddk::mdarray<F, 2> btmp(kp__.num_gkvec_row(), ctx.unit_cell().max_mt_basis_size());
+    mdarray<F, 2> btmp({kp__.num_gkvec_row(), ctx.unit_cell().max_mt_basis_size()});
 
     auto bp_gen_row    = kp__.beta_projectors_row().make_generator();
     auto bp_coeffs_row = bp_gen_row.prepare();
@@ -179,7 +180,7 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
         la::dmatrix<F> ovlp1(kp__.num_gkvec(), kp__.num_gkvec(), ctx.blacs_grid(), bs, bs);
         la::dmatrix<F> evec(kp__.num_gkvec(), kp__.num_gkvec(), ctx.blacs_grid(), bs, bs);
 
-        sddk::copy(ovlp, ovlp1);
+        copy(ovlp, ovlp1);
 
         std::vector<real_type<F>> eo(kp__.num_gkvec());
 
@@ -214,7 +215,7 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 /// Diagonalize S-operator of the ultrasoft or PAW methods.
 /** Sometimes this is needed to check the quality of pseudopotential. */
 template <typename T, typename F>
-inline sddk::mdarray<real_type<F>, 1>
+inline mdarray<real_type<F>, 1>
 diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 {
     PROFILE("sirius::diag_S_davidson");
@@ -281,7 +282,7 @@ diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
         itso.residual_tolerance(), itso.num_steps(), itso.locking(), 10, itso.converge_by_energy(), itso.extra_ortho(),
         std::cout, 0);
 
-    sddk::mdarray<real_type<F>, 1> eval(nevec);
+    mdarray<real_type<F>, 1> eval({nevec});
     for (int i = 0; i < nevec; i++) {
         eval(i) = result.eval(i, 0);
     }
@@ -296,7 +297,7 @@ diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
     auto& ctx = Hk__.H0().ctx();
     print_memory_usage(ctx.out(), FILE_LINE);
 
-    davidson_result_t result{0, sddk::mdarray<double, 2>(), true, {0, 0}};
+    davidson_result_t result{0, mdarray<double, 2>(), true, {0, 0}};
 
     auto& itso = ctx.cfg().iterative_solver();
     if (itso.type() == "davidson") {

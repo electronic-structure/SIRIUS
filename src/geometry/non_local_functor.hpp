@@ -29,14 +29,13 @@
 #include "k_point/k_point.hpp"
 #include "density/augmentation_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "SDDK/memory.hpp"
 
 namespace sirius {
 
 /** \tparam T  Precision type of the wave-functions */
 template<typename T, typename F>
 void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_base<T>& bp_base__,
-        K_point<T>& kp__, sddk::mdarray<real_type<F>, 2>& collect_res__)
+        K_point<T>& kp__, mdarray<real_type<F>, 2>& collect_res__)
 {
     PROFILE("sirius::add_k_point_contribution_nonlocal");
 
@@ -63,18 +62,14 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
         bp_gen.generate(beta_coeffs, icnk);
 
         /* store <beta|psi> for spin up and down */
-        sddk::matrix<F> beta_phi_chunks[2];
+        matrix<F> beta_phi_chunks[2];
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             int nbnd = kp__.num_occupied_bands(ispn);
-            // beta_phi_chunks[ispn] = bp.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
-            //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
             beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt),
                                                        beta_coeffs, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
-        // bp.dismiss();
 
-        // bp_base__.prepare();
         for (int x = 0; x < bp_base__.num_comp(); x++) {
             /* generate chunk for inner product of beta gradient */
             bp_base_gen.generate(beta_coeffs_base, icnk, x);

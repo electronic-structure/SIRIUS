@@ -114,7 +114,7 @@ int potrf(int n__, T* A__, int lda__)
         (cusolver_handle(), NULL, uplo, n, type_wrapper<T>::type, A__, lda, type_wrapper<T>::type, &d_lwork, &h_lwork));
 
     auto d_work = get_memory_pool(memory_t::device).get_unique_ptr<T>(d_lwork);
-    mdarray<int, 1> info(1);
+    mdarray<int, 1> info({1});
     info.allocate(get_memory_pool(memory_t::device));
 
     void* hwork{nullptr};
@@ -141,7 +141,7 @@ int trtri(int n__, T* A__, int lda__)
 
     auto h_work = get_memory_pool(memory_t::host).get_unique_ptr<char>(h_lwork + 1);
     auto d_work = get_memory_pool(memory_t::device).get_unique_ptr<char>(d_lwork);
-    mdarray<int, 1> info(1);
+    mdarray<int, 1> info({1});
     info.allocate(get_memory_pool(memory_t::device));
 
     CALL_CUSOLVER(cusolverDnXtrtri,

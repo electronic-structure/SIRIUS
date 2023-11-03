@@ -158,7 +158,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
         auto& atom_type = unit_cell_.atom_type(iat__);
         int nrf         = indexr_(atom_type.id()).size();
 
-        mdarray<double, 1> val(nrf);
+        mdarray<double, 1> val({nrf});
 
         if (atomic_wfc_callback_ == nullptr) {
             for (int i = 0; i < nrf; i++) {
@@ -203,7 +203,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
         int lmax        = atom_type.indexr().lmax();
         int nbrf        = atom_type.mt_radial_basis_size();
 
-        mdarray<double, 2> val(nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
+        mdarray<double, 2> val({nbrf * (nbrf + 1) / 2, 2 * lmax + 1});
 
         if (ri_callback_ == nullptr) {
             auto idx = iqdq(q__);
@@ -299,7 +299,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     {
         int nq = static_cast<int>(q__.size());
         splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
-        mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
+        mdarray<double, 2> result({nq, unit_cell_.num_atom_types()});
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).ps_core_charge_density().empty()) {
@@ -347,7 +347,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
     inline mdarray<double, 1> values(int iat__, double q__) const
     {
         auto& atom_type = unit_cell_.atom_type(iat__);
-        mdarray<double, 1> val(atom_type.mt_radial_basis_size());
+        mdarray<double, 1> val({atom_type.mt_radial_basis_size()});
         if (ri_callback_ == nullptr) {
             auto idx = iqdq(q__);
             for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
@@ -410,7 +410,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     {
         int nq = static_cast<int>(q__.size());
         splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
-        mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
+        mdarray<double, 2> result({nq, unit_cell_.num_atom_types()});
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).local_potential().empty()) {

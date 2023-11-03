@@ -25,21 +25,21 @@
 #ifndef __SERIALIZE_MDARRAY_HPP__
 #define __SERIALIZE_MDARRAY_HPP__
 
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "core/json.hpp"
 
 namespace sirius {
 
 template <typename T, int N>
 inline nlohmann::json
-serialize(sddk::mdarray<T, N> const& a__)
+serialize(mdarray<T, N> const& a__)
 {
     nlohmann::json dict;
-    std::array<sddk::mdarray_index_descriptor::index_type, N> begin;
-    std::array<sddk::mdarray_index_descriptor::index_type, N> end;
+    std::array<index_range::index_type, N> begin;
+    std::array<index_range::index_type, N> end;
     for (int i = 0; i < N; i++) {
         begin[i] = a__.dim(i).begin();
-        end[i] = a__.dim(i).begin();
+        end[i] = a__.dim(i).end();
     }
     dict["begin"] = begin;
     dict["end"] = end;
@@ -52,14 +52,14 @@ serialize(sddk::mdarray<T, N> const& a__)
 
 template <typename T, int N>
 inline nlohmann::json
-serialize(sddk::mdarray<std::complex<T>, N> const& a__)
+serialize(mdarray<std::complex<T>, N> const& a__)
 {
     nlohmann::json dict;
-    std::array<sddk::mdarray_index_descriptor::index_type, N> begin;
-    std::array<sddk::mdarray_index_descriptor::index_type, N> end;
+    std::array<index_range::index_type, N> begin;
+    std::array<index_range::index_type, N> end;
     for (int i = 0; i < N; i++) {
         begin[i] = a__.dim(i).begin();
-        end[i] = a__.dim(i).begin();
+        end[i] = a__.dim(i).end();
     }
     dict["begin"] = begin;
     dict["end"] = end;
@@ -73,7 +73,7 @@ serialize(sddk::mdarray<std::complex<T>, N> const& a__)
 
 template <typename T, int N>
 void
-write_to_json_file(sddk::mdarray<T, N> const& a__, std::string const& fname__)
+write_to_json_file(mdarray<T, N> const& a__, std::string const& fname__)
 {
     try {
         auto dict = serialize(a__);
