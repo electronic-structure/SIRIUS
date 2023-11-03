@@ -26,6 +26,7 @@
 #define __LINALG_HPP__
 
 #include <stdint.h>
+#include "core/memory.hpp"
 #include "core/acc/acc.hpp"
 #if defined(SIRIUS_GPU)
 #include "core/acc/acc_blas.hpp"
@@ -38,7 +39,6 @@
 #include "core/acc/cusolver.hpp"
 #endif
 #include "blas_lapack.h"
-#include "SDDK/memory.hpp"
 #include "dmatrix.hpp"
 #include "linalg_spla.hpp"
 
@@ -160,16 +160,16 @@ class wrap
 
     /// Invert a general matrix.
     template <typename T>
-    inline void geinv(ftn_int n, sddk::matrix<T>& A) const
+    inline void geinv(ftn_int n, matrix<T>& A) const
     {
         std::vector<int> ipiv(n);
-        int info = this->getrf(n, n, A.at(sddk::memory_t::host), A.ld(), &ipiv[0]);
+        int info = this->getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
             std::printf("getrf returned %i\n", info);
             exit(-1);
         }
 
-        info = this->getri(n, A.at(sddk::memory_t::host), A.ld(), &ipiv[0]);
+        info = this->getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
             std::printf("getri returned %i\n", info);
             exit(-1);
@@ -177,16 +177,16 @@ class wrap
     }
 
     template <typename T>
-    inline void syinv(ftn_int n, sddk::matrix<T>& A) const
+    inline void syinv(ftn_int n, matrix<T>& A) const
     {
         std::vector<int> ipiv(n);
-        int info = this->sytrf(n, A.at(sddk::memory_t::host), A.ld(), &ipiv[0]);
+        int info = this->sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
             std::printf("sytrf returned %i\n", info);
             exit(-1);
         }
 
-        info = this->sytri(n, A.at(sddk::memory_t::host), A.ld(), &ipiv[0]);
+        info = this->sytri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
             std::printf("sytri returned %i\n", info);
             exit(-1);
@@ -194,13 +194,13 @@ class wrap
     }
 
     template <typename T>
-    inline bool sysolve(ftn_int n, sddk::matrix<T> &A, sddk::mdarray<T, 1> &b) const
+    inline bool sysolve(ftn_int n, matrix<T> &A, mdarray<T, 1> &b) const
     {
         std::vector<int> ipiv(n);
-        int info = this->sytrf(n, A.at(sddk::memory_t::host), A.ld(), ipiv.data());
+        int info = this->sytrf(n, A.at(memory_t::host), A.ld(), ipiv.data());
         if (info) return false;
 
-        info = this->sytrs(n, 1, A.at(sddk::memory_t::host), A.ld(), ipiv.data(), b.at(sddk::memory_t::host), b.ld());
+        info = this->sytrs(n, 1, A.at(memory_t::host), A.ld(), ipiv.data(), b.at(memory_t::host), b.ld());
 
         return !info;
     }
@@ -259,12 +259,12 @@ wrap::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
             ftn_int lwork = -1;
             ftn_double_complex z;
             ftn_int info;
-            FORTRAN(pzgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+            FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
                              &info);
             lwork = static_cast<int>(z.real() + 1);
             std::vector<ftn_double_complex> work(lwork);
             std::vector<ftn_double_complex> tau(std::max(m, n));
-            FORTRAN(pzgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+            FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
                              work.data(), &lwork, &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -279,11 +279,11 @@ wrap::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
             ftn_double_complex z;
             ftn_int info;
             ftn_int lda = A.ld();
-            FORTRAN(zgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+            FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
             lwork = static_cast<int>(z.real() + 1);
             std::vector<ftn_double_complex> work(lwork);
             std::vector<ftn_double_complex> tau(std::max(m, n));
-            FORTRAN(zgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+            FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
             break;
         }
         default: {
@@ -304,12 +304,12 @@ wrap::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
             ftn_int lwork = -1;
             ftn_double z;
             ftn_int info;
-            FORTRAN(pdgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+            FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
                              &info);
             lwork = static_cast<int>(z + 1);
             std::vector<ftn_double> work(lwork);
             std::vector<ftn_double> tau(std::max(m, n));
-            FORTRAN(pdgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+            FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
                              work.data(), &lwork, &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -324,11 +324,11 @@ wrap::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
             ftn_double z;
             ftn_int info;
             ftn_int lda = A.ld();
-            FORTRAN(dgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+            FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
             lwork = static_cast<int>(z + 1);
             std::vector<ftn_double> work(lwork);
             std::vector<ftn_double> tau(std::max(m, n));
-            FORTRAN(dgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+            FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
             break;
         }
         default: {
@@ -349,12 +349,12 @@ wrap::geqrf<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
             ftn_int lwork = -1;
             ftn_complex z;
             ftn_int info;
-            FORTRAN(pcgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+            FORTRAN(pcgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
                              &info);
             lwork = static_cast<int>(z.real() + 1);
             std::vector<ftn_complex> work(lwork);
             std::vector<ftn_complex> tau(std::max(m, n));
-            FORTRAN(pcgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+            FORTRAN(pcgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
                              work.data(), &lwork, &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -369,11 +369,11 @@ wrap::geqrf<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
             ftn_complex z;
             ftn_int info;
             ftn_int lda = A.ld();
-            FORTRAN(cgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+            FORTRAN(cgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
             lwork = static_cast<int>(z.real() + 1);
             std::vector<ftn_complex> work(lwork);
             std::vector<ftn_complex> tau(std::max(m, n));
-            FORTRAN(cgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+            FORTRAN(cgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
             break;
         }
         default: {
@@ -394,12 +394,12 @@ wrap::geqrf<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia
             ftn_int lwork = -1;
             ftn_single z;
             ftn_int info;
-            FORTRAN(psgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
+            FORTRAN(psgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
                              &info);
             lwork = static_cast<int>(z + 1);
             std::vector<ftn_single> work(lwork);
             std::vector<ftn_single> tau(std::max(m, n));
-            FORTRAN(psgeqrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
+            FORTRAN(psgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
                              work.data(), &lwork, &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -414,11 +414,11 @@ wrap::geqrf<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia
             ftn_single z;
             ftn_int info;
             ftn_int lda = A.ld();
-            FORTRAN(sgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
+            FORTRAN(sgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
             lwork = static_cast<int>(z + 1);
             std::vector<ftn_single> work(lwork);
             std::vector<ftn_single> tau(std::max(m, n));
-            FORTRAN(sgeqrf)(&m, &n, A.at(sddk::memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+            FORTRAN(sgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
             break;
         }
         default: {
@@ -672,8 +672,8 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             ia++; ja++;
             ib++; jb++;
             ic++; jc++;
-            FORTRAN(psgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(sddk::memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(sddk::memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(sddk::memory_t::host), &ic, &jc, C.descriptor(),
+            FORTRAN(psgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -703,8 +703,8 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             ia++; ja++;
             ib++; jb++;
             ic++; jc++;
-            FORTRAN(pdgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(sddk::memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(sddk::memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(sddk::memory_t::host), &ic, &jc, C.descriptor(),
+            FORTRAN(pdgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -734,8 +734,8 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
             ia++; ja++;
             ib++; jb++;
             ic++; jc++;
-            FORTRAN(pcgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(sddk::memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(sddk::memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(sddk::memory_t::host), &ic, &jc, C.descriptor(),
+            FORTRAN(pcgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -767,8 +767,8 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
             ia++; ja++;
             ib++; jb++;
             ic++; jc++;
-            FORTRAN(pzgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(sddk::memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(sddk::memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(sddk::memory_t::host), &ic, &jc, C.descriptor(),
+            FORTRAN(pzgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -1533,7 +1533,7 @@ inline int wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_dou
             ftn_int info;
             ia++;
             ja++;
-            FORTRAN(pzgetrf)(&m, &n, A.at(sddk::memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
+            FORTRAN(pzgetrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
             return info;
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
@@ -1586,8 +1586,8 @@ wrap::tranc<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
             ia++; ja++;
             ic++; jc++;
 
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(sddk::memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(sddk::memory_t::host) : nullptr;
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
             FORTRAN(pctranc)(&m, &n, const_cast<ftn_complex*>(&constant<ftn_complex>::one()),
                              A_ptr, &ia, &ja, A.descriptor(),
@@ -1615,8 +1615,8 @@ inline void wrap::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
             ia++; ja++;
             ic++; jc++;
 
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(sddk::memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(sddk::memory_t::host) : nullptr;
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
             FORTRAN(pztranu)(&m, &n, const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::one()),
                              A_ptr, &ia, &ja, A.descriptor(),
@@ -1644,8 +1644,8 @@ inline void wrap::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
             ia++; ja++;
             ic++; jc++;
 
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(sddk::memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(sddk::memory_t::host) : nullptr;
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
             FORTRAN(pztranc)(&m, &n, const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::one()),
                              A_ptr, &ia, &ja, A.descriptor(),
@@ -1673,8 +1673,8 @@ inline void wrap::tranc<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A
             ia++; ja++;
             ic++; jc++;
 
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(sddk::memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(sddk::memory_t::host) : nullptr;
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
             FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&constant<ftn_single>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_single*>(&constant<ftn_single>::zero()),
@@ -1701,8 +1701,8 @@ inline void wrap::tranu<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A
             ia++; ja++;
             ic++; jc++;
 
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(sddk::memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(sddk::memory_t::host) : nullptr;
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
             FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&constant<ftn_double>::zero()),
@@ -1729,8 +1729,8 @@ inline void wrap::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A
             ia++; ja++;
             ic++; jc++;
 
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(sddk::memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(sddk::memory_t::host) : nullptr;
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
             FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr,
                             &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&constant<ftn_double>::zero()),
@@ -1909,7 +1909,7 @@ inline std::tuple<ftn_double, ftn_double, ftn_double> wrap::lartg(ftn_double f, 
 }
 
 template <typename T>
-inline void check_hermitian(std::string const& name, sddk::matrix<T> const& mtrx, int n = -1)
+inline void check_hermitian(std::string const& name, matrix<T> const& mtrx, int n = -1)
 {
     assert(mtrx.size(0) == mtrx.size(1));
 
@@ -1988,7 +1988,7 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
 }
 
 template <typename T>
-inline double check_diagonal(dmatrix<T>& mtrx__, int n__, sddk::mdarray<double, 1> const& diag__)
+inline double check_diagonal(dmatrix<T>& mtrx__, int n__, mdarray<double, 1> const& diag__)
 {
     double max_diff{0};
     for (int i = 0; i < mtrx__.num_cols_local(); i++) {
@@ -2038,13 +2038,13 @@ inline void unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T>
 
         /* compute tmp <= U A or U^{H} A */
         wrap(lib_t::blas).gemm(c1, 'N', n__, n__, n__, &constant<T>::one(),
-            U__.at(sddk::memory_t::host), U__.ld(), A__.at(sddk::memory_t::host), A__.ld(), &constant<T>::zero(),
-            tmp.at(sddk::memory_t::host), tmp.ld());
+            U__.at(memory_t::host), U__.ld(), A__.at(memory_t::host), A__.ld(), &constant<T>::zero(),
+            tmp.at(memory_t::host), tmp.ld());
 
         /* compute A <= tmp U^{H} or tmp U */
         wrap(lib_t::blas).gemm('N', c2, n__, n__, n__, &constant<T>::one(),
-            tmp.at(sddk::memory_t::host), tmp.ld(), U__.at(sddk::memory_t::host), U__.ld(), &constant<T>::zero(),
-            A__.at(sddk::memory_t::host), A__.ld());
+            tmp.at(memory_t::host), tmp.ld(), U__.at(memory_t::host), U__.ld(), &constant<T>::zero(),
+            A__.at(memory_t::host), A__.ld());
     }
 }
 

@@ -27,7 +27,6 @@
 
 #include <memory>
 #include <complex>
-#include "SDDK/memory.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"

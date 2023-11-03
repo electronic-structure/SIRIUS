@@ -70,7 +70,7 @@ class basis_functions_index
   private:
     std::vector<basis_function_index_descriptor> vbd_;
 
-    sddk::mdarray<int, 2> index_by_lm_order_;
+    mdarray<int, 2> index_by_lm_order_;
 
     int offset_lo_{-1};
 
@@ -91,7 +91,7 @@ class basis_functions_index
         }
 
         if (!expand_full_j__) {
-            index_by_lm_order_ = sddk::mdarray<int, 2>(sf::lmmax(indexr_.lmax()), indexr_.max_order());
+            index_by_lm_order_ = mdarray<int, 2>({sf::lmmax(indexr_.lmax()), indexr_.max_order()});
             std::fill(index_by_lm_order_.begin(), index_by_lm_order_.end(), -1);
             /* loop over radial functions */
             for (auto e : indexr_) {

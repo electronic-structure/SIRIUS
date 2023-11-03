@@ -33,7 +33,7 @@
 #include "core/constants.hpp"
 #include "core/rte/rte.hpp"
 #include "core/r3/r3.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 
@@ -426,10 +426,10 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 }
 
 /// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
-inline sddk::mdarray<double, 1> cosxn(int n__, double x__)
+inline mdarray<double, 1> cosxn(int n__, double x__)
 {
     assert(n__ > 0);
-    sddk::mdarray<double, 1> data(n__);
+    mdarray<double, 1> data({n__});
 
     double c0 = std::cos(x__);
     double c1 = 1;
@@ -443,10 +443,10 @@ inline sddk::mdarray<double, 1> cosxn(int n__, double x__)
 }
 
 /// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
-inline sddk::mdarray<double, 1> sinxn(int n__, double x__)
+inline mdarray<double, 1> sinxn(int n__, double x__)
 {
     assert(n__ > 0);
-    sddk::mdarray<double, 1> data(n__);
+    mdarray<double, 1> data({n__});
 
     double s0 = -std::sin(x__);
     double s1 = 0;
@@ -509,7 +509,7 @@ inline sddk::mdarray<double, 1> sinxn(int n__, double x__)
     Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
     \endverbatim
  */
-inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2>& data__, bool divide_by_r__ = true)
+inline void dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
     /* get spherical coordinates of the Cartesian vector */
     auto vrs = r3::spherical_coordinates(r__);
@@ -594,7 +594,7 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2
     }
 }
 
-inline void dRlm_dr_numerical(int lmax__, r3::vector<double>& r__, sddk::mdarray<double, 2>& data__, bool divide_by_r__ = true)
+inline void dRlm_dr_numerical(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
     /* get spherical coordinates of the Cartesian vector */
     auto vrs = r3::spherical_coordinates(r__);

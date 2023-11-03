@@ -31,7 +31,6 @@
 #include "radial/spline.hpp"
 #include "core/sht/sht.hpp"
 #include "core/math_tools.hpp"
-#include "SDDK/memory.hpp"
 
 namespace sirius {
 
@@ -40,7 +39,7 @@ namespace sirius {
     harmonics and spherical coordinates and also a conversion between real and complex spherical harmonics.
  */
 template <function_domain_t domain_t, typename T = std::complex<double>>
-class Spheric_function: public sddk::mdarray<T, 2>
+class Spheric_function: public mdarray<T, 2>
 {
   private:
 
@@ -66,7 +65,7 @@ class Spheric_function: public sddk::mdarray<T, 2>
 
     /// Constructor.
     Spheric_function(int angular_domain_size__, Radial_grid<double> const& radial_grid__)
-        : sddk::mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points())
+        : mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points())
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
@@ -74,15 +73,15 @@ class Spheric_function: public sddk::mdarray<T, 2>
 
     /// Constructor.
     Spheric_function(T* ptr__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
-        : sddk::mdarray<T, 2>(ptr__, angular_domain_size__, radial_grid__.num_points())
+        : mdarray<T, 2>(ptr__, angular_domain_size__, radial_grid__.num_points())
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
     }
 
     /// Constructor.
-    Spheric_function(sddk::memory_pool& mp__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
-        : sddk::mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points(), mp__)
+    Spheric_function(memory_pool& mp__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
+        : mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points(), mp__)
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
@@ -90,7 +89,7 @@ class Spheric_function: public sddk::mdarray<T, 2>
 
     /// Move constructor.
     Spheric_function(Spheric_function<domain_t, T>&& src__)
-        : sddk::mdarray<T, 2>(std::move(src__))
+        : mdarray<T, 2>(std::move(src__))
     {
         radial_grid_         = src__.radial_grid_;
         angular_domain_size_ = src__.angular_domain_size_;
@@ -100,7 +99,7 @@ class Spheric_function: public sddk::mdarray<T, 2>
     Spheric_function<domain_t, T>& operator=(Spheric_function<domain_t, T>&& src__)
     {
         if (this != &src__) {
-            sddk::mdarray<T, 2>::operator=(std::move(src__));
+            mdarray<T, 2>::operator=(std::move(src__));
             radial_grid_         = src__.radial_grid_;
             angular_domain_size_ = src__.angular_domain_size_;
         }
@@ -612,7 +611,7 @@ inline auto
 gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
     int lmax = sf::lmax(f__.angular_domain_size());
-    SHT sht(sddk::device_t::CPU, lmax);
+    SHT sht(device_t::CPU, lmax);
     auto zf = convert(f__);
     auto zg = gradient(zf);
     Spheric_vector_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());

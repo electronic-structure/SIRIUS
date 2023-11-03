@@ -27,7 +27,7 @@
 
 #include <limits>
 #include "core/mpi/communicator.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 
@@ -129,7 +129,7 @@ inline void deserialize(serializer& s__, std::vector<T>& vec__)
 
 /// Serialize multidimentional array.
 template <typename T, int N>
-void serialize(serializer& s__, sddk::mdarray<T, N> const& array__)
+void serialize(serializer& s__, mdarray<T, N> const& array__)
 {
     serialize(s__, array__.size());
     if (array__.size() == 0) {
@@ -144,22 +144,22 @@ void serialize(serializer& s__, sddk::mdarray<T, N> const& array__)
 
 /// Deserialize multidimentional array.
 template <typename T, int N>
-void deserialize(serializer& s__, sddk::mdarray<T, N>& array__)
+void deserialize(serializer& s__, mdarray<T, N>& array__)
 {
     size_t sz;
     deserialize(s__, sz);
     if (sz == 0) {
-        array__ = sddk::mdarray<T, N>();
+        array__ = mdarray<T, N>();
         return;
     }
-    std::array<sddk::mdarray_index_descriptor, N> dims;
+    std::array<index_range, N> dims;
     for (int i = 0; i < N; i++) {
-        sddk::mdarray_index_descriptor::index_type begin, end;
+        index_range::index_type begin, end;
         deserialize(s__, begin);
         deserialize(s__, end);
-        dims[i] = sddk::mdarray_index_descriptor(begin, end);
+        dims[i] = index_range(begin, end);
     }
-    array__ = sddk::mdarray<T, N>(dims);
+    array__ = mdarray<T, N>(dims);
     s__.copyout(reinterpret_cast<uint8_t*>(&array__[0]), sizeof(T) * array__.size());
 }
 

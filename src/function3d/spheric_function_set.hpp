@@ -133,7 +133,7 @@ class Spheric_function_set
         for (int i = 0; i < spl_atoms__.size(); i++) {
             auto loc = spl_atoms__.location(typename I::global(i));
             int ia = atoms_[i];
-            unit_cell_->comm().bcast(func_[ia].at(sddk::memory_t::host), static_cast<int>(func_[ia].size()), loc.ib);
+            unit_cell_->comm().bcast(func_[ia].at(memory_t::host), static_cast<int>(func_[ia].size()), loc.ib);
         }
     }
 
@@ -214,7 +214,7 @@ copy(Spheric_function_set<T, I> const& src__, spheric_function_set_ptr_t<T> dest
             if (src__[ia].angular_domain_size() > dest__.lmmax) {
                 RTE_THROW("wrong angular_domain_size");
             }
-            sddk::mdarray<T, 2> rlm(p, dest__.lmmax, dest__.nrmtmax);
+            mdarray<T, 2> rlm({dest__.lmmax, dest__.nrmtmax}, p);
             for (int ir = 0; ir < src__[ia].radial_grid().num_points(); ir++) {
                 for (int lm = 0; lm < src__[ia].angular_domain_size(); lm++) {
                     rlm(lm, ir) = src__[ia](lm, ir);
@@ -242,7 +242,7 @@ copy(spheric_function_set_ptr_t<T> const src__, Spheric_function_set<T, I>& dest
             if (dest__[ia].angular_domain_size() > src__.lmmax) {
                 RTE_THROW("wrong angular_domain_size");
             }
-            sddk::mdarray<T, 2> rlm(p, src__.lmmax, src__.nrmtmax);
+            mdarray<T, 2> rlm({src__.lmmax, src__.nrmtmax}, p);
             for (int ir = 0; ir < dest__[ia].radial_grid().num_points(); ir++) {
                 for (int lm = 0; lm < dest__[ia].angular_domain_size(); lm++) {
                     dest__[ia](lm, ir) = rlm(lm, ir);

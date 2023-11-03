@@ -44,19 +44,19 @@ namespace sirius {
 
 namespace sht {
 
-sddk::mdarray<double, 2>
+mdarray<double, 2>
 wigner_d_matrix(int l, double beta);
 
 template <typename T>
-sddk::mdarray<T, 2>
+mdarray<T, 2>
 rotation_matrix_l(int l, r3::vector<double> euler_angles, int proper_rotation);
 
 template <typename T>
 void
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, sddk::mdarray<T, 2>& rotm);
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm);
 
 template <typename T>
-std::vector<sddk::mdarray<T, 2>>
+std::vector<mdarray<T, 2>>
 rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 double
@@ -81,7 +81,7 @@ class SHT // TODO: better name
 {
   private:
     /// Type of processing unit.
-    sddk::device_t pu_;
+    device_t pu_;
 
     /// Maximum \f$ \ell \f$ of spherical harmonics.
     int lmax_;
@@ -93,32 +93,32 @@ class SHT // TODO: better name
     int num_points_;
 
     /// Cartesian coordinates of points (normalized to 1).
-    sddk::mdarray<double, 2> coord_;
+    mdarray<double, 2> coord_;
 
     /// \f$ (\theta, \phi) \f$ angles of points.
-    sddk::mdarray<double, 2> tp_;
+    mdarray<double, 2> tp_;
 
     /// Point weights.
     std::vector<double> w_;
 
     /// Backward transformation from Ylm to spherical coordinates.
-    sddk::mdarray<std::complex<double>, 2> ylm_backward_;
+    mdarray<std::complex<double>, 2> ylm_backward_;
 
     /// Forward transformation from spherical coordinates to Ylm.
-    sddk::mdarray<std::complex<double>, 2> ylm_forward_;
+    mdarray<std::complex<double>, 2> ylm_forward_;
 
     /// Backward transformation from Rlm to spherical coordinates.
-    sddk::mdarray<double, 2> rlm_backward_;
+    mdarray<double, 2> rlm_backward_;
 
     /// Forward transformation from spherical coordinates to Rlm.
-    sddk::mdarray<double, 2> rlm_forward_;
+    mdarray<double, 2> rlm_forward_;
 
     /// Type of spherical grid (0: Lebedev-Laikov, 1: uniform).
     int mesh_type_{0};
 
   public:
     /// Default constructor.
-    SHT(sddk::device_t pu__, int lmax__, int  mesh_type__ = 0)
+    SHT(device_t pu__, int lmax__, int  mesh_type__ = 0)
         : pu_(pu__)
         , lmax_(lmax__)
         , mesh_type_(mesh_type__)
@@ -145,9 +145,9 @@ class SHT // TODO: better name
         std::vector<double> y(num_points_);
         std::vector<double> z(num_points_);
 
-        coord_ = sddk::mdarray<double, 2>(3, num_points_);
+        coord_ = mdarray<double, 2>({3, num_points_});
 
-        tp_ = sddk::mdarray<double, 2>(2, num_points_);
+        tp_ = mdarray<double, 2>({2, num_points_});
 
         w_.resize(num_points_);
 
@@ -162,13 +162,13 @@ class SHT // TODO: better name
             }
         }
 
-        ylm_backward_ = sddk::mdarray<std::complex<double>, 2>(lmmax_, num_points_);
+        ylm_backward_ = mdarray<std::complex<double>, 2>({lmmax_, num_points_});
 
-        ylm_forward_ = sddk::mdarray<std::complex<double>, 2>(num_points_, lmmax_);
+        ylm_forward_ = mdarray<std::complex<double>, 2>({num_points_, lmmax_});
 
-        rlm_backward_ = sddk::mdarray<double, 2>(lmmax_, num_points_);
+        rlm_backward_ = mdarray<double, 2>({lmmax_, num_points_});
 
-        rlm_forward_ = sddk::mdarray<double, 2>(num_points_, lmmax_);
+        rlm_forward_ = mdarray<double, 2>({num_points_, lmmax_});
 
         for (int itp = 0; itp < num_points_; itp++) {
             switch (mesh_type_) {
@@ -215,14 +215,14 @@ class SHT // TODO: better name
         }
 
         switch (pu_) {
-            case sddk::device_t::GPU: {
-                ylm_forward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-                rlm_forward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-                ylm_backward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-                rlm_backward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+            case device_t::GPU: {
+                ylm_forward_.allocate(memory_t::device).copy_to(memory_t::device);
+                rlm_forward_.allocate(memory_t::device).copy_to(memory_t::device);
+                ylm_backward_.allocate(memory_t::device).copy_to(memory_t::device);
+                rlm_backward_.allocate(memory_t::device).copy_to(memory_t::device);
                 break;
             }
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 break;
             }
         }

@@ -25,7 +25,6 @@
 #ifndef __LOCAL_OPERATOR_HPP__
 #define __LOCAL_OPERATOR_HPP__
 
-#include "SDDK/memory.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
 #include "core/rte/rte.hpp"

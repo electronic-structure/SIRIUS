@@ -25,7 +25,7 @@
 #ifndef __RADIAL_GRID_HPP__
 #define __RADIAL_GRID_HPP__
 
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "core/typedefs.hpp"
 
 namespace sirius {
@@ -48,14 +48,14 @@ class Radial_grid
 {
   protected:
     /// Radial grid points.
-    sddk::mdarray<T, 1> x_;
+    mdarray<T, 1> x_;
 
     /// Inverse values of radial grid points.
-    sddk::mdarray<T, 1> x_inv_;
+    mdarray<T, 1> x_inv_;
 
     /// Radial grid points difference.
     /** \f$ dx_{i} = x_{i+1} - x_{i} \f$ */
-    sddk::mdarray<T, 1> dx_;
+    mdarray<T, 1> dx_;
 
     /// Name of the grid type.
     std::string name_;
@@ -63,8 +63,8 @@ class Radial_grid
     /// Initialize the grid.
     void init()
     {
-        x_inv_ = sddk::mdarray<T, 1>(num_points(), sddk::memory_t::host, "Radial_grid::x_inv");
-        dx_    = sddk::mdarray<T, 1>(num_points() - 1, sddk::memory_t::host, "Radial_grid::dx");
+        x_inv_ = mdarray<T, 1>({num_points()}, "Radial_grid::x_inv");
+        dx_    = mdarray<T, 1>({num_points() - 1}, "Radial_grid::dx");
 
         /* set x^{-1} */
         for (int i = 0; i < num_points(); i++) {
@@ -91,7 +91,7 @@ class Radial_grid
     /// Constructor.
     Radial_grid(int num_points__)
     {
-        x_ = sddk::mdarray<T, 1>(num_points__, sddk::memory_t::host, "Radial_grid::x");
+        x_ = mdarray<T, 1>(num_points__, memory_t::host, "Radial_grid::x");
     }
 
     Radial_grid(Radial_grid<T>&& src__) = default;
@@ -167,16 +167,16 @@ class Radial_grid
 
     void copy_to_device()
     {
-        x_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-        dx_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+        x_.allocate(memory_t::device).copy_to(memory_t::device);
+        dx_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
-    sddk::mdarray<T, 1> const& x() const
+    mdarray<T, 1> const& x() const
     {
         return x_;
     }
 
-    sddk::mdarray<T, 1> const& dx() const
+    mdarray<T, 1> const& dx() const
     {
         return dx_;
     }
@@ -186,9 +186,9 @@ class Radial_grid
         assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
         Radial_grid<T> r;
         r.name_  = name_ + " (segment)";
-        r.x_     = sddk::mdarray<T, 1>(num_points__);
-        r.dx_    = sddk::mdarray<T, 1>(num_points__ - 1);
-        r.x_inv_ = sddk::mdarray<T, 1>(num_points__);
+        r.x_     = mdarray<T, 1>(num_points__);
+        r.dx_    = mdarray<T, 1>(num_points__ - 1);
+        r.x_inv_ = mdarray<T, 1>(num_points__);
 
         std::memcpy(&r.x_(0), &x_(0), num_points__ * sizeof(T));
         std::memcpy(&r.dx_(0), &dx_(0), (num_points__ - 1) * sizeof(T));

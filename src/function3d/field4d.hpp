@@ -28,7 +28,7 @@
 #include <memory>
 #include <array>
 #include <stdexcept>
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "function3d/periodic_function.hpp"
 #include "core/typedefs.hpp"
 

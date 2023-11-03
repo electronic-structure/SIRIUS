@@ -62,10 +62,10 @@ class Matching_coefficients // TODO: compute on GPU
     std::vector<double> gkvec_len_;
 
     /// Spherical harmonics Ylm(theta, phi) of the G+k vectors.
-    sddk::mdarray<std::complex<double>, 2> gkvec_ylm_;
+    mdarray<std::complex<double>, 2> gkvec_ylm_;
 
     /// Precomputed values for the linear equations for matching coefficients.
-    sddk::mdarray<std::complex<double>, 4> alm_b_;
+    mdarray<std::complex<double>, 4> alm_b_;
 
     /// Generate matching coefficients for a specific \f$ \ell \f$ and order.
     /** \param [in] ngk           Number of G+k vectors.
@@ -116,7 +116,7 @@ class Matching_coefficients // TODO: compute on GPU
         int lmax_apw  = unit_cell__.lmax_apw();
         int lmmax_apw = sf::lmmax(lmax_apw);
 
-        gkvec_ylm_ = sddk::mdarray<std::complex<double>, 2>(gkvec_.count(), lmmax_apw);
+        gkvec_ylm_ = mdarray<std::complex<double>, 2>({gkvec_.count(), lmmax_apw});
         gkvec_len_.resize(gkvec_.count());
 
         /* get length and Ylm harmonics of G+k vectors */
@@ -140,13 +140,13 @@ class Matching_coefficients // TODO: compute on GPU
             }
         }
 
-        alm_b_ = sddk::mdarray<std::complex<double>, 4>(3, gkvec_.count(), lmax_apw + 1, unit_cell_.num_atom_types());
+        alm_b_ = mdarray<std::complex<double>, 4>({3, gkvec_.count(), lmax_apw + 1, unit_cell_.num_atom_types()});
         alm_b_.zero();
 
         #pragma omp parallel
         {
             /* value and first two derivatives of spherical Bessel functions */
-            sddk::mdarray<double, 2> sbessel_mt(lmax_apw + 2, 3);
+            mdarray<double, 2> sbessel_mt({lmax_apw + 2, 3});
 
             #pragma omp for
             for (int igk = 0; igk < gkvec_.count(); igk++) {
@@ -190,7 +190,7 @@ class Matching_coefficients // TODO: compute on GPU
         \param [out] alm       Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
      */
     template <bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
-    void generate(Atom const& atom__, sddk::mdarray<T, 2>& alm__) const
+    void generate(Atom const& atom__, mdarray<T, 2>& alm__) const
     {
         auto& type = atom__.type();
 

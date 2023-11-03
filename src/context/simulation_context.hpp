@@ -71,14 +71,14 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     out__ << std::endl;
 
     std::vector<std::string> labels = {"host"};
-    std::vector<sddk::memory_pool*> mp = {&get_memory_pool(sddk::memory_t::host)};
+    std::vector<memory_pool*> mp = {&get_memory_pool(memory_t::host)};
 
     int np{1};
     if (acc::num_devices() > 0) {
         labels.push_back("host pinned");
         labels.push_back("device");
-        mp.push_back(&get_memory_pool(sddk::memory_t::host_pinned));
-        mp.push_back(&get_memory_pool(sddk::memory_t::device));
+        mp.push_back(&get_memory_pool(memory_t::host_pinned));
+        mp.push_back(&get_memory_pool(memory_t::device));
         np = 3;
     }
 
@@ -243,16 +243,16 @@ class Simulation_context : public Simulation_parameters
     std::string start_time_tag_;
 
     /// 1D phase factors for each atom coordinate and G-vector index.
-    sddk::mdarray<std::complex<double>, 3> phase_factors_;
+    mdarray<std::complex<double>, 3> phase_factors_;
 
     /// 1D phase factors of the symmetry operations.
-    sddk::mdarray<std::complex<double>, 3> sym_phase_factors_;
+    mdarray<std::complex<double>, 3> sym_phase_factors_;
 
     /// Phase factors for atom types.
-    sddk::mdarray<std::complex<double>, 2> phase_factors_t_;
+    mdarray<std::complex<double>, 2> phase_factors_t_;
 
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
-    sddk::mdarray<int, 2> gvec_coord_;
+    mdarray<int, 2> gvec_coord_;
 
     /// Volume of the initial unit cell.
     /** This is needed to estimate the new cutoff for radial integrals. */
@@ -278,7 +278,7 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<la::Eigensolver> gen_evp_solver_;
 
     /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
-    sddk::memory_t host_memory_t_{sddk::memory_t::none};
+    memory_t host_memory_t_{memory_t::none};
 
     /// SPLA library context.
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
@@ -566,7 +566,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
-    void generate_phase_factors(int iat__, sddk::mdarray<std::complex<double>, 2>& phase_factors__) const;
+    void generate_phase_factors(int iat__, mdarray<std::complex<double>, 2>& phase_factors__) const;
 
     /// Find the lambda parameter used in the Ewald summation.
     /** Lambda parameter scales the erfc function argument:
@@ -621,7 +621,7 @@ class Simulation_context : public Simulation_parameters
     /// Return the memory type for processing unit.
     inline auto processing_unit_memory_t() const
     {
-        return (this->processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host : sddk::memory_t::device;
+        return (this->processing_unit() == device_t::CPU) ? memory_t::host : memory_t::device;
     }
 
     /// Set the size of the fine-grained FFT grid.

@@ -184,14 +184,14 @@ class Periodic_function
             fout[path__].write("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
             if (ctx_.full_potential()) {
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    fout[path__].write("f_mt_" + std::to_string(ia), mt_component_[ia].at(sddk::memory_t::host),
+                    fout[path__].write("f_mt_" + std::to_string(ia), mt_component_[ia].at(memory_t::host),
                             mt_component_[ia].size());
                 }
             }
         }
     }
 
-    void hdf5_read(std::string file_name__, std::string path__, sddk::mdarray<int, 2> const& gvec__)
+    void hdf5_read(std::string file_name__, std::string path__, mdarray<int, 2> const& gvec__)
     {
         HDF5_tree h5f(file_name__, hdf5_access_t::read_only);
 
@@ -199,7 +199,7 @@ class Periodic_function
         std::vector<std::complex<T>> v(gvec_.num_gvec());
         h5f[path__].read("f_pw", reinterpret_cast<T*>(v.data()), static_cast<int>(v.size() * 2));
 
-        sddk::mdarray<int, 1> igmap(gvec_.count());
+        mdarray<int, 1> igmap({gvec_.count()});
         for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
             r3::vector<int> G(&gvec__(0, ig));
             /* locl index in a new (current) layout */
@@ -215,7 +215,7 @@ class Periodic_function
 
         if (ctx_.full_potential()) {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                h5f[path__].read("f_mt_" + std::to_string(ia), mt_component_[ia].at(sddk::memory_t::host),
+                h5f[path__].read("f_mt_" + std::to_string(ia), mt_component_[ia].at(memory_t::host),
                         mt_component_[ia].size());
             }
         }

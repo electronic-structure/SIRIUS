@@ -78,8 +78,8 @@ class PAW_field4D
     void zero(int ia__)
     {
         for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
-            ae_components_[j][ia__].zero(sddk::memory_t::host);
-            ps_components_[j][ia__].zero(sddk::memory_t::host);
+            ae_components_[j][ia__].zero(memory_t::host);
+            ps_components_[j][ia__].zero(memory_t::host);
         }
     }
 

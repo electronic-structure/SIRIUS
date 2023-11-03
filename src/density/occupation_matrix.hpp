@@ -25,7 +25,6 @@
 #ifndef __OCCUPATION_MATRIX_HPP__
 #define __OCCUPATION_MATRIX_HPP__
 
-#include "SDDK/memory.hpp"
 #include "k_point/k_point.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
