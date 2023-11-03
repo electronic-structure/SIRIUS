@@ -1425,9 +1425,9 @@ _empty_like_inner(std::index_sequence<Ts...>& seq [[maybe_unused]], std::size_t 
                   memory_pool* mempool)
 {
     if (mempool == nullptr) {
-        return mdarray<numeric_t, sizeof...(Ts)>{dims[Ts]...};
+        return mdarray<numeric_t, sizeof...(Ts)>{std::array<index_range, sizeof...(Ts)>{dims[Ts]...}};
     } else {
-        mdarray<numeric_t, sizeof...(Ts)> out{dims[Ts]...};
+        mdarray<numeric_t, sizeof...(Ts)> out{std::array<index_range, sizeof...(Ts)>{dims[Ts]...}};
         out.allocate(*mempool);
         return out;
     }
