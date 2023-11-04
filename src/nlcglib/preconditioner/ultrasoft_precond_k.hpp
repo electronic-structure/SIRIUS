@@ -192,7 +192,7 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
         return P.apply(Y, simulation_context.processing_unit_memory_t());
     });
 
-    matrix<numeric_t> CQ(C.size(0), q_op.size(1), memory_t::host);
+    matrix<numeric_t> CQ({C.size(0), q_op.size(1)}, memory_t::host);
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
         C.allocate(memory_t::host);
         C.copy_to(memory_t::host);
