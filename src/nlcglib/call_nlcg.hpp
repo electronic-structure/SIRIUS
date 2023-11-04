@@ -49,7 +49,7 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
     int restart  = nlcg_params.restart();
     auto nlcg_pu = ctx.processing_unit();
     if(nlcg_params.processing_unit() != "") {
-        nlcg_pu = sddk::get_device_t(nlcg_params.processing_unit());
+        nlcg_pu = get_device_t(nlcg_params.processing_unit());
     }
 
     std::string smear = ctx.cfg().parameters().smearing();
@@ -76,11 +76,11 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
 
     // ultrasoft pp
     switch (nlcg_pu) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing, temp, tol, kappa, tau, maxiter, restart);
             break;
         }
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
             nlcglib::nlcg_us_device(energy, us_precond, S, smearing, temp, tol, kappa, tau, maxiter, restart);
             break;
         }
