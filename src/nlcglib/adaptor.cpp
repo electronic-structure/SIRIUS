@@ -44,24 +44,24 @@ std::shared_ptr<Matrix>
 make_vector(std::vector<wfc_ptr_t> const& wfct, Simulation_context const& ctx, K_point_set const& kset,
             nlcglib::memory_type memory = nlcglib::memory_type::none)
 {
-    std::map<sddk::memory_t, nlcglib::memory_type> memtype = {
-        {sddk::memory_t::device, nlcglib::memory_type::device},
-        {sddk::memory_t::host, nlcglib::memory_type::host},
-        {sddk::memory_t::host_pinned, nlcglib::memory_type::host}};
-    std::map<nlcglib::memory_type, sddk::memory_t> memtype_lookup = {
-        {nlcglib::memory_type::none, sddk::memory_t::none},
-        {nlcglib::memory_type::device, sddk::memory_t::device},
-        {nlcglib::memory_type::host, sddk::memory_t::host},
-        {nlcglib::memory_type::host, sddk::memory_t::host_pinned}};
+    std::map<memory_t, nlcglib::memory_type> memtype = {
+        {memory_t::device, nlcglib::memory_type::device},
+        {memory_t::host, nlcglib::memory_type::host},
+        {memory_t::host_pinned, nlcglib::memory_type::host}};
+    std::map<nlcglib::memory_type, memory_t> memtype_lookup = {
+        {nlcglib::memory_type::none, memory_t::none},
+        {nlcglib::memory_type::device, memory_t::device},
+        {nlcglib::memory_type::host, memory_t::host},
+        {nlcglib::memory_type::host, memory_t::host_pinned}};
 
-    sddk::memory_t target_memory = memtype_lookup.at(memory);
-    if (target_memory == sddk::memory_t::none) {
+    memory_t target_memory = memtype_lookup.at(memory);
+    if (target_memory == memory_t::none) {
         target_memory = ctx.processing_unit_memory_t();
     }
 
     std::vector<Matrix::buffer_t> data;
     std::vector<std::pair<int, int>> kpoint_indices;
-    // sddk::memory_t preferred_memory = ctx.preferred_memory_t();
+    // memory_t preferred_memory = ctx.preferred_memory_t();
     int num_spins = ctx.num_spins();
     int nb        = ctx.num_bands();
     for (auto i = 0u; i < wfct.size(); ++i) {
@@ -110,14 +110,14 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
     cphis_.resize(nk);
     for (auto it : kset.spl_num_kpoints()) {
         auto& kp                          = *kset.get<double>(it.i);
-        sddk::memory_t preferred_memory_t = ctx.processing_unit_memory_t();
+        memory_t preferred_memory_t = ctx.processing_unit_memory_t();
         auto num_mag_dims                 = wf::num_mag_dims(ctx.num_mag_dims());
         auto num_bands                    = wf::num_bands(ctx.num_bands());
         // make a new wf for Hamiltonian apply...
         hphis_[it.li] =
             std::make_shared<wf::Wave_functions<prec_t>>(kp.gkvec_sptr(), num_mag_dims, num_bands, preferred_memory_t);
         cphis_[it.li] = &kp.spinor_wave_functions();
-        hphis_[it.li]->allocate(sddk::memory_t::host);
+        hphis_[it.li]->allocate(memory_t::host);
     }
     // need to allocate wavefunctions on GPU
 }
@@ -151,8 +151,8 @@ Energy::compute()
         // compute band energies = diag(<psi|H|psi>)
         for (int ispn = 0; ispn < num_spins; ++ispn) {
             for (int jj = 0; jj < num_bands; ++jj) {
-                la::dmatrix<std::complex<double>> dmat(1, 1, sddk::memory_t::host);
-                dmat.allocate(sddk::memory_t::device);
+                la::dmatrix<std::complex<double>> dmat(1, 1, memory_t::host);
+                dmat.allocate(memory_t::device);
                 wf::band_range bandr{jj, jj + 1};
                 wf::inner(ctx.spla_context(), proc_mem_t, wf::spin_range(ispn),
                           /* bra */ kp.spinor_wave_functions(), bandr,
