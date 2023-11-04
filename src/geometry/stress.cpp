@@ -38,7 +38,7 @@ Stress::calc_stress_nonloc_aux()
 {
     PROFILE("sirius::Stress|nonloc");
 
-    sddk::mdarray<real_type<F>, 2> collect_result(9, ctx_.unit_cell().num_atoms());
+    mdarray<real_type<F>, 2> collect_result({9, ctx_.unit_cell().num_atoms()});
     collect_result.zero();
 
     stress_nonloc_.zero();
@@ -126,7 +126,7 @@ Stress::calc_stress_hubbard()
 
     auto nhwf = ctx_.unit_cell().num_hubbard_wf().first;
 
-    sddk::mdarray<std::complex<double>, 4> dn(nhwf, nhwf, 2, 9);
+    mdarray<std::complex<double>, 4> dn({nhwf, nhwf, 2, 9});
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
         dn.allocate(ctx_.processing_unit_memory_t());
     }
@@ -382,20 +382,20 @@ Stress::calc_stress_us()
     potential_.fft_transform(-1);
 
     la::lib_t la{la::lib_t::none};
-    sddk::memory_t qmem{sddk::memory_t::none};
+    memory_t qmem{memory_t::none};
 
-    sddk::memory_pool* mp{nullptr};
+    memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
-            mp   = &get_memory_pool(sddk::memory_t::host);
+        case device_t::CPU: {
+            mp   = &get_memory_pool(memory_t::host);
             la   = la::lib_t::blas;
-            qmem = sddk::memory_t::host;
+            qmem = memory_t::host;
             break;
         }
-        case sddk::device_t::GPU: {
-            mp   = &get_memory_pool(sddk::memory_t::host_pinned);
+        case device_t::GPU: {
+            mp   = &get_memory_pool(memory_t::host_pinned);
             la   = la::lib_t::spla;
-            qmem = sddk::memory_t::host;
+            qmem = memory_t::host;
             break;
         }
     }
@@ -414,8 +414,8 @@ Stress::calc_stress_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(atom_type);
 
-        sddk::mdarray<std::complex<double>, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
-                                                       get_memory_pool(sddk::memory_t::host));
+        mdarray<std::complex<double>, 2> phase_factors({atom_type.num_atoms(), ctx_.gvec().count()},
+                                                       get_memory_pool(memory_t::host));
 
         PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for
@@ -427,8 +427,8 @@ Stress::calc_stress_us()
         }
         PROFILE_STOP("sirius::Stress|us|phase_fac");
 
-        sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
-        sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
+        mdarray<double, 2> v_tmp({atom_type.num_atoms(), ctx_.gvec().count() * 2}, *mp);
+        mdarray<double, 2> tmp({nbf * (nbf + 1) / 2, atom_type.num_atoms()}, *mp);
         /* over spin components, can be from 1 to 4 */
         for (int nu = 0; nu < 3; nu++) {
             /* generate dQ(G)/dG */
@@ -460,8 +460,8 @@ Stress::calc_stress_us()
                     PROFILE_START("sirius::Stress|us|gemm");
                     la::wrap(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                     &la::constant<double>::one(), q_deriv.q_pw().at(qmem), q_deriv.q_pw().ld(),
-                                    v_tmp.at(sddk::memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
-                                    tmp.at(sddk::memory_t::host), tmp.ld());
+                                    v_tmp.at(memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
+                                    tmp.at(memory_t::host), tmp.ld());
                     PROFILE_STOP("sirius::Stress|us|gemm");
 
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {

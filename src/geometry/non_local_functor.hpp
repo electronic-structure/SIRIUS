@@ -66,7 +66,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             int nbnd = kp__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt),
+            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt),
                                                        beta_coeffs, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 
@@ -81,7 +81,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
                 /* inner product of beta gradient and WF */
                 auto bp_base_phi_chunk = inner_prod_beta<F>(
-                    ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), beta_coeffs_base,
+                    ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt), beta_coeffs_base,
                     kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
                 splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
@@ -101,7 +101,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
                     /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                     auto for_bnd = [&](int ibf, int jbf, std::complex<real_type<F>> dij, real_type<F> qij,
-                                       sddk::matrix<F>& beta_phi_chunk) {
+                                       matrix<F>& beta_phi_chunk) {
                         /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd.global_index(ibnd_loc);

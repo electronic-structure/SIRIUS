@@ -186,9 +186,9 @@ class Radial_grid
         assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
         Radial_grid<T> r;
         r.name_  = name_ + " (segment)";
-        r.x_     = mdarray<T, 1>(num_points__);
-        r.dx_    = mdarray<T, 1>(num_points__ - 1);
-        r.x_inv_ = mdarray<T, 1>(num_points__);
+        r.x_     = mdarray<T, 1>({num_points__});
+        r.dx_    = mdarray<T, 1>({num_points__ - 1});
+        r.x_inv_ = mdarray<T, 1>({num_points__});
 
         std::memcpy(&r.x_(0), &x_(0), num_points__ * sizeof(T));
         std::memcpy(&r.dx_(0), &dx_(0), (num_points__ - 1) * sizeof(T));

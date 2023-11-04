@@ -132,8 +132,8 @@ multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
         /* The repack on A and P changes the eigenvalue vectors of A and P respectively */
         /* The eigenvalues of the Linear_response_operator A are sent to device when needed */
         /* Update P.eigvals on device here */
-        if (sddk::is_device_memory(P.mem)) {
-            P.eigvals.copy_to(sddk::memory_t::device);
+        if (is_device_memory(P.mem)) {
+            P.eigvals.copy_to(memory_t::device);
         }
 
         // In the first iteration we have U == 0, so no need for an axpy.
@@ -182,7 +182,7 @@ namespace lr {
 
 struct Wave_functions_wrap {
     wf::Wave_functions<double> *x;
-    sddk::memory_t mem;
+    memory_t mem;
 
     typedef std::complex<double> value_type;
 
@@ -251,11 +251,11 @@ struct Identity_preconditioner {
 };
 
 struct Smoothed_diagonal_preconditioner {
-    sddk::mdarray<double, 2> H_diag;
-    sddk::mdarray<double, 2> S_diag;
-    sddk::mdarray<double, 1> eigvals;
+    mdarray<double, 2> H_diag;
+    mdarray<double, 2> S_diag;
+    mdarray<double, 1> eigvals;
     int num_active;
-    sddk::memory_t mem;
+    memory_t mem;
     wf::spin_range sr;
 
     void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
@@ -290,7 +290,7 @@ struct Linear_response_operator {
     double alpha_pv;
     wf::band_range br;
     wf::spin_range sr;
-    sddk::memory_t mem;
+    memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
 
     Linear_response_operator(
@@ -304,7 +304,7 @@ struct Linear_response_operator {
         double alpha_pv,
         wf::band_range br,
         wf::spin_range sr,
-        sddk::memory_t mem)
+        memory_t mem)
     : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
       alpha_pv(alpha_pv), br(br), sr(sr), mem(mem), overlap(br.size(), br.size())
     {

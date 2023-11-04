@@ -3,7 +3,6 @@
 /* test FFT: transform single harmonic and compare with plane wave exp(iGr) */
 
 using namespace sirius;
-using namespace sddk;
 
 template <typename T>
 int test_fft(cmd_args& args, device_t pu__)
@@ -38,11 +37,11 @@ int test_fft(cmd_args& args, device_t pu__)
     fft::spfft_transform_type<T> spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
         spl_z.local_size(), gvp.count(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
-    sddk::mdarray<std::complex<T>, 1> f(gvec.num_gvec());
+    mdarray<std::complex<T>, 1> f({gvec.num_gvec()});
     if (pu__ == device_t::GPU) {
         f.allocate(memory_t::device);
     }
-    sddk::mdarray<std::complex<T>, 1> ftmp(gvp.count());
+    mdarray<std::complex<T>, 1> ftmp({gvp.count()});
 
     int result{0};
 

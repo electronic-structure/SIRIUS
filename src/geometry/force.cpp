@@ -48,7 +48,7 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
 template <typename T>
 void Force::calc_forces_nonloc_aux()
 {
-    forces_nonloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_nonloc_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_nonloc_.zero();
 
     auto& spl_num_kp = kset_.spl_num_kpoints();
@@ -68,7 +68,7 @@ void Force::calc_forces_nonloc_aux()
     symmetrize_forces(ctx_.unit_cell(), forces_nonloc_);
 }
 
-sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
+mdarray<double, 2> const& Force::calc_forces_nonloc()
 {
     PROFILE("sirius::Force::calc_forces_nonloc");
 
@@ -84,7 +84,7 @@ sddk::mdarray<double, 2> const& Force::calc_forces_nonloc()
 
 template <typename T, typename F>
 void
-Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const
+Force::add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) const
 {
     /* if there are no beta projectors then get out there */
     if (ctx_.unit_cell().max_mt_basis_size() == 0) {
@@ -95,7 +95,7 @@ Force::add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forc
     auto mem = ctx_.processing_unit_memory_t();
     auto mg = kp__.spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
 
-    sddk::mdarray<real_type<F>, 2> f(3, ctx_.unit_cell().num_atoms());
+    mdarray<real_type<F>, 2> f({3, ctx_.unit_cell().num_atoms()});
     f.zero();
 
     add_k_point_contribution_nonlocal<T, F>(ctx_, bp_grad, kp__, f);
@@ -161,10 +161,10 @@ Force::compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm
     }
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_total()
 {
-    forces_total_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     if (ctx_.full_potential()) {
         calc_forces_rho();
         calc_forces_hf();
@@ -183,7 +183,7 @@ Force::calc_forces_total()
         calc_forces_scf_corr();
         calc_forces_hubbard();
 
-        forces_total_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+        forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             for (int x : {0, 1, 2}) {
                 forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
@@ -195,13 +195,13 @@ Force::calc_forces_total()
     return forces_total_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_ibs()
 {
-    forces_ibs_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_ibs_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_ibs_.zero();
 
-    sddk::mdarray<double, 2> ffac(ctx_.unit_cell().num_atom_types(), ctx_.gvec().num_shells());
+    mdarray<double, 2> ffac({ctx_.unit_cell().num_atom_types(), ctx_.gvec().num_shells()});
     #pragma omp parallel for
     for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
@@ -221,11 +221,11 @@ Force::calc_forces_ibs()
     return forces_ibs_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_rho()
 {
 
-    forces_rho_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_rho_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_rho_.zero();
     for (auto it : ctx_.unit_cell().spl_num_atoms()) {
         auto g = gradient(density_.density_mt(it.li));
@@ -239,10 +239,10 @@ Force::calc_forces_rho()
     return forces_rho_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_hf()
 {
-    forces_hf_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_hf_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_hf_.zero();
 
     for (auto it : ctx_.unit_cell().spl_num_atoms()) {
@@ -257,11 +257,11 @@ Force::calc_forces_hf()
     return forces_hf_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_hubbard()
 {
     PROFILE("sirius::Force::hubbard_force");
-    forces_hubbard_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_hubbard_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_hubbard_.zero();
 
     if (ctx_.hubbard_correction()) {
@@ -286,19 +286,19 @@ Force::calc_forces_hubbard()
         }
 
         /* global reduction */
-        kset_.comm().allreduce(forces_hubbard_.at(sddk::memory_t::host), 3 * ctx_.unit_cell().num_atoms());
+        kset_.comm().allreduce(forces_hubbard_.at(memory_t::host), 3 * ctx_.unit_cell().num_atoms());
     }
 
     symmetrize_forces(ctx_.unit_cell(), forces_hubbard_);
     return forces_hubbard_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_ewald()
 {
     PROFILE("sirius::Force::calc_forces_ewald");
 
-    forces_ewald_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_ewald_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_ewald_.zero();
 
     Unit_cell& unit_cell = ctx_.unit_cell();
@@ -309,7 +309,7 @@ Force::calc_forces_ewald()
 
     int ig0 = ctx_.gvec().skip_g0();
 
-    sddk::mdarray<std::complex<double>, 1> rho_tmp(ctx_.gvec().count());
+    mdarray<std::complex<double>, 1> rho_tmp({ctx_.gvec().count()});
     rho_tmp.zero();
     #pragma omp parallel for schedule(static)
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
@@ -372,12 +372,12 @@ Force::calc_forces_ewald()
     return forces_ewald_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_us()
 {
     PROFILE("sirius::Force::calc_forces_us");
 
-    forces_us_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_us_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_us_.zero();
 
     potential_.fft_transform(-1);
@@ -388,15 +388,15 @@ Force::calc_forces_us()
 
     la::lib_t la{la::lib_t::none};
 
-    sddk::memory_pool* mp{nullptr};
+    memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
-            mp = &get_memory_pool(sddk::memory_t::host);
+        case device_t::CPU: {
+            mp = &get_memory_pool(memory_t::host);
             la = la::lib_t::blas;
             break;
         }
-        case sddk::device_t::GPU: {
-            mp = &get_memory_pool(sddk::memory_t::host_pinned);
+        case device_t::GPU: {
+            mp = &get_memory_pool(memory_t::host_pinned);
             la = la::lib_t::spla;
             break;
         }
@@ -417,8 +417,8 @@ Force::calc_forces_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(atom_type);
 
-        sddk::mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
-        sddk::mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
+        mdarray<double, 2> v_tmp({atom_type.num_atoms(), ctx_.gvec().count() * 2}, *mp);
+        mdarray<double, 2> tmp({nbf * (nbf + 1) / 2, atom_type.num_atoms()}, *mp);
 
         /* over spin components, can be from 1 to 4*/
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
@@ -443,9 +443,9 @@ Force::calc_forces_us()
 
                 /* multiply tmp matrices, or sum over G */
                 la::wrap(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                &la::constant<double>::one(), aug_op.q_pw().at(sddk::memory_t::host), aug_op.q_pw().ld(),
-                                v_tmp.at(sddk::memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
-                                tmp.at(sddk::memory_t::host), tmp.ld());
+                                &la::constant<double>::one(), aug_op.q_pw().at(memory_t::host), aug_op.q_pw().ld(),
+                                v_tmp.at(memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
+                                tmp.at(memory_t::host), tmp.ld());
 
                 #pragma omp parallel for
                 for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -466,7 +466,7 @@ Force::calc_forces_us()
     return forces_us_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_scf_corr()
 {
     PROFILE("sirius::Force::calc_forces_scf_corr");
@@ -475,7 +475,7 @@ Force::calc_forces_scf_corr()
     /* get form-factors for all G shells */
     auto ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
 
-    forces_scf_corr_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_scf_corr_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_scf_corr_.zero();
 
     /* get main arrays */
@@ -522,7 +522,7 @@ Force::calc_forces_scf_corr()
     return forces_scf_corr_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_core()
 {
     PROFILE("sirius::Force::calc_forces_core");
@@ -531,7 +531,7 @@ Force::calc_forces_core()
     /* get form-factors for all G shells */
     auto ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
 
-    forces_core_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_core_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_core_.zero();
 
     /* get main arrays */
@@ -584,11 +584,11 @@ Force::calc_forces_core()
 
 void
 Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                                  sddk::mdarray<double, 2>& forceh__)
+                                                  mdarray<double, 2>& forceh__)
 {
     auto r = ctx_.unit_cell().num_hubbard_wf();
 
-    sddk::mdarray<std::complex<double>, 5> dn(r.first, r.first, ctx_.num_spins(), 3, ctx_.unit_cell().num_atoms());
+    mdarray<std::complex<double>, 5> dn({r.first, r.first, ctx_.num_spins(), 3, ctx_.unit_cell().num_atoms()});
 
     potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
 
@@ -646,7 +646,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
     }
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_vloc()
 {
     PROFILE("sirius::Force::calc_forces_vloc");
@@ -655,7 +655,7 @@ Force::calc_forces_vloc()
     /* get form-factors for all G shells */
     auto ff = ctx_.ri().vloc_->values(q, ctx_.comm());
 
-    forces_vloc_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_vloc_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_vloc_.zero();
 
     auto& valence_rho = density_.rho();
@@ -701,13 +701,13 @@ Force::calc_forces_vloc()
     return forces_vloc_;
 }
 
-sddk::mdarray<double, 2> const&
+mdarray<double, 2> const&
 Force::calc_forces_usnl()
 {
     calc_forces_us();
     calc_forces_nonloc();
 
-    forces_usnl_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    forces_usnl_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         for (int x : {0, 1, 2}) {
             forces_usnl_(x, ia) = forces_us_(x, ia) + forces_nonloc_(x, ia);
@@ -718,8 +718,8 @@ Force::calc_forces_usnl()
 }
 
 void
-Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& ffac__,
-                     sddk::mdarray<double, 2>& forcek__) const
+Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__,
+                     mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 
@@ -749,9 +749,9 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
     la::dmatrix<std::complex<double>> zm1(ngklo, nfv, bg, bs, bs);
     la::dmatrix<std::complex<double>> zf(nfv, nfv, bg, bs, bs);
 
-    sddk::mdarray<std::complex<double>, 2> alm_row(kp__->num_gkvec_row(), uc.max_mt_aw_basis_size());
-    sddk::mdarray<std::complex<double>, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
-    sddk::mdarray<std::complex<double>, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
+    mdarray<std::complex<double>, 2> alm_row({kp__->num_gkvec_row(), uc.max_mt_aw_basis_size()});
+    mdarray<std::complex<double>, 2> alm_col({kp__->num_gkvec_col(), uc.max_mt_aw_basis_size()});
+    mdarray<std::complex<double>, 2> halm_col({kp__->num_gkvec_col(), uc.max_mt_aw_basis_size()});
 
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         h.zero();
@@ -773,16 +773,16 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
         /* apw-apw block of the overlap matrix */
         la::wrap(la::lib_t::blas)
             .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<double>>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
-                  alm_col.at(sddk::memory_t::host), alm_col.ld(), &la::constant<std::complex<double>>::zero(),
-                  o.at(sddk::memory_t::host), o.ld());
+                  &la::constant<std::complex<double>>::one(), alm_row.at(memory_t::host), alm_row.ld(),
+                  alm_col.at(memory_t::host), alm_col.ld(), &la::constant<std::complex<double>>::zero(),
+                  o.at(memory_t::host), o.ld());
 
         /* apw-apw block of the Hamiltonian matrix */
         la::wrap(la::lib_t::blas)
             .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<double>>::one(), alm_row.at(sddk::memory_t::host), alm_row.ld(),
-                  halm_col.at(sddk::memory_t::host), halm_col.ld(), &la::constant<std::complex<double>>::zero(),
-                  h.at(sddk::memory_t::host), h.ld());
+                  &la::constant<std::complex<double>>::one(), alm_row.at(memory_t::host), alm_row.ld(),
+                  halm_col.at(memory_t::host), halm_col.ld(), &la::constant<std::complex<double>>::zero(),
+                  h.at(memory_t::host), h.ld());
 
         int iat = type.id();
 
@@ -879,7 +879,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::m
 void
 Force::print_info(std::ostream& out__, int verbosity__)
 {
-    auto print_forces = [&](std::string label__, sddk::mdarray<double, 2> const& forces) {
+    auto print_forces = [&](std::string label__, mdarray<double, 2> const& forces) {
         out__ << "==== " << label__ << " =====" << std::endl;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             out__ << "atom: " << std::setw(4) << ia << ", force: " << ffmt(15, 7) << forces(0, ia) <<

@@ -31,8 +31,8 @@ void K_point_set::sync_band()
 {
     PROFILE("sirius::K_point_set::sync_band");
 
-    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(),
-            get_memory_pool(sddk::memory_t::host), "K_point_set::sync_band.data");
+    mdarray<double, 3> data({ctx_.num_bands(), ctx_.num_spinors(), num_kpoints()},
+            get_memory_pool(memory_t::host), mdarray_label("K_point_set::sync_band.data"));
     data.zero();
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
@@ -51,7 +51,7 @@ void K_point_set::sync_band()
         }
     }
 
-    comm().allreduce(data.at(sddk::memory_t::host), static_cast<int>(data.size()));
+    comm().allreduce(data.at(memory_t::host), static_cast<int>(data.size()));
 
     #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
@@ -92,14 +92,14 @@ void K_point_set::create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shif
     PROFILE("sirius::K_point_set::create_k_mesh");
 
     int nk;
-    sddk::mdarray<double, 2> kp;
+    mdarray<double, 2> kp;
     std::vector<double> wk;
     if (use_symmetry__) {
         auto result = get_irreducible_reciprocal_mesh(ctx_.unit_cell().symmetry(), k_grid__, k_shift__);
         nk          = std::get<0>(result);
         wk          = std::get<1>(result);
         auto tmp    = std::get<2>(result);
-        kp          = sddk::mdarray<double, 2>(3, nk);
+        kp          = mdarray<double, 2>({3, nk});
         for (int i = 0; i < nk; i++) {
             for (int x : {0, 1, 2}) {
                 kp(x, i) = tmp[i][x];
@@ -108,7 +108,7 @@ void K_point_set::create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shif
     } else {
         nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
         wk = std::vector<double>(nk, 1.0 / nk);
-        kp = sddk::mdarray<double, 2>(3, nk);
+        kp = mdarray<double, 2>({3, nk});
 
         int ik = 0;
         for (int i0 = 0; i0 < k_grid__[0]; i0++) {

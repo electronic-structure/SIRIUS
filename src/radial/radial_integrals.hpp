@@ -139,7 +139,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 nrf_max = std::max(nrf_max, static_cast<int>(indexr_(iat).size()));
             }
 
-            values_ = mdarray<Spline<double>, 2>(nrf_max, unit_cell_.num_atom_types());
+            values_ = mdarray<Spline<double>, 2>({nrf_max, unit_cell_.num_atom_types()});
 
             generate(fl__);
         }
@@ -191,7 +191,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
             int lmax = unit_cell_.lmax();
 
             values_ =
-                mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
+                mdarray<Spline<double>, 3>({nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types()});
 
             generate();
         }
@@ -289,7 +289,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
         , ri_callback_(ri_callback__)
     {
         if (ri_callback_ == nullptr) {
-            values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+            values_ = mdarray<Spline<double>, 1>({unit_cell_.num_atom_types()});
             generate();
         }
     }
@@ -338,7 +338,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
     {
         if (ri_callback_ == nullptr) {
             /* create space for <j_l(qr)|beta> or <d j_l(qr) / dq|beta> radial integrals */
-            values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+            values_ = mdarray<Spline<double>, 2>({unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types()});
             generate();
         }
     }
@@ -374,7 +374,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
         , ri_callback_(ri_callback__)
     {
         if (ri_callback_ == nullptr) {
-            values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+            values_ = mdarray<Spline<double>, 1>({unit_cell_.num_atom_types()});
             generate();
         }
     }

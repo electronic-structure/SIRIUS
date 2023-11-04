@@ -6,7 +6,6 @@ using namespace sirius;
 using json = nlohmann::json;
 using nlohmann::basic_json;
 using complex_double = std::complex<double>;
-using namespace sddk;
 
 using PT = double;
 
@@ -49,7 +48,7 @@ init_operators(py::module& m)
             auto ptr = X.request().ptr;
             int rows = X.shape(0);
             int cols = X.shape(1);
-            const sddk::mdarray<complex_double, 2> array(static_cast<complex_double*>(ptr), rows, cols);
+            const mdarray<complex_double, 2> array({rows, cols}, static_cast<complex_double*>(ptr));
             return sk.apply(array, memory_t::host);
         });
 
@@ -75,7 +74,7 @@ init_operators(py::module& m)
             auto ptr = X.request().ptr;
             int rows = X.shape(0);
             int cols = X.shape(1);
-            const sddk::mdarray<complex_double, 2> array(reinterpret_cast<complex_double*>(ptr), rows, cols);
+            const mdarray<complex_double, 2> array({rows, cols}, reinterpret_cast<complex_double*>(ptr));
             return inverse_sk.apply(array, memory_t::host);
         });
 
@@ -101,7 +100,7 @@ init_operators(py::module& m)
             auto ptr = X.request().ptr;
             int rows = X.shape(0);
             int cols = X.shape(1);
-            const sddk::mdarray<complex_double, 2> array(static_cast<complex_double*>(ptr), rows, cols);
+            const mdarray<complex_double, 2> array({rows, cols}, static_cast<complex_double*>(ptr));
             return precond.apply(array, memory_t::host);
         });
 

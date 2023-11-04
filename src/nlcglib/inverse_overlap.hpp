@@ -31,7 +31,7 @@
 #include <stdexcept>
 
 #include "core/la/linalg_base.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "core/mpi/communicator.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "context/simulation_context.hpp"
@@ -71,8 +71,8 @@ class Overlap_operator
 /// computes C <- A.H x B
 template <class T>
 void
-inner(sddk::memory_t mem, spla::Context& ctx, const sddk::mdarray<T, 2>& A, const sddk::mdarray<T, 2>& B,
-      sddk::mdarray<T, 2>& C, const mpi::Communicator& comm, int row_offset = 0, int col_offset = 0)
+inner(memory_t mem, spla::Context& ctx, const mdarray<T, 2>& A, const mdarray<T, 2>& B,
+      mdarray<T, 2>& C, const mpi::Communicator& comm, int row_offset = 0, int col_offset = 0)
 {
     auto spla_mat_dist = spla::MatrixDistribution::create_mirror(comm.native());
     int m              = A.size(1);
@@ -82,7 +82,7 @@ inner(sddk::memory_t mem, spla::Context& ctx, const sddk::mdarray<T, 2>& A, cons
     const T* A_ptr{nullptr};
     const T* B_ptr{nullptr};
     T* C_ptr = C.host_data();
-    if (sddk::is_device_memory(mem)) {
+    if (is_device_memory(mem)) {
         A_ptr = A.device_data();
         B_ptr = B.device_data();
     } else {
@@ -113,10 +113,10 @@ class InverseS_k : public local::Overlap_operator
         initialize(bp);
     }
 
-    sddk::mdarray<numeric_t, 2> apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm = sddk::memory_t::none);
+    mdarray<numeric_t, 2> apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
-    void apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
-               sddk::memory_t pm = sddk::memory_t::none);
+    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
+               memory_t pm = memory_t::none);
 
     const std::string label{"inverse overlap"};
 
@@ -126,8 +126,8 @@ class InverseS_k : public local::Overlap_operator
     const Beta_projectors_base<double>& bp_;
     const int ispn_;
 
-    sddk::mdarray<numeric_t, 2> LU_;
-    sddk::mdarray<int, 1> ipiv_;
+    mdarray<numeric_t, 2> LU_;
+    mdarray<int, 1> ipiv_;
 };
 
 template <class numeric_t>
@@ -142,9 +142,9 @@ class S_k : public local::Overlap_operator
     { /* empty */
     }
 
-    sddk::mdarray<numeric_t, 2> apply(sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pu = sddk::memory_t::none);
-    void apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2> const& X,
-               sddk::memory_t pm = sddk::memory_t::none);
+    mdarray<numeric_t, 2> apply(mdarray<numeric_t, 2> const& X, memory_t pu = memory_t::none);
+    void apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X,
+               memory_t pm = memory_t::none);
 
     const std::string label{"overlap"};
 
@@ -163,27 +163,27 @@ InverseS_k<numeric_t>::initialize(Beta_projectors_base<double> const& beta_proje
 
     auto B = inner_beta(beta_projectors, ctx_); // on preferred memory
 
-    sddk::matrix<numeric_t> BQ(B.size(0), q_op_.size(1), mem_t);
+    matrix<numeric_t> BQ({B.size(0), q_op_.size(1)}, mem_t);
     // mat * Q
     q_op_.lmatmul(BQ, B, this->ispn_, mem_t);
     int n = BQ.size(0);
 
     if (is_device_memory(mem_t)) {
-        BQ.allocate(sddk::memory_t::host);
-        BQ.copy_to(sddk::memory_t::host);
-        BQ.deallocate(sddk::memory_t::device);
+        BQ.allocate(memory_t::host);
+        BQ.copy_to(memory_t::host);
+        BQ.deallocate(memory_t::device);
     }
     // add identity matrix
     std::vector<complex_t> ones(n, complex_t{1, 0});
     la::wrap(la::lib_t::blas)
-        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(sddk::memory_t::host), n + 1);
+        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(memory_t::host), n + 1);
 
-    LU_ = sddk::empty_like(BQ, sddk::get_memory_pool(sddk::memory_t::host));
-    sddk::auto_copy(LU_, BQ, sddk::device_t::CPU);
+    LU_ = empty_like(BQ, get_memory_pool(memory_t::host));
+    auto_copy(LU_, BQ, device_t::CPU);
     // compute inverse...
-    ipiv_ = sddk::mdarray<int, 1>(n);
+    ipiv_ = mdarray<int, 1>({n});
     // compute LU factorization, TODO: use GPU if needed
-    la::wrap(la::lib_t::lapack).getrf(n, n, LU_.at(sddk::memory_t::host), LU_.ld(), ipiv_.at(sddk::memory_t::host));
+    la::wrap(la::lib_t::lapack).getrf(n, n, LU_.at(memory_t::host), LU_.ld(), ipiv_.at(memory_t::host));
 }
 
 /// apply wfct
@@ -191,14 +191,14 @@ InverseS_k<numeric_t>::initialize(Beta_projectors_base<double> const& beta_proje
 /// where P = -Q*(I + B*Q)⁻¹
 template <class numeric_t>
 void
-InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pm)
+InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, memory_t pm)
 {
     int nbnd = X.size(1);
     assert(static_cast<int>(X.size(0)) == this->size());
-    pm                = (pm == sddk::memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
-    sddk::device_t pu = is_host_memory(pm) ? sddk::device_t::CPU : sddk::device_t::GPU;
+    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
-    if (sddk::is_device_memory(pm)) {
+    if (is_device_memory(pm)) {
         la = la::lib_t::gpublas;
     }
 
@@ -207,7 +207,7 @@ InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numer
 
     int num_beta = bp_.num_total_beta();
 
-    sddk::mdarray<numeric_t, 2> bphi(num_beta, nbnd);
+    mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
@@ -218,23 +218,23 @@ InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numer
 
     // compute bphi <- (I + B*Q)⁻¹ (B^H X)
     la::wrap(la::lib_t::lapack)
-        .getrs('N', num_beta, nbnd, LU_.at(sddk::memory_t::host), LU_.ld(), ipiv_.at(sddk::memory_t::host),
-               bphi.at(sddk::memory_t::host), bphi.ld());
+        .getrs('N', num_beta, nbnd, LU_.at(memory_t::host), LU_.ld(), ipiv_.at(memory_t::host),
+               bphi.at(memory_t::host), bphi.ld());
 
     // compute R <- -Q * Z, where Z = (I + B*Q)⁻¹ (B^H X)
-    sddk::matrix<numeric_t> R(q_op_.size(0), bphi.size(1));
+    matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
 
     // allocate bphi on gpu if needed
-    if (pm == sddk::memory_t::device) {
-        bphi.allocate(sddk::get_memory_pool(sddk::memory_t::device));
-        bphi.copy_to(sddk::memory_t::device);
-        R.allocate(sddk::memory_t::device);
+    if (pm == memory_t::device) {
+        bphi.allocate(get_memory_pool(memory_t::device));
+        bphi.copy_to(memory_t::device);
+        R.allocate(memory_t::device);
     }
 
     // compute -Q*bphi
     q_op_.rmatmul(R, bphi, this->ispn_, pm, -1);
 
-    sddk::auto_copy(Y, X, pu);
+    auto_copy(Y, X, pu);
 
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         // std::cout << "* ichunk: " << ichunk << "\n";
@@ -253,25 +253,25 @@ InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numer
 /// computes (X + Beta*P*Beta^H*X)
 /// where P = -Q*(I + B*Q)⁻¹
 template <class numeric_t>
-sddk::mdarray<numeric_t, 2>
-InverseS_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pm)
+mdarray<numeric_t, 2>
+InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
     auto Y =
-        sddk::empty_like(X, sddk::get_memory_pool(pm == sddk::memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+        empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }
 
 template <class numeric_t>
 void
-S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pm)
+S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, memory_t pm)
 {
     assert(static_cast<int>(X.size(0)) == this->size());
 
-    pm                = (pm == sddk::memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
-    sddk::device_t pu = is_host_memory(pm) ? sddk::device_t::CPU : sddk::device_t::GPU;
+    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
-    if (sddk::is_device_memory(pm)) {
+    if (is_device_memory(pm)) {
         la = la::lib_t::gpublas;
     }
 
@@ -280,7 +280,7 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2
     auto beta_coeffs = bp_gen.prepare();
     int num_beta     = bp_.num_total_beta();
 
-    sddk::mdarray<numeric_t, 2> bphi(num_beta, nbnd);
+    mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
@@ -288,17 +288,17 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2
                      beta_coeffs.beta_chunk_.offset_, 0);
     }
 
-    sddk::matrix<numeric_t> R(q_op_.size(0), bphi.size(1));
+    matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
     // allocate bphi on gpu if needed
-    if (pm == sddk::memory_t::device) {
-        bphi.allocate(sddk::get_memory_pool(sddk::memory_t::device));
-        bphi.copy_to(sddk::memory_t::device);
-        R.allocate(sddk::memory_t::device);
+    if (pm == memory_t::device) {
+        bphi.allocate(get_memory_pool(memory_t::device));
+        bphi.copy_to(memory_t::device);
+        R.allocate(memory_t::device);
     }
 
     q_op_.rmatmul(R, bphi, this->ispn_, pm, 1.0, 0.0);
 
-    sddk::auto_copy(Y, X, pu);
+    auto_copy(Y, X, pu);
 
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         // std::cout << "* ichunk: " << ichunk << "\n";
@@ -314,11 +314,11 @@ S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, sddk::mdarray<numeric_t, 2
 }
 
 template <class numeric_t>
-sddk::mdarray<numeric_t, 2>
-S_k<numeric_t>::apply(sddk::mdarray<numeric_t, 2> const& X, sddk::memory_t pm)
+mdarray<numeric_t, 2>
+S_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
     auto Y =
-        sddk::empty_like(X, sddk::get_memory_pool(pm == sddk::memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+        empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }

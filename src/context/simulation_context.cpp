@@ -198,7 +198,7 @@ Simulation_context::initialize()
     processing_unit(cfg().control().processing_unit());
 
     /* check if we can use a GPU device */
-    if (processing_unit() == sddk::device_t::GPU) {
+    if (processing_unit() == device_t::GPU) {
 #if !defined(SIRIUS_GPU)
         RTE_THROW("not compiled with GPU support!");
 #endif
@@ -208,17 +208,17 @@ Simulation_context::initialize()
     init_comm();
 
     switch (processing_unit()) {
-        case sddk::device_t::CPU: {
-            host_memory_t_ = sddk::memory_t::host;
+        case device_t::CPU: {
+            host_memory_t_ = memory_t::host;
             break;
         }
-        case sddk::device_t::GPU: {
-            host_memory_t_ = sddk::memory_t::host_pinned;
+        case device_t::GPU: {
+            host_memory_t_ = memory_t::host_pinned;
             break;
         }
     }
 
-    if (processing_unit() == sddk::device_t::GPU) {
+    if (processing_unit() == device_t::GPU) {
         spla_ctx_.reset(new spla::Context{SPLA_PU_GPU});
         spla_ctx_->set_tile_size_gpu(1688); // limit GPU memory usage to around 500MB
     }
@@ -377,7 +377,7 @@ Simulation_context::initialize()
     bool is_dlaf{false};
 #endif
 
-    if (processing_unit() == sddk::device_t::CPU || acc::num_devices() == 0) {
+    if (processing_unit() == device_t::CPU || acc::num_devices() == 0) {
         is_cuda  = false;
         is_magma = false;
     }
@@ -653,11 +653,11 @@ Simulation_context::print_info(std::ostream& out__) const
         }
         os << "processing unit                    : ";
         switch (processing_unit()) {
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 os << "CPU" << std::endl;
                 break;
             }
-            case sddk::device_t::GPU: {
+            case device_t::GPU: {
                 os << "GPU" << std::endl;
                 os << "number of devices                  : " << acc::num_devices() << std::endl;
                 acc::print_device_info(0, os);
@@ -824,7 +824,7 @@ Simulation_context::update()
     /* get new reciprocal vector */
     auto rlv = unit_cell().reciprocal_lattice_vectors();
 
-    auto spfft_pu = this->processing_unit() == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+    auto spfft_pu = this->processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
     /* create a list of G-vectors for corase FFT grid; this is done only once,
        the next time only reciprocal lattice of the G-vectors is updated */
@@ -856,12 +856,12 @@ Simulation_context::update()
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS,
-            gv.at(sddk::memory_t::host))));
+            gv.at(memory_t::host))));
 #ifdef SIRIUS_USE_FP32
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
             spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS,
-            gv.at(sddk::memory_t::host))));
+            gv.at(memory_t::host))));
 #endif
     } else {
         gvec_coarse_->lattice_vectors(rlv);
@@ -890,21 +890,21 @@ Simulation_context::update()
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
-            spl_z.local_size(), gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            spl_z.local_size(), gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 #if defined(SIRIUS_USE_FP32)
         spfft_transform_float_.reset(new spfft::TransformFloat(spfft_grid_float_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2], spl_z.local_size(),
-            gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(sddk::memory_t::host))));
+            gvec_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
 #endif
 
         /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
            do not change during the execution */
         switch (this->processing_unit()) {
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 break;
             }
-            case sddk::device_t::GPU: {
-                gvec_coord_ = sddk::mdarray<int, 2>(gvec().count(), 3, sddk::memory_t::host, "gvec_coord_");
+            case device_t::GPU: {
+                gvec_coord_ = mdarray<int, 2>({gvec().count(), 3}, mdarray_label("gvec_coord_"));
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec().count(); igloc++) {
                     auto G = gvec().gvec<index_domain_t::local>(igloc);
@@ -912,7 +912,7 @@ Simulation_context::update()
                         gvec_coord_(igloc, x) = G[x];
                     }
                 }
-                gvec_coord_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+                gvec_coord_.allocate(memory_t::device).copy_to(memory_t::device);
                 break;
             }
         }
@@ -970,7 +970,8 @@ Simulation_context::update()
     }
 
     /* recompute phase factors for atoms */
-    phase_factors_ = sddk::mdarray<std::complex<double>, 3>(3, limits, unit_cell().num_atoms(), sddk::memory_t::host, "phase_factors_");
+    phase_factors_ = mdarray<std::complex<double>, 3>({3, index_range(limits.first, limits.second + 1),
+            unit_cell().num_atoms()}, mdarray_label("phase_factors_"));
     #pragma omp parallel for
     for (int i = limits.first; i <= limits.second; i++) {
         for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
@@ -982,7 +983,7 @@ Simulation_context::update()
     }
 
     /* recompute phase factors for atom types */
-    phase_factors_t_ = sddk::mdarray<std::complex<double>, 2>(gvec().count(), unit_cell().num_atom_types());
+    phase_factors_t_ = mdarray<std::complex<double>, 2>({gvec().count(), unit_cell().num_atom_types()});
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         /* global index of G-vector */
@@ -997,7 +998,8 @@ Simulation_context::update()
     }
 
     if (use_symmetry()) {
-        sym_phase_factors_ = sddk::mdarray<std::complex<double>, 3>(3, limits, unit_cell().symmetry().size());
+        sym_phase_factors_ = mdarray<std::complex<double>, 3>({3, index_range(limits.first, limits.second + 1),
+                unit_cell().symmetry().size()});
 
         #pragma omp parallel for
         for (int i = limits.first; i <= limits.second; i++) {
@@ -1011,11 +1013,11 @@ Simulation_context::update()
     }
 
     switch (this->processing_unit()) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             break;
         }
-        case sddk::device_t::GPU: {
-            gvec_->gvec_tp().allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+        case device_t::GPU: {
+            gvec_->gvec_tp().allocate(memory_t::device).copy_to(memory_t::device);
             break;
         }
     }
@@ -1155,7 +1157,7 @@ Simulation_context::create_storage_file(std::string name__) const
         fout["parameters"].write("num_mag_dims", num_mag_dims());
         fout["parameters"].write("num_bands", num_bands());
 
-        sddk::mdarray<int, 2> gv(3, gvec().num_gvec());
+        mdarray<int, 2> gv({3, gvec().num_gvec()});
         for (int ig = 0; ig < gvec().num_gvec(); ig++) {
             auto G = gvec().gvec<index_domain_t::global>(ig);
             for (int x : {0, 1, 2}) {
@@ -1176,12 +1178,12 @@ Simulation_context::create_storage_file(std::string name__) const
 }
 
 void
-Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<std::complex<double>, 2>& phase_factors__) const
+Simulation_context::generate_phase_factors(int iat__, mdarray<std::complex<double>, 2>& phase_factors__) const
 {
     PROFILE("sirius::Simulation_context::generate_phase_factors");
     int na = unit_cell().atom_type(iat__).num_atoms();
     switch (processing_unit_) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             #pragma omp parallel for
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
                 const int ig = gvec().offset() + igloc;
@@ -1192,11 +1194,11 @@ Simulation_context::generate_phase_factors(int iat__, sddk::mdarray<std::complex
             }
             break;
         }
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
 #if defined(SIRIUS_GPU)
-            generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(sddk::memory_t::device),
-                                       unit_cell().atom_coord(iat__).at(sddk::memory_t::device),
-                                       phase_factors__.at(sddk::memory_t::device));
+            generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
+                                       unit_cell().atom_coord(iat__).at(memory_t::device),
+                                       phase_factors__.at(memory_t::device));
 #endif
             break;
         }

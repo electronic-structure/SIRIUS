@@ -3,9 +3,9 @@
 using namespace sirius;
 
 void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__,
-                   sddk::memory_t mem__)
+                   memory_t mem__)
 {
-    spla::Context spla_ctx(sddk::is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
+    spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
     std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -23,8 +23,8 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
         printf("local number of G-vectors: %i\n", gvec->count());
     }
 
-    wf::Wave_functions<double> phi1(gvec, wf::num_mag_dims(3), wf::num_bands(num_bands__), sddk::memory_t::host);
-    wf::Wave_functions<double> phi2(gvec, wf::num_mag_dims(3), wf::num_bands(num_bands__), sddk::memory_t::host);
+    wf::Wave_functions<double> phi1(gvec, wf::num_mag_dims(3), wf::num_bands(num_bands__), memory_t::host);
+    wf::Wave_functions<double> phi2(gvec, wf::num_mag_dims(3), wf::num_bands(num_bands__), memory_t::host);
 
     auto sr = wf::spin_range(0, 2);
 
@@ -84,13 +84,13 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     //for (auto s = sr.begin(); s != sr.end(); s++) {
     //    for (int i = 0; i < num_bands__; i++) {
     //        for (int igloc = 0; igloc < gvec->count(); igloc++) {
-    //            phi1.pw_coeffs(sddk::memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
+    //            phi1.pw_coeffs(memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
     //        }
     //    }
     //}
-    //orthogonalize(spla_ctx, sddk::memory_t::host, sr, wf::band_range(0, 0),
+    //orthogonalize(spla_ctx, memory_t::host, sr, wf::band_range(0, 0),
     //        wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
-    //wf::inner(spla_ctx, sddk::memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    //wf::inner(spla_ctx, memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
     //max_diff = sddk::check_identity(ovlp, num_bands__);
     //if (mpi::Communicator::world().rank() == 0) {
     //    printf("checking identity\n");
@@ -126,7 +126,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
 
-    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, sddk::get_memory_t(memory_t_str));
+    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, get_memory_t(memory_t_str));
 
     mpi::Communicator::world().barrier();
     int my_rank = mpi::Communicator::world().rank();

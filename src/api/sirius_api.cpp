@@ -1601,7 +1601,7 @@ sirius_create_kset(void* const* handler__, int const* num_kpoints__, double* kpo
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
 
-            sddk::mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
+            mdarray<double, 2> kpoints({3, *num_kpoints__}, kpoints__);
 
             K_point_set* new_kset = new K_point_set(sim_ctx);
             new_kset->add_kpoints(kpoints, kpoint_weights__);
@@ -2265,7 +2265,7 @@ sirius_set_atom_type_dion(void* const* handler__, char const* label__, int const
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
-            sddk::matrix<double> dion(dion__, *num_beta__, *num_beta__);
+            matrix<double> dion({*num_beta__, *num_beta__}, dion__);
             type.d_mtrx_ion(dion);
         },
         error_code__);
@@ -2470,7 +2470,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 RTE_ASSERT(comm__ != nullptr);
 
                 mpi::Communicator comm(MPI_Comm_f2c(*comm__));
-                sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+                mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
                 std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
                 #pragma omp parallel for schedule(static)
@@ -2585,7 +2585,7 @@ sirius_get_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 RTE_ASSERT(comm__ != NULL);
 
                 mpi::Communicator comm(MPI_Comm_f2c(*comm__));
-                sddk::mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+                mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
                 std::map<std::string, Smooth_periodic_function<double>*> func = {
                     {"rho", &gs.density().rho().rg()},
@@ -3056,7 +3056,7 @@ sirius_get_forces(void* const* handler__, char const* label__, double* forces__,
 
             auto& gs = get_gs(handler__);
 
-            auto get_forces = [&](sddk::mdarray<double, 2> const& sirius_forces__) {
+            auto get_forces = [&](mdarray<double, 2> const& sirius_forces__) {
                 for (size_t i = 0; i < sirius_forces__.size(); i++) {
                     forces__[i] = sirius_forces__[i];
                 }
@@ -3064,7 +3064,7 @@ sirius_get_forces(void* const* handler__, char const* label__, double* forces__,
 
             auto& forces = gs.forces();
 
-            std::map<std::string, sddk::mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
+            std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
                 {"total", &sirius::Force::calc_forces_total},     {"vloc", &sirius::Force::calc_forces_vloc},
                 {"core", &sirius::Force::calc_forces_core},       {"ewald", &sirius::Force::calc_forces_ewald},
                 {"nonloc", &sirius::Force::calc_forces_nonloc},   {"us", &sirius::Force::calc_forces_us},
@@ -3232,7 +3232,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
     auto gvec_mapping = [&](sirius::fft::Gvec const& gkvec) {
         std::vector<int> igm(*num_gvec_loc__);
 
-        sddk::mdarray<int, 2> gv(const_cast<int*>(gvec_loc__), 3, *num_gvec_loc__);
+        mdarray<int, 2> gv({3, *num_gvec_loc__}, const_cast<int*>(gvec_loc__));
 
         /* go in the order of host code */
         for (int ig = 0; ig < *num_gvec_loc__; ig++) {
@@ -3316,7 +3316,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                 /* send G+k copy to destination rank (where host code receives the data) */
                 auto gkvec = ks.get_gkvec(typename sirius::kp_index_t::global(jk), dest_rank);
 
-                sddk::mdarray<std::complex<double>, 2> wf;
+                mdarray<std::complex<double>, 2> wf;
                 if (ks.comm().rank() == dest_rank) {
                     /* check number of G+k vectors */
                     int ngk = *num_gvec_loc__;
@@ -3331,7 +3331,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                           << *num_gvec_loc__;
                         RTE_THROW(s);
                     }
-                    wf = sddk::mdarray<std::complex<double>, 2>(gkvec.count(), sim_ctx.num_bands());
+                    wf = mdarray<std::complex<double>, 2>({gkvec.count(), sim_ctx.num_bands()});
                 }
 
                 int ispn0{0};
@@ -3349,7 +3349,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                     if (ks.comm().rank() == src_rank) {
                         auto kp   = ks.get<double>(jk);
                         int count = kp->spinor_wave_functions().ld();
-                        req       = ks.comm().isend(kp->spinor_wave_functions().at(sddk::memory_t::host, 0,
+                        req       = ks.comm().isend(kp->spinor_wave_functions().at(memory_t::host, 0,
                                         sirius::wf::spin_index(0), sirius::wf::band_index(0)), count * sim_ctx.num_bands(), dest_rank, tag);
                     }
                     /* receive wave-functions */
@@ -3360,7 +3360,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
 
                         std::vector<std::complex<double>> wf_tmp(gkvec.num_gvec());
                         int offset = gkvec.offset();
-                        sddk::mdarray<std::complex<double>, 3> evec(evec__, *ld__, num_spin_comp, sim_ctx.num_bands());
+                        mdarray<std::complex<double>, 3> evec({*ld__, num_spin_comp, sim_ctx.num_bands()}, evec__);
 
                         auto igmap = gvec_mapping(gkvec);
 
@@ -3782,7 +3782,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
             auto& sim_ctx = get_sim_ctx(handler__);
 
             if (gvec__ != nullptr) {
-                sddk::mdarray<int, 2> gvec(gvec__, 3, sim_ctx.gvec().num_gvec());
+                mdarray<int, 2> gvec({3, sim_ctx.gvec().num_gvec()}, gvec__);
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
                     auto gv = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
                     for (int x : {0, 1, 2}) {
@@ -3791,7 +3791,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 }
             }
             if (gvec_cart__ != nullptr) {
-                sddk::mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx.gvec().num_gvec());
+                mdarray<double, 2> gvec_cart({3, sim_ctx.gvec().num_gvec()}, gvec_cart__);
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
                     auto gvc = sim_ctx.gvec().gvec_cart<index_domain_t::global>(ig);
                     for (int x : {0, 1, 2}) {
@@ -3809,8 +3809,10 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 auto d1 = sim_ctx.fft_grid().limits(1);
                 auto d2 = sim_ctx.fft_grid().limits(2);
 
-                sddk::mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
-                std::fill(index_by_gvec.at(sddk::memory_t::host), index_by_gvec.at(sddk::memory_t::host) + index_by_gvec.size(),
+                mdarray<int, 3> index_by_gvec({index_range(d0.first, d0.second + 1),
+                            index_range(d1.first, d1.second + 1),
+                            index_range(d2.first, d2.second + 1)}, index_by_gvec__);
+                std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(),
                           -1);
 
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
@@ -3977,9 +3979,9 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
 
             if (rank == comm_k.rank()) {
                 *num_gkvec__ = kp->num_gkvec();
-                sddk::mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec());
-                sddk::mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
-                sddk::mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec());
+                mdarray<double, 2> gkvec({3, kp->num_gkvec()}, gkvec__);
+                mdarray<double, 2> gkvec_cart({3, kp->num_gkvec()}, gkvec_cart__);
+                mdarray<double, 2> gkvec_tp({2, kp->num_gkvec()}, gkvec_tp__);
 
                 for (int igk = 0; igk < kp->num_gkvec(); igk++) {
                     auto gkc = kp->gkvec().gkvec_cart<index_domain_t::global>(igk);
@@ -4917,7 +4919,7 @@ sirius_get_fv_eigen_vectors(void* const* handler__, int const* ik__, std::comple
     call_sirius(
         [&]() {
             auto& ks = get_ks(handler__);
-            sddk::mdarray<std::complex<double>, 2> fv_evec(fv_evec__, *ld__, *num_fv_states__);
+            mdarray<std::complex<double>, 2> fv_evec({*ld__, *num_fv_states__}, fv_evec__);
             int ik = *ik__ - 1;
             ks.get<double>(ik)->get_fv_eigen_vectors(fv_evec);
         },
@@ -5003,7 +5005,7 @@ sirius_get_sv_eigen_vectors(void* const* handler__, int const* ik__, std::comple
     call_sirius(
         [&]() {
             auto& ks = get_ks(handler__);
-            sddk::mdarray<std::complex<double>, 2> sv_evec(sv_evec__, *num_bands__, *num_bands__);
+            mdarray<std::complex<double>, 2> sv_evec({*num_bands__, *num_bands__}, sv_evec__);
             int ik = *ik__ - 1;
             ks.get<double>(ik)->get_sv_eigen_vectors(sv_evec);
         },
@@ -5098,8 +5100,8 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
 
             auto& comm = mpi::Communicator::map_fcomm(*fcomm__);
 
-            sddk::mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
-            sddk::mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+            mdarray<int, 2> local_box_size({3, comm.size()}, const_cast<int*>(local_box_size__));
+            mdarray<int, 2> local_box_origin({3, comm.size()}, const_cast<int*>(local_box_origin__));
 
             for (int rank = 0; rank < comm.size(); rank++) {
                 /* dimensions of this rank's local box */
@@ -5107,7 +5109,7 @@ sirius_set_rg_values(void* const* handler__, char const* label__, int const* gri
                 int ny = local_box_size(1, rank);
                 int nz = local_box_size(2, rank);
 
-                sddk::mdarray<double, 3> buf(nx, ny, nz);
+                mdarray<double, 3> buf({nx, ny, nz});
                 /* if this is that rank's turn to broadcast */
                 if (comm.rank() == rank) {
                     /* copy values to buf */
@@ -5232,12 +5234,12 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
             auto& fft_comm = gs.ctx().comm_fft();
             auto spl_z     = fft::split_z_dimension(gs.ctx().fft_grid()[2], fft_comm);
 
-            sddk::mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
-            sddk::mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+            mdarray<int, 2> local_box_size({3, comm.size()}, const_cast<int*>(local_box_size__));
+            mdarray<int, 2> local_box_origin({3, comm.size()}, const_cast<int*>(local_box_origin__));
 
             for (int rank = 0; rank < fft_comm.size(); rank++) {
                 /* slab of FFT grid for a given rank */
-                sddk::mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(block_id(rank)));
+                mdarray<double, 3> buf({f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(block_id(rank))});
                 if (rank == fft_comm.rank()) {
                     std::copy(&f->value(0), &f->value(0) + f->spfft().local_slice_size(), &buf[0]);
                 }
@@ -5250,7 +5252,7 @@ sirius_get_rg_values(void* const* handler__, char const* label__, int const* gri
                 int nx = local_box_size(0, r);
                 int ny = local_box_size(1, r);
                 int nz = local_box_size(2, r);
-                sddk::mdarray<double, 3> values(values__, nx, ny, nz);
+                mdarray<double, 3> values({nx, ny, nz}, values__);
 
                 for (int iz = 0; iz < nz; iz++) {
                     /* global z coordinate inside FFT box */
@@ -5301,7 +5303,7 @@ sirius_get_total_magnetization(void* const* handler__, double* mag__, int* error
         [&]() {
             auto& gs = get_gs(handler__);
 
-            sddk::mdarray<double, 1> total_mag(mag__, 3);
+            mdarray<double, 1> total_mag({3}, mag__);
             total_mag.zero();
             for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
                 auto result  = gs.density().mag(j).integrate();
@@ -5910,9 +5912,9 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
             }
 
             // Setup dpsi (unknown), psi (part of projector), and dvpsi (right-hand side)
-            sddk::mdarray<std::complex<double>, 3> psi(psi__, *ld__, *num_spin_comp__, nbnd_occ);
-            sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, nbnd_occ);
-            sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, nbnd_occ);
+            mdarray<std::complex<double>, 3> psi({*ld__, *num_spin_comp__, nbnd_occ}, psi__);
+            mdarray<std::complex<double>, 3> dpsi({*ld__, *num_spin_comp__, nbnd_occ}, dpsi__);
+            mdarray<std::complex<double>, 3> dvpsi({*ld__, *num_spin_comp__, nbnd_occ}, dvpsi__);
 
             auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
             auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
@@ -5981,8 +5983,8 @@ void sirius_linear_solver(void* const* handler__, double const* vkq__, int const
 
             /* set up the diagonal preconditioner */
             auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
-            sddk::mdarray<double, 1> eigvals_mdarray(eigvals_vec.size());
-            eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
+            mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
+            eigvals_mdarray = [&](int i) {
                 return eigvals_vec[i];
             };
             /* allocate and copy eigvals_mdarray to GPU if running on GPU */
@@ -6144,7 +6146,7 @@ sirius_set_density_matrix(void** handler__, int const* ia__, std::complex<double
     call_sirius(
         [&]() {
             auto& gs = get_gs(handler__);
-            sddk::mdarray<std::complex<double>, 3> dm(dm__, *ld__, *ld__, 3);
+            mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
             int ia = *ia__ - 1;
             auto& atom = gs.ctx().unit_cell().atom(ia);
             auto idx_map = atomic_orbital_index_map_QE(atom.type());

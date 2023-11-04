@@ -75,7 +75,7 @@ rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rot
 {
     auto rot_mtrx_ylm = rotation_matrix_l<std::complex<double>>(l, euler_angles, proper_rotation);
 
-    mdarray<double, 2> rot_mtrx(2 * l + 1, 2 * l + 1);
+    mdarray<double, 2> rot_mtrx({2 * l + 1, 2 * l + 1});
     rot_mtrx.zero();
 
     for (int m1 = -l; m1 <= l; m1++) {

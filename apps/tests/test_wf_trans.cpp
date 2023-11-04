@@ -4,7 +4,7 @@ using namespace sirius;
 
 template <typename T, typename F>
 void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-                   sddk::memory_t mem__)
+                   memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
@@ -25,10 +25,10 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
     }
 
     wf::Wave_functions<T> phi(gvec, num_mt_coeffs, wf::num_mag_dims(num_mag_dims__), wf::num_bands(num_bands__),
-            sddk::memory_t::host);
+            memory_t::host);
 
     wf::Wave_functions<T> psi(gvec, num_mt_coeffs, wf::num_mag_dims(num_mag_dims__), wf::num_bands(num_bands__),
-            sddk::memory_t::host);
+            memory_t::host);
 
     auto sr = num_mag_dims__ == 3 ? wf::spin_range(0, 2) : wf::spin_range(0);
 
@@ -99,7 +99,7 @@ void test_wf_trans(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_
 
 template <typename T>
 void call_test(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-               sddk::memory_t mem__, int repeat__)
+               memory_t mem__, int repeat__)
 {
     std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -134,7 +134,7 @@ int main(int argn, char** argv)
     auto bs = args.value<int>("bs", 32);
     auto num_bands = args.value<int>("num_bands", 100);
     auto num_mag_dims = args.value<int>("num_mag_dims", 0);
-    auto mem = sddk::get_memory_t(args.value<std::string>("memory_t", "host"));
+    auto mem = get_memory_t(args.value<std::string>("memory_t", "host"));
 
     sirius::initialize(1);
     if (args.exist("fp32")) {

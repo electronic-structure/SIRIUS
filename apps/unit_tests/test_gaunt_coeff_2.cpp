@@ -2,7 +2,6 @@
 #include "testing.hpp"
 
 using namespace sirius;
-using namespace sddk;
 
 int test1()
 {
@@ -10,7 +9,7 @@ int test1()
 
     SHT sht(device_t::CPU, lmax);
 
-    mdarray<std::complex<double>, 2> ylm(sf::lmmax(lmax), sht.num_points());
+    mdarray<std::complex<double>, 2> ylm({sf::lmmax(lmax), sht.num_points()});
     for (int i = 0; i < sht.num_points(); i++) {
         sf::spherical_harmonics(lmax, sht.theta(i), sht.phi(i), &ylm(0, i));
     }

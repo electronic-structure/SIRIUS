@@ -2,7 +2,6 @@
 #include "testing.hpp"
 
 using namespace sirius;
-using namespace sddk;
 
 template<typename T>
 int test1()
@@ -69,7 +68,7 @@ int test3(int lmax, int nr)
 {
     int lmmax = sf::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
-    SHT sht(sddk::device_t::CPU, lmax);
+    SHT sht(device_t::CPU, lmax);
 
     Spheric_function<function_domain_t::spectral, double> f1(lmmax, r);
     Spheric_function<function_domain_t::spatial, std::complex<double>> f3(sht.num_points(), r);

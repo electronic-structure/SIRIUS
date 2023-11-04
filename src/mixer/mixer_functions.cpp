@@ -239,8 +239,8 @@ FunctionProperties<PAW_density<double>> paw_density_function_property()
         for (auto it : x.unit_cell().spl_num_paw_atoms()) {
             int ia = x.unit_cell().paw_atom_index(it.i);
             for (int j = 0; j < x.unit_cell().parameters().num_mag_dims() + 1; j++) {
-                sddk::copy(x.ae_density(j, ia), y.ae_density(j, ia));
-                sddk::copy(x.ps_density(j, ia), y.ps_density(j, ia));
+                copy(x.ae_density(j, ia), y.ae_density(j, ia));
+                copy(x.ps_density(j, ia), y.ps_density(j, ia));
             }
         }
     };
@@ -305,11 +305,11 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
     auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void
     {
         for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            sddk::copy(x.local(at_lvl), y.local(at_lvl));
+            copy(x.local(at_lvl), y.local(at_lvl));
         }
 
         for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            sddk::copy(x.nonlocal(at_lvl), y.nonlocal(at_lvl));
+            copy(x.nonlocal(at_lvl), y.nonlocal(at_lvl));
         }
     };
 

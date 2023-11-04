@@ -3,7 +3,6 @@
 #include <complex.h>
 
 using namespace sirius;
-using namespace sddk;
 
 /* Generated with the following Mathematica code
 
@@ -276,7 +275,7 @@ return 0;
 int run_test(cmd_args& args)
 {
     int num_points = 500;
-    mdarray<double, 2> tp(2, num_points);
+    mdarray<double, 2> tp({2, num_points});
 
     tp(0, 0) = pi;
     tp(1, 0) = 0;

@@ -2,12 +2,11 @@
 
 using namespace sirius;
 
-
 template <typename T>
 double test()
 {
     int lmax{10};
-    SHT sht(sddk::device_t::CPU, lmax);
+    SHT sht(device_t::CPU, lmax);
     int lmmax = sf::lmmax(lmax);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);

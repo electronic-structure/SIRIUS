@@ -55,9 +55,9 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
     }
 
     // Setup dpsi (unknown), psi (part of projector), and dvpsi (right-hand side)
-    sddk::mdarray<std::complex<double>, 3> psi(psi__, *ld__, *num_spin_comp__, nbnd_occ);
-    sddk::mdarray<std::complex<double>, 3> dpsi(dpsi__, *ld__, *num_spin_comp__, nbnd_occ);
-    sddk::mdarray<std::complex<double>, 3> dvpsi(dvpsi__, *ld__, *num_spin_comp__, nbnd_occ);
+    mdarray<std::complex<double>, 3> psi({*ld__, *num_spin_comp__, nbnd_occ}, psi__);
+    mdarray<std::complex<double>, 3> dpsi({*ld__, *num_spin_comp__, nbnd_occ}, dpsi__);
+    mdarray<std::complex<double>, 3> dvpsi({*ld__, *num_spin_comp__, nbnd_occ}, dvpsi__);
 
     auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
     auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
@@ -126,8 +126,8 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
 
     /* set up the diagonal preconditioner */
     auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
-    sddk::mdarray<double, 1> eigvals_mdarray(eigvals_vec.size());
-    eigvals_mdarray = [&](sddk::mdarray_index_descriptor::index_type i) {
+    mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
+    eigvals_mdarray = [&](int i) {
         return eigvals_vec[i];
     };
     /* allocate and copy eigvals_mdarray to GPU if running on GPU */
@@ -177,7 +177,7 @@ void init_wf(K_point<T> const& kp__, wf::Wave_functions<T>& phi__, int num_bands
         tmp[i] = random<double>();
     }
 
-    phi__.zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
+    phi__.zero(memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
 
     //#pragma omp parallel for schedule(static)
     for (int i = 0; i < num_bands__; i++) {
@@ -202,7 +202,7 @@ void init_wf(K_point<T> const& kp__, wf::Wave_functions<T>& phi__, int num_bands
 
     if (num_mag_dims__ == 3) {
         /* make pure spinor up- and dn- wave functions */
-        wf::copy(sddk::memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
+        wf::copy(memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
                 wf::band_range(num_bands__, 2 * num_bands__));
     }
 }
@@ -249,10 +249,10 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
     }
 
     linear_solver_executor(ctx__, H0, &vk__[0], &num_gvec_kq_loc, &gvec_kq_loc(0, 0),
-            dpsi->at(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-            kp.spinor_wave_functions().at(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+            dpsi->at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+            kp.spinor_wave_functions().at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
             eval.data(),
-            dvpsi->at(sddk::memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+            dvpsi->at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
             &ld, &num_spin_comp, &alpha_pv, &spin, &num_bands, tol);
 }
 
