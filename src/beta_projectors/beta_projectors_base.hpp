@@ -508,7 +508,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
 
     int size{beta.num_total_beta()};
 
-    matrix<complex_t> out(size, size, mem_t);
+    matrix<complex_t> out({size, size}, mem_t);
 
     complex_t one  = complex_t(1);
     complex_t zero = complex_t(0);
