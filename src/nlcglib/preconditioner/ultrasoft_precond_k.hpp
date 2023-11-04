@@ -252,7 +252,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
     auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
-    mdarray<numeric_t, 2> bphi({num_beta, nbnd, get_memory_pool(pm)});
+    mdarray<numeric_t, 2> bphi({num_beta, nbnd}, get_memory_pool(pm));
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
