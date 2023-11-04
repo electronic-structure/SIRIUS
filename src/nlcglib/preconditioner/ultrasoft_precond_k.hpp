@@ -28,7 +28,6 @@
 #include "context/simulation_context.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "SDDK/memory.hpp"
 #include "core/fft/gvec.hpp"
 #include "diag_mm.hpp"
 
@@ -62,19 +61,19 @@ class DiagonalPreconditioner
         : ctx_(ctx)
     {
     }
-    sddk::mdarray<numeric_t, 2> apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm);
-    void apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm);
+    mdarray<numeric_t, 2> apply(const mdarray<numeric_t, 2>& X, memory_t pm);
+    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm);
 
   protected:
-    sddk::mdarray<numeric_t, 1> d_;
+    mdarray<numeric_t, 1> d_;
     Simulation_context& ctx_;
 };
 
 template <class numeric_t>
-sddk::mdarray<numeric_t, 2>
-DiagonalPreconditioner<numeric_t>::apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm)
+mdarray<numeric_t, 2>
+DiagonalPreconditioner<numeric_t>::apply(const mdarray<numeric_t, 2>& X, memory_t pm)
 {
-    auto Y = empty_like(X, sddk::get_memory_pool(pm));
+    auto Y = empty_like(X, get_memory_pool(pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -82,17 +81,17 @@ DiagonalPreconditioner<numeric_t>::apply(const sddk::mdarray<numeric_t, 2>& X, s
 /// computes Y <- P*X
 template <class numeric_t>
 inline void
-DiagonalPreconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
-                                         sddk::memory_t pm)
+DiagonalPreconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
+                                         memory_t pm)
 {
 #ifdef SIRIUS_GPU
     // copy d_ to gpu
-    if (sddk::is_device_memory(pm)) {
-        d_.allocate(sddk::memory_t::device);
-        d_.copy_to(sddk::memory_t::device);
+    if (is_device_memory(pm)) {
+        d_.allocate(memory_t::device);
+        d_.copy_to(memory_t::device);
         int n = d_.size(0);
-        zdiagmm(d_.at(sddk::memory_t::device), n, X.at(sddk::memory_t::device), X.ld(), X.size(1),
-                Y.at(sddk::memory_t::device), Y.ld(), std::complex<double>{1});
+        zdiagmm(d_.at(memory_t::device), n, X.at(memory_t::device), X.ld(), X.size(1),
+                Y.at(memory_t::device), Y.ld(), std::complex<double>{1});
         return;
     }
 #endif /*SIRIUS_GPU*/
@@ -121,7 +120,7 @@ class Teter : DiagonalPreconditioner<numeric_t>, public local::OperatorBase
         : DiagonalPreconditioner<numeric_t>(ctx)
         , local::OperatorBase(gkvec.count())
     {
-        this->d_ = sddk::mdarray<numeric_t, 1>(gkvec.count());
+        this->d_ = mdarray<numeric_t, 1>({gkvec.count()});
         for (int i = 0; i < gkvec.count(); ++i) {
             // teter formula
             double T  = gkvec.gkvec_cart<index_domain_t::global>(i).length2();
@@ -155,9 +154,9 @@ class Ultrasoft_preconditioner : public local::OperatorBase
     Ultrasoft_preconditioner(Simulation_context& simulation_context, const Q_operator<double>& q_op, int ispn,
                              const Beta_projectors_base<double>& bp, const fft::Gvec& gkvec);
 
-    sddk::mdarray<numeric_t, 2> apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm = sddk::memory_t::none);
-    void apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
-               sddk::memory_t pm = sddk::memory_t::none);
+    mdarray<numeric_t, 2> apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
+    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
+               memory_t pm = memory_t::none);
 
     const Simulation_context& ctx() const
     {
@@ -171,8 +170,8 @@ class Ultrasoft_preconditioner : public local::OperatorBase
     const Q_operator<double>& q_op;
     int ispn_;
     const Beta_projectors_base<double>& bp_;
-    sddk::mdarray<int, 1> ipiv_;
-    sddk::mdarray<numeric_t, 2> LU_;
+    mdarray<int, 1> ipiv_;
+    mdarray<numeric_t, 2> LU_;
 };
 
 template <class numeric_t>
@@ -193,27 +192,27 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
         return P.apply(Y, simulation_context.processing_unit_memory_t());
     });
 
-    sddk::matrix<numeric_t> CQ(C.size(0), q_op.size(1), sddk::memory_t::host);
+    matrix<numeric_t> CQ(C.size(0), q_op.size(1), memory_t::host);
     if (is_device_memory(ctx_.processing_unit_memory_t())) {
-        C.allocate(sddk::memory_t::host);
-        C.copy_to(sddk::memory_t::host);
+        C.allocate(memory_t::host);
+        C.copy_to(memory_t::host);
     }
     /* compute C <- C@Q */
-    this->q_op.lmatmul(CQ, C, this->ispn_, sddk::memory_t::host);
+    this->q_op.lmatmul(CQ, C, this->ispn_, memory_t::host);
     /* compute C <- 1 + C */
     int n = CQ.size(0);
     // add identiy matrix
     std::vector<complex_t> ones(n, 1);
     // add identity matrix
     la::wrap(la::lib_t::blas)
-        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(sddk::memory_t::host), n + 1);
+        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(memory_t::host), n + 1);
     // compute LU factorization
-    this->LU_ = sddk::empty_like(CQ);
-    sddk::auto_copy(this->LU_, CQ);
-    this->ipiv_ = sddk::mdarray<int, 1>(n, sddk::memory_t::host);
+    this->LU_ = empty_like(CQ);
+    auto_copy(this->LU_, CQ);
+    this->ipiv_ = mdarray<int, 1>({n}, memory_t::host);
     // compute LU factorization
     la::wrap(la::lib_t::lapack)
-        .getrf(n, n, this->LU_.at(sddk::memory_t::host), this->LU_.ld(), this->ipiv_.at(sddk::memory_t::host));
+        .getrf(n, n, this->LU_.at(memory_t::host), this->LU_.ld(), this->ipiv_.at(memory_t::host));
     // copy LU factorization to device if needed
     auto mem = ctx_.processing_unit_memory_t();
     if (is_device_memory(mem)) {
@@ -226,34 +225,34 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
 }
 
 template <class numeric_t>
-sddk::mdarray<numeric_t, 2>
-Ultrasoft_preconditioner<numeric_t>::apply(const sddk::mdarray<numeric_t, 2>& X, sddk::memory_t pm)
+mdarray<numeric_t, 2>
+Ultrasoft_preconditioner<numeric_t>::apply(const mdarray<numeric_t, 2>& X, memory_t pm)
 {
-    auto Y = empty_like(X, sddk::get_memory_pool(pm == sddk::memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }
 
 template <class numeric_t>
 void
-Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const sddk::mdarray<numeric_t, 2>& X,
-                                           sddk::memory_t pm)
+Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
+                                           memory_t pm)
 {
     int num_beta = bp_.num_total_beta();
     int nbnd     = X.size(1);
 
-    pm                = (pm == sddk::memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
-    sddk::device_t pu = is_host_memory(pm) ? sddk::device_t::CPU : sddk::device_t::GPU;
+    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
 
     la::lib_t la{la::lib_t::blas};
-    if (sddk::is_device_memory(pm)) {
+    if (is_device_memory(pm)) {
         la = la::lib_t::gpublas;
     }
 
     auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
-    sddk::mdarray<numeric_t, 2> bphi(num_beta, nbnd, sddk::get_memory_pool(pm));
+    mdarray<numeric_t, 2> bphi({num_beta, nbnd, get_memory_pool(pm)});
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
@@ -267,12 +266,12 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
     assert(num_beta == static_cast<int>(bphi.size(0)) && nbnd == static_cast<int>(bphi.size(1)));
 
     la::lib_t lapack{la::lib_t::lapack};
-    if (pu == sddk::device_t::GPU) {
+    if (pu == device_t::GPU) {
         lapack = la::lib_t::gpublas;
     }
     la::wrap(lapack).getrs('N', num_beta, nbnd, LU_.at(pm), LU_.ld(), ipiv_.at(pm), bphi.at(pm), bphi.ld());
 
-    auto R = empty_like(bphi, sddk::get_memory_pool(pm));
+    auto R = empty_like(bphi, get_memory_pool(pm));
     q_op.rmatmul(R, bphi, ispn_, pm, -1);
 
     // compute Y <- (1+T')^(-1) X
@@ -287,19 +286,19 @@ Ultrasoft_preconditioner<numeric_t>::apply(sddk::mdarray<numeric_t, 2>& Y, const
         int k  = beta_coeffs.pw_coeffs_a_.size(1);
 
         switch (pu) {
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 la::wrap(la::lib_t::blas)
-                    .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(sddk::memory_t::host), G.ld(),
-                          R.at(sddk::memory_t::host, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
-                          &la::constant<numeric_t>::one(), Y.at(sddk::memory_t::host), Y.ld());
+                    .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(memory_t::host), G.ld(),
+                          R.at(memory_t::host, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          &la::constant<numeric_t>::one(), Y.at(memory_t::host), Y.ld());
                 break;
             }
 #ifdef SIRIUS_GPU
-            case sddk::device_t::GPU:
+            case device_t::GPU:
                 la::wrap(la::lib_t::gpublas)
-                    .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(sddk::memory_t::device), G.ld(),
-                          R.at(sddk::memory_t::device, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
-                          &la::constant<numeric_t>::one(), Y.at(sddk::memory_t::device), Y.ld());
+                    .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(memory_t::device), G.ld(),
+                          R.at(memory_t::device, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          &la::constant<numeric_t>::one(), Y.at(memory_t::device), Y.ld());
 
                 break;
 #endif
