@@ -50,7 +50,7 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
     PROFILE("fft::Gvec::find_z_columns");
 
     mdarray<int, 2> non_zero_columns({index_range(fft_box__.limits(0).first, fft_box__.limits(0).second + 1),
-            index_range(fft_box__.limits(1).first, fft_box__.limits(1).second)});
+            index_range(fft_box__.limits(1).first, fft_box__.limits(1).second + 1)});
     non_zero_columns.zero();
 
     num_gvec_ = 0;

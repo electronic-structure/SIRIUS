@@ -464,7 +464,9 @@ memory_pool& get_memory_pool(memory_t M__);
                << "at line " << __LINE__ << " of file " << __FILE__ << std::endl                                       \
                << "array label: " << this->label_ << std::endl;                                                        \
             for (int i = 0; i < N; i++) {                                                                              \
-                _s << "dims[" << i << "].size = " << this->dims_[i].size() << std::endl;                               \
+                _s << "dims[" << i << "].size  = " << this->dims_[i].size() << std::endl                               \
+                   << "dims[" << i << "].begin = " << this->dims_[i].begin() << std::endl                              \
+                   << "dims[" << i << "].end   = " << this->dims_[i].end() << std::endl;                               \
             }                                                                                                          \
             throw std::runtime_error(_s.str());                                                                        \
             raise(SIGABRT);                                                                                            \
