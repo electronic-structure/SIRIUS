@@ -5622,10 +5622,10 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             std::string smear(smearing__);
             std::string pu(processing_unit__);
 
-            sddk::device_t processing_unit{ctx.processing_unit()};
+            device_t processing_unit{ctx.processing_unit()};
 
             if (pu.compare("none") != 0) {
-                processing_unit = sddk::get_device_t(pu);
+                processing_unit = get_device_t(pu);
             }
 
             nlcglib::smearing_type smearing_t;
@@ -5658,11 +5658,11 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             // ultrasoft pp
             nlcglib::nlcg_info info;
             switch (processing_unit) {
-                case sddk::device_t::CPU: {
+                case device_t::CPU: {
                     info = nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                     break;
                 }
-                case sddk::device_t::GPU: {
+                case device_t::GPU: {
                     info = nlcglib::nlcg_us_device(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
                     break;
                 }
