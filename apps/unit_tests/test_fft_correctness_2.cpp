@@ -3,7 +3,6 @@
 /* test FFT: tranfrom random function to real space, transform back and compare with the original function */
 
 using namespace sirius;
-using namespace sddk;
 using namespace mpi;
 
 template <typename T>
@@ -36,11 +35,11 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
         spl_z.local_size(), gvp.count(), SPFFT_INDEX_TRIPLETS,
         gv.at(memory_t::host)));
 
-    sddk::mdarray<std::complex<T>, 1> f(gvp.count());
+    mdarray<std::complex<T>, 1> f({gvp.count()});
     for (int ig = 0; ig < gvp.count(); ig++) {
         f[ig] = random<std::complex<T>>();
     }
-    sddk::mdarray<std::complex<T>, 1> g(gvp.count());
+    mdarray<std::complex<T>, 1> g({gvp.count()});
 
     spfft.backward(reinterpret_cast<T const*>(&f[0]), spfft.processing_unit());
     spfft.forward(spfft.processing_unit(), reinterpret_cast<T*>(&g[0]), SPFFT_FULL_SCALING);

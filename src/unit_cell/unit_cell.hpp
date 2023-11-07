@@ -115,7 +115,7 @@ class Unit_cell
     std::unique_ptr<Crystal_symmetry> symmetry_;
 
     /// Atomic coordinates in GPU-friendly ordering packed in arrays for each atom type.
-    std::vector<sddk::mdarray<double, 2>> atom_coord_;
+    std::vector<mdarray<double, 2>> atom_coord_;
 
     mpi::Communicator const& comm_;
 

@@ -2,7 +2,6 @@
 #include <testing.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 void test_davidson(cmd_args const& args__)
 {

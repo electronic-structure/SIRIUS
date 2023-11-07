@@ -4,7 +4,6 @@ extern "C" {
 }
 
 using namespace sirius;
-using namespace sddk;
 
 void create_supercell(cmd_args const& args__)
 {
@@ -112,8 +111,8 @@ void find_primitive()
             lattice[i][j] = ctx.unit_cell().lattice_vector(j)[i];
         }
     }
-    mdarray<double, 2> positions(3, 4 * ctx.unit_cell().num_atoms());
-    mdarray<int, 1> types(4 * ctx.unit_cell().num_atoms());
+    mdarray<double, 2> positions({3, 4 * ctx.unit_cell().num_atoms()});
+    mdarray<int, 1> types({4 * ctx.unit_cell().num_atoms()});
     for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
         for (int x: {0, 1, 2}) {
             positions(x, ia) = ctx.unit_cell().atom(ia).position()[x];

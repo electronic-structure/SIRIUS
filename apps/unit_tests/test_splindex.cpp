@@ -2,7 +2,6 @@
 #include "testing.hpp"
 
 using namespace sirius;
-using namespace sddk;
 
 int test1()
 {

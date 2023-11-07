@@ -1,11 +1,10 @@
 #include <core/cmd_args.hpp>
-#include <SDDK/memory.hpp>
+#include <core/memory.hpp>
 #include <complex>
 #include <sys/time.h>
 #include <random>
 
 using double_complex = std::complex<double>;
-using namespace sirius::sddk;
 using namespace sirius;
 
 void test2()
@@ -117,7 +116,7 @@ void test6()
             t1 += test_alloc(sz, mp);
         }
     }
-    std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
+    std::cout << "std::malloc time: " << t0 << ", memory_pool time: " << t1 << "\n";
 }
 
 void test6a()
@@ -137,7 +136,7 @@ void test6a()
             t1 += test_alloc(sz, mp);
         }
     }
-    std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
+    std::cout << "std::malloc time: " << t0 << ", memory_pool time: " << t1 << "\n";
 }
 
 void test7()
@@ -191,7 +190,7 @@ double test_alloc_array(size_t n)
 {
     double t0 = wtime();
     /* time to allocate + fill */
-    mdarray<char, 1> p(n);
+    mdarray<char, 1> p({n});
     p.zero();
     double t1 = wtime();
     /* time fo fill */
@@ -210,7 +209,7 @@ double test_alloc_array(size_t n, memory_pool& mp)
 {
     double t0 = wtime();
     /* time to allocate + fill */
-    mdarray<char, 1> p(n, mp);
+    mdarray<char, 1> p({n}, mp);
     p.zero();
     double t1 = wtime();
     /* time fo fill */
@@ -242,7 +241,7 @@ void test9()
             t1 += test_alloc_array(sz, mp);
         }
     }
-    std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
+    std::cout << "std::malloc time: " << t0 << ", memory_pool time: " << t1 << "\n";
 }
 
 int run_test()

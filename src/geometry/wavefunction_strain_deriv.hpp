@@ -7,7 +7,7 @@ namespace sirius {
 
 void
 wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp__, wf::Wave_functions<double>& dphi__,
-                           sddk::mdarray<double, 2> const& rlm_g__, sddk::mdarray<double, 3> const& rlm_dg__,
+                           mdarray<double, 2> const& rlm_g__, mdarray<double, 3> const& rlm_dg__,
                            int nu__, int mu__)
 {
     auto num_ps_atomic_wf = ctx__.unit_cell().num_ps_atomic_wf();
@@ -19,12 +19,12 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
         /* vs = {r, theta, phi} */
         auto gvs = r3::spherical_coordinates(gvc);
 
-        std::vector<sddk::mdarray<double, 1>> ri_values(ctx__.unit_cell().num_atom_types());
+        std::vector<mdarray<double, 1>> ri_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
             ri_values[iat] = ctx__.ri().ps_atomic_wf_->values(iat, gvs[0]);
         }
 
-        std::vector<sddk::mdarray<double, 1>> ridjl_values(ctx__.unit_cell().num_atom_types());
+        std::vector<mdarray<double, 1>> ridjl_values(ctx__.unit_cell().num_atom_types());
         for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
             ridjl_values[iat] = ctx__.ri().ps_atomic_wf_djl_->values(iat, gvs[0]);
         }

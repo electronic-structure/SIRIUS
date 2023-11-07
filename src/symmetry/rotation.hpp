@@ -25,7 +25,7 @@
 #ifndef __ROTATION_HPP__
 #define __ROTATION_HPP__
 
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "core/r3/r3.hpp"
 #include "core/rte/rte.hpp"
 #include "core/constants.hpp"
@@ -35,7 +35,6 @@ namespace sirius {
 /// Return angle phi in the range [0, 2Pi) by its values of sin(phi) and cos(phi).
 inline double phi_by_sin_cos(double sinp, double cosp)
 {
-    const double twopi = 6.2831853071795864769;
     double phi = std::atan2(sinp, cosp);
     if (phi < 0) {
         phi += twopi;
@@ -47,7 +46,7 @@ inline double phi_by_sin_cos(double sinp, double cosp)
 inline auto
 rotation_matrix_su2(std::array<double, 3> u__, double theta__)
 {
-    sddk::mdarray<std::complex<double>, 2> rotm(2, 2);
+    mdarray<std::complex<double>, 2> rotm({2, 2});
 
     auto cost = std::cos(theta__ / 2);
     auto sint = std::sin(theta__ / 2);
@@ -73,7 +72,7 @@ rotation_matrix_su2(r3::matrix<double> R__)
 
     r3::matrix<double> mat = R__ * det;
 
-    sddk::mdarray<std::complex<double>, 2> su2mat(2, 2);
+    mdarray<std::complex<double>, 2> su2mat({2, 2});
 
     su2mat.zero();
 

@@ -26,7 +26,7 @@
 #define __MIXER_FUNCTIONS_HPP__
 
 #include "function3d/periodic_function.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "mixer/mixer.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 #include "density/density_matrix.hpp"

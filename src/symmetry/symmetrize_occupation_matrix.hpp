@@ -41,7 +41,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
 
     auto& sym      = uc.symmetry();
     const double f = 1.0 / sym.size();
-    std::vector<sddk::mdarray<std::complex<double>, 3>> local_tmp;
+    std::vector<mdarray<std::complex<double>, 3>> local_tmp;
 
     local_tmp.resize(om__.local().size());
 
@@ -52,7 +52,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
          * to the Hubbard correction (or U = 0) */
         if (atom_type.lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
             local_tmp[at_lvl] =
-                sddk::mdarray<std::complex<double>, 3>(om__.local(at_lvl).size(0), om__.local(at_lvl).size(1), 4);
+                mdarray<std::complex<double>, 3>({om__.local(at_lvl).size(0), om__.local(at_lvl).size(1), 4});
             copy(om__.local(at_lvl), local_tmp[at_lvl]);
         }
     }
@@ -67,7 +67,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             const int il       = atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l();
             const int lmmax_at = 2 * il + 1;
             // local_[at_lvl].zero();
-            sddk::mdarray<std::complex<double>, 3> dm_ia(lmmax_at, lmmax_at, 4);
+            mdarray<std::complex<double>, 3> dm_ia({lmmax_at, lmmax_at, 4});
             for (int isym = 0; isym < sym.size(); isym++) {
                 int pr            = sym[isym].spg_op.proper;
                 auto eang         = sym[isym].spg_op.euler_angles;
@@ -198,7 +198,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             int at2_lvl    = om__.find_orbital_index(jap, n2, jl);
             auto const& occ_mtrx = om__.occ_mtrx_T(Ttot);
 
-            sddk::mdarray<std::complex<double>, 3> dm_ia_ja(2 * il + 1, 2 * jl + 1, ctx.num_spins());
+            mdarray<std::complex<double>, 3> dm_ia_ja({2 * il + 1, 2 * jl + 1, ctx.num_spins()});
             dm_ia_ja.zero();
             /* apply spatial rotation */
             for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {

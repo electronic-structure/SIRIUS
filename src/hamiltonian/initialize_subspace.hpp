@@ -74,10 +74,10 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     /* initial basis functions */
     wf::Wave_functions<T> phi(kp__.gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
-                              wf::num_bands(num_phi_tot), sddk::memory_t::host);
+                              wf::num_bands(num_phi_tot), memory_t::host);
 
     for (int ispn = 0; ispn < num_sc; ispn++) {
-        phi.zero(sddk::memory_t::host, wf::spin_index(ispn), wf::band_range(0, num_phi_tot));
+        phi.zero(memory_t::host, wf::spin_index(ispn), wf::band_range(0, num_phi_tot));
     }
 
     /* generate the initial atomic wavefunctions */
@@ -126,19 +126,19 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     if (ctx.num_mag_dims() == 3) {
         /* make pure spinor up- and dn- wave functions */
-        wf::copy(sddk::memory_t::host, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
+        wf::copy(memory_t::host, phi, wf::spin_index(0), wf::band_range(0, num_phi), phi, wf::spin_index(1),
                  wf::band_range(num_phi, num_phi_tot));
     }
     PROFILE_STOP("sirius::initialize_subspace|kp|wf");
 
     /* allocate wave-functions */
     wf::Wave_functions<T> hphi(kp__.gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
-                               wf::num_bands(num_phi_tot), sddk::memory_t::host);
+                               wf::num_bands(num_phi_tot), memory_t::host);
     wf::Wave_functions<T> ophi(kp__.gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
-                               wf::num_bands(num_phi_tot), sddk::memory_t::host);
+                               wf::num_bands(num_phi_tot), memory_t::host);
     /* temporary wave-functions required as a storage during orthogonalization */
     wf::Wave_functions<T> wf_tmp(kp__.gkvec_sptr(), wf::num_mag_dims(ctx.num_mag_dims() == 3 ? 3 : 0),
-                                 wf::num_bands(num_phi_tot), sddk::memory_t::host);
+                                 wf::num_bands(num_phi_tot), memory_t::host);
 
     int bs = ctx.cyclic_block_size();
 
@@ -152,7 +152,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     print_memory_usage(ctx.out(), FILE_LINE);
 
-    auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+    auto mem = ctx.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
 
     std::vector<wf::device_memory_guard> mg;
     mg.emplace_back(kp__.spinor_wave_functions().memory_guard(mem, wf::copy_to::host));

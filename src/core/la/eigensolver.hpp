@@ -25,7 +25,6 @@
 #ifndef __EIGENSOLVER_HPP__
 #define __EIGENSOLVER_HPP__
 
-#include "SDDK/memory.hpp"
 #include "core/la/dmatrix.hpp"
 
 namespace sirius {
@@ -88,16 +87,16 @@ class Eigensolver
     bool is_parallel_{false};
     /// Type of host memory needed for the solver.
     /** Some solvers, for example MAGMA, require host pilnned memory. */
-    sddk::memory_t host_memory_t_{sddk::memory_t::none};
+    memory_t host_memory_t_{memory_t::none};
     /// Type of input data memory.
     /** CPU solvers start from host memory, MAGMA can start from host or device memory, cuSolver starts from
      *  device memory. */
-    sddk::memory_t data_memory_t_{sddk::memory_t::none};
+    memory_t data_memory_t_{memory_t::none};
 
   public:
     /// Constructor.
-    Eigensolver(ev_solver_t type__, bool is_parallel__, sddk::memory_t host_memory_t__,
-                sddk::memory_t data_memory_t__)
+    Eigensolver(ev_solver_t type__, bool is_parallel__, memory_t host_memory_t__,
+                memory_t data_memory_t__)
         : ev_solver_type_(type__)
         , is_parallel_(is_parallel__)
         , host_memory_t_(host_memory_t__)
@@ -239,19 +238,19 @@ class Eigensolver
     }
 
     /// Type of host memory, required by the solver.
-    inline sddk::memory_t host_memory_t() const
+    inline auto host_memory_t() const
     {
         return host_memory_t_;
     }
 
     /// Type of input memory for the solver.
-    inline sddk::memory_t data_memory_t() const
+    inline auto data_memory_t() const
     {
         return data_memory_t_;
     }
 
     /// Type of eigen-solver.
-    inline ev_solver_t type() const
+    inline auto type() const
     {
         return ev_solver_type_;
     }

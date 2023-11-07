@@ -28,7 +28,6 @@
 #include "preconditioner/ultrasoft_precond_k.hpp"
 #include "adaptor.hpp"
 #include <stdexcept>
-#include "SDDK/memory.hpp"
 #include <memory>
 #include <complex>
 
@@ -74,7 +73,7 @@ UltrasoftPrecond::apply(const key_t& key, buffer_t& out, buffer_t& in) const
     auto& op          = data_.at(key);
     auto array_out    = make_matrix_view(out);
     auto array_in     = make_matrix_view(in);
-    sddk::memory_t pm = out.memtype == nlcglib::memory_type::host ? sddk::memory_t::host : sddk::memory_t::device;
+    memory_t pm = out.memtype == nlcglib::memory_type::host ? memory_t::host : memory_t::device;
     op->apply(array_out, array_in, pm);
 }
 

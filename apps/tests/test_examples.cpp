@@ -3,7 +3,6 @@
 #include "core/wf/wave_functions.hpp"
 
 using namespace sirius;
-using namespace sddk;
 using namespace la;
 using namespace fft;
 
@@ -88,7 +87,7 @@ spfft_transform_type<double> spfft(
 
 /* create data buffer with local number of G-vectors
    and fill with random numbers */
-mdarray<std::complex<double>, 1> f(gvp.count());
+mdarray<std::complex<double>, 1> f({gvp.count()});
 f = [](int64_t){
   return random<std::complex<double>>();
 };

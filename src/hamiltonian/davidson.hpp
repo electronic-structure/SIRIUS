@@ -38,7 +38,7 @@ struct davidson_result_t {
     /// Number of iterations.
     int niter;
     /// Eigen-values.
-    sddk::mdarray<double, 2> eval;
+    mdarray<double, 2> eval;
     /// True if all bands (up and dn) are converged.
     bool converged;
     /// Number of unconverged bands for each spin channel.
@@ -52,7 +52,7 @@ enum class davidson_evp_t {
 
 template <typename T, typename F>
 inline void
-project_out_subspace(::spla::Context& spla_ctx__, sddk::memory_t mem__, wf::spin_range spins__,
+project_out_subspace(::spla::Context& spla_ctx__, memory_t mem__, wf::spin_range spins__,
         wf::Wave_functions<T>& phi__, wf::Wave_functions<T>& sphi__, int N__, int n__, la::dmatrix<F>& o__)
 {
     PROFILE("sirius::project_out_subspace");
@@ -191,7 +191,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
     /* alias for memory pool */
     auto& mp = get_memory_pool(ctx.host_memory_t());
 
-    sddk::memory_t mem = ctx.processing_unit_memory_t();
+    memory_t mem = ctx.processing_unit_memory_t();
 
     /* allocate wave-functions */
 
@@ -276,8 +276,8 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
     auto h_o_diag = (ctx.full_potential()) ?
         Hk__.template get_h_o_diag_lapw<3>() : Hk__.template get_h_o_diag_pw<T, 3>();
 
-    sddk::mdarray<T, 2>* h_diag{nullptr};;
-    sddk::mdarray<T, 2>* o_diag{nullptr};
+    mdarray<T, 2>* h_diag{nullptr};;
+    mdarray<T, 2>* o_diag{nullptr};
 
     switch (what) {
         case davidson_evp_t::hamiltonian: {
@@ -310,7 +310,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
 
     auto& std_solver = ctx.std_evp_solver();
 
-    davidson_result_t result{0, sddk::mdarray<double, 2>(num_bands__.get(), num_spinors), true, {0, 0}};
+    davidson_result_t result{0, mdarray<double, 2>({num_bands__.get(), num_spinors}), true, {0, 0}};
 
     if (verbosity__ >= 1) {
          RTE_OUT(out__) << "starting Davidson iterative solver" << std::endl
@@ -335,8 +335,8 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
         /* converged vectors */
         int num_locked{0};
 
-        sddk::mdarray<real_type<F>, 1> eval(num_bands__.get());
-        sddk::mdarray<real_type<F>, 1> eval_old(num_bands__.get());
+        mdarray<real_type<F>, 1> eval({num_bands__.get()});
+        mdarray<real_type<F>, 1> eval_old({num_bands__.get()});
 
         /* lambda function thatcheck if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
@@ -823,7 +823,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
             N += expand_with;
 
             /* copy the Ritz values */
-            sddk::copy(eval, eval_old);
+            copy(eval, eval_old);
 
             if (verbosity__ >= 3) {
                 RTE_OUT(out__) << "computing " << num_bands__.get() << " pre-Ritz pairs" << std::endl;

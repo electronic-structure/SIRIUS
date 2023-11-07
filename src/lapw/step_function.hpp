@@ -43,9 +43,9 @@ unit_step_function_form_factors(double R__, double g__)
 /// Representation of the unit step function.
 struct step_function_t {
     /// Step function on the real-space grid.
-    sddk::mdarray<double, 1> rg;
+    mdarray<double, 1> rg;
     /// Plane wave expansion coefficients of the step function (global array).
-    sddk::mdarray<std::complex<double>, 1> pw;
+    mdarray<std::complex<double>, 1> pw;
 };
 
 /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
@@ -85,7 +85,7 @@ struct step_function_t {
  */
 inline auto
 init_step_function(Unit_cell const& uc__, fft::Gvec const& gv__, fft::Gvec_fft const& gvec_fft__,
-        sddk::mdarray<std::complex<double>, 2> const& phase_factors_t__,
+        mdarray<std::complex<double>, 2> const& phase_factors_t__,
         fft::spfft_transform_type<double> spfft__)
 {
     auto v = make_periodic_function<index_domain_t::global>(uc__, gv__, phase_factors_t__,
@@ -95,8 +95,8 @@ init_step_function(Unit_cell const& uc__, fft::Gvec const& gv__, fft::Gvec_fft c
             });
 
     step_function_t theta;
-    theta.rg = sddk::mdarray<double, 1>(spfft__.local_slice_size());
-    theta.pw = sddk::mdarray<std::complex<double>, 1>(gv__.num_gvec());
+    theta.rg = mdarray<double, 1>({spfft__.local_slice_size()});
+    theta.pw = mdarray<std::complex<double>, 1>({gv__.num_gvec()});
 
     try {
         for (int ig = 0; ig < gv__.num_gvec(); ig++) {

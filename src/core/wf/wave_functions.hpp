@@ -36,7 +36,6 @@
 #include "core/env/env.hpp"
 #include "core/rte/rte.hpp"
 #include "core/time_tools.hpp"
-#include "SDDK/memory.hpp"
 
 namespace sirius {
 
@@ -96,19 +95,19 @@ auto checksum_gpu(std::complex<T> const* wf__, int ld__, int num_rows_loc__, int
 {
     std::complex<T> cs{0};
 #if defined(SIRIUS_GPU)
-    sddk::mdarray<std::complex<T>, 1> cs1(nwf__, sddk::memory_t::host, "checksum");
-    cs1.allocate(sddk::memory_t::device).zero(sddk::memory_t::device);
+    mdarray<std::complex<T>, 1> cs1({nwf__}, mdarray_label("checksum"));
+    cs1.allocate(memory_t::device).zero(memory_t::device);
 
     if (std::is_same<T, float>::value) {
-        add_checksum_gpu_float(wf__, ld__, num_rows_loc__, nwf__, cs1.at(sddk::memory_t::device));
+        add_checksum_gpu_float(wf__, ld__, num_rows_loc__, nwf__, cs1.at(memory_t::device));
     } else if (std::is_same<T, double>::value) {
-        add_checksum_gpu_double(wf__, ld__, num_rows_loc__, nwf__, cs1.at(sddk::memory_t::device));
+        add_checksum_gpu_double(wf__, ld__, num_rows_loc__, nwf__, cs1.at(memory_t::device));
     } else {
         std::stringstream s;
         s << "Precision type not yet implemented";
         RTE_THROW(s);
     }
-    cs1.copy_to(sddk::memory_t::host);
+    cs1.copy_to(memory_t::host);
     cs = cs1.checksum();
 #endif
     return cs;
@@ -232,9 +231,9 @@ class device_memory_guard
 {
   private:
     void* obj_{nullptr};
-    sddk::memory_t mem_{sddk::memory_t::host};
+    memory_t mem_{memory_t::host};
     copy_to copy_to_{wf::copy_to::none};
-    std::function<void(void*, sddk::memory_t, wf::copy_to)> handler_;
+    std::function<void(void*, memory_t, wf::copy_to)> handler_;
 
     device_memory_guard(device_memory_guard const&) = delete;
     device_memory_guard& operator=(device_memory_guard const&) = delete;
@@ -244,7 +243,7 @@ class device_memory_guard
     }
 
     template <typename T>
-    device_memory_guard(T const& obj__, sddk::memory_t mem__, copy_to copy_to__)
+    device_memory_guard(T const& obj__, memory_t mem__, copy_to copy_to__)
         : obj_{const_cast<T*>(&obj__)}
         , mem_{mem__}
         , copy_to_{copy_to__}
@@ -256,13 +255,13 @@ class device_memory_guard
                 obj->copy_to(mem_);
             }
         }
-        handler_ = [](void* p__,  sddk::memory_t mem__, wf::copy_to copy_to__)
+        handler_ = [](void* p__,  memory_t mem__, wf::copy_to copy_to__)
         {
             if (p__) {
                 auto obj = static_cast<T*>(p__);
                 if (is_device_memory(mem__)) {
                     if (static_cast<unsigned int>(copy_to__) & static_cast<unsigned int>(copy_to::host)) {
-                        obj->copy_to(sddk::memory_t::host);
+                        obj->copy_to(memory_t::host);
                     }
                     obj->deallocate(mem__);
                 }
@@ -341,7 +340,7 @@ class Wave_functions_base
     /// Data storage for the wave-functions.
     /** Wave-functions are stored as two independent arrays for spin-up and spin-dn. The planewave and muffin-tin
         coefficients are stored consecutively. */
-    std::array<sddk::mdarray<std::complex<T>, 2>, 2> data_;
+    std::array<mdarray<std::complex<T>, 2>, 2> data_;
 
   public:
     /// Constructor.
@@ -350,7 +349,7 @@ class Wave_functions_base
     }
     /// Constructor.
     Wave_functions_base(int num_pw__, int num_mt__, num_mag_dims num_md__, num_bands num_wf__,
-        sddk::memory_t default_mem__)
+        memory_t default_mem__)
         : num_pw_{num_pw__}
         , num_mt_{num_mt__}
         , num_md_{num_md__}
@@ -366,15 +365,15 @@ class Wave_functions_base
             num_sc_ = num_spins(2);
         }
         for (int is = 0; is < num_sc_.get(); is++) {
-            data_[is] = sddk::mdarray<std::complex<T>, 2>(num_pw_ + num_mt_, num_wf_.get(),
-                    sddk::get_memory_pool(default_mem__), "Wave_functions_base::data_");
+            data_[is] = mdarray<std::complex<T>, 2>({num_pw_ + num_mt_, num_wf_.get()},
+                    get_memory_pool(default_mem__), mdarray_label("Wave_functions_base::data_"));
         }
     }
 
     /// Return an instance of the memory guard.
     /** When the instance is created, it allocates the GPU memory and optionally copies data to the GPU. When the
         instance is destroyed, the data is optionally copied to host and GPU memory is deallocated. */
-    auto memory_guard(sddk::memory_t mem__, wf::copy_to copy_to__ = copy_to::none) const
+    auto memory_guard(memory_t mem__, wf::copy_to copy_to__ = copy_to::none) const
     {
         return device_memory_guard(*this, mem__, copy_to__);
     }
@@ -416,7 +415,7 @@ class Wave_functions_base
 
     /// Zero a spin component of the wave-functions in a band range.
     inline void
-    zero(sddk::memory_t mem__, spin_index s__, band_range br__)
+    zero(memory_t mem__, spin_index s__, band_range br__)
     {
         if (this->ld()) {
             if (is_host_memory(mem__)) {
@@ -433,7 +432,7 @@ class Wave_functions_base
 
     /// Zero all wave-functions.
     inline void
-    zero(sddk::memory_t mem__)
+    zero(memory_t mem__)
     {
         if (this->ld()) {
             for (int is = 0; is < num_sc_.get(); is++) {
@@ -444,14 +443,14 @@ class Wave_functions_base
 
     /// Return const pointer to the wave-function coefficient at a given index, spin and band
     inline std::complex<T> const*
-    at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__) const
+    at(memory_t mem__, int i__, spin_index s__, band_index b__) const
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
 
     /// Return pointer to the wave-function coefficient at a given index, spin and band
     inline auto
-    at(sddk::memory_t mem__, int i__, spin_index s__, band_index b__)
+    at(memory_t mem__, int i__, spin_index s__, band_index b__)
     {
         return data_[s__.get()].at(mem__, i__, b__.get());
     }
@@ -459,17 +458,17 @@ class Wave_functions_base
     /// Allocate wave-functions.
     /** This function is primarily called by a memory_guard to allocate GPU memory. */
     inline void
-    allocate(sddk::memory_t mem__)
+    allocate(memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
-            data_[s].allocate(sddk::get_memory_pool(mem__));
+            data_[s].allocate(get_memory_pool(mem__));
         }
     }
 
     /// Deallocate wave-functions.
     /** This function is primarily called by a memory_guard to deallocate GPU memory. */
     inline void
-    deallocate(sddk::memory_t mem__)
+    deallocate(memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
             data_[s].deallocate(mem__);
@@ -478,7 +477,7 @@ class Wave_functions_base
 
     /// Copy date to host or device.
     inline void
-    copy_to(sddk::memory_t mem__)
+    copy_to(memory_t mem__)
     {
         for (int s = 0; s < num_sc_.get(); s++) {
             data_[s].copy_to(mem__);
@@ -521,7 +520,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Construct without muffin-tin part.
     Wave_functions_mt(mpi::Communicator const& comm__, num_mag_dims num_md__, num_bands num_wf__,
-            sddk::memory_t default_mem__, int num_pw__)
+            memory_t default_mem__, int num_pw__)
         : Wave_functions_base<T>(num_pw__, 0, num_md__, num_wf__, default_mem__)
         , comm_{comm__}
         , spl_num_atoms_{splindex_block<atom_index_t>(num_atoms_, n_blocks(comm_.size()), block_id(comm_.rank()))}
@@ -536,7 +535,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Constructor.
     Wave_functions_mt(mpi::Communicator const& comm__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
-            num_bands num_wf__, sddk::memory_t default_mem__, int num_pw__ = 0)
+            num_bands num_wf__, memory_t default_mem__, int num_pw__ = 0)
         : Wave_functions_base<T>(num_pw__, get_local_num_mt_coeffs(num_mt_coeffs__, comm__), num_md__, num_wf__,
                                  default_mem__)
         , comm_{comm__}
@@ -575,14 +574,14 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Return const pointer to the coefficient by atomic orbital index, atom, spin and band indices.
     inline std::complex<T> const*
-    at(sddk::memory_t mem__, int xi__, atom_index_t::local ia__, spin_index s__, band_index b__) const
+    at(memory_t mem__, int xi__, atom_index_t::local ia__, spin_index s__, band_index b__) const
     {
         return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
     }
 
     /// Return pointer to the coefficient by atomic orbital index, atom, spin and band indices.
     inline auto
-    at(sddk::memory_t mem__, int xi__, atom_index_t::local ia__, spin_index s__, band_index b__)
+    at(memory_t mem__, int xi__, atom_index_t::local ia__, spin_index s__, band_index b__)
     {
         return this->data_[s__.get()].at(mem__, this->num_pw_ + xi__ + offset_in_local_mt_coeffs_[ia__.get()], b__.get());
     }
@@ -598,11 +597,11 @@ class Wave_functions_mt : public Wave_functions_base<T>
     /** This functionality is required for the application of LAPW overlap operator to the wave-functions, which
      *  is always done on the CPU. */
     inline void
-    copy_mt_to(sddk::memory_t mem__, spin_index s__, band_range br__)
+    copy_mt_to(memory_t mem__, spin_index s__, band_range br__)
     {
         if (this->ld() && this->num_mt_) {
-            auto ptr = this->data_[s__.get()].at(sddk::memory_t::host, this->num_pw_, br__.begin());
-            auto ptr_gpu = this->data_[s__.get()].at(sddk::memory_t::device, this->num_pw_, br__.begin());
+            auto ptr = this->data_[s__.get()].at(memory_t::host, this->num_pw_, br__.begin());
+            auto ptr_gpu = this->data_[s__.get()].at(memory_t::device, this->num_pw_, br__.begin());
             if (is_device_memory(mem__)) {
                 acc::copyin(ptr_gpu, this->ld(), ptr, this->ld(), this->num_mt_, br__.size());
             }
@@ -628,7 +627,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
         }
         costa::block_t localblock;
         localblock.data =  this->num_mt_ ?
-            this->data_[ispn__.get()].at(sddk::memory_t::host, this->num_pw_, b__.begin()) : nullptr;
+            this->data_[ispn__.get()].at(memory_t::host, this->num_pw_, b__.begin()) : nullptr;
         localblock.ld = this->ld();
         localblock.row = comm_.rank();
         localblock.col = 0;
@@ -639,7 +638,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Compute checksum of the muffin-tin coefficients.
     inline auto
-    checksum_mt(sddk::memory_t mem__, spin_index s__, band_range br__) const
+    checksum_mt(memory_t mem__, spin_index s__, band_range br__) const
     {
         std::complex<T> cs{0};
         if (this->num_mt_ && br__.size()) {
@@ -694,7 +693,7 @@ class Wave_functions : public Wave_functions_mt<T>
     std::shared_ptr<fft::Gvec> gkvec_;
   public:
     /// Constructor for pure plane-wave functions.
-    Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, sddk::memory_t default_mem__)
+    Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, num_mag_dims num_md__, num_bands num_wf__, memory_t default_mem__)
         : Wave_functions_mt<T>(gkvec__->comm(), num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
     {
@@ -702,7 +701,7 @@ class Wave_functions : public Wave_functions_mt<T>
 
     /// Constructor for wave-functions with plane-wave and muffin-tin parts (LAPW case).
     Wave_functions(std::shared_ptr<fft::Gvec> gkvec__, std::vector<int> num_mt_coeffs__, num_mag_dims num_md__,
-            num_bands num_wf__, sddk::memory_t default_mem__)
+            num_bands num_wf__, memory_t default_mem__)
         : Wave_functions_mt<T>(gkvec__->comm(), num_mt_coeffs__, num_md__, num_wf__, default_mem__, gkvec__->count())
         , gkvec_{gkvec__}
     {
@@ -742,7 +741,7 @@ class Wave_functions : public Wave_functions_mt<T>
             owners[i] = i;
         }
         costa::block_t localblock;
-        localblock.data = const_cast<std::complex<T>*>(this->data_[ispn__.get()].at(sddk::memory_t::host, 0, b__.begin()));
+        localblock.data = const_cast<std::complex<T>*>(this->data_[ispn__.get()].at(memory_t::host, 0, b__.begin()));
         localblock.ld = this->ld();
         localblock.row = this->comm_.rank();
         localblock.col = 0;
@@ -762,7 +761,7 @@ class Wave_functions : public Wave_functions_mt<T>
         return gkvec_;
     }
 
-    inline auto checksum_pw(sddk::memory_t mem__, spin_index s__, band_range b__) const
+    inline auto checksum_pw(memory_t mem__, spin_index s__, band_range b__) const
     {
         std::complex<T> cs{0};
         if (b__.size()) {
@@ -781,12 +780,12 @@ class Wave_functions : public Wave_functions_mt<T>
         return cs;
     }
 
-    inline auto checksum(sddk::memory_t mem__, spin_index s__, band_range b__) const
+    inline auto checksum(memory_t mem__, spin_index s__, band_range b__) const
     {
         return this->checksum_pw(mem__, s__, b__) + this->checksum_mt(mem__, s__, b__);
     }
 
-    inline auto checksum(sddk::memory_t mem__, band_range b__) const
+    inline auto checksum(memory_t mem__, band_range b__) const
     {
         std::complex<T> cs{0};
         for (int is = 0; is < this->num_sc().get(); is++) {
@@ -878,7 +877,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             owners[i] = i;
         }
         costa::block_t localblock;
-        localblock.data = this->data_[0].at(sddk::memory_t::host);
+        localblock.data = this->data_[0].at(memory_t::host);
         localblock.ld = this->ld();
         localblock.row = gkvec_fft_->comm_fft().rank();
         localblock.col = comm_col.rank();
@@ -909,25 +908,25 @@ class Wave_functions_fft : public Wave_functions_base<T>
             /* in full-potential case leading dimenstion is larger than the number of plane-wave
              * coefficients, so we have to copy data into temporary storage with necessary leading
              * dimension */
-            sddk::mdarray<std::complex<T>, 2> wf_tmp;
+            mdarray<std::complex<T>, 2> wf_tmp;
             if (wf_->ld() == wf_->num_pw_) { /* pure plane-wave coeffs */
-                auto ptr = (wf_->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin());
-                wf_tmp = sddk::mdarray<std::complex<T>, 2>(ptr, wf_->num_pw_, b__.size());
+                auto ptr = (wf_->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin());
+                wf_tmp = mdarray<std::complex<T>, 2>({wf_->num_pw_, b__.size()}, ptr);
             } else {
-                wf_tmp = sddk::mdarray<std::complex<T>, 2>(wf_->num_pw_, b__.size(), sddk::get_memory_pool(sddk::memory_t::host));
+                wf_tmp = mdarray<std::complex<T>, 2>({wf_->num_pw_, b__.size()}, get_memory_pool(memory_t::host));
                 for (int i = 0; i < b__.size(); i++) {
-                    auto in_ptr = wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin() + i);
-                    std::copy(in_ptr, in_ptr + wf_->num_pw_, wf_tmp.at(sddk::memory_t::host, 0, i));
+                    auto in_ptr = wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin() + i);
+                    std::copy(in_ptr, in_ptr + wf_->num_pw_, wf_tmp.at(memory_t::host, 0, i));
                 }
             }
 
-            auto* send_buf = (wf_tmp.ld() == 0) ? nullptr : wf_tmp.at(sddk::memory_t::host);
+            auto* send_buf = (wf_tmp.ld() == 0) ? nullptr : wf_tmp.at(memory_t::host);
 
             /* local number of columns */
             int n_loc = spl_num_wf_.local_size();
 
-            sddk::mdarray<std::complex<T>, 1> recv_buf(gkvec_fft_->count() * n_loc,
-                    sddk::get_memory_pool(sddk::memory_t::host), "recv_buf");
+            mdarray<std::complex<T>, 1> recv_buf({gkvec_fft_->count() * n_loc},
+                    get_memory_pool(memory_t::host), mdarray_label("recv_buf"));
 
             auto& row_distr = gkvec_fft_->gvec_slab();
 
@@ -940,7 +939,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
             sd.calc_offsets();
             rd.calc_offsets();
 
-            comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), recv_buf.at(sddk::memory_t::host),
+            comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), recv_buf.at(memory_t::host),
                               rd.counts.data(), rd.offsets.data());
 
             /* reorder received blocks */
@@ -951,7 +950,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
                     int count  = row_distr.counts[j];
                     if (count) {
                         auto from = &recv_buf[offset * n_loc + count * i];
-                        std::copy(from, from + count, this->data_[0].at(sddk::memory_t::host, offset, i));
+                        std::copy(from, from + count, this->data_[0].at(memory_t::host, offset, i));
                     }
                 }
             }
@@ -987,8 +986,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
             int n_loc = spl_num_wf_.local_size();
 
             /* send buffer */
-            sddk::mdarray<std::complex<T>, 1> send_buf(gkvec_fft_->count() * n_loc,
-                    sddk::get_memory_pool(sddk::memory_t::host), "send_buf");
+            mdarray<std::complex<T>, 1> send_buf({gkvec_fft_->count() * n_loc},
+                    get_memory_pool(memory_t::host), mdarray_label("send_buf"));
 
             auto& row_distr = gkvec_fft_->gvec_slab();
 
@@ -999,7 +998,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
                     int offset = row_distr.offsets[j];
                     int count  = row_distr.counts[j];
                     if (count) {
-                        auto from = this->data_[0].at(sddk::memory_t::host, offset, i);
+                        auto from = this->data_[0].at(memory_t::host, offset, i);
                         std::copy(from, from + count, &send_buf[offset * n_loc + count * i]);
                     }
                 }
@@ -1029,24 +1028,24 @@ class Wave_functions_fft : public Wave_functions_base<T>
             /* full potential wave-functions have extra muffin-tin part;
              * that makes the PW block of data not consecutive and thus we need to copy to a consecutive buffer
              * for alltoall */
-            sddk::mdarray<std::complex<T>, 2> wf_tmp;
+            mdarray<std::complex<T>, 2> wf_tmp;
             if (wf_->ld() == wf_->num_pw_) { /* pure plane-wave coeffs */
-                auto ptr = (wf_->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin());
-                wf_tmp = sddk::mdarray<std::complex<T>, 2>(ptr, wf_->num_pw_, b__.size());
+                auto ptr = (wf_->num_pw_ == 0) ? nullptr : wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin());
+                wf_tmp = mdarray<std::complex<T>, 2>({wf_->num_pw_, b__.size()}, ptr);
             } else {
-                wf_tmp = sddk::mdarray<std::complex<T>, 2>(wf_->num_pw_, b__.size(), sddk::get_memory_pool(sddk::memory_t::host));
+                wf_tmp = mdarray<std::complex<T>, 2>({wf_->num_pw_, b__.size()}, get_memory_pool(memory_t::host));
             }
 
-            auto* recv_buf = (wf_tmp.ld() == 0) ? nullptr : wf_tmp.at(sddk::memory_t::host);
+            auto* recv_buf = (wf_tmp.ld() == 0) ? nullptr : wf_tmp.at(memory_t::host);
 
-            comm_col.alltoall(send_buf.at(sddk::memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
+            comm_col.alltoall(send_buf.at(memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
                           rd.counts.data(), rd.offsets.data());
 
             if (wf_->ld() != wf_->num_pw_) {
                 for (int i = 0; i < b__.size(); i++) {
-                    auto out_ptr = wf_->data_[sp.get()].at(sddk::memory_t::host, 0, b__.begin() + i);
-                    std::copy(wf_tmp.at(sddk::memory_t::host, 0, i),
-                            wf_tmp.at(sddk::memory_t::host, 0, i) + wf_->num_pw_, out_ptr);
+                    auto out_ptr = wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin() + i);
+                    std::copy(wf_tmp.at(memory_t::host, 0, i),
+                            wf_tmp.at(memory_t::host, 0, i) + wf_->num_pw_, out_ptr);
                 }
             }
         }
@@ -1084,25 +1083,25 @@ class Wave_functions_fft : public Wave_functions_base<T>
         /* special case when wave-functions are not redistributed */
         if (comm_col.size() == 1) {
             auto i = wf::band_index(br__.begin());
-            auto ptr = wf__.at(sddk::memory_t::host, 0, sp, i);
-            auto ptr_gpu = wf__.data_[sp.get()].on_device() ? wf__.at(sddk::memory_t::device, 0, sp, i) : nullptr;
+            auto ptr = wf__.at(memory_t::host, 0, sp, i);
+            auto ptr_gpu = wf__.data_[sp.get()].on_device() ? wf__.at(memory_t::device, 0, sp, i) : nullptr;
             if (ptr_gpu) {
                 on_device_ = true;
             }
             /* make alias to the fraction of the wave-functions */
-            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(ptr, ptr_gpu, wf__.ld(), this->num_wf_.get());
+            this->data_[0] = mdarray<std::complex<T>, 2>({wf__.ld(), this->num_wf_.get()}, ptr, ptr_gpu);
             this->num_pw_ = wf_->num_pw_;
         } else {
             /* do wave-functions swap */
-            this->data_[0] = sddk::mdarray<std::complex<T>, 2>(gkvec_fft__->count(), this->num_wf_.get(),
-                    sddk::get_memory_pool(sddk::memory_t::host), "Wave_functions_fft.data");
+            this->data_[0] = mdarray<std::complex<T>, 2>({gkvec_fft__->count(), this->num_wf_.get()},
+                    get_memory_pool(memory_t::host), mdarray_label("Wave_functions_fft.data"));
             this->num_pw_ = gkvec_fft__->count();
 
             if (shuffle_flag_ & shuffle_to::fft_layout) {
                 if (wf__.data_[sp.get()].on_device()) {
                     /* copy block of wave-functions to host memory before calling COSTA */
-                    auto ptr = wf__.at(sddk::memory_t::host, 0, sp, wf::band_index(br__.begin()));
-                    auto ptr_gpu = wf__.at(sddk::memory_t::device, 0, sp, wf::band_index(br__.begin()));
+                    auto ptr = wf__.at(memory_t::host, 0, sp, wf::band_index(br__.begin()));
+                    auto ptr_gpu = wf__.at(memory_t::device, 0, sp, wf::band_index(br__.begin()));
                     acc::copyout(ptr, wf__.ld(), ptr_gpu, wf__.ld(), wf__.num_pw_, br__.size());
                 }
                 shuffle_to_fft_layout(s__, br__);
@@ -1144,8 +1143,8 @@ class Wave_functions_fft : public Wave_functions_base<T>
                 auto sp = wf_->actual_spin_index(s_);
                 if (wf_->data_[sp.get()].on_device()) {
                     /* copy block of wave-functions to device memory after calling COSTA */
-                    auto ptr = wf_->at(sddk::memory_t::host, 0, sp, wf::band_index(br_.begin()));
-                    auto ptr_gpu = wf_->at(sddk::memory_t::device, 0, sp, wf::band_index(br_.begin()));
+                    auto ptr = wf_->at(memory_t::host, 0, sp, wf::band_index(br_.begin()));
+                    auto ptr_gpu = wf_->at(memory_t::device, 0, sp, wf::band_index(br_.begin()));
                     acc::copyin(ptr_gpu, wf_->ld(), ptr, wf_->ld(), wf_->num_pw_, br_.size());
                 }
             }
@@ -1173,7 +1172,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     }
 
     /// Return pointer to the beginning of wave-functions casted to real type as required by the SpFFT library.
-    inline T* pw_coeffs_spfft(sddk::memory_t mem__, band_index b__)
+    inline T* pw_coeffs_spfft(memory_t mem__, band_index b__)
     {
         return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
     }
@@ -1186,14 +1185,14 @@ class Wave_functions_fft : public Wave_functions_base<T>
 
     /// Return const pointer to the data for a given plane-wave and band indices.
     inline std::complex<T> const*
-    at(sddk::memory_t mem__, int i__, band_index b__) const
+    at(memory_t mem__, int i__, band_index b__) const
     {
         return this->data_[0].at(mem__, i__, b__.get());
     }
 
     /// Return pointer to the data for a given plane-wave and band indices.
     inline auto
-    at(sddk::memory_t mem__, int i__, band_index b__)
+    at(memory_t mem__, int i__, band_index b__)
     {
         return this->data_[0].at(mem__, i__, b__.get());
     }
@@ -1217,7 +1216,7 @@ inner_diag_local_aux(std::complex<T> z1__, std::complex<T> z2__)
 
 template <typename T, typename F>
 static auto
-inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
+inner_diag_local(memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
         wf::spin_range spins__, wf::num_bands num_wf__)
 {
     RTE_ASSERT(lhs__.ld() == rhs__.ld());
@@ -1259,7 +1258,7 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
         if (std::is_same<F, real_type<F>>::value) {
             reduced = lhs__.comm().rank() + 1;
         }
-        sddk::mdarray<F, 1> result_gpu(num_wf__.get());
+        mdarray<F, 1> result_gpu({num_wf__.get()});
         result_gpu.allocate(mem__).zero(mem__);
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
@@ -1279,7 +1278,7 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
                 }
             }
         }
-        result_gpu.copy_to(sddk::memory_t::host);
+        result_gpu.copy_to(memory_t::host);
         for (int i = 0; i < num_wf__.get(); i++) {
             result[i] = result_gpu[i];
         }
@@ -1290,7 +1289,7 @@ inner_diag_local(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::W
 
 template <typename T, typename F>
 auto
-inner_diag(sddk::memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
+inner_diag(memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_functions_base<T> const& rhs__,
         wf::spin_range spins__, wf::num_bands num_wf__)
 {
     PROFILE("wf::inner_diag");
@@ -1320,7 +1319,7 @@ axpby_aux(F a__, std::complex<T> x__, F b__, std::complex<T> y__)
 
 /// Perform y <- a * x + b * y type of operation.
 template <typename T, typename F>
-void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F const* alpha__,
+void axpby(memory_t mem__, wf::spin_range spins__, wf::band_range br__, F const* alpha__,
         wf::Wave_functions<T> const* x__, F const* beta__, wf::Wave_functions<T>* y__)
 {
     PROFILE("wf::axpby");
@@ -1333,9 +1332,9 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
             auto spx = x__ ? x__->actual_spin_index(s) : spy;
             #pragma omp parallel for
             for (int i = 0; i < br__.size(); i++) {
-                auto ptr_y = y__->at(sddk::memory_t::host, 0, spy, wf::band_index(br__.begin() + i));
+                auto ptr_y = y__->at(memory_t::host, 0, spy, wf::band_index(br__.begin() + i));
                 if (x__) {
-                    auto ptr_x = x__->at(sddk::memory_t::host, 0, spx, wf::band_index(br__.begin() + i));
+                    auto ptr_x = x__->at(memory_t::host, 0, spx, wf::band_index(br__.begin() + i));
                     if (beta__[i] == F(0)) {
                         for (int j = 0; j < y__->ld(); j++) {
                             ptr_y[j] = axpby_aux<T, F>(alpha__[i], ptr_x[j], 0.0, 0.0);
@@ -1364,12 +1363,12 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
             auto ptr_y = y__->at(mem__, 0, spy, wf::band_index(br__.begin()));
             auto ptr_x = x__ ? x__->at(mem__, 0, spx, wf::band_index(br__.begin())) : nullptr;
 
-            sddk::mdarray<F, 1> alpha;
+            mdarray<F, 1> alpha;
             if (x__) {
-                alpha = sddk::mdarray<F, 1>(const_cast<F*>(alpha__), br__.size());
+                alpha = mdarray<F, 1>({br__.size()}, const_cast<F*>(alpha__));
                 alpha.allocate(mem__).copy_to(mem__);
             }
-            sddk::mdarray<F, 1> beta(const_cast<F*>(beta__), br__.size());
+            mdarray<F, 1> beta({br__.size()}, const_cast<F*>(beta__));
             beta.allocate(mem__).copy_to(mem__);
 
             auto ldx = x__ ? x__->ld() : 0;
@@ -1395,7 +1394,7 @@ void axpby(sddk::memory_t mem__, wf::spin_range spins__, wf::band_range br__, F 
 }
 
 template <typename T, typename F, typename G>
-void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas__,
+void axpy_scatter(memory_t mem__, wf::spin_range spins__, F const*  alphas__,
         Wave_functions<T> const* x__, G const* idx__, Wave_functions<T>* y__, int n__)
 {
     PROFILE("wf::axpy_scatter");
@@ -1408,8 +1407,8 @@ void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas
                 auto ii = idx__[i];
                 auto alpha = alphas__[i];
 
-                auto ptr_y = y__->at(sddk::memory_t::host, 0, spy, wf::band_index(ii));
-                auto ptr_x = x__->at(sddk::memory_t::host, 0, spx, wf::band_index(i));
+                auto ptr_y = y__->at(memory_t::host, 0, spy, wf::band_index(ii));
+                auto ptr_x = x__->at(memory_t::host, 0, spx, wf::band_index(i));
                 for (int j = 0; j < y__->ld(); j++) {
                     ptr_y[j] += alpha * ptr_x[j];
                 }
@@ -1424,10 +1423,10 @@ void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas
             auto ptr_y = y__->at(mem__, 0, spy, wf::band_index(0));
             auto ptr_x = x__->at(mem__, 0, spx, wf::band_index(0));
 
-            sddk::mdarray<F, 1> alpha(const_cast<F*>(alphas__), n__);
+            mdarray<F, 1> alpha({n__}, const_cast<F*>(alphas__));
             alpha.allocate(mem__).copy_to(mem__);
 
-            sddk::mdarray<G, 1> idx(const_cast<G*>(idx__), n__);
+            mdarray<G, 1> idx({n__}, const_cast<G*>(idx__));
             idx.allocate(mem__).copy_to(mem__);
 
             if (std::is_same<T, double>::value) {
@@ -1448,7 +1447,7 @@ void axpy_scatter(sddk::memory_t mem__, wf::spin_range spins__, F const*  alphas
 
 /// Copy wave-functions.
 template <typename T, typename F = T>
-void copy(sddk::memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range br_in__,
+void copy(memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range br_in__,
           Wave_functions<F>& out__, wf::spin_index s_out__, wf::band_range br_out__)
 {
     PROFILE("wf::copy");
@@ -1487,7 +1486,7 @@ void copy(sddk::memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1506,7 +1505,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> cons
         ld *= 2;
     }
 
-    F const* mtrx_ptr = M__.size_local() ? M__.at(sddk::memory_t::host, 0, 0) : nullptr;
+    F const* mtrx_ptr = M__.size_local() ? M__.at(memory_t::host, 0, 0) : nullptr;
 
     F const* in_ptr = reinterpret_cast<F const*>(wf_in__.at(mem__, 0, s_in__, band_index(br_in__.begin())));
 
@@ -1518,7 +1517,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> cons
 
 template <typename T, typename F>
 inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
-transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
+transform(::spla::Context& spla_ctx__, memory_t mem__, la::dmatrix<F> const& M__, int irow0__, int jcol0__,
         real_type<F> alpha__, Wave_functions<T> const& wf_in__, spin_index s_in__, band_range br_in__,
         real_type<F> beta__, Wave_functions<T>& wf_out__, spin_index s_out__, band_range br_out__)
 {
@@ -1528,10 +1527,10 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> cons
     RTE_ASSERT(wf_in__.ld() == wf_out__.ld());
     for (int j = 0; j < br_out__.size(); j++) {
         for (int k = 0; k < wf_in__.ld(); k++) {
-            auto wf_out_ptr = wf_out__.at(sddk::memory_t::host, k, s_out__, wf::band_index(j + br_out__.begin()));
+            auto wf_out_ptr = wf_out__.at(memory_t::host, k, s_out__, wf::band_index(j + br_out__.begin()));
             std::complex<real_type<F>> z(0, 0);;
             for (int i = 0; i < br_in__.size(); i++) {
-                auto wf_in_ptr = wf_in__.at(sddk::memory_t::host, k, s_in__, wf::band_index(i + br_in__.begin()));
+                auto wf_in_ptr = wf_in__.at(memory_t::host, k, s_in__, wf::band_index(i + br_in__.begin()));
 
                 z += static_cast<std::complex<real_type<F>>>(*wf_in_ptr) * M__(irow0__ + i, jcol0__ + j);
             }
@@ -1549,7 +1548,7 @@ transform(::spla::Context& spla_ctx__, sddk::memory_t mem__, la::dmatrix<F> cons
  */
 template <typename T>
 inline void
-scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin_range spins__,
+scale_gamma_wf(memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin_range spins__,
         wf::band_range br__, T* scale__)
 {
     RTE_ASSERT(spins__.size() == 1);
@@ -1619,7 +1618,7 @@ scale_gamma_wf(sddk::memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin
  */
 template <typename F, typename W, typename T>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
+inner(::spla::Context& spla_ctx__, memory_t mem__, spin_range spins__, W const& wf_i__, band_range br_i__,
       Wave_functions<T> const& wf_j__, band_range br_j__, la::dmatrix<F>& result__, int irow0__, int jcol0__)
 {
     PROFILE("wf::inner");
@@ -1660,7 +1659,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
 
     F beta = 0.0;
 
-    F* result_ptr = result__.size_local() ? result__.at(sddk::memory_t::host, 0, 0) : nullptr;
+    F* result_ptr = result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr;
 
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
         auto s_i = wf_i__.actual_spin_index(s);
@@ -1684,13 +1683,13 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, W c
 
     /* make sure result is updated on device as well */
     if (result__.on_device()) {
-        result__.copy_to(sddk::memory_t::device, irow0__, jcol0__, br_i__.size(), br_j__.size());
+        result__.copy_to(memory_t::device, irow0__, jcol0__, br_i__.size(), br_j__.size());
     }
 }
 
 template <typename T, typename F>
 inline std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
-inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wave_functions<T> const& wf_i__,
+inner(::spla::Context& spla_ctx__, memory_t mem__, spin_range spins__, Wave_functions<T> const& wf_i__,
         band_range br_i__, Wave_functions<T> const& wf_j__, band_range br_j__, la::dmatrix<F>& result__,
         int irow0__, int jcol0__)
 {
@@ -1712,8 +1711,8 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
 
         for (int i = 0; i < br_i__.size(); i++) {
             for (int j = 0; j < br_j__.size(); j++) {
-                auto wf_i_ptr = wf_i__.at(sddk::memory_t::host, 0, s_i, wf::band_index(br_i__.begin() + i));
-                auto wf_j_ptr = wf_j__.at(sddk::memory_t::host, 0, s_j, wf::band_index(br_j__.begin() + j));
+                auto wf_i_ptr = wf_i__.at(memory_t::host, 0, s_i, wf::band_index(br_i__.begin() + i));
+                auto wf_j_ptr = wf_j__.at(memory_t::host, 0, s_j, wf::band_index(br_j__.begin() + j));
                 F z = 0.0;
 
                 for (int k = 0; k < nk; k++) {
@@ -1744,7 +1743,7 @@ inner(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, Wav
 */
 template <typename T, typename F>
 int
-orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spins__, band_range br_old__,
+orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, spin_range spins__, band_range br_old__,
         band_range br_new__, Wave_functions<T> const& wf_i__, Wave_functions<T> const& wf_j__,
         std::vector<Wave_functions<T>*> wfs__, la::dmatrix<F>& o__, Wave_functions<T>& tmp__, bool project_out__)
 {
@@ -1878,7 +1877,7 @@ orthogonalize(::spla::Context& spla_ctx__, sddk::memory_t mem__, spin_range spin
      */
     auto la = la::lib_t::lapack;
     auto la1 = la::lib_t::blas;
-    auto mem = sddk::memory_t::host;
+    auto mem = memory_t::host;
     /* if matrix is distributed, we use ScaLAPACK for Cholesky factorization */
     if (o__.comm().size() > 1) {
         la = la::lib_t::scalapack;

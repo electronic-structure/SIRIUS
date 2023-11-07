@@ -4,7 +4,6 @@
 /* test rotation of spherical harmonics */
 
 using namespace sirius;
-using namespace sddk;
 
 template <typename T>
 int run_test_impl(cmd_args& args)
@@ -15,10 +14,10 @@ int run_test_impl(cmd_args& args)
     lattice(2, 2) = 7;
 
     int num_atoms = 1;
-    mdarray<double, 2> positions(3, num_atoms);
+    mdarray<double, 2> positions({3, num_atoms});
     positions.zero();
 
-    mdarray<double, 2> spins(3, num_atoms);
+    mdarray<double, 2> spins({3, num_atoms});
     spins.zero();
 
     std::vector<int> types(num_atoms, 0);
@@ -50,19 +49,19 @@ int run_test_impl(cmd_args& args)
             auto scoord2 = r3::spherical_coordinates(coord2);
 
             int lmax{10};
-            sddk::mdarray<T, 1> ylm(sf::lmmax(lmax));
+            mdarray<T, 1> ylm({sf::lmmax(lmax)});
             /* compute spherical harmonics at original coordinate */
             sf::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
 
-            sddk::mdarray<T, 1> ylm2(sf::lmmax(lmax));
+            mdarray<T, 1> ylm2({sf::lmmax(lmax)});
             /* compute spherical harmonics at rotated coordinates */
             sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
 
             /* generate rotation matrices; they are block-diagonal in l- index */
-            sddk::mdarray<T, 2> ylm_rot_mtrx(sf::lmmax(lmax), sf::lmmax(lmax));
+            mdarray<T, 2> ylm_rot_mtrx({sf::lmmax(lmax), sf::lmmax(lmax)});
             sht::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
 
-            sddk::mdarray<T, 1> ylm1(sf::lmmax(lmax));
+            mdarray<T, 1> ylm1({sf::lmmax(lmax)});
             ylm1.zero();
 
             /* rotate original sperical harmonics with P^{-1} */

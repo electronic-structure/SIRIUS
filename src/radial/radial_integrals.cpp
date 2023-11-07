@@ -32,7 +32,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
     PROFILE("sirius::Radial_integrals|atomic_wfs");
 
     /* spherical Bessel functions jl(qx) */
-    sddk::mdarray<sf::Spherical_Bessel_functions, 1> jl(nq());
+    mdarray<sf::Spherical_Bessel_functions, 1> jl({nq()});
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 

@@ -46,8 +46,8 @@ void Potential::init_PAW()
     paw_dij_.resize(unit_cell_.num_paw_atoms());
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         int ia = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
-        paw_dij_[i] = sddk::mdarray<double, 3>(unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(),
-                ctx_.num_mag_dims() + 1);
+        paw_dij_[i] = mdarray<double, 3>({unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(),
+                ctx_.num_mag_dims() + 1});
     }
 }
 
@@ -101,7 +101,7 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));
-        comm_.bcast(paw_dij_[i].at(sddk::memory_t::host), paw_dij_[i].size(), location.ib);
+        comm_.bcast(paw_dij_[i].at(memory_t::host), paw_dij_[i].size(), location.ib);
     }
 
     /* add paw Dij to uspp Dij */
@@ -215,7 +215,7 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
     return eha;
 }
 
-void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mdarray<double, 3>& paw_dij__)
+void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__)
 {
     paw_dij__.zero();
 
@@ -237,7 +237,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
     auto nbrf = atom_type.num_beta_radial_functions();
 
     /* store integrals here */
-    sddk::mdarray<double, 3> integrals(lmmax, nbrf * (nbrf + 1) / 2, ctx_.num_mag_dims() + 1);
+    mdarray<double, 3> integrals({lmmax, nbrf * (nbrf + 1) / 2, ctx_.num_mag_dims() + 1});
 
     auto& rgrid = atom_type.radial_grid();
 
@@ -305,8 +305,8 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mda
 }
 
 double
-Potential::calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<double, 2> const& density_matrix__,
-        sddk::mdarray<double, 3> const& paw_dij__) const
+Potential::calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const& density_matrix__,
+        mdarray<double, 3> const& paw_dij__) const
 {
     double energy{0.0};
 

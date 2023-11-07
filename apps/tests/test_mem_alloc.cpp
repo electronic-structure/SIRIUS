@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 void test(std::vector<int> sizes, memory_t M__)
 {
@@ -9,7 +8,7 @@ void test(std::vector<int> sizes, memory_t M__)
     for (auto sm: sizes) {
         auto s = sm * (size_t(1) << 20);
         auto t0 = wtime();
-        auto ptr = sddk::allocate<char>(s, M__);
+        auto ptr = allocate<char>(s, M__);
         ptrs.push_back(ptr);
         if (is_host_memory(M__)) {
             std::fill(ptr, ptr + s, 0);
@@ -34,7 +33,7 @@ void test(std::vector<int> sizes, memory_t M__)
         print_memory_usage(std::cout, FILE_LINE);
     }
     for (auto p: ptrs) {
-        sddk::deallocate(p, M__);
+        deallocate(p, M__);
     }
 }
 

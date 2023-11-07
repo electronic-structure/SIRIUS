@@ -33,14 +33,13 @@
 
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "hubbard.hpp"
-#include "SDDK/memory.hpp"
 #include "core/la/inverse_sqrt.hpp"
 #include "geometry/wavefunction_strain_deriv.hpp"
 
 namespace sirius {
 
 static void
-update_density_matrix_deriv(la::lib_t la__, sddk::memory_t mt__, int nwfh__, int nbnd__, std::complex<double>* alpha__,
+update_density_matrix_deriv(la::lib_t la__, memory_t mt__, int nwfh__, int nbnd__, std::complex<double>* alpha__,
     la::dmatrix<std::complex<double>> const& phi_hub_s_psi_deriv__, la::dmatrix<std::complex<double>> const& psi_s_phi_hub__,
     std::complex<double>* dn__, int ld__)
 {
@@ -83,17 +82,17 @@ build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf_
                     /* compute \sum_{m} d/d r_{alpha} O^{-1/2}_{m,i} <phi_atomic_{m} | S | psi_{jk} > */
                     la::wrap(la::lib_t::blas).gemm('C', 'N', mmax, nbnd__, nawf__,
                         &la::constant<std::complex<double>>::one(),
-                        ovlp__.at(sddk::memory_t::host, 0, offset_in_wf), ovlp__.ld(),
-                        phi_atomic_s_psi__.at(sddk::memory_t::host), phi_atomic_s_psi__.ld(),
+                        ovlp__.at(memory_t::host, 0, offset_in_wf), ovlp__.ld(),
+                        phi_atomic_s_psi__.at(memory_t::host), phi_atomic_s_psi__.ld(),
                         &la::constant<std::complex<double>>::one(),
-                        phi_hub_s_psi_deriv__.at(sddk::memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv__.ld());
+                        phi_hub_s_psi_deriv__.at(memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv__.ld());
 
                     la::wrap(la::lib_t::blas).gemm('C', 'N', mmax, nbnd__, nawf__,
                         &la::constant<std::complex<double>>::one(),
-                        inv_sqrt_O__.at(sddk::memory_t::host, 0, offset_in_wf), inv_sqrt_O__.ld(),
-                        phi_atomic_ds_psi__.at(sddk::memory_t::host), phi_atomic_ds_psi__.ld(),
+                        inv_sqrt_O__.at(memory_t::host, 0, offset_in_wf), inv_sqrt_O__.ld(),
+                        phi_atomic_ds_psi__.at(memory_t::host), phi_atomic_ds_psi__.ld(),
                         &la::constant<std::complex<double>>::one(),
-                        phi_hub_s_psi_deriv__.at(sddk::memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv__.ld());
+                        phi_hub_s_psi_deriv__.at(memory_t::host, offset_in_hwf, 0), phi_hub_s_psi_deriv__.ld());
                 } else {
                     /* just copy part of the matrix elements in the order in which
                      * Hubbard wfs are defined */
@@ -126,21 +125,21 @@ compute_inv_sqrt_O_deriv(la::dmatrix<std::complex<double>>& O_deriv__, la::dmatr
 
 void
 Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                         sddk::mdarray<std::complex<double>, 5>& dn__)
+                                         mdarray<std::complex<double>, 5>& dn__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies_derivatives");
 
     auto la = la::lib_t::none;
-    auto mt = sddk::memory_t::none;
+    auto mt = memory_t::none;
     switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             la = la::lib_t::blas;
-            mt = sddk::memory_t::host;
+            mt = memory_t::host;
             break;
         }
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
             la = la::lib_t::gpublas;
-            mt = sddk::memory_t::device;
+            mt = memory_t::device;
             break;
         }
     }
@@ -163,8 +162,8 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     RTE_ASSERT(nawf == phi_atomic.num_wf().get());
     RTE_ASSERT(nawf == phi_atomic_S.num_wf().get());
 
-    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        dn__.allocate(sddk::memory_t::device);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.allocate(memory_t::device);
     }
 
     /* compute overlap matrix */
@@ -265,7 +264,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
 
         // store <beta|x> on device if `mt` is device memory.
-        bool copy_back_innerb = sddk::is_device_memory(mt);
+        bool copy_back_innerb = is_device_memory(mt);
 
         bp_gen.generate(bp_coeffs, ichunk);
         auto& beta_chunk = bp_coeffs.beta_chunk_;
@@ -353,9 +352,9 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                         }
                     }
 
-                    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                        phi_hub_s_psi_deriv.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-                        psi_s_phi_hub[ispn].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                    if (ctx_.processing_unit() == device_t::GPU) {
+                        phi_hub_s_psi_deriv.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+                        psi_s_phi_hub[ispn].allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
                     }
 
                     /* update the density matrix derivative */
@@ -367,29 +366,29 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
         }     // x
     } // ichunk
 
-    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        dn__.copy_to(sddk::memory_t::host);
-        dn__.deallocate(sddk::memory_t::device);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.copy_to(memory_t::host);
+        dn__.deallocate(memory_t::device);
     }
 }
 
 void // TODO: rename to strain_deriv, rename previous func. to displacement_deriv
 Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                                sddk::mdarray<std::complex<double>, 4>& dn__)
+                                                mdarray<std::complex<double>, 4>& dn__)
 {
     PROFILE("sirius::Hubbard::compute_occupancies_stress_derivatives");
 
     auto la = la::lib_t::none;
-    auto mt = sddk::memory_t::none;
+    auto mt = memory_t::none;
     switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             la = la::lib_t::blas;
-            mt = sddk::memory_t::host;
+            mt = memory_t::host;
             break;
         }
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
             la = la::lib_t::gpublas;
-            mt = sddk::memory_t::device;
+            mt = memory_t::device;
             break;
         }
     }
@@ -406,8 +405,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     const int lmax  = ctx_.unit_cell().lmax();
     const int lmmax = sf::lmmax(lmax);
 
-    sddk::mdarray<double, 2> rlm_g(lmmax, kp__.num_gkvec_loc());
-    sddk::mdarray<double, 3> rlm_dg(lmmax, 3, kp__.num_gkvec_loc());
+    mdarray<double, 2> rlm_g({lmmax, kp__.num_gkvec_loc()});
+    mdarray<double, 3> rlm_dg({lmmax, 3, kp__.num_gkvec_loc()});
 
     /* array of real spherical harmonics and derivatives for each G-vector */
     #pragma omp parallel for schedule(static)
@@ -417,7 +416,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
         auto rtp = r3::spherical_coordinates(gvc);
 
         sf::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));
-        sddk::mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
+        mdarray<double, 2> rlm_dg_tmp({lmmax, 3}, &rlm_dg(0, 0, igkloc));
         sf::dRlm_dr(lmax, gvc, rlm_dg_tmp);
     }
 
@@ -550,9 +549,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
                     }
                 }
 
-                if (ctx_.processing_unit() == sddk::device_t::GPU) {
-                    psi_s_phi_hub[ispn].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
-                    phi_hub_s_psi_deriv.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+                if (ctx_.processing_unit() == device_t::GPU) {
+                    psi_s_phi_hub[ispn].allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+                    phi_hub_s_psi_deriv.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
                 }
 
                 /* update the density matrix derivative */
@@ -563,8 +562,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
         }
     }
 
-    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        dn__.copy_to(sddk::memory_t::host);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dn__.copy_to(memory_t::host);
     }
 }
 

@@ -110,8 +110,8 @@ struct PosDefMatrixShifted {
 };
 
 struct IdentityPreconditioner {
-    sddk::memory_t mem;
-    sddk::mdarray<double, 1> eigvals;
+    memory_t mem;
+    mdarray<double, 1> eigvals;
     template<typename T>
     void apply(BlockVector<T> &C, BlockVector<T> const &B) {
         C = B;

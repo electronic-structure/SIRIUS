@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 void test_lapw_xc(cmd_args const& args__)
 {

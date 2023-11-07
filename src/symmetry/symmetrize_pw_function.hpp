@@ -97,7 +97,7 @@ namespace sirius {
  */
 inline void
 symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
-           sddk::mdarray<std::complex<double>, 3> const& sym_phase_factors__,
+           mdarray<std::complex<double>, 3> const& sym_phase_factors__,
            int num_mag_dims__, std::vector<Smooth_periodic_function<double>*> frg__)
 {
     PROFILE("sirius::symmetrize_pw_function");

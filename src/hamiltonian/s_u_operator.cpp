@@ -67,8 +67,8 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
         if (env::print_checksum()) {
             print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
         }
-        if (ctx_.processing_unit() == sddk::device_t::GPU) {
-            um_[is].allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            um_[is].allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
         }
     }
 }
@@ -167,7 +167,7 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
                           um__.at(mt, 0, 0, spins__.begin().get()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
                           &la::constant<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
         if (is_device_memory(mt)) {
-            Up.copy_to(sddk::memory_t::host);
+            Up.copy_to(memory_t::host);
         }
     }
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
@@ -190,15 +190,15 @@ template void apply_U_operator<float>(Simulation_context&, wf::spin_range, wf::b
 
 /// Apply strain derivative of S-operator to all scalar functions.
 void
-apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
+apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
                               beta_projectors_coeffs_t<double>& bp_coeffs__,
                               Beta_projector_generator<double>& bp_strain_deriv__,
                               beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
                               wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
                               wf::Wave_functions<double>& ds_phi__)
 {
-    if (sddk::is_device_memory(mem__)) {
-        RTE_ASSERT((bp__.device_t() == sddk::device_t::GPU));
+    if (is_device_memory(mem__)) {
+        RTE_ASSERT((bp__.device_t() == device_t::GPU));
     }
     // NOTE: Beta_projectors_generator knows the target memory!
     using complex_t = std::complex<double>;
@@ -213,7 +213,7 @@ apply_S_operator_strain_deriv(sddk::memory_t mem__, int comp__, Beta_projector_g
         auto host_mem         = bp__.ctx().host_memory_t();
         auto& spla_ctx        = bp__.ctx().spla_context();
         auto band_range_phi   = wf::band_range(0, phi__.num_wf().get());
-        bool result_on_device = bp__.ctx().processing_unit() == sddk::device_t::GPU;
+        bool result_on_device = bp__.ctx().processing_unit() == device_t::GPU;
         auto dbeta_phi        = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
                                                     bp_strain_deriv_coeffs__, phi__, wf::spin_index(0), band_range_phi);
         auto beta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device, bp_coeffs__, phi__,

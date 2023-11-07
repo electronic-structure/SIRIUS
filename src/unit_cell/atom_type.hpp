@@ -188,7 +188,7 @@ class Atom_type
     /// Radial functions of the Q-operator.
     /** The dimension of this array is fully determined by the number and lmax of beta-projectors.
         Beta-projectors must be loaded before loading the Q radial functions. */
-    sddk::mdarray<Spline<double>, 2> q_radial_functions_l_;
+    mdarray<Spline<double>, 2> q_radial_functions_l_;
 
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
@@ -203,7 +203,7 @@ class Atom_type
     std::vector<double> ps_total_charge_density_;
 
     /// Ionic part of D-operator matrix.
-    sddk::mdarray<double, 2> d_mtrx_ion_;
+    mdarray<double, 2> d_mtrx_ion_;
 
     /// True if the pseudopotential is used for PAW.
     bool is_paw_{false};
@@ -216,14 +216,14 @@ class Atom_type
 
     /// All-electron wave functions of the PAW method packed in a single array.
     /** The number of wave functions is equal to the number of beta-projectors. */
-    sddk::mdarray<double, 2> ae_paw_wfs_array_;
+    mdarray<double, 2> ae_paw_wfs_array_;
 
     /// List of pseudo wave functions of the PAW method.
     std::vector<std::vector<double>> ps_paw_wfs_;
 
     /// Pseudo wave functions of the PAW method packed in a single array.
     /** The number of wave functions is equal to the number of beta-projectors. */
-    sddk::mdarray<double, 2> ps_paw_wfs_array_;
+    mdarray<double, 2> ps_paw_wfs_array_;
 
     /// Occupations of PAW wave-functions.
     /** Length of vector is the same as the number of beta projectors. This is used for the initial guess of
@@ -239,13 +239,9 @@ class Atom_type
     /// Hubbard correction.
     bool hubbard_correction_{false};
 
-    /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
-    /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
-    sddk::matrix<std::complex<double>> p_mtrx_;
-
     /// f_coefficients defined in doi:10.1103/PhysRevB.71.115106 Eq.9 only
     /// valid when SO interactions are on
-    sddk::mdarray<std::complex<double>, 4> f_coefficients_;
+    mdarray<std::complex<double>, 4> f_coefficients_;
 
     /// List of atom indices (global) for a given type.
     std::vector<int> atom_id_;
@@ -253,10 +249,10 @@ class Atom_type
     /// Name of the input file for this atom type.
     std::string file_name_;
 
-    sddk::mdarray<int, 2> idx_radial_integrals_;
+    mdarray<int, 2> idx_radial_integrals_;
 
-    mutable sddk::mdarray<double, 3> rf_coef_;
-    mutable sddk::mdarray<double, 3> vrf_coef_;
+    mutable mdarray<double, 3> rf_coef_;
+    mutable mdarray<double, 3> vrf_coef_;
 
     /// Non-zero Gaunt coefficients.
     std::unique_ptr<Gaunt_coefficients<std::complex<double>>> gaunt_coefs_{nullptr};
@@ -384,7 +380,7 @@ class Atom_type
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
         radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
-        if (parameters_.processing_unit() == sddk::device_t::GPU) {
+        if (parameters_.processing_unit() == device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }
@@ -393,7 +389,7 @@ class Atom_type
     inline void set_radial_grid(int num_points__, double const* points__)
     {
         radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-        if (parameters_.processing_unit() == sddk::device_t::GPU) {
+        if (parameters_.processing_unit() == device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }
@@ -552,7 +548,7 @@ class Atom_type
             augment_ = true;
             /* number of radial beta-functions */
             int nbrf              = num_beta_radial_functions();
-            q_radial_functions_l_ = sddk::mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
+            q_radial_functions_l_ = mdarray<Spline<double>, 2>({nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1});
 
             for (int l = 0; l <= 2 * lmax_beta(); l++) {
                 for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
@@ -561,8 +557,7 @@ class Atom_type
             }
         }
 
-        int ijv                         = packed_index(idxrf1__, idxrf2__);
-        q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
+        q_radial_functions_l_(packed_index(idxrf1__, idxrf2__), l__) = Spline<double>(radial_grid_, qrf__);
     }
 
     /// Return true if this atom type has an augementation charge.
@@ -963,11 +958,11 @@ class Atom_type
         return file_name_;
     }
 
-    inline void d_mtrx_ion(sddk::matrix<double> const& d_mtrx_ion__)
+    inline void d_mtrx_ion(matrix<double> const& d_mtrx_ion__)
     {
-        d_mtrx_ion_ = sddk::matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
-                sddk::memory_t::host, "Atom_type::d_mtrx_ion_");
-        sddk::copy(d_mtrx_ion__, d_mtrx_ion_);
+        d_mtrx_ion_ = matrix<double>({num_beta_radial_functions(), num_beta_radial_functions()},
+                mdarray_label("Atom_type::d_mtrx_ion_"));
+        copy(d_mtrx_ion__, d_mtrx_ion_);
     }
 
     inline auto const& d_mtrx_ion() const

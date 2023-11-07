@@ -18,9 +18,9 @@ int run_test(cmd_args const& args)
 
     for (auto n : sizes) {
         auto M = random_positive_definite<type>(n);
-        M.allocate(get_memory_pool(sddk::memory_t::device)).copy_to(sddk::memory_t::device);
+        M.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
         std::cout << "n = " << n << std::endl;
-        auto info = cusolver::potrf(n, M.at(sddk::memory_t::device), M.ld());
+        auto info = cusolver::potrf(n, M.at(memory_t::device), M.ld());
         if (info) {
             return info;
         }

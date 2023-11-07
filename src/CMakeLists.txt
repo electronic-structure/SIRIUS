@@ -61,7 +61,6 @@ set(_SOURCES
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
-  "SDDK/memory.cpp"
   "mixer/mixer_functions.cpp"
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"
@@ -83,6 +82,7 @@ set(_SOURCES
   "core/la/eigenproblem.cpp"
   "core/la/linalg_spla.cpp"
   "core/la/dmatrix.cpp"
+  "core/memory.cpp"
   )
 
 

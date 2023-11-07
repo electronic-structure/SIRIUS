@@ -4,7 +4,6 @@ using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace sirius;
 using complex_double = std::complex<double>;
-using namespace sddk;
 
 using PT = double;
 

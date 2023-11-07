@@ -88,7 +88,7 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
     /*  [--- num_locked -- | ------ N - num_locked ---- | ---- n ----] */
     /*  [ ------------------- N ------------------------| ---- n ----] */
 
-    auto mem = ctx__.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+    auto mem = ctx__.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
     /* <{phi,phi_new}|Op|phi_new> */
     inner(ctx__.spla_context(), mem, ctx__.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(0), phi__,
             wf::band_range(num_locked__, N__ + n__), op_phi__, wf::band_range(N__, N__ + n__),

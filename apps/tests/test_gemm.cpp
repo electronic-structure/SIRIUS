@@ -14,7 +14,7 @@ int const nop_gemm = 8;
 
 double test_gemm(int M, int N, int K, int transa)
 {
-    sddk::mdarray<gemm_type, 2> a, b, c;
+    mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
     if (transa == 0) {
         imax = M;
@@ -23,9 +23,9 @@ double test_gemm(int M, int N, int K, int transa)
         imax = K;
         jmax = M;
     }
-    a = sddk::matrix<gemm_type>(imax, jmax);
-    b = sddk::matrix<gemm_type>(K, N);
-    c = sddk::matrix<gemm_type>(M, N);
+    a = matrix<gemm_type>({imax, jmax});
+    b = matrix<gemm_type>({K, N});
+    c = matrix<gemm_type>({M, N});
 
     for (int j = 0; j < jmax; j++) {
         for (int i = 0; i < imax; i++) {
@@ -48,8 +48,8 @@ double test_gemm(int M, int N, int K, int transa)
     const char ta[] = {'N', 'T', 'C'};
     double t = -::sirius::wtime();
     la::wrap(la::lib_t::blas).gemm(ta[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
-        a.at(sddk::memory_t::host), a.ld(), b.at(sddk::memory_t::host), b.ld(), &la::constant<gemm_type>::zero(),
-        c.at(sddk::memory_t::host), c.ld());
+        a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), &la::constant<gemm_type>::zero(),
+        c.at(memory_t::host), c.ld());
     t += ::sirius::wtime();
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
@@ -76,9 +76,9 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     }
     b = la::dmatrix<gemm_type>(nullptr, K, N, blacs_grid, bs, bs);
     c = la::dmatrix<gemm_type>(nullptr, M, N - n, blacs_grid, bs, bs);
-    a.allocate(sddk::memory_t::host);
-    b.allocate(sddk::memory_t::host);
-    c.allocate(sddk::memory_t::host);
+    a.allocate(memory_t::host);
+    b.allocate(memory_t::host);
+    c.allocate(memory_t::host);
 
     for (int ic = 0; ic < a.num_cols_local(); ic++) {
         for (int ir = 0; ir < a.num_rows_local(); ir++) {

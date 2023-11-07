@@ -30,7 +30,7 @@
 namespace sirius {
 
 inline void
-symmetrize_forces(Unit_cell const& uc__, sddk::mdarray<double, 2>& f__)
+symmetrize_forces(Unit_cell const& uc__, mdarray<double, 2>& f__)
 {
     auto& sym = uc__.symmetry();
 
@@ -38,7 +38,7 @@ symmetrize_forces(Unit_cell const& uc__, sddk::mdarray<double, 2>& f__)
         return;
     }
 
-    sddk::mdarray<double, 2> sym_forces(3, uc__.spl_num_atoms().local_size());
+    mdarray<double, 2> sym_forces({3, uc__.spl_num_atoms().local_size()});
     sym_forces.zero();
 
     for (int isym = 0; isym < sym.size(); isym++) {
@@ -63,8 +63,8 @@ symmetrize_forces(Unit_cell const& uc__, sddk::mdarray<double, 2>& f__)
             sym_forces(x, ia) *= alpha;
         }
     }
-    double* sbuf = uc__.spl_num_atoms().local_size() ? sym_forces.at(sddk::memory_t::host) : nullptr;
-    uc__.comm().allgather(sbuf, f__.at(sddk::memory_t::host), 3 * uc__.spl_num_atoms().local_size(),
+    double* sbuf = uc__.spl_num_atoms().local_size() ? sym_forces.at(memory_t::host) : nullptr;
+    uc__.comm().allgather(sbuf, f__.at(memory_t::host), 3 * uc__.spl_num_atoms().local_size(),
         3 * uc__.spl_num_atoms().global_offset());
 }
 

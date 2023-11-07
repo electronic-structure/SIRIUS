@@ -31,7 +31,7 @@
 namespace sirius {
 
 static std::pair<std::vector<int>, std::vector<r3::vector<int>>>
-find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, r3::matrix<int> const& R__,
+find_sym_atom(int num_atoms__, mdarray<double, 2> const& positions__, r3::matrix<int> const& R__,
               r3::vector<double> const& t__, double tolerance__, bool inverse__ = false)
 {
     PROFILE("sirius::find_sym_atom");
@@ -81,7 +81,7 @@ find_sym_atom(int num_atoms__, sddk::mdarray<double, 2> const& positions__, r3::
 
 static space_group_symmetry_descriptor
 get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> const& lattice_vectors__, int num_atoms__,
-    sddk::mdarray<double, 2> const& positions__, double tolerance__)
+    mdarray<double, 2> const& positions__, double tolerance__)
 {
     space_group_symmetry_descriptor sym_op;
 
@@ -183,8 +183,8 @@ get_identity_spg_sym_op(int num_atoms__)
 }
 
 Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__,
-    int num_atom_types__, std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
-    sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
+    int num_atom_types__, std::vector<int> const& types__, mdarray<double, 2> const& positions__,
+    mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
     , num_atoms_(num_atoms__)
     , num_atom_types_(num_atom_types__)
@@ -210,11 +210,11 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
         }
     }
 
-    positions_ = sddk::mdarray<double, 2>(3, num_atoms_);
-    sddk::copy(positions__, positions_);
+    positions_ = mdarray<double, 2>({3, num_atoms_});
+    copy(positions__, positions_);
 
-    magnetization_ = sddk::mdarray<double, 2>(3, num_atoms_);
-    sddk::copy(spins__, magnetization_);
+    magnetization_ = mdarray<double, 2>({3, num_atoms_});
+    copy(spins__, magnetization_);
 
     PROFILE_START("sirius::Crystal_symmetry|spg");
     if (use_sym__) {

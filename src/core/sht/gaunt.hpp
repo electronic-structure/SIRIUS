@@ -25,7 +25,7 @@
 #ifndef __GAUNT_HPP__
 #define __GAUNT_HPP__
 
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "core/typedefs.hpp"
 #include "core/sf/specfunc.hpp"
 
@@ -73,10 +73,10 @@ class Gaunt_coefficients
     int lmmax2_;
 
     /// List of non-zero Gaunt coefficients for each lm3.
-    sddk::mdarray<std::vector<gaunt_L1_L2<T>>, 1> gaunt_packed_L1_L2_;
+    mdarray<std::vector<gaunt_L1_L2<T>>, 1> gaunt_packed_L1_L2_;
 
     /// List of non-zero Gaunt coefficients for each combination of lm1, lm2.
-    sddk::mdarray<std::vector<gaunt_L3<T>>, 2> gaunt_packed_L3_;
+    mdarray<std::vector<gaunt_L3<T>>, 2> gaunt_packed_L3_;
 
   public:
     /// Class constructor.
@@ -89,10 +89,10 @@ class Gaunt_coefficients
         lmmax3_ = sf::lmmax(lmax3_);
         lmmax2_ = sf::lmmax(lmax2_);
 
-        gaunt_packed_L1_L2_ = sddk::mdarray<std::vector<gaunt_L1_L2<T>>, 1>(lmmax3_);
+        gaunt_packed_L1_L2_ = mdarray<std::vector<gaunt_L1_L2<T>>, 1>({lmmax3_});
         gaunt_L1_L2<T> g12;
 
-        gaunt_packed_L3_ = sddk::mdarray<std::vector<gaunt_L3<T>>, 2>(lmmax1_, lmmax2_);
+        gaunt_packed_L3_ = mdarray<std::vector<gaunt_L3<T>>, 2>({lmmax1_, lmmax2_});
         gaunt_L3<T> g3;
 
         for (int l1 = 0, lm1 = 0; l1 <= lmax1_; l1++) {
@@ -204,7 +204,7 @@ class Gaunt_coefficients
     /// Return the full tensor of Gaunt coefficients <R_{L1}|R_{L3}|R_{L2}> with a (L3, L1, L2) order of indices.
     inline auto get_full_set_L3() const
     {
-        sddk::mdarray<T, 3> gc(lmmax3_, lmmax1_, lmmax2_);
+        mdarray<T, 3> gc(lmmax3_, lmmax1_, lmmax2_);
         gc.zero();
         for (int lm2 = 0; lm2 < lmmax2_; lm2++) {
             for (int lm1 = 0; lm1 < lmmax1_; lm1++) {

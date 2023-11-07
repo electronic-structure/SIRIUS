@@ -32,14 +32,14 @@ namespace sirius {
 template <index_domain_t index_domain, typename F>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
-        sddk::mdarray<std::complex<double>, 2> const& phase_factors_t__, F&& form_factors__)
+        mdarray<std::complex<double>, 2> const& phase_factors_t__, F&& form_factors__)
 {
     PROFILE("sirius::make_periodic_function");
 
     const double fourpi_omega = fourpi / uc__.omega();
 
     auto const ngv = (index_domain == index_domain_t::local) ? gv__.count() : gv__.num_gvec();
-    sddk::mdarray<std::complex<double>, 1> f_pw(ngv);
+    mdarray<std::complex<double>, 1> f_pw({ngv});
     f_pw.zero();
 
     #pragma omp parallel for schedule(static)
@@ -65,15 +65,15 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 template <index_domain_t index_domain>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
-        sddk::mdarray<std::complex<double>, 2> const& phase_factors_t__,
-        sddk::mdarray<double, 2> const& form_factors__)
+        mdarray<std::complex<double>, 2> const& phase_factors_t__,
+        mdarray<double, 2> const& form_factors__)
 {
     PROFILE("sirius::make_periodic_function");
 
     const double fourpi_omega = fourpi / uc__.omega();
 
     auto const ngv = (index_domain == index_domain_t::local) ? gv__.count() : gv__.num_gvec();
-    sddk::mdarray<std::complex<double>, 1> f_pw(ngv);
+    mdarray<std::complex<double>, 1> f_pw({ngv});
     f_pw.zero();
 
     #pragma omp parallel for schedule(static)

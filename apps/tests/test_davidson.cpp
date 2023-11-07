@@ -13,7 +13,7 @@ void init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, in
         tmp[i] = random<double>();
     }
 
-    phi__.zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
+    phi__.zero(memory_t::host, wf::spin_index(0), wf::band_range(0, num_bands__));
 
     //#pragma omp parallel for schedule(static)
     for (int i = 0; i < num_bands__; i++) {
@@ -38,7 +38,7 @@ void init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, in
 
     if (num_mag_dims__ == 3) {
         /* make pure spinor up- and dn- wave functions */
-        wf::copy(sddk::memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
+        wf::copy(memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
                 wf::band_range(num_bands__, 2 * num_bands__));
     }
 }

@@ -35,9 +35,9 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/memory.hpp"
-#include "mixer/mixer.hpp"
+#include "core/memory.hpp"
 #include "core/la/linalg.hpp"
+#include "mixer/mixer.hpp"
 
 namespace sirius {
 namespace mixer {
@@ -68,8 +68,8 @@ class Anderson : public Mixer<FUNCS...>
     double beta_;
     double beta0_;
     double beta_scaling_factor_;
-    sddk::mdarray<double, 2> S_;
-    sddk::mdarray<double, 2> S_factorized_;
+    mdarray<double, 2> S_;
+    mdarray<double, 2> S_factorized_;
     std::size_t history_size_;
   public:
     Anderson(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
@@ -77,8 +77,8 @@ class Anderson : public Mixer<FUNCS...>
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
-        , S_(max_history - 1, max_history - 1)
-        , S_factorized_(max_history - 1, max_history - 1)
+        , S_({max_history - 1, max_history - 1})
+        , S_factorized_({max_history - 1, max_history - 1})
         , history_size_(0)
     {
     }
@@ -135,7 +135,7 @@ class Anderson : public Mixer<FUNCS...>
                 for (int j = 0; j < history_size; ++j)
                     this->S_factorized_(j, i) = this->S_(j, i);
 
-            sddk::mdarray<double, 1> h(history_size);
+            mdarray<double, 1> h({history_size});
             for (int i = 1; i <= history_size; ++i) {
                 auto j = this->idx_hist(this->step_ - i);
                 h(history_size - i) = this->template inner_product<normalize>(

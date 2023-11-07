@@ -29,7 +29,6 @@
 namespace sirius {
 
 using namespace wf;
-using namespace sddk;
 
 template <typename T>
 Non_local_operator<T>::Non_local_operator(Simulation_context const& ctx__)
@@ -39,7 +38,7 @@ Non_local_operator<T>::Non_local_operator(Simulation_context const& ctx__)
 
     pu_                 = this->ctx_.processing_unit();
     auto& uc            = this->ctx_.unit_cell();
-    packed_mtrx_offset_ = sddk::mdarray<int, 1>(uc.num_atoms());
+    packed_mtrx_offset_ = mdarray<int, 1>({uc.num_atoms()});
     packed_mtrx_size_   = 0;
     size_               = 0;
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
@@ -65,9 +64,9 @@ D_operator<T>::D_operator(Simulation_context const& ctx_)
     : Non_local_operator<T>(ctx_)
 {
     if (ctx_.gamma_point()) {
-        this->op_ = mdarray<T, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>({1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1});
     } else {
-        this->op_ = mdarray<T, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>({2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1});
     }
     this->op_.zero();
     initialize();
@@ -91,7 +90,7 @@ D_operator<T>::initialize()
 
         /* in case of spin orbit coupling */
         if (uc.atom(ia).type().spin_orbit_coupling()) {
-            mdarray<std::complex<T>, 3> d_mtrx_so(nbf, nbf, 4);
+            mdarray<std::complex<T>, 3> d_mtrx_so({nbf, nbf, 4});
             d_mtrx_so.zero();
 
             /* transform the d_mtrx */
@@ -245,9 +244,9 @@ Q_operator<T>::Q_operator(Simulation_context const& ctx__)
     /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
      * method if the Q-operator has a spin index */
     if (this->ctx_.gamma_point()) {
-        this->op_ = mdarray<T, 3>(1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>({1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1});
     } else {
-        this->op_ = mdarray<T, 3>(2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 3>({2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1});
     }
     this->op_.zero();
     initialize();
@@ -349,7 +348,7 @@ Non_local_operator<T>::size(int i) const
 
 template <class T>
 template <class F>
-sddk::matrix<F>
+matrix<F>
 Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
 {
     static_assert(is_complex<F>::value, "not implemented for gamma point");
@@ -362,7 +361,7 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
         offsets[ia + 1] = offsets[ia] + uc.atom(ia).mt_basis_size();
     }
 
-    sddk::matrix<double_complex> O(this->size(0), this->size(1), mem);
+    matrix<double_complex> O({this->size(0), this->size(1)}, mem);
     O.zero(mem);
     int num_atoms = uc.num_atoms();
     for (int ia = 0; ia < num_atoms; ++ia) {
@@ -391,7 +390,7 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
     return O;
 }
 
-template sddk::matrix<std::complex<double>> Non_local_operator<double>::get_matrix(int, memory_t) const;
+template matrix<std::complex<double>> Non_local_operator<double>::get_matrix(int, memory_t) const;
 
 template class Non_local_operator<double>;
 

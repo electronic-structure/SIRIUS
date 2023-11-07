@@ -59,8 +59,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         int lmax  = uc.lmax();
         int lmmax = sf::lmmax(lmax);
 
-        sddk::mdarray<double, 2> rlm_g(lmmax, this->num_gkvec_loc());
-        sddk::mdarray<double, 3> rlm_dg(lmmax, 3, this->num_gkvec_loc());
+        mdarray<double, 2> rlm_g({lmmax, this->num_gkvec_loc()});
+        mdarray<double, 3> rlm_dg({lmmax, 3, this->num_gkvec_loc()});
 
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
@@ -72,11 +72,11 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
             double phi   = rtp[2];
 
             sf::spherical_harmonics(lmax, theta, phi, &rlm_g(0, igkloc));
-            sddk::mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
+            mdarray<double, 2> rlm_dg_tmp({lmmax, 3}, &rlm_dg(0, 0, igkloc));
             sf::dRlm_dr(lmax, gvc, rlm_dg_tmp);
         }
 
-        this->pw_coeffs_t_.zero(sddk::memory_t::host);
+        this->pw_coeffs_t_.zero(memory_t::host);
 
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
         #pragma omp parallel for schedule(static)

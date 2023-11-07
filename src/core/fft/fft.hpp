@@ -28,7 +28,7 @@
 #include <spfft/spfft.hpp>
 #include "core/splindex.hpp"
 #include "core/mpi/communicator.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 
@@ -77,9 +77,9 @@ struct SpFFT_Transform<std::complex<float>> {using type = spfft::TransformFloat;
 template <typename T>
 using spfft_transform_type = typename SpFFT_Transform<T>::type;
 
-const std::map<SpfftProcessingUnitType, sddk::memory_t> spfft_memory_t = {
-    {SPFFT_PU_HOST, sddk::memory_t::host},
-    {SPFFT_PU_GPU, sddk::memory_t::device}
+const std::map<SpfftProcessingUnitType, memory_t> spfft_memory_t = {
+    {SPFFT_PU_HOST, memory_t::host},
+    {SPFFT_PU_GPU, memory_t::device}
 };
 
 template <typename F, typename T, typename ...Args>

@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 int test1()
 {
@@ -15,7 +14,7 @@ int test1()
 
     std::complex<double> d1(4.464663636,10.37374992921);
 
-    mdarray<double, 2> m1(4, 5);
+    mdarray<double, 2> m1({4, 5});
     m1 = [](uint64_t i1, uint64_t i2){return random<double>();};
 
     r3::vector<double> v1{1.1, 2.2, 3.3};

@@ -12,10 +12,10 @@ int const nop_gemm = 8;
 #endif
 
 
-double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t memA__, sddk::memory_t memB__,
-                 sddk::memory_t memC__)
+double test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memory_t memB__,
+                 memory_t memC__)
 {
-    sddk::mdarray<gemm_type, 2> a, b, c;
+    mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
     if (transa == 0) {
         imax = M;
@@ -25,29 +25,29 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t
         jmax = M;
     }
 
-    a = sddk::matrix<gemm_type>(imax, jmax, memA__);
-    b = sddk::matrix<gemm_type>(K, N, memB__);
-    c = sddk::matrix<gemm_type>(M, N, memC__);
+    a = matrix<gemm_type>({imax, jmax}, memA__);
+    b = matrix<gemm_type>({K, N}, memB__);
+    c = matrix<gemm_type>({M, N}, memC__);
 
     if (!is_host_memory(memA__)) {
-        a.allocate(sddk::memory_t::host);
+        a.allocate(memory_t::host);
     }
     a = [](int64_t i, int64_t j){return random<gemm_type>();};
     if (!is_host_memory(memA__)) {
-        a.copy_to(sddk::memory_t::device);
+        a.copy_to(memory_t::device);
     }
 
     if (!is_host_memory(memB__)) {
-        b.allocate(sddk::memory_t::host);
+        b.allocate(memory_t::host);
     }
     b = [](int64_t i, int64_t j){return random<gemm_type>();};
     if (!is_host_memory(memB__)) {
-        b.copy_to(sddk::memory_t::device);
+        b.copy_to(memory_t::device);
     }
 
     c.zero(memC__);
     if (!is_host_memory(memC__)) {
-        c.allocate(sddk::memory_t::host);
+        c.allocate(memory_t::host);
     }
 
     char TA[] = {'N', 'T', 'C'};
@@ -63,7 +63,7 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, sddk::memory_t
                        c.at(memC__), c.ld());
     double t2 = t + ::sirius::wtime();
     if (is_device_memory(memC__)) {
-        c.copy_to(sddk::memory_t::host);
+        c.copy_to(memory_t::host);
     }
 
     t += ::sirius::wtime();
@@ -104,9 +104,9 @@ int main(int argn, char **argv)
     int repeat = args.value<int>("repeat", 5);
 
     std::string lib_t_str = args.value<std::string>("lib_t", "blas");
-    auto memA = sddk::get_memory_t(args.value<std::string>("memA", "host"));
-    auto memB = sddk::get_memory_t(args.value<std::string>("memB", "host"));
-    auto memC = sddk::get_memory_t(args.value<std::string>("memC", "host"));
+    auto memA = get_memory_t(args.value<std::string>("memA", "host"));
+    auto memB = get_memory_t(args.value<std::string>("memB", "host"));
+    auto memC = get_memory_t(args.value<std::string>("memC", "host"));
 
     sirius::initialize(true);
 
