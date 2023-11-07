@@ -5,6 +5,10 @@ from subprocess import Popen, PIPE
 import difflib
 import argparse
 
+#
+# check formatting of the files with clang-format >= 17.0
+#
+
 parser = argparse.ArgumentParser(description='Check file formatting with clang-format')
 parser.add_argument('-f', '--fmt', action='store_true', help='Apply formatting to the file(s)')
 args = parser.parse_args()
