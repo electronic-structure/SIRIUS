@@ -231,7 +231,7 @@ class Unit_cell
     void update();
 
     /// Import unit cell description from the input data structure.
-    /** Set lattice vectors, atom types and coordinates of atoms. The "atom_coordinate_units" parameter by default 
+    /** Set lattice vectors, atom types and coordinates of atoms. The "atom_coordinate_units" parameter by default
      *  is assumed to be "lattice" which means that the atomic coordinates are provided in lattice (fractional) units.
      *  It can also be specified in "A" or "au" which means that the input atomic coordinates are Cartesian and
      *  provided in Angstroms or atomic units of length. This is useful in setting up the molecule calculation. */
@@ -262,13 +262,13 @@ class Unit_cell
     template <typename T>
     inline auto get_cartesian_coordinates(r3::vector<T> a__) const
     {
-        return dot(lattice_vectors_ , a__);
+        return dot(lattice_vectors_, a__);
     }
 
     /// Get fractional coordinates of the vector by its Cartesian coordinates.
     inline auto get_fractional_coordinates(r3::vector<double> a__) const
     {
-        return dot(inverse_lattice_vectors_ , a__);
+        return dot(inverse_lattice_vectors_, a__);
     }
 
     /// Unit cell volume.

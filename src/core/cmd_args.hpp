@@ -119,20 +119,19 @@ class cmd_args
     }
 
     ///// Get a vector of values or terminate if key is not found.
-    //template <typename T>
-    //inline std::vector<T> value(std::string const key__) const
+    // template <typename T>
+    // inline std::vector<T> value(std::string const key__) const
     //{
-    //    check_for_key(key__);
-    //    return get_vector<T>(key__);
-    //}
+    //     check_for_key(key__);
+    //     return get_vector<T>(key__);
+    // }
 
-    //template <typename T, std::size_t N>
-    //inline std::array<T, N> value(std::string const key__) const
+    // template <typename T, std::size_t N>
+    // inline std::array<T, N> value(std::string const key__) const
     //{
-    //    check_for_key(key__);
-    //    return get_array<T, N>(key__);
-    //}
-
+    //     check_for_key(key__);
+    //     return get_array<T, N>(key__);
+    // }
 
     /// Get a value if key exists or return a default value.
     template <typename T>
@@ -176,13 +175,15 @@ class cmd_args
 };
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__) const
+inline std::string
+cmd_args::value<std::string>(const std::string key__) const
 {
     return keys_.at(key__);
 }
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__, const std::string default_val__) const
+inline std::string
+cmd_args::value<std::string>(const std::string key__, const std::string default_val__) const
 {
     if (!exist(key__)) {
         return default_val__;
@@ -191,14 +192,16 @@ inline std::string cmd_args::value<std::string>(const std::string key__, const s
 }
 
 template <>
-inline std::vector<double> cmd_args::value<std::vector<double>>(const std::string key__) const
+inline std::vector<double>
+cmd_args::value<std::vector<double>>(const std::string key__) const
 {
     check_for_key(key__);
     return get_vector<double>(key__);
 }
 
 template <>
-inline std::vector<int> cmd_args::value<std::vector<int>>(const std::string key__) const
+inline std::vector<int>
+cmd_args::value<std::vector<int>>(const std::string key__) const
 {
     check_for_key(key__);
     return get_vector<int>(key__);

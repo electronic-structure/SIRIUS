@@ -79,7 +79,7 @@ class Matching_coefficients // TODO: compute on GPU
      */
     template <int N, bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     inline void generate(int ngk, std::vector<std::complex<double>> const& phase_factors__, int iat, int l, int lm,
-            int nu, r3::matrix<double> const& A, T* alm) const
+                         int nu, r3::matrix<double> const& A, T* alm) const
     {
         std::complex<double> zt;
 
@@ -128,7 +128,7 @@ class Matching_coefficients // TODO: compute on GPU
             for (int i = 0; i < gkvec_.count(); i++) {
                 auto gkvec_cart = gkvec_.gkvec_cart<index_domain_t::local>(i);
                 /* get r, theta, phi */
-                auto vs = r3::spherical_coordinates(gkvec_cart);
+                auto vs       = r3::spherical_coordinates(gkvec_cart);
                 gkvec_len_[i] = vs[0];
 
                 /* get spherical harmonics */
@@ -174,7 +174,7 @@ class Matching_coefficients // TODO: compute on GPU
                     }
 
                     for (int l = 0; l <= lmax_apw; l++) {
-                        std::complex<double> z       = std::pow(std::complex<double>(0, 1), l);
+                        std::complex<double> z = std::pow(std::complex<double>(0, 1), l);
                         double f               = fourpi / std::sqrt(unit_cell_.omega());
                         alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0);
                         alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);

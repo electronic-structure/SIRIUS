@@ -75,6 +75,7 @@ class K_point_set
     /// Return entropy contribution from smearing store in Kpoint<T>.
     template <typename T>
     double entropy_sum() const;
+
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)
@@ -144,12 +145,12 @@ class K_point_set
     void update()
     {
         /* update k-points */
-      for (auto it : spl_num_kpoints_) {
-           kpoints_[it.i]->update();
+        for (auto it : spl_num_kpoints_) {
+            kpoints_[it.i]->update();
 #if defined(SIRIUS_USE_FP32)
-           kpoints_float_[it.i]->update();
+            kpoints_float_[it.i]->update();
 #endif
-      }
+        }
     }
 
     /// Get a list of band energies for a given k-point index.
@@ -271,15 +272,17 @@ class K_point_set
     }
 };
 
-template<>
-inline K_point<double>* K_point_set::get<double>(int ik__) const
+template <>
+inline K_point<double>*
+K_point_set::get<double>(int ik__) const
 {
     RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_.size());
     return kpoints_[ik__].get();
 }
 
-template<>
-inline K_point<float>* K_point_set::get<float>(int ik__) const
+template <>
+inline K_point<float>*
+K_point_set::get<float>(int ik__) const
 {
 #if defined(SIRIUS_USE_FP32)
     RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_float_.size());

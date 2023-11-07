@@ -32,8 +32,9 @@
 
 namespace sirius {
 
-void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
-                       Flm const& rho_lm__, Ftp& rho_tp__, Flm& vxc_lm__, Flm& exc_lm__)
+void
+xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
+                  Flm const& rho_lm__, Ftp& rho_tp__, Flm& vxc_lm__, Flm& exc_lm__)
 {
     bool is_gga{false};
     for (auto& ixc : xc_func__) {
@@ -59,7 +60,7 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
     if (is_gga) {
         /* compute gradient in Rlm spherical harmonics */
         auto grad_rho_lm = gradient(rho_lm__);
-        grad_rho_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_tp      = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++) {
             transform(sht__, grad_rho_lm[x], grad_rho_tp[x]);
@@ -77,19 +78,19 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
         }
     }
 
-    for (auto& ixc: xc_func__) {
+    for (auto& ixc : xc_func__) {
         /* if this is an LDA functional */
         if (ixc.is_lda()) {
             ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
-                vxc_tp.at(memory_t::host), exc_tp.at(memory_t::host));
+                        vxc_tp.at(memory_t::host), exc_tp.at(memory_t::host));
         }
         /* if this is a GGA functional */
         if (ixc.is_gga()) {
 
             /* compute vrho and vsigma */
             ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
-                grad_rho_grad_rho_tp.at(memory_t::host), vxc_tp.at(memory_t::host), vsigma_tp.at(memory_t::host),
-                exc_tp.at(memory_t::host));
+                        grad_rho_grad_rho_tp.at(memory_t::host), vxc_tp.at(memory_t::host),
+                        vsigma_tp.at(memory_t::host), exc_tp.at(memory_t::host));
 
             if (use_lapl) {
                 vxc_tp -= 2.0 * vsigma_tp * lapl_rho_tp;
@@ -109,7 +110,7 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
                 vxc_tp -= 2.0 * grad_vsigma_grad_rho_tp;
             } else {
                 Spheric_vector_function<function_domain_t::spectral, double> vsigma_grad_rho_lm(sht__.lmmax(), rgrid__);
-                for (int x: {0, 1, 2}) {
+                for (int x : {0, 1, 2}) {
                     auto vsigma_grad_rho_tp = vsigma_tp * grad_rho_tp[x];
                     transform(sht__, vsigma_grad_rho_tp, vsigma_grad_rho_lm[x]);
                 }
@@ -120,12 +121,13 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
         }
         exc_lm__ += transform(sht__, exc_tp);
         vxc_lm__ += transform(sht__, vxc_tp);
-    } //ixc
+    } // ixc
 }
 
-void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag_dims__,
-                    std::vector<XC_functional> const& xc_func__, std::vector<Ftp> const& rho_tp__,
-                    std::vector<Flm*> vxc__, Flm& exc__)
+void
+xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag_dims__,
+               std::vector<XC_functional> const& xc_func__, std::vector<Ftp> const& rho_tp__, std::vector<Flm*> vxc__,
+               Flm& exc__)
 {
     bool is_gga{false};
     for (auto& ixc : xc_func__) {
@@ -182,10 +184,12 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
         /* compute gradient in Rlm spherical harmonics */
         auto grad_rho_up_lm = gradient(rho_up_lm);
         auto grad_rho_dn_lm = gradient(rho_dn_lm);
-        grad_rho_up_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
-        grad_rho_dn_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
-        grad_rho_up_vsigma_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
-        grad_rho_dn_vsigma_tp = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_up_tp      = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_dn_tp      = Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_up_vsigma_tp =
+            Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
+        grad_rho_dn_vsigma_tp =
+            Spheric_vector_function<function_domain_t::spatial, double>(sht__.num_points(), rgrid__);
 
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++) {
@@ -202,22 +206,22 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
         vsigma_dd_tp = Ftp(sht__.num_points(), rgrid__);
     }
 
-    for (auto& ixc: xc_func__) {
+    for (auto& ixc : xc_func__) {
         if (ixc.is_lda()) {
             ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
-                rho_dn_tp.at(memory_t::host), vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host),
-                exc_tp.at(memory_t::host));
+                        rho_dn_tp.at(memory_t::host), vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host),
+                        exc_tp.at(memory_t::host));
         }
         if (ixc.is_gga()) {
             /* get the vrho and vsigma */
             ixc.get_gga(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
-                    rho_dn_tp.at(memory_t::host), grad_rho_up_grad_rho_up_tp.at(memory_t::host),
-                    grad_rho_up_grad_rho_dn_tp.at(memory_t::host), grad_rho_dn_grad_rho_dn_tp.at(memory_t::host),
-                    vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host), vsigma_uu_tp.at(memory_t::host),
-                    vsigma_ud_tp.at(memory_t::host), vsigma_dd_tp.at(memory_t::host), exc_tp.at(memory_t::host));
+                        rho_dn_tp.at(memory_t::host), grad_rho_up_grad_rho_up_tp.at(memory_t::host),
+                        grad_rho_up_grad_rho_dn_tp.at(memory_t::host), grad_rho_dn_grad_rho_dn_tp.at(memory_t::host),
+                        vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host), vsigma_uu_tp.at(memory_t::host),
+                        vsigma_ud_tp.at(memory_t::host), vsigma_dd_tp.at(memory_t::host), exc_tp.at(memory_t::host));
 
             /* directly add to Vxc available contributions */
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 grad_rho_up_vsigma_tp[x] = (2.0 * vsigma_uu_tp * grad_rho_up_tp[x] + vsigma_ud_tp * grad_rho_dn_tp[x]);
                 grad_rho_dn_vsigma_tp[x] = (2.0 * vsigma_dd_tp * grad_rho_dn_tp[x] + vsigma_ud_tp * grad_rho_up_tp[x]);
             }
@@ -225,7 +229,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
             Spheric_vector_function<function_domain_t::spectral, double> grad_rho_up_vsigma_lm(sht__.lmmax(), rgrid__);
             Spheric_vector_function<function_domain_t::spectral, double> grad_rho_dn_vsigma_lm(sht__.lmmax(), rgrid__);
 
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 grad_rho_up_vsigma_lm[x] = transform(sht__, grad_rho_up_vsigma_tp[x]);
                 grad_rho_dn_vsigma_lm[x] = transform(sht__, grad_rho_dn_vsigma_tp[x]);
             }
@@ -234,7 +238,7 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
             auto div_grad_rho_dn_vsigma_lm = divergence(grad_rho_dn_vsigma_lm);
 
             /* add remaining terms to Vxc */
-            vxc_up_tp -= transform(sht__, div_grad_rho_up_vsigma_lm) ;
+            vxc_up_tp -= transform(sht__, div_grad_rho_up_vsigma_lm);
             vxc_dn_tp -= transform(sht__, div_grad_rho_dn_vsigma_lm);
         }
         /* generate magnetic field and effective potential inside MT sphere */
@@ -273,8 +277,9 @@ void xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int nu
     } // ixc
 }
 
-double xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
-        int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__)
+double
+xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
+      int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__)
 {
     /* zero the fields */
     exc__->zero();
@@ -311,7 +316,8 @@ double xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<X
     return rhomin;
 }
 
-void Potential::xc_mt(Density const& density__)
+void
+Potential::xc_mt(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_mt");
 
@@ -327,11 +333,13 @@ void Potential::xc_mt(Density const& density__)
             vxc[j + 1] = &effective_magnetic_field(j).mt()[it.i];
         }
 
-        auto rhomin = sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[it.i]);
+        auto rhomin =
+            sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[it.i]);
         if (rhomin < 0.0) {
             std::stringstream s;
             s << "[xc_mt] negative charge density " << rhomin << " for atom " << it.i << std::endl
-              << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax" << std::endl
+              << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax"
+              << std::endl
               << "  sht.lmax       : " << sht_->lmax() << std::endl
               << "  sht.num_points : " << sht_->num_points();
             RTE_WARNING(s);

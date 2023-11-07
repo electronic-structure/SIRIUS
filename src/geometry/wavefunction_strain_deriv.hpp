@@ -7,8 +7,7 @@ namespace sirius {
 
 void
 wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp__, wf::Wave_functions<double>& dphi__,
-                           mdarray<double, 2> const& rlm_g__, mdarray<double, 3> const& rlm_dg__,
-                           int nu__, int mu__)
+                           mdarray<double, 2> const& rlm_g__, mdarray<double, 3> const& rlm_dg__, int nu__, int mu__)
 {
     auto num_ps_atomic_wf = ctx__.unit_cell().num_ps_atomic_wf();
     PROFILE("sirius::wavefunctions_strain_deriv");
@@ -34,16 +33,16 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
         for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
             auto& atom_type = ctx__.unit_cell().atom(ia).type();
             // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
-            auto phase        = twopi * dot(kp__.gkvec().gkvec<index_domain_t::local>(igkloc),
-                                            ctx__.unit_cell().atom(ia).position());
+            auto phase =
+                twopi * dot(kp__.gkvec().gkvec<index_domain_t::local>(igkloc), ctx__.unit_cell().atom(ia).position());
             auto phase_factor = std::exp(std::complex<double>(0.0, phase));
-            for (auto const& e: atom_type.indexb_wfs()) {
+            for (auto const& e : atom_type.indexb_wfs()) {
                 /*  orbital quantum  number of this atomic orbital */
                 int l = e.am.l();
                 /*  composite l,m index */
                 int lm = e.lm;
                 /* index of the radial function */
-                int idxrf = e.idxrf;
+                int idxrf        = e.idxrf;
                 int offset_in_wf = num_ps_atomic_wf.second[ia] + e.xi;
 
                 auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(ctx__.unit_cell().omega());
@@ -53,24 +52,25 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
                     if (l == 0) {
                         auto d1 = ri_values[atom_type.id()][idxrf] * p * y00;
 
-                        dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) = -z * d1 * phase_factor;
+                        dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) =
+                            -z * d1 * phase_factor;
                     } else {
                         dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) = 0.0;
                     }
                 } else {
                     auto d1 = ri_values[atom_type.id()][idxrf] *
-                        (gvc[mu__] * rlm_dg__(lm, nu__, igkloc) + p * rlm_g__(lm, igkloc));
+                              (gvc[mu__] * rlm_dg__(lm, nu__, igkloc) + p * rlm_g__(lm, igkloc));
                     auto d2 =
                         ridjl_values[atom_type.id()][idxrf] * rlm_g__(lm, igkloc) * gvc[mu__] * gvc[nu__] / gvs[0];
 
-                    dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) = -z * (d1 + d2) * std::conj(phase_factor);
+                    dphi__.pw_coeffs(igkloc, wf::spin_index(0), wf::band_index(offset_in_wf)) =
+                        -z * (d1 + d2) * std::conj(phase_factor);
                 }
             } // xi
         }
     }
 }
 
-
-}
+} // namespace sirius
 
 #endif

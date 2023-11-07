@@ -71,8 +71,8 @@ class Overlap_operator
 /// computes C <- A.H x B
 template <class T>
 void
-inner(memory_t mem, spla::Context& ctx, const mdarray<T, 2>& A, const mdarray<T, 2>& B,
-      mdarray<T, 2>& C, const mpi::Communicator& comm, int row_offset = 0, int col_offset = 0)
+inner(memory_t mem, spla::Context& ctx, const mdarray<T, 2>& A, const mdarray<T, 2>& B, mdarray<T, 2>& C,
+      const mpi::Communicator& comm, int row_offset = 0, int col_offset = 0)
 {
     auto spla_mat_dist = spla::MatrixDistribution::create_mirror(comm.native());
     int m              = A.size(1);
@@ -115,8 +115,7 @@ class InverseS_k : public local::Overlap_operator
 
     mdarray<numeric_t, 2> apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
-    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
-               memory_t pm = memory_t::none);
+    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
     const std::string label{"inverse overlap"};
 
@@ -143,8 +142,7 @@ class S_k : public local::Overlap_operator
     }
 
     mdarray<numeric_t, 2> apply(mdarray<numeric_t, 2> const& X, memory_t pu = memory_t::none);
-    void apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X,
-               memory_t pm = memory_t::none);
+    void apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, memory_t pm = memory_t::none);
 
     const std::string label{"overlap"};
 
@@ -175,8 +173,7 @@ InverseS_k<numeric_t>::initialize(Beta_projectors_base<double> const& beta_proje
     }
     // add identity matrix
     std::vector<complex_t> ones(n, complex_t{1, 0});
-    la::wrap(la::lib_t::blas)
-        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(memory_t::host), n + 1);
+    la::wrap(la::lib_t::blas).axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(memory_t::host), n + 1);
 
     LU_ = empty_like(BQ, get_memory_pool(memory_t::host));
     auto_copy(LU_, BQ, device_t::CPU);
@@ -195,7 +192,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
 {
     int nbnd = X.size(1);
     assert(static_cast<int>(X.size(0)) == this->size());
-    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -218,8 +215,8 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
 
     // compute bphi <- (I + B*Q)⁻¹ (B^H X)
     la::wrap(la::lib_t::lapack)
-        .getrs('N', num_beta, nbnd, LU_.at(memory_t::host), LU_.ld(), ipiv_.at(memory_t::host),
-               bphi.at(memory_t::host), bphi.ld());
+        .getrs('N', num_beta, nbnd, LU_.at(memory_t::host), LU_.ld(), ipiv_.at(memory_t::host), bphi.at(memory_t::host),
+               bphi.ld());
 
     // compute R <- -Q * Z, where Z = (I + B*Q)⁻¹ (B^H X)
     matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
@@ -256,8 +253,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y =
-        empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -268,7 +264,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
 {
     assert(static_cast<int>(X.size(0)) == this->size());
 
-    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -317,8 +313,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 S_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y =
-        empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }

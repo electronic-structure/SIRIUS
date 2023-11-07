@@ -95,8 +95,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             dm.allocate(get_memory_pool(mem));
         }
         wf::inner(ctx_.spla_context(), mem, wf::spin_range(0, 2), kp__.spinor_wave_functions(),
-                wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S(),
-                wf::band_range(0, nwfu), dm, 0, 0);
+                  wf::band_range(0, kp__.num_occupied_bands()), kp__.hubbard_wave_functions_S(),
+                  wf::band_range(0, nwfu), dm, 0, 0);
 
         la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
         #pragma omp parallel for
@@ -112,7 +112,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
         auto alpha = std::complex<T>(kp__.weight(), 0.0);
         la::wrap(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(), &alpha, dm.at(mem), dm.ld(), dm1.at(mem),
-                        dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+                          dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
         if (is_device_memory(mem)) {
             occ_mtrx.copy_to(memory_t::host);
         }
@@ -130,7 +130,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                    relativistic wave functions have different total angular
                    momentum for the same n
                 */
-                int s_idx[2][2] = {{0, 3}, {2, 1}};
+                int s_idx[2][2]    = {{0, 3}, {2, 1}};
                 const int lmmax_at = 2 * atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l() + 1;
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
@@ -159,8 +159,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             }
             /* compute <psi | phi> where |phi> are the Hubbard WFs */
             wf::inner(ctx_.spla_context(), mem, wf::spin_range(ispn), kp__.spinor_wave_functions(),
-                    wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
-                    wf::band_range(0, nwfu), dm, 0, 0);
+                      wf::band_range(0, kp__.num_occupied_bands(ispn)), kp__.hubbard_wave_functions_S(),
+                      wf::band_range(0, nwfu), dm, 0, 0);
 
             la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
             #pragma omp parallel for
@@ -179,8 +179,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
              * calculation of the hubbard potential */
             auto alpha = std::complex<T>(kp__.weight() / ctx_.max_occupancy(), 0.0);
             la::wrap(la).gemm('C', 'N', nwfu, nwfu, kp__.num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
-                            dm1.at(mem), dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem),
-                            occ_mtrx.ld());
+                              dm1.at(mem), dm1.ld(), &la::constant<std::complex<T>>::zero(), occ_mtrx.at(mem),
+                              occ_mtrx.ld());
             if (is_device_memory(mem)) {
                 occ_mtrx.copy_to(memory_t::host);
             }
@@ -209,7 +209,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 auto z1 = std::exp(std::complex<double>(0, -twopi * dot(e.first, kp__.vk())));
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
-                        e.second(i, j, ispn) += static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
+                        e.second(i, j, ispn) +=
+                            static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
                     }
                 }
             }
@@ -240,8 +241,8 @@ Occupation_matrix::init()
             int il            = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
             const int lmax_at = 2 * il + 1;
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).initial_occupancy().size()) {
-              /* if we specify the occcupancy in the input file */
-              for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                /* if we specify the occcupancy in the input file */
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
                         this->local_[at_lvl](m, m, ispn) = atom.type()
                                                                .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)

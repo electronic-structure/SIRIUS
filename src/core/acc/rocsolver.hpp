@@ -252,12 +252,10 @@ syhegvx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect ev
 #endif // rocsolver >=5.3.0
 
 /// Linear Solvers
-void
-zgetrs(rocblas_handle handle, char trans, int n, int nrhs, acc_complex_double_t* A, int lda, const int* devIpiv,
-       acc_complex_double_t* B, int ldb);
+void zgetrs(rocblas_handle handle, char trans, int n, int nrhs, acc_complex_double_t* A, int lda, const int* devIpiv,
+            acc_complex_double_t* B, int ldb);
 
-void
-zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpiv, int lda, int* devInfo);
+void zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpiv, int lda, int* devInfo);
 
 } // namespace rocsolver
 

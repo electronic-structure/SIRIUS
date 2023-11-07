@@ -27,7 +27,8 @@
 
 namespace sirius {
 
-void Potential::init_PAW()
+void
+Potential::init_PAW()
 {
     if (!unit_cell_.num_paw_atoms()) {
         return;
@@ -36,22 +37,25 @@ void Potential::init_PAW()
     bool const is_global{true};
     paw_potential_ = std::make_unique<PAW_field4D<double>>("PAW potential", unit_cell_, is_global);
 
-    paw_ae_exc_ = std::make_unique<Spheric_function_set<double, paw_atom_index_t>>("paw_ae_exc_", unit_cell_,
-            unit_cell_.paw_atoms(), [this](int ia){return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax());});
+    paw_ae_exc_ = std::make_unique<Spheric_function_set<double, paw_atom_index_t>>(
+        "paw_ae_exc_", unit_cell_, unit_cell_.paw_atoms(),
+        [this](int ia) { return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax()); });
 
-    paw_ps_exc_ = std::make_unique<Spheric_function_set<double, paw_atom_index_t>>("paw_ps_exc_", unit_cell_,
-            unit_cell_.paw_atoms(), [this](int ia){return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax());});
+    paw_ps_exc_ = std::make_unique<Spheric_function_set<double, paw_atom_index_t>>(
+        "paw_ps_exc_", unit_cell_, unit_cell_.paw_atoms(),
+        [this](int ia) { return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax()); });
 
     /* initialize dij matrix */
     paw_dij_.resize(unit_cell_.num_paw_atoms());
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
-        paw_dij_[i] = mdarray<double, 3>({unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(),
-                ctx_.num_mag_dims() + 1});
+        int ia      = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
+        paw_dij_[i] = mdarray<double, 3>(
+            {unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(), ctx_.num_mag_dims() + 1});
     }
 }
 
-void Potential::generate_PAW_effective_potential(Density const& density)
+void
+Potential::generate_PAW_effective_potential(Density const& density)
 {
     PROFILE("sirius::Potential::generate_PAW_effective_potential");
 
@@ -66,8 +70,8 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     /* calculate xc and hartree for atoms */
     for (auto it : unit_cell_.spl_num_paw_atoms()) {
         auto ia = unit_cell_.paw_atom_index(it.i);
-        paw_hartree_total_energy_ += calc_PAW_local_potential(ia, density.paw_ae_density(ia),
-                density.paw_ps_density(ia));
+        paw_hartree_total_energy_ +=
+            calc_PAW_local_potential(ia, density.paw_ae_density(ia), density.paw_ps_density(ia));
     }
     comm_.allreduce(&paw_hartree_total_energy_, 1);
 
@@ -120,9 +124,10 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     }
 }
 
-double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
-    Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
-    std::vector<Flm>& vxc__, Flm& exclm__)
+double
+xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_dims__, SHT const& sht__,
+          Radial_grid<double> const& rgrid__, std::vector<Flm const*> rho__, std::vector<double> const& rho_core__,
+          std::vector<Flm>& vxc__, Flm& exclm__)
 {
     int lmmax = sf::lmmax(lmax__);
 
@@ -133,7 +138,7 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
         std::stringstream s;
         s << "Sizes of rho0 and rho do not match" << std::endl
           << "  rho0.size(0) : " << rho0.size(0) << std::endl
-          << "  rho__[0]->size(0) : " <<  rho__[0]->size(0) << std::endl
+          << "  rho__[0]->size(0) : " << rho__[0]->size(0) << std::endl
           << "  lmax : " << lmax__;
         RTE_THROW(s);
     }
@@ -163,7 +168,8 @@ double xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int nu
     return inner(exclm__, rho0);
 }
 
-double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm& v_tot__)
+double
+Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm& v_tot__)
 {
     auto lmmax = rho__.angular_domain_size();
 
@@ -183,7 +189,7 @@ double Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm
 
 double
 Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vector<Flm const*> ae_density__,
-        std::vector<Flm const*> ps_density__)
+                                    std::vector<Flm const*> ps_density__)
 {
     auto& atom = unit_cell_.atom(ia__);
 
@@ -192,19 +198,21 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
     auto& ae_core = atom.type().paw_ae_core_charge_density();
 
     auto& rgrid = atom.type().radial_grid();
-    int l_max = 2 * atom.type().indexr().lmax();
+    int l_max   = 2 * atom.type().indexr().lmax();
 
     std::vector<Flm> vxc;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         vxc.emplace_back(sf::lmmax(l_max), rgrid);
     }
 
-    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc, (*paw_ae_exc_)[ia__]);
+    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc,
+                      (*paw_ae_exc_)[ia__]);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ae_component(i)[ia__] += vxc[i];
     }
 
-    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density__, ps_core, vxc, (*paw_ps_exc_)[ia__]);
+    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density__, ps_core, vxc,
+                      (*paw_ps_exc_)[ia__]);
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_potential_->ps_component(i)[ia__] += vxc[i];
     }
@@ -215,7 +223,8 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
     return eha;
 }
 
-void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__)
+void
+Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__)
 {
     paw_dij__.zero();
 
@@ -306,7 +315,7 @@ void Potential::calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<d
 
 double
 Potential::calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const& density_matrix__,
-        mdarray<double, 3> const& paw_dij__) const
+                                    mdarray<double, 3> const& paw_dij__) const
 {
     double energy{0.0};
 

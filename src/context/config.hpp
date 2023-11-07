@@ -103,11 +103,18 @@ class config_t
             }
             dict_["/mixer/use_hartree"_json_pointer] = use_hartree__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& mixer() const {return mixer_;}
-    inline auto& mixer() {return mixer_;}
+    inline auto const& mixer() const
+    {
+        return mixer_;
+    }
+    inline auto& mixer()
+    {
+        return mixer_;
+    }
     /// Settings control the internal parameters related to the numerical implementation.
     /**
         Changing of setting parameters will have a small impact on the final result.
@@ -241,14 +248,14 @@ class config_t
         }
         /// Scaling parameters of the iterative  solver tolerance.
         /**
-            First number is the scaling of density RMS, that gives the estimate of the new 
-            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
-            between the two. This is how it is done in the code: 
+            First number is the scaling of density RMS, that gives the estimate of the new
+            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum
+            between the two. This is how it is done in the code:
             \code{.cpp}
             double old_tol = ctx_.iterative_solver_tolerance();
             // estimate new tolerance of iterative solver
-            double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
-            tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+            double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] *
+           old_tol); tol = std::max(ctx_.settings().itsol_tol_min_, tol);
             // set new tolerance of iterative solver
             ctx_.iterative_solver().energy_tolerance(tol);\endcode
         */
@@ -314,7 +321,8 @@ class config_t
             }
             dict_["/settings/sht_coverage"_json_pointer] = sht_coverage__;
         }
-        /// Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used.
+        /// Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is
+        /// used.
         inline auto fp32_to_fp64_rms() const
         {
             return dict_.at("/settings/fp32_to_fp64_rms"_json_pointer).get<double>();
@@ -326,11 +334,18 @@ class config_t
             }
             dict_["/settings/fp32_to_fp64_rms"_json_pointer] = fp32_to_fp64_rms__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& settings() const {return settings_;}
-    inline auto& settings() {return settings_;}
+    inline auto const& settings() const
+    {
+        return settings_;
+    }
+    inline auto& settings()
+    {
+        return settings_;
+    }
     /// Unit cell representation
     class unit_cell_t
     {
@@ -402,11 +417,18 @@ class config_t
             nlohmann::json::json_pointer p("/unit_cell/atoms");
             return dict_.at(p / label__).get<std::vector<std::vector<double>>>();
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& unit_cell() const {return unit_cell_;}
-    inline auto& unit_cell() {return unit_cell_;}
+    inline auto const& unit_cell() const
+    {
+        return unit_cell_;
+    }
+    inline auto& unit_cell()
+    {
+        return unit_cell_;
+    }
     /// Parameters of the iterative solver.
     class iterative_solver_t
     {
@@ -618,11 +640,18 @@ class config_t
             }
             dict_["/iterative_solver/extra_ortho"_json_pointer] = extra_ortho__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& iterative_solver() const {return iterative_solver_;}
-    inline auto& iterative_solver() {return iterative_solver_;}
+    inline auto const& iterative_solver() const
+    {
+        return iterative_solver_;
+    }
+    inline auto& iterative_solver()
+    {
+        return iterative_solver_;
+    }
     /// Control parameters
     /**
         Parameters of the control input sections do not in general change the numerics,
@@ -636,7 +665,8 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.
+        /// the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point
+        /// parallelization.
         inline auto mpi_grid_dims() const
         {
             return dict_.at("/control/mpi_grid_dims"_json_pointer).get<std::vector<int>>();
@@ -895,11 +925,18 @@ class config_t
             }
             dict_["/control/gvec_chunk_size"_json_pointer] = gvec_chunk_size__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& control() const {return control_;}
-    inline auto& control() {return control_;}
+    inline auto const& control() const
+    {
+        return control_;
+    }
+    inline auto& control()
+    {
+        return control_;
+    }
     /// Parameters of the simulation.
     /**
         Most of this parameters control the behavior of high-level classes
@@ -1353,11 +1390,18 @@ class config_t
             }
             dict_["/parameters/precision_gs"_json_pointer] = precision_gs__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& parameters() const {return parameters_;}
-    inline auto& parameters() {return parameters_;}
+    inline auto const& parameters() const
+    {
+        return parameters_;
+    }
+    inline auto& parameters()
+    {
+        return parameters_;
+    }
     /// Non-linear conjugate gradient minimisation
     class nlcg_t
     {
@@ -1450,11 +1494,18 @@ class config_t
             }
             dict_["/nlcg/processing_unit"_json_pointer] = processing_unit__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& nlcg() const {return nlcg_;}
-    inline auto& nlcg() {return nlcg_;}
+    inline auto const& nlcg() const
+    {
+        return nlcg_;
+    }
+    inline auto& nlcg()
+    {
+        return nlcg_;
+    }
     /// Variable cell shape stabilized quasi Newton method (VC-SQNM)
     class vcsqnm_t
     {
@@ -1559,11 +1610,18 @@ class config_t
             }
             dict_["/vcsqnm/num_steps"_json_pointer] = num_steps__;
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& vcsqnm() const {return vcsqnm_;}
-    inline auto& vcsqnm() {return vcsqnm_;}
+    inline auto const& vcsqnm() const
+    {
+        return vcsqnm_;
+    }
+    inline auto& vcsqnm()
+    {
+        return vcsqnm_;
+    }
     /// Hubbard U correction
     class hubbard_t
     {
@@ -1625,6 +1683,7 @@ class config_t
         {
           private:
             nlohmann::json& dict_;
+
           public:
             local_t(nlohmann::json& dict__)
                 : dict_(dict__)
@@ -1683,6 +1742,7 @@ class config_t
         {
           private:
             nlohmann::json& dict_;
+
           public:
             local_list_t(nlohmann::json& dict__)
                 : dict_(dict__)
@@ -1722,6 +1782,7 @@ class config_t
         {
           private:
             nlohmann::json& dict_;
+
           public:
             nonlocal_t(nlohmann::json& dict__)
                 : dict_(dict__)
@@ -1756,6 +1817,7 @@ class config_t
         {
           private:
             nlohmann::json& dict_;
+
           public:
             nonlocal_list_t(nlohmann::json& dict__)
                 : dict_(dict__)
@@ -1790,11 +1852,19 @@ class config_t
             nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
             return nonlocal_list_t(dict_.at(ptr));
         }
+
       private:
         nlohmann::json& dict_;
     };
-    inline auto const& hubbard() const {return hubbard_;}
-    inline auto& hubbard() {return hubbard_;}
+    inline auto const& hubbard() const
+    {
+        return hubbard_;
+    }
+    inline auto& hubbard()
+    {
+        return hubbard_;
+    }
+
   private:
     mixer_t mixer_{dict_};
     settings_t settings_{dict_};
@@ -1805,8 +1875,9 @@ class config_t
     nlcg_t nlcg_{dict_};
     vcsqnm_t vcsqnm_{dict_};
     hubbard_t hubbard_{dict_};
+
   protected:
     nlohmann::json dict_;
 };
 
-}
+} // namespace sirius

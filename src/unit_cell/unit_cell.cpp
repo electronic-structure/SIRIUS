@@ -172,7 +172,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     out__ << "lattice vectors" << std::endl;
     for (int i = 0; i < 3; i++) {
         out__ << "  a" << i + 1 << " : ";
-        for (int x: {0, 1, 2}) {
+        for (int x : {0, 1, 2}) {
             out__ << ffmt(18, 10) << lattice_vectors_(x, i);
         }
         out__ << std::endl;
@@ -180,7 +180,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     out__ << "reciprocal lattice vectors" << std::endl;
     for (int i = 0; i < 3; i++) {
         out__ << "  b" << i + 1 << " : ";
-        for (int x: {0, 1, 2}) {
+        for (int x : {0, 1, 2}) {
             out__ << ffmt(18, 10) << reciprocal_lattice_vectors_(x, i);
         }
         out__ << std::endl;
@@ -188,16 +188,17 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
     out__ << std::endl
           << "unit cell volume : " << ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl
           << "1/sqrt(omega)    : " << ffmt(18, 8) << 1.0 / sqrt(omega()) << std::endl
-          << "MT volume        : " << ffmt(18, 8) << volume_mt() 
-                                   << " (" << ffmt(5, 2) << volume_mt() * 100 / omega() << "%)" << std::endl
-          << "IT volume        : " << ffmt(18, 8) << volume_it()
-                                   << " (" << ffmt(5, 2) << volume_it() * 100 / omega() << "%)" << std::endl
+          << "MT volume        : " << ffmt(18, 8) << volume_mt() << " (" << ffmt(5, 2) << volume_mt() * 100 / omega()
+          << "%)" << std::endl
+          << "IT volume        : " << ffmt(18, 8) << volume_it() << " (" << ffmt(5, 2) << volume_it() * 100 / omega()
+          << "%)" << std::endl
           << std::endl
           << "number of atom types : " << num_atom_types() << std::endl;
     for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
-        out__ << "type id : " << id << " symbol : " << std::setw(2) << atom_type(i).symbol() << " mt_radius : "
-              << ffmt(10, 6) << atom_type(i).mt_radius() << " num_atoms : " << atom_type(i).num_atoms() << std::endl;
+        out__ << "type id : " << id << " symbol : " << std::setw(2) << atom_type(i).symbol()
+              << " mt_radius : " << ffmt(10, 6) << atom_type(i).mt_radius()
+              << " num_atoms : " << atom_type(i).num_atoms() << std::endl;
     }
 
     out__ << "total number of atoms : " << num_atoms() << std::endl
@@ -219,27 +220,23 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
-            out__ << std::setw(6) << i
-                  << std::setw(9) << atom(i).type_id()
-                  << std::setw(9) << atom(i).symmetry_class_id()
-                  << "   ";
-            for (int x: {0, 1, 2}) {
+            out__ << std::setw(6) << i << std::setw(9) << atom(i).type_id() << std::setw(9)
+                  << atom(i).symmetry_class_id() << "   ";
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(10, 5) << pos[x];
             }
             out__ << "   ";
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(10, 5) << vf[x];
             }
             out__ << std::endl;
         }
-        out__ << std::endl
-              << "atom id         position (Cartesian, a.u.)" << std::endl
-              << hbar(45, '-') << std::endl;
+        out__ << std::endl << "atom id         position (Cartesian, a.u.)" << std::endl << hbar(45, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
             out__ << std::setw(6) << i << "   ";
-            for (int x: {0, 1 ,2}) {
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(12, 6) << vc[x];
             }
             out__ << std::endl;
@@ -253,11 +250,9 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
             out__ << std::endl;
         }
     }
-    out__ << std::endl
-          << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
+    out__ << std::endl << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
     if (!parameters_.full_potential()) {
-        out__ << std::endl
-              << "total number of pseudo wave-functions: " << this->num_ps_atomic_wf().first << std::endl;
+        out__ << std::endl << "total number of pseudo wave-functions: " << this->num_ps_atomic_wf().first << std::endl;
     }
     out__ << std::endl;
 }
@@ -266,17 +261,15 @@ void
 Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
 {
     if (verbosity__ >= 1) {
-        out__ << std::endl
-              << "lattice vectors" << std::endl;
+        out__ << std::endl << "lattice vectors" << std::endl;
         for (int i = 0; i < 3; i++) {
             out__ << "  a" << i + 1 << " : ";
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(18, 10) << lattice_vectors_(x, i);
             }
             out__ << std::endl;
         }
-        out__ << std::endl
-              << "unit cell volume : " << ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl;
+        out__ << std::endl << "unit cell volume : " << ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl;
     }
 
     if (verbosity__ >= 2) {
@@ -286,35 +279,30 @@ Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
-            out__ << std::setw(6) << i
-                  << std::setw(9) << atom(i).type_id()
-                  << std::setw(9) << atom(i).symmetry_class_id()
-                  << "   ";
-            for (int x: {0, 1, 2}) {
+            out__ << std::setw(6) << i << std::setw(9) << atom(i).type_id() << std::setw(9)
+                  << atom(i).symmetry_class_id() << "   ";
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(10, 5) << pos[x];
             }
             out__ << "   ";
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(10, 5) << vf[x];
             }
             out__ << std::endl;
         }
-        out__ << std::endl
-              << "atom id         position (Cartesian, a.u.)" << std::endl
-              << hbar(45, '-') << std::endl;
+        out__ << std::endl << "atom id         position (Cartesian, a.u.)" << std::endl << hbar(45, '-') << std::endl;
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
             out__ << std::setw(6) << i << "   ";
-            for (int x: {0, 1 ,2}) {
+            for (int x : {0, 1, 2}) {
                 out__ << ffmt(12, 6) << vc[x];
             }
             out__ << std::endl;
         }
     }
     if (verbosity__ >= 1) {
-        out__ << std::endl
-              << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
+        out__ << std::endl << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
     }
 }
 
@@ -375,9 +363,9 @@ Unit_cell::serialize(bool cart_pos__) const
 {
     json dict;
 
-    dict["lattice_vectors"] = {{lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0)},
-                               {lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1)},
-                               {lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2)}};
+    dict["lattice_vectors"]       = {{lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0)},
+                                     {lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1)},
+                                     {lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2)}};
     dict["lattice_vectors_scale"] = 1.0;
     if (cart_pos__) {
         dict["atom_coordinate_units"] = "au";
@@ -437,8 +425,8 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
                         auto v1 = atom(ja).position() + r3::vector<int>(nnd.translation) - atom(ia).position();
                         auto rc = get_cartesian_coordinates(v1);
 
-                        nnd.atom_id = ja;
-                        nnd.rc = rc;
+                        nnd.atom_id  = ja;
+                        nnd.rc       = rc;
                         nnd.distance = rc.length();
 
                         if (nnd.distance <= cluster_radius) {
@@ -462,24 +450,22 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
 void
 Unit_cell::print_nearest_neighbours(std::ostream& out__) const
 {
-    out__ << "Nearest neighbors" << std::endl
-          << hbar(17, '-') << std::endl;
+    out__ << "Nearest neighbors" << std::endl << hbar(17, '-') << std::endl;
     for (int ia = 0; ia < num_atoms(); ia++) {
         out__ << "Central atom: " << atom(ia).type().symbol() << "(" << ia << ")" << std::endl
               << hbar(80, '-') << std::endl;
         out__ << "atom (ia)        D [a.u.]        T                     r_local" << std::endl;
         for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
-            int ja = nearest_neighbours_[ia][i].atom_id;
+            int ja         = nearest_neighbours_[ia][i].atom_id;
             auto ja_symbol = atom(ja).type().symbol();
-            auto ja_d = nearest_neighbours_[ia][i].distance;
-            auto T = nearest_neighbours_[ia][i].translation;
-            auto r_loc = nearest_neighbours_[ia][i].rc;
-            out__ << std::setw(4) << ja_symbol << " (" << std::setw(5) << ja << ")"
-                  << std::setw(12) << std::setprecision(5) << ja_d
-                  << std::setw(5) << T[0] << std::setw(5) << T[1] << std::setw(5) << T[2]
-                  << std::setw(13) << std::setprecision(5) << std::fixed << r_loc[0] 
-                  << std::setw(10) << std::setprecision(5) << std::fixed << r_loc[1] 
-                  << std::setw(10) << std::setprecision(5) << std::fixed << r_loc[2] << std::endl;
+            auto ja_d      = nearest_neighbours_[ia][i].distance;
+            auto T         = nearest_neighbours_[ia][i].translation;
+            auto r_loc     = nearest_neighbours_[ia][i].rc;
+            out__ << std::setw(4) << ja_symbol << " (" << std::setw(5) << ja << ")" << std::setw(12)
+                  << std::setprecision(5) << ja_d << std::setw(5) << T[0] << std::setw(5) << T[1] << std::setw(5)
+                  << T[2] << std::setw(13) << std::setprecision(5) << std::fixed << r_loc[0] << std::setw(10)
+                  << std::setprecision(5) << std::fixed << r_loc[1] << std::setw(10) << std::setprecision(5)
+                  << std::fixed << r_loc[2] << std::endl;
         }
     }
     out__ << std::endl;
@@ -580,7 +566,7 @@ Unit_cell::generate_radial_integrals()
             int rank = spl_num_atom_symmetry_classes().location(typename atom_symmetry_class_index_t::global(ic)).ib;
             atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
         }
-    } catch(std::exception const& e) {
+    } catch (std::exception const& e) {
         std::stringstream s;
         s << e.what() << std::endl;
         s << "Error in generating atom_symmetry_class radial integrals";
@@ -596,7 +582,7 @@ Unit_cell::generate_radial_integrals()
             int rank = spl_num_atoms().location(typename atom_index_t::global(ia)).ib;
             atom(ia).sync_radial_integrals(comm_, rank);
         }
-    } catch(std::exception const& e) {
+    } catch (std::exception const& e) {
         std::stringstream s;
         s << e.what() << std::endl;
         s << "Error in generating atom radial integrals";
@@ -713,7 +699,6 @@ Unit_cell::initialize()
 
     update();
 
-
     //== write_cif();
 
     //== if (comm().rank() == 0) {
@@ -753,7 +738,7 @@ Unit_cell::get_symmetry()
 
     symmetry_ = std::unique_ptr<Crystal_symmetry>(
         new Crystal_symmetry(lattice_vectors_, num_atoms(), num_atom_types(), types, positions, spins,
-            parameters_.so_correction(), parameters_.spglib_tolerance(), parameters_.use_symmetry()));
+                             parameters_.so_correction(), parameters_.spglib_tolerance(), parameters_.use_symmetry()));
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);
@@ -762,8 +747,8 @@ Unit_cell::get_symmetry()
         if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
-            atom_symmetry_classes_.push_back(std::shared_ptr<Atom_symmetry_class>(
-                        new Atom_symmetry_class(atom_class_id, atom(i).type())));
+            atom_symmetry_classes_.push_back(
+                std::shared_ptr<Atom_symmetry_class>(new Atom_symmetry_class(atom_class_id, atom(i).type())));
 
             /* scan all atoms */
             for (int j = 0; j < num_atoms(); j++) {
@@ -790,7 +775,7 @@ Unit_cell::get_symmetry()
 }
 
 void
-Unit_cell::import(config_t::unit_cell_t const &inp__)
+Unit_cell::import(config_t::unit_cell_t const& inp__)
 {
     auto lv = r3::matrix<double>(inp__.lattice_vectors());
     lv *= inp__.lattice_vectors_scale();
@@ -805,7 +790,7 @@ Unit_cell::import(config_t::unit_cell_t const &inp__)
     auto units = inp__.atom_coordinate_units();
 
     /* first, load all types */
-    for (auto label: inp__.atom_types()) {
+    for (auto label : inp__.atom_types()) {
         auto fname = inp__.atom_files(label);
         add_atom_type(label, fname);
     }
@@ -824,7 +809,7 @@ Unit_cell::import(config_t::unit_cell_t const &inp__)
             }
             /* convert from Cartesian to lattice coordinates */
             if (units == "au" || units == "A") {
-                p = dot(ilvT, p);
+                p       = dot(ilvT, p);
                 auto rc = reduce_coordinates(p);
                 for (int x : {0, 1, 2}) {
                     p[x] = rc.first[x];
@@ -856,7 +841,7 @@ Unit_cell::update()
     if (parameters_.full_potential()) {
         /* find new MT radii and initialize radial grid */
         if (parameters_.auto_rmt()) {
-            auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
+            auto rg  = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
             auto Rmt = find_mt_radii(parameters_.auto_rmt(), true);
             for (int iat = 0; iat < num_atom_types(); iat++) {
                 double r0 = atom_type(iat).radial_grid().first();
@@ -879,8 +864,8 @@ Unit_cell::update()
 
     get_symmetry();
 
-    spl_num_atom_symmetry_classes_ = splindex_block<atom_symmetry_class_index_t>(num_atom_symmetry_classes(),
-            n_blocks(comm_.size()), block_id(comm_.rank()));
+    spl_num_atom_symmetry_classes_ = splindex_block<atom_symmetry_class_index_t>(
+        num_atom_symmetry_classes(), n_blocks(comm_.size()), block_id(comm_.rank()));
 
     volume_mt_ = 0.0;
     if (parameters_.full_potential()) {
@@ -896,7 +881,7 @@ Unit_cell::update()
         if (nat > 0) {
             for (int i = 0; i < nat; i++) {
                 int ia = atom_type(iat).atom_id(i);
-                for (int x: {0, 1, 2}) {
+                for (int x : {0, 1, 2}) {
                     atom_coord_[iat](i, x) = atom(ia).position()[x];
                 }
             }
@@ -963,8 +948,8 @@ Unit_cell::init_paw()
         }
     }
 
-    spl_num_paw_atoms_ = splindex_block<paw_atom_index_t>(num_paw_atoms(), n_blocks(comm_.size()),
-            block_id(comm_.rank()));
+    spl_num_paw_atoms_ =
+        splindex_block<paw_atom_index_t>(num_paw_atoms(), n_blocks(comm_.size()), block_id(comm_.rank()));
 }
 
 std::pair<int, std::vector<int>>
@@ -974,7 +959,7 @@ Unit_cell::num_ps_atomic_wf() const
     int counter{0};
     for (auto ia = 0; ia < this->num_atoms(); ia++) {
         auto& atom = this->atom(ia);
-        offs[ia] = counter;
+        offs[ia]   = counter;
         counter += atom.type().indexb_wfs().size();
     }
     return std::make_pair(counter, offs);

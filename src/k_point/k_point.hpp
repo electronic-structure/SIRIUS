@@ -200,7 +200,8 @@ class K_point
 
     void init0()
     {
-        band_occupancies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
+        band_occupancies_ =
+            mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
         band_occupancies_.zero();
         band_energies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_energies"));
         band_energies_.zero();
@@ -229,7 +230,7 @@ class K_point
     {
         this->init0();
         gkvec_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
-                                        ctx_.gamma_point());
+                                             ctx_.gamma_point());
     }
 
     /// Constructor
@@ -762,7 +763,7 @@ class K_point
 template <typename T>
 inline auto
 wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, wf::num_bands num_wf__,
-        wf::num_mag_dims num_md__, bool mt_part__)
+                      wf::num_mag_dims num_md__, bool mt_part__)
 {
     using wf_t = wf::Wave_functions<T>;
     std::unique_ptr<wf_t> wf{nullptr};

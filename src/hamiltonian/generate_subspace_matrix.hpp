@@ -33,9 +33,9 @@ namespace sirius {
 /// Generate subspace matrix for the iterative diagonalization.
 /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
  *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
- *  in the CPU pointer because most of the standard math libraries start from the CPU. 
+ *  in the CPU pointer because most of the standard math libraries start from the CPU.
  *
- *  \tparam T Precision type of the wave-functions 
+ *  \tparam T Precision type of the wave-functions
  *  \tparam F Type of the output subspace matrix.
  *  \param [in] ctx Simulation context
  *  \param [in] N Number of existing (old) states phi.
@@ -48,9 +48,9 @@ namespace sirius {
  *                          of the previous step.
  *  */
 template <typename T, typename F>
-void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int num_locked__,
-        wf::Wave_functions<T>& phi__, wf::Wave_functions<T>& op_phi__, la::dmatrix<F>& mtrx__,
-        la::dmatrix<F>* mtrx_old__ = nullptr)
+void
+generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int num_locked__, wf::Wave_functions<T>& phi__,
+                         wf::Wave_functions<T>& op_phi__, la::dmatrix<F>& mtrx__, la::dmatrix<F>* mtrx_old__ = nullptr)
 {
     PROFILE("sirius::generate_subspace_matrix");
 
@@ -61,12 +61,10 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
 
     /* copy old N - num_locked x N - num_locked distributed matrix */
     if (N__ > 0) {
-        splindex_block_cyclic<> spl_row(N__ - num_locked__,
-                n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
-                mtrx__.bs_row());
-        splindex_block_cyclic<> spl_col(N__ - num_locked__,
-                n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
-                mtrx__.bs_col());
+        splindex_block_cyclic<> spl_row(N__ - num_locked__, n_blocks(mtrx__.blacs_grid().num_ranks_row()),
+                                        block_id(mtrx__.blacs_grid().rank_row()), mtrx__.bs_row());
+        splindex_block_cyclic<> spl_col(N__ - num_locked__, n_blocks(mtrx__.blacs_grid().num_ranks_col()),
+                                        block_id(mtrx__.blacs_grid().rank_col()), mtrx__.bs_col());
 
         if (mtrx_old__) {
             if (spl_row.local_size()) {
@@ -91,8 +89,8 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
     auto mem = ctx__.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
     /* <{phi,phi_new}|Op|phi_new> */
     inner(ctx__.spla_context(), mem, ctx__.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(0), phi__,
-            wf::band_range(num_locked__, N__ + n__), op_phi__, wf::band_range(N__, N__ + n__),
-            mtrx__, 0, N__ - num_locked__);
+          wf::band_range(num_locked__, N__ + n__), op_phi__, wf::band_range(N__, N__ + n__), mtrx__, 0,
+          N__ - num_locked__);
 
     /* restore lower part */
     if (N__ > 0) {
@@ -110,12 +108,10 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
     }
 
     if (env::print_checksum()) {
-        splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
-                n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
-                mtrx__.bs_row());
-        splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
-                n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
-                mtrx__.bs_col());
+        splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__, n_blocks(mtrx__.blacs_grid().num_ranks_row()),
+                                        block_id(mtrx__.blacs_grid().rank_row()), mtrx__.bs_row());
+        splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__, n_blocks(mtrx__.blacs_grid().num_ranks_col()),
+                                        block_id(mtrx__.blacs_grid().rank_col()), mtrx__.bs_col());
         auto cs = mtrx__.checksum(N__ + n__ - num_locked__, N__ + n__ - num_locked__);
         if (ctx__.comm_band().rank() == 0) {
             print_checksum("subspace_mtrx", cs, RTE_OUT(std::cout));
@@ -127,12 +123,10 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
 
     /* save new matrix */
     if (mtrx_old__) {
-        splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__,
-                n_blocks(mtrx__.blacs_grid().num_ranks_row()), block_id(mtrx__.blacs_grid().rank_row()),
-                mtrx__.bs_row());
-        splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__,
-                n_blocks(mtrx__.blacs_grid().num_ranks_col()), block_id(mtrx__.blacs_grid().rank_col()),
-                mtrx__.bs_col());
+        splindex_block_cyclic<> spl_row(N__ + n__ - num_locked__, n_blocks(mtrx__.blacs_grid().num_ranks_row()),
+                                        block_id(mtrx__.blacs_grid().rank_row()), mtrx__.bs_row());
+        splindex_block_cyclic<> spl_col(N__ + n__ - num_locked__, n_blocks(mtrx__.blacs_grid().num_ranks_col()),
+                                        block_id(mtrx__.blacs_grid().rank_col()), mtrx__.bs_col());
 
         if (spl_row.local_size()) {
             #pragma omp parallel for schedule(static)
@@ -143,6 +137,6 @@ void generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int n
     }
 }
 
-}
+} // namespace sirius
 
 #endif

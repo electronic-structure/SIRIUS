@@ -81,8 +81,7 @@ DiagonalPreconditioner<numeric_t>::apply(const mdarray<numeric_t, 2>& X, memory_
 /// computes Y <- P*X
 template <class numeric_t>
 inline void
-DiagonalPreconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
-                                         memory_t pm)
+DiagonalPreconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm)
 {
 #ifdef SIRIUS_GPU
     // copy d_ to gpu
@@ -90,8 +89,8 @@ DiagonalPreconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray
         d_.allocate(memory_t::device);
         d_.copy_to(memory_t::device);
         int n = d_.size(0);
-        zdiagmm(d_.at(memory_t::device), n, X.at(memory_t::device), X.ld(), X.size(1),
-                Y.at(memory_t::device), Y.ld(), std::complex<double>{1});
+        zdiagmm(d_.at(memory_t::device), n, X.at(memory_t::device), X.ld(), X.size(1), Y.at(memory_t::device), Y.ld(),
+                std::complex<double>{1});
         return;
     }
 #endif /*SIRIUS_GPU*/
@@ -155,8 +154,7 @@ class Ultrasoft_preconditioner : public local::OperatorBase
                              const Beta_projectors_base<double>& bp, const fft::Gvec& gkvec);
 
     mdarray<numeric_t, 2> apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
-    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
-               memory_t pm = memory_t::none);
+    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
     const Simulation_context& ctx() const
     {
@@ -204,8 +202,7 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
     // add identiy matrix
     std::vector<complex_t> ones(n, 1);
     // add identity matrix
-    la::wrap(la::lib_t::blas)
-        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(memory_t::host), n + 1);
+    la::wrap(la::lib_t::blas).axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, CQ.at(memory_t::host), n + 1);
     // compute LU factorization
     this->LU_ = empty_like(CQ);
     auto_copy(this->LU_, CQ);
@@ -235,13 +232,12 @@ Ultrasoft_preconditioner<numeric_t>::apply(const mdarray<numeric_t, 2>& X, memor
 
 template <class numeric_t>
 void
-Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
-                                           memory_t pm)
+Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm)
 {
     int num_beta = bp_.num_total_beta();
     int nbnd     = X.size(1);
 
-    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
 
     la::lib_t la{la::lib_t::blas};

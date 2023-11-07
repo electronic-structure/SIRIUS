@@ -33,8 +33,7 @@ generate_gvec_ylm(Simulation_context const& ctx__, int lmax__)
 {
     PROFILE("sirius::generate_gvec_ylm");
 
-    mdarray<std::complex<double>, 2> gvec_ylm({sf::lmmax(lmax__), ctx__.gvec().count()},
-            mdarray_label("gvec_ylm"));
+    mdarray<std::complex<double>, 2> gvec_ylm({sf::lmmax(lmax__), ctx__.gvec().count()}, mdarray_label("gvec_ylm"));
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < ctx__.gvec().count(); igloc++) {
         auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart<index_domain_t::local>(igloc));
@@ -43,6 +42,6 @@ generate_gvec_ylm(Simulation_context const& ctx__, int lmax__)
     return gvec_ylm;
 }
 
-}
+} // namespace sirius
 
 #endif

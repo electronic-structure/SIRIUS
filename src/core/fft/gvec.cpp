@@ -31,7 +31,8 @@ namespace sirius {
 
 namespace fft {
 
-r3::vector<int> Gvec::gvec_by_full_index(uint32_t idx__) const
+r3::vector<int>
+Gvec::gvec_by_full_index(uint32_t idx__) const
 {
     /* index of the z coordinate of G-vector: first 12 bits */
     uint32_t j = idx__ & 0xFFF;
@@ -45,18 +46,18 @@ r3::vector<int> Gvec::gvec_by_full_index(uint32_t idx__) const
     return r3::vector<int>(x, y, z);
 }
 
-void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
+void
+Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
 {
     PROFILE("fft::Gvec::find_z_columns");
 
     mdarray<int, 2> non_zero_columns({index_range(fft_box__.limits(0).first, fft_box__.limits(0).second + 1),
-            index_range(fft_box__.limits(1).first, fft_box__.limits(1).second + 1)});
+                                      index_range(fft_box__.limits(1).first, fft_box__.limits(1).second + 1)});
     non_zero_columns.zero();
 
     num_gvec_ = 0;
 
     auto add_new_column = [&](int i, int j) {
-
         if (non_zero_columns(i, j)) {
             return;
         }
@@ -109,7 +110,7 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
     }
 
     /* check all z-columns and add if within sphere. Only allow non-negative x-indices for reduced case */
-    for (int i = reduce_gvec_? 0 : fft_box__.limits(0).first; i <= fft_box__.limits(0).second; i++) {
+    for (int i = reduce_gvec_ ? 0 : fft_box__.limits(0).first; i <= fft_box__.limits(0).second; i++) {
         for (int j = fft_box__.limits(1).first; j <= fft_box__.limits(1).second; j++) {
             add_new_column(i, j);
         }
@@ -131,7 +132,8 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
     if (bare_gvec_) {
         auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
 
-        std::fill(non_zero_columns.at(memory_t::host), non_zero_columns.at(memory_t::host) + non_zero_columns.size(), -1);
+        std::fill(non_zero_columns.at(memory_t::host), non_zero_columns.at(memory_t::host) + non_zero_columns.size(),
+                  -1);
         for (int i = 0; i < static_cast<int>(z_columns_.size()); i++) {
             non_zero_columns(z_columns_[i].x, z_columns_[i].y) = i;
         }
@@ -152,7 +154,7 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
                 /* check only first or last z coordinate inside z column */
                 if (z_columns_[i].z[iz] == z_min || z_columns_[i].z[iz] == z_max) {
                     r3::vector<int> G(z_columns_[i].x, z_columns_[i].y, z_columns_[i].z[iz]);
-                    for (auto& R: lat_sym) {
+                    for (auto& R : lat_sym) {
                         /* apply lattice symmeetry operation to a G-vector */
                         auto G1 = r3::dot(G, R);
                         if (reduce_gvec_) {
@@ -173,7 +175,8 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
                             }
                         }
 
-                        bool found = (std::find(z_columns_[i1].z.begin(), z_columns_[i1].z.end(), G1[2]) != std::end(z_columns_[i1].z));
+                        bool found        = (std::find(z_columns_[i1].z.begin(), z_columns_[i1].z.end(), G1[2]) !=
+                                      std::end(z_columns_[i1].z));
                         found_for_all_sym = found_for_all_sym && found;
                     } // R
                 }
@@ -206,7 +209,8 @@ void Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
     PROFILE_STOP("fft::Gvec::find_z_columns|sort");
 }
 
-void Gvec::distribute_z_columns()
+void
+Gvec::distribute_z_columns()
 {
     gvec_distr_ = mpi::block_data_descriptor(comm().size());
     zcol_distr_ = mpi::block_data_descriptor(comm().size());
@@ -273,7 +277,8 @@ void Gvec::distribute_z_columns()
     this->num_zcol_local_ = this->zcol_distr_.counts[this->comm().rank()];
 }
 
-void Gvec::find_gvec_shells()
+void
+Gvec::find_gvec_shells()
 {
     if (!bare_gvec_) {
         return;
@@ -293,11 +298,11 @@ void Gvec::find_gvec_shells()
         /* if the shell for this vector is not yet found */
         if (gvec_shell_[ig] == -1) {
             auto G = gvec<index_domain_t::global>(ig);
-            for (auto& R: lat_sym) {
-                auto G1 = r3::dot(G, R);
+            for (auto& R : lat_sym) {
+                auto G1  = r3::dot(G, R);
                 auto ig1 = index_by_gvec(G1);
                 if (ig1 == -1) {
-                    G1 = G1 * (-1);
+                    G1  = G1 * (-1);
                     ig1 = index_by_gvec(G1);
                     if (ig1 == -1) {
                         RTE_THROW("symmetry-related G-vector is not found");
@@ -308,7 +313,7 @@ void Gvec::find_gvec_shells()
                 } else {
                     if (gvec_shell_[ig1] != num_gvec_shells_) {
                         auto gc  = r3::dot(lattice_vectors_, G);
-                        auto gc1  = r3::dot(lattice_vectors_, G1);
+                        auto gc1 = r3::dot(lattice_vectors_, G1);
                         std::stringstream s;
                         s << "Error in G-vector shell index" << std::endl
                           << "  G : " << G << std::endl
@@ -362,7 +367,7 @@ void Gvec::find_gvec_shells()
     for (auto it = gshmap.begin(); it != gshmap.end(); ++it) {
         int igsh = it->first;
         gvec_shell_len_local_.push_back(this->shell_len(igsh));
-        for (auto igloc: it->second) {
+        for (auto igloc : it->second) {
             gvec_shell_idx_local_[igloc] = num_gvec_shells_local_;
         }
         num_gvec_shells_local_++;
@@ -376,8 +381,8 @@ Gvec::init_gvec_local()
     gkvec_ = mdarray<double, 2>({3, count()}, mdarray_label("gkvec_"));
 
     for (int igloc = 0; igloc < count(); igloc++) {
-        int ig   = offset() + igloc;
-        auto G   = gvec_by_full_index(gvec_full_index_(ig));
+        int ig = offset() + igloc;
+        auto G = gvec_by_full_index(gvec_full_index_(ig));
         for (int x : {0, 1, 2}) {
             gvec_(x, igloc)  = G[x];
             gkvec_(x, igloc) = G[x] + vk_[x];
@@ -391,8 +396,8 @@ Gvec::init_gvec_cart_local()
     gvec_cart_  = mdarray<double, 2>({3, count()}, mdarray_label("gvec_cart_"));
     gkvec_cart_ = mdarray<double, 2>({3, count()}, mdarray_label("gkvec_cart_"));
     /* this arrays are allocated with GPU- friendly data layout */
-    gvec_tp_    = mdarray<double, 2>({count(), 2}, mdarray_label("gvec_tp_"));
-    gkvec_tp_   = mdarray<double, 2>({count(), 2}, mdarray_label("gvec_tp_"));
+    gvec_tp_  = mdarray<double, 2>({count(), 2}, mdarray_label("gvec_tp_"));
+    gkvec_tp_ = mdarray<double, 2>({count(), 2}, mdarray_label("gvec_tp_"));
     if (bare_gvec_) {
         gvec_len_ = mdarray<double, 1>({count()}, mdarray_label("gvec_len_"));
     }
@@ -407,11 +412,11 @@ Gvec::init_gvec_cart_local()
         if (bare_gvec_) {
             gvec_len_(igloc) = gvec_shell_len_(gvec_shell_(this->offset() + igloc));
         }
-        auto gs = r3::spherical_coordinates(gc);
+        auto gs            = r3::spherical_coordinates(gc);
         gvec_tp_(igloc, 0) = gs[1];
         gvec_tp_(igloc, 1) = gs[2];
 
-        auto gks = r3::spherical_coordinates(gkc);
+        auto gks            = r3::spherical_coordinates(gkc);
         gkvec_tp_(igloc, 0) = gks[1];
         gkvec_tp_(igloc, 1) = gks[2];
     }
@@ -426,10 +431,9 @@ Gvec::init(fft::Grid const& fft_grid)
 
     distribute_z_columns();
 
-    gvec_index_by_xy_ =
-        mdarray<int, 3>({2, index_range(fft_grid.limits(0).first, fft_grid.limits(0).second + 1),
-                index_range(fft_grid.limits(1).first, fft_grid.limits(1).second + 1)},
-                mdarray_label("Gvec.gvec_index_by_xy_"));
+    gvec_index_by_xy_ = mdarray<int, 3>({2, index_range(fft_grid.limits(0).first, fft_grid.limits(0).second + 1),
+                                         index_range(fft_grid.limits(1).first, fft_grid.limits(1).second + 1)},
+                                        mdarray_label("Gvec.gvec_index_by_xy_"));
     std::fill(gvec_index_by_xy_.at(memory_t::host), gvec_index_by_xy_.at(memory_t::host) + gvec_index_by_xy_.size(),
               -1);
 
@@ -497,7 +501,8 @@ Gvec::init(fft::Grid const& fft_grid)
     init_gvec_cart_local();
 }
 
-std::pair<int, bool> Gvec::index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const
+std::pair<int, bool>
+Gvec::index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const
 {
     auto v  = g1__ - g2__;
     int idx = index_by_gvec(v);
@@ -518,7 +523,8 @@ std::pair<int, bool> Gvec::index_g12_safe(r3::vector<int> const& g1__, r3::vecto
     return std::make_pair(idx, conj);
 }
 
-int Gvec::index_by_gvec(r3::vector<int> const& G__) const
+int
+Gvec::index_by_gvec(r3::vector<int> const& G__) const
 {
     /* reduced G-vector set does not have negative z for x=y=0 */
     if (reduced() && G__[0] == 0 && G__[1] == 0 && G__[2] < 0) {
@@ -531,7 +537,7 @@ int Gvec::index_by_gvec(r3::vector<int> const& G__) const
     /* index of the column */
     int icol = gvec_index_by_xy_(1, G__[0], G__[1]) & 0xFFFFF;
     /* quick exit if z is out of bounds */
-    if (G__[2] <  z_columns_[icol].z_min || G__[2] >  z_columns_[icol].z_max) {
+    if (G__[2] < z_columns_[icol].z_min || G__[2] > z_columns_[icol].z_max) {
         return -1;
     }
     /* size of the column */
@@ -560,7 +566,8 @@ int Gvec::index_by_gvec(r3::vector<int> const& G__) const
     return ig;
 }
 
-Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
+Gvec
+send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__)
 {
     serializer s;
 
@@ -578,7 +585,8 @@ Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source
     return gv;
 }
 
-void Gvec_fft::build_fft_distr()
+void
+Gvec_fft::build_fft_distr()
 {
     /* calculate distribution of G-vectors and z-columns for the FFT communicator */
     gvec_distr_fft_ = mpi::block_data_descriptor(comm_fft().size());
@@ -599,7 +607,8 @@ void Gvec_fft::build_fft_distr()
     gvec_distr_fft_.calc_offsets();
 }
 
-void Gvec_fft::pile_gvec()
+void
+Gvec_fft::pile_gvec()
 {
     /* build a table of {offset, count} values for G-vectors in the swapped distribution;
      * we are preparing to swap plane-wave coefficients from a default slab distribution to a FFT-friendly
@@ -620,7 +629,8 @@ void Gvec_fft::pile_gvec()
     }
     gvec_fft_slab_.calc_offsets();
 
-    RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[comm_fft().rank()]);
+    RTE_ASSERT(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() ==
+               gvec_distr_fft_.counts[comm_fft().rank()]);
 
     gvec_array_       = mdarray<int, 2>({3, this->count()});
     gkvec_cart_array_ = mdarray<double, 2>({3, this->count()});
@@ -744,7 +754,8 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     }
 }
 
-void serialize(serializer& s__, Gvec const& gv__)
+void
+serialize(serializer& s__, Gvec const& gv__)
 {
     serialize(s__, gv__.vk_);
     serialize(s__, gv__.Gmax_);
@@ -765,7 +776,8 @@ void serialize(serializer& s__, Gvec const& gv__)
     serialize(s__, gv__.count_);
 }
 
-void deserialize(serializer& s__, Gvec& gv__)
+void
+deserialize(serializer& s__, Gvec& gv__)
 {
     deserialize(s__, gv__.vk_);
     deserialize(s__, gv__.Gmax_);
@@ -786,6 +798,6 @@ void deserialize(serializer& s__, Gvec& gv__)
     deserialize(s__, gv__.count_);
 }
 
-} // namespace sddk
+} // namespace fft
 
 } // namespace sirius

@@ -59,7 +59,7 @@ class Occupation_matrix : public Hubbard_matrix
             auto const& atom = ctx_.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
                 ctx_.comm_k().allreduce(this->local(at_lvl).at(memory_t::host),
-                                      static_cast<int>(this->local(at_lvl).size()));
+                                        static_cast<int>(this->local(at_lvl).size()));
             }
         }
 
@@ -88,14 +88,15 @@ class Occupation_matrix : public Hubbard_matrix
             this->nonlocal(i).zero();
 
             /* NOTE : the atom order is important here. */
-            int at1_lvl = this->find_orbital_index(ia, n1, il);
-            int at2_lvl = this->find_orbital_index(ja, n2, jl);
+            int at1_lvl          = this->find_orbital_index(ia, n1, il);
+            int at2_lvl          = this->find_orbital_index(ja, n2, jl);
             auto const& occ_mtrx = occ_mtrx_T_.at(T);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 for (int m1 = 0; m1 < ib; m1++) {
                     for (int m2 = 0; m2 < jb; m2++) {
-                        this->nonlocal(i)(m1, m2, ispn) = occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
+                        this->nonlocal(i)(m1, m2, ispn) =
+                            occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
                     }
                 }
             }
@@ -122,8 +123,7 @@ class Occupation_matrix : public Hubbard_matrix
         return occ_mtrx_T_;
     }
 
-    friend void
-    copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
+    friend void copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
 };
 
 inline void

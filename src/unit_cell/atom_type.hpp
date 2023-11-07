@@ -77,7 +77,8 @@ struct ps_atomic_wf_descriptor
     Spline<double> f;
 };
 
-inline std::ostream& operator<<(std::ostream& out, ps_atomic_wf_descriptor const& wfd)
+inline std::ostream&
+operator<<(std::ostream& out, ps_atomic_wf_descriptor const& wfd)
 {
     if (wfd.am.s() == 0) {
         out << "{n: " << wfd.n << ", l: " << wfd.am.l() << "}";
@@ -826,7 +827,7 @@ class Atom_type
 
     inline auto const& indexr(int i) const
     {
-        //RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
+        // RTE_ASSERT(i >= 0 && i < (int)indexr_.size());
         return indexr_[rf_index(i)];
     }
 
@@ -847,7 +848,7 @@ class Atom_type
 
     inline auto const& indexb(int i) const
     {
-        //RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
+        // RTE_ASSERT(i >= 0 && i < (int)indexb_.size());
         return indexb_[i];
     }
 
@@ -961,7 +962,7 @@ class Atom_type
     inline void d_mtrx_ion(matrix<double> const& d_mtrx_ion__)
     {
         d_mtrx_ion_ = matrix<double>({num_beta_radial_functions(), num_beta_radial_functions()},
-                mdarray_label("Atom_type::d_mtrx_ion_"));
+                                     mdarray_label("Atom_type::d_mtrx_ion_"));
         copy(d_mtrx_ion__, d_mtrx_ion_);
     }
 
@@ -1089,7 +1090,7 @@ class Atom_type
     inline int lmax_lo() const
     {
         int lmax{-1};
-        for (auto& e: lo_descriptors_) {
+        for (auto& e : lo_descriptors_) {
             lmax = std::max(lmax, e.am.l());
         }
         return lmax;
@@ -1099,9 +1100,9 @@ class Atom_type
     inline int lmax_ps_atomic_wf() const
     {
         int lmax{-1};
-        for (auto& e: ps_atomic_wfs_) {
+        for (auto& e : ps_atomic_wfs_) {
             auto l = e.am.l();
-            lmax = std::max(lmax, l);
+            lmax   = std::max(lmax, l);
         }
         return lmax;
     }
@@ -1111,7 +1112,7 @@ class Atom_type
     {
         int lmax{-1};
 
-        for (auto& e: beta_radial_functions_) {
+        for (auto& e : beta_radial_functions_) {
             lmax = std::max(lmax, e.first.l());
         }
         return lmax;

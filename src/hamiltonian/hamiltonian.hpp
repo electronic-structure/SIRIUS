@@ -461,7 +461,7 @@ class Hamiltonian_k
 
         /* set initial sphi */
         if (sphi__ != nullptr) {
-            for (auto s = spins__.begin(); s!= spins__.end(); s++) {
+            for (auto s = spins__.begin(); s != spins__.end(); s++) {
                 auto sp = phi__.actual_spin_index(s);
                 wf::copy(mem, phi__, sp, br__, *sphi__, sp, br__);
             }
@@ -471,7 +471,8 @@ class Hamiltonian_k
         if (H0().ctx().unit_cell().max_mt_basis_size()) {
             auto bp_generator = kp_.beta_projectors().make_generator();
             auto beta_coeffs  = bp_generator.prepare();
-            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__,
+                                      &H0().Q(), sphi__);
         }
 
         /* apply the hubbard potential if relevant */
@@ -511,13 +512,14 @@ class Hamiltonian_k
      *  wave-functions. Otherwise they are applied to a single component.
      */
     template <typename F>
-    std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-    apply_s(wf::spin_range spin__, wf::band_range br__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& sphi__) const {
-        auto mem = H0().ctx().processing_unit_memory_t();
+    std::enable_if_t<std::is_same<T, real_type<F>>::value, void> apply_s(wf::spin_range spin__, wf::band_range br__,
+                                                                         wf::Wave_functions<T> const& phi__,
+                                                                         wf::Wave_functions<T>& sphi__) const
+    {
+        auto mem       = H0().ctx().processing_unit_memory_t();
         auto bp_gen    = kp_.beta_projectors().make_generator();
         auto bp_coeffs = bp_gen.prepare();
-        apply_S_operator<T, F>(mem, spin__, br__,
-                               bp_gen, bp_coeffs, phi__, &H0().Q(), sphi__);
+        apply_S_operator<T, F>(mem, spin__, br__, bp_gen, bp_coeffs, phi__, &H0().Q(), sphi__);
     }
 
     /// Apply magnetic field to first-variational LAPW wave-functions.
@@ -531,6 +533,6 @@ Hamiltonian0<T>::operator()(K_point<T>& kp__) const
     return Hamiltonian_k<T>(*this, kp__);
 }
 
-}
+} // namespace sirius
 
 #endif

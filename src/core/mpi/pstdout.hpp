@@ -81,7 +81,7 @@ class pstdout : public std::stringstream
     }
 };
 
-}
+} // namespace mpi
 
 } // namespace sirius
 

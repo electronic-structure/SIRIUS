@@ -44,7 +44,9 @@ class Spherical_Bessel_functions
     std::vector<Spline<double>> sbessel_;
 
   public:
-    Spherical_Bessel_functions() {}
+    Spherical_Bessel_functions()
+    {
+    }
 
     Spherical_Bessel_functions(int lmax__, Radial_grid<double> const& rgrid__, double q__);
 
@@ -60,7 +62,6 @@ class Spherical_Bessel_functions
         \f]
      */
     Spline<double> deriv_q(int l__);
-
 };
 
 } // namespace sf

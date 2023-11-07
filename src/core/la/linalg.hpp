@@ -48,11 +48,12 @@ namespace la {
 
 namespace _local {
 /// check if device id has been set properly
-inline bool is_set_device_id()
+inline bool
+is_set_device_id()
 {
     return acc::get_device_id() == mpi::get_device_id(acc::num_devices());
 }
-}
+} // namespace _local
 
 #define linalg_msg_wrong_type "[" + std::string(__func__) + "] wrong type of linear algebra library: " + to_string(la_)
 
@@ -62,6 +63,7 @@ class wrap
 {
   private:
     lib_t la_;
+
   public:
     wrap(lib_t la__)
         : la_(la__)
@@ -84,14 +86,15 @@ class wrap
     /** Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers. */
     template <typename T>
     inline void gemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
-                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, acc::stream_id sid = acc::stream_id(-1)) const;
+                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc,
+                     acc::stream_id sid = acc::stream_id(-1)) const;
 
-     /// Distributed general matrix-matrix multiplication.
-     /** Compute C = alpha * op(A) * op(B) + beta * op(C) for distributed matrices. */
-     template <typename T>
-     inline void gemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha,
-                      dmatrix<T> const& A, ftn_int ia, ftn_int ja, dmatrix<T> const& B,
-                      ftn_int ib, ftn_int jb, T const* beta, dmatrix<T>& C, ftn_int ic, ftn_int jc);
+    /// Distributed general matrix-matrix multiplication.
+    /** Compute C = alpha * op(A) * op(B) + beta * op(C) for distributed matrices. */
+    template <typename T>
+    inline void gemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, dmatrix<T> const& A,
+                     ftn_int ia, ftn_int ja, dmatrix<T> const& B, ftn_int ib, ftn_int jb, T const* beta, dmatrix<T>& C,
+                     ftn_int ic, ftn_int jc);
 
     /// Hermitian matrix times a general matrix or vice versa.
     /** Perform one of the matrix-matrix operations \n
@@ -99,9 +102,9 @@ class wrap
      *  C = alpha * B * A + beta * C (side = 'R'), \n
      *  where A is a hermitian matrix with upper (uplo = 'U') of lower (uplo = 'L') triangular part defined.
      */
-    template<typename T>
-    inline void hemm(char side, char uplo, ftn_int m, ftn_int n, T const* alpha, T const* A, ftn_len lda,
-                     T const* B, ftn_len ldb, T const* beta, T* C, ftn_len ldc);
+    template <typename T>
+    inline void hemm(char side, char uplo, ftn_int m, ftn_int n, T const* alpha, T const* A, ftn_len lda, T const* B,
+                     ftn_len ldb, T const* beta, T* C, ftn_len ldc);
 
     template <typename T>
     inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda,
@@ -111,9 +114,9 @@ class wrap
         rank2 update
     */
 
-    template<typename T>
-    inline void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
-                    acc::stream_id sid = acc::stream_id(-1)) const;
+    template <typename T>
+    inline void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A,
+                    ftn_int lda, acc::stream_id sid = acc::stream_id(-1)) const;
 
     /*
         matrix factorization
@@ -194,11 +197,12 @@ class wrap
     }
 
     template <typename T>
-    inline bool sysolve(ftn_int n, matrix<T> &A, mdarray<T, 1> &b) const
+    inline bool sysolve(ftn_int n, matrix<T>& A, mdarray<T, 1>& b) const
     {
         std::vector<int> ipiv(n);
         int info = this->sytrf(n, A.at(memory_t::host), A.ld(), ipiv.data());
-        if (info) return false;
+        if (info)
+            return false;
 
         info = this->sytrs(n, 1, A.at(memory_t::host), A.ld(), ipiv.data(), b.at(memory_t::host), b.ld());
 
@@ -232,13 +236,13 @@ class wrap
         \param [in]  jc  Starting column index of sub-matrix inside C
      */
     template <typename T>
-    inline void tranc(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C,
-        ftn_int ic, ftn_int jc) const;
+    inline void tranc(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic,
+                      ftn_int jc) const;
 
     /// Transpose matrix without conjugation.
     template <typename T>
-    inline void tranu(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C,
-        ftn_int ic, ftn_int jc) const;
+    inline void tranu(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic,
+                      ftn_int jc) const;
 
     // Constructing a Given's rotation
     template <typename T>
@@ -248,24 +252,26 @@ class wrap
     inline void geqrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja);
 };
 
-template<>
+template <>
 inline void
 wrap::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
+            ia++;
+            ja++;
             ftn_int lwork = -1;
             ftn_double_complex z;
             ftn_int info;
-            FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
-                             &info);
+            FORTRAN(pzgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
             lwork = static_cast<int>(z.real() + 1);
             std::vector<ftn_double_complex> work(lwork);
             std::vector<ftn_double_complex> tau(std::max(m, n));
-            FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
-                             work.data(), &lwork, &info);
+            FORTRAN(pzgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
+             &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -293,24 +299,26 @@ wrap::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
     }
 }
 
-template<>
+template <>
 inline void
 wrap::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
+            ia++;
+            ja++;
             ftn_int lwork = -1;
             ftn_double z;
             ftn_int info;
-            FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
-                             &info);
+            FORTRAN(pdgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
             lwork = static_cast<int>(z + 1);
             std::vector<ftn_double> work(lwork);
             std::vector<ftn_double> tau(std::max(m, n));
-            FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
-                             work.data(), &lwork, &info);
+            FORTRAN(pdgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
+             &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -338,24 +346,26 @@ wrap::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
     }
 }
 
-template<>
+template <>
 inline void
 wrap::geqrf<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int ia, ftn_int ja)
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
+            ia++;
+            ja++;
             ftn_int lwork = -1;
             ftn_complex z;
             ftn_int info;
-            FORTRAN(pcgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
-                             &info);
+            FORTRAN(pcgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
             lwork = static_cast<int>(z.real() + 1);
             std::vector<ftn_complex> work(lwork);
             std::vector<ftn_complex> tau(std::max(m, n));
-            FORTRAN(pcgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
-                             work.data(), &lwork, &info);
+            FORTRAN(pcgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
+             &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -383,24 +393,26 @@ wrap::geqrf<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
     }
 }
 
-template<>
+template <>
 inline void
 wrap::geqrf<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia, ftn_int ja)
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
+            ia++;
+            ja++;
             ftn_int lwork = -1;
             ftn_single z;
             ftn_int info;
-            FORTRAN(psgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork,
-                             &info);
+            FORTRAN(psgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
             lwork = static_cast<int>(z + 1);
             std::vector<ftn_single> work(lwork);
             std::vector<ftn_single> tau(std::max(m, n));
-            FORTRAN(psgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(),
-                             work.data(), &lwork, &info);
+            FORTRAN(psgeqrf)
+            (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
+             &info);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -431,7 +443,7 @@ wrap::geqrf<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia
 template <>
 inline void
 wrap::axpy(int n, ftn_double_complex const* alpha, ftn_double_complex const* x, int incx, ftn_double_complex* y,
-             int incy)
+           int incy)
 {
     assert(n > 0);
     assert(incx > 0);
@@ -445,8 +457,8 @@ wrap::axpy(int n, ftn_double_complex const* alpha, ftn_double_complex const* x, 
 #if defined(SIRIUS_GPU)
         case lib_t::gpublas: {
             acc::blas::zaxpy(n, reinterpret_cast<const acc_complex_double_t*>(alpha),
-                           reinterpret_cast<const acc_complex_double_t*>(x), incx,
-                           reinterpret_cast<acc_complex_double_t*>(y), incy);
+                             reinterpret_cast<const acc_complex_double_t*>(x), incx,
+                             reinterpret_cast<acc_complex_double_t*>(y), incy);
             break;
         }
 #endif
@@ -504,9 +516,10 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
 }
 
 template <>
-inline void wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
-                                      ftn_double const* beta, ftn_double* C, ftn_int ldc, acc::stream_id sid) const
+inline void
+wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
+                       ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb, ftn_double const* beta,
+                       ftn_double* C, ftn_int ldc, acc::stream_id sid) const
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -516,8 +529,9 @@ inline void wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int 
     assert(k > 0);
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(dgemm)(&transa, &transb, &m, &n, &k, const_cast<double*>(alpha), const_cast<double*>(A), &lda,
-                           const_cast<double*>(B), &ldb, const_cast<double*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            FORTRAN(dgemm)
+            (&transa, &transb, &m, &n, &k, const_cast<double*>(alpha), const_cast<double*>(A), &lda,
+             const_cast<double*>(B), &ldb, const_cast<double*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
             break;
         }
         case lib_t::gpublas: {
@@ -535,7 +549,6 @@ inline void wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int 
             throw std::runtime_error("not compiled with cublasxt");
 #endif
             break;
-
         }
         case lib_t::spla: {
             splablas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
@@ -549,9 +562,10 @@ inline void wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int 
 }
 
 template <>
-inline void wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_complex const* alpha,
-                                      ftn_complex const* A, ftn_int lda, ftn_complex const* B, ftn_int ldb, ftn_complex const *beta,
-                                      ftn_complex* C, ftn_int ldc, acc::stream_id sid) const
+inline void
+wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_complex const* alpha,
+                        ftn_complex const* A, ftn_int lda, ftn_complex const* B, ftn_int ldb, ftn_complex const* beta,
+                        ftn_complex* C, ftn_int ldc, acc::stream_id sid) const
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -569,10 +583,10 @@ inline void wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
             acc::blas::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
-                           reinterpret_cast<acc_complex_float_t const*>(A), lda,
-                           reinterpret_cast<acc_complex_float_t const*>(B), ldb,
-                           reinterpret_cast<acc_complex_float_t const*>(beta),
-                           reinterpret_cast<acc_complex_float_t*>(C), ldc, sid());
+                             reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                             reinterpret_cast<acc_complex_float_t const*>(B), ldb,
+                             reinterpret_cast<acc_complex_float_t const*>(beta),
+                             reinterpret_cast<acc_complex_float_t*>(C), ldc, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -581,10 +595,10 @@ inline void wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::cgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_float_t const*>(alpha),
-                               reinterpret_cast<acc_complex_float_t const*>(A), lda,
-                               reinterpret_cast<acc_complex_float_t const*>(B), ldb,
-                               reinterpret_cast<acc_complex_float_t const*>(beta),
-                               reinterpret_cast<acc_complex_float_t*>(C), ldc);
+                                 reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                                 reinterpret_cast<acc_complex_float_t const*>(B), ldb,
+                                 reinterpret_cast<acc_complex_float_t const*>(beta),
+                                 reinterpret_cast<acc_complex_float_t*>(C), ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -602,10 +616,11 @@ inline void wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int
 }
 
 template <>
-inline void wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k,
-                                              ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
-                                              ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const *beta,
-                                              ftn_double_complex* C, ftn_int ldc, acc::stream_id sid) const
+inline void
+wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k,
+                               ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
+                               ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
+                               ftn_double_complex* C, ftn_int ldc, acc::stream_id sid) const
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -615,35 +630,35 @@ inline void wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, 
     assert(k > 0);
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(zgemm)(&transa, &transb, &m, &n, &k, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb,
-                           const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            FORTRAN(zgemm)
+            (&transa, &transb, &m, &n, &k, const_cast<ftn_double_complex*>(alpha), const_cast<ftn_double_complex*>(A),
+             &lda, const_cast<ftn_double_complex*>(B), &ldb, const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1,
+             (ftn_len)1);
             break;
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
             acc::blas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B),
-                          ldb, reinterpret_cast<acc_complex_double_t const*>(beta),
-                          reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
+                             reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                             reinterpret_cast<acc_complex_double_t const*>(B), ldb,
+                             reinterpret_cast<acc_complex_double_t const*>(beta),
+                             reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
             break;
-
         }
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                              reinterpret_cast<acc_complex_double_t const*>(A), lda,
-                              reinterpret_cast<acc_complex_double_t const*>(B), ldb,
-                              reinterpret_cast<acc_complex_double_t const*>(beta),
-                              reinterpret_cast<acc_complex_double_t*>(C), ldc);
+                                 reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                                 reinterpret_cast<acc_complex_double_t const*>(B), ldb,
+                                 reinterpret_cast<acc_complex_double_t const*>(beta),
+                                 reinterpret_cast<acc_complex_double_t*>(C), ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
             break;
-
         }
         case lib_t::spla: {
             splablas::zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
@@ -656,11 +671,11 @@ inline void wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, 
     }
 }
 
-template<>
+template <>
 inline void
 wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_single const* alpha,
-                          dmatrix<ftn_single> const& A, ftn_int ia, ftn_int ja, dmatrix<ftn_single> const& B,
-                          ftn_int ib, ftn_int jb, ftn_single const* beta, dmatrix<ftn_single>& C, ftn_int ic, ftn_int jc)
+                       dmatrix<ftn_single> const& A, ftn_int ia, ftn_int ja, dmatrix<ftn_single> const& B, ftn_int ib,
+                       ftn_int jb, ftn_single const* beta, dmatrix<ftn_single>& C, ftn_int ic, ftn_int jc)
 {
     switch (la_) {
         case lib_t::scalapack: {
@@ -669,12 +684,15 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             assert(B.ld() != 0);
             assert(C.ld() != 0);
 
-            ia++; ja++;
-            ib++; jb++;
-            ic++; jc++;
-            FORTRAN(psgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
-                            (ftn_len)1, (ftn_len)1);
+            ia++;
+            ja++;
+            ib++;
+            jb++;
+            ic++;
+            jc++;
+            FORTRAN(psgemm)
+            (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
+             &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -687,11 +705,11 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
     }
 }
 
-template<>
+template <>
 inline void
 wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
-                         dmatrix<ftn_double> const& A, ftn_int ia, ftn_int ja, dmatrix<ftn_double> const& B,
-                         ftn_int ib, ftn_int jb, ftn_double const* beta, dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
+                       dmatrix<ftn_double> const& A, ftn_int ia, ftn_int ja, dmatrix<ftn_double> const& B, ftn_int ib,
+                       ftn_int jb, ftn_double const* beta, dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
 {
     switch (la_) {
         case lib_t::scalapack: {
@@ -700,12 +718,15 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             assert(B.ld() != 0);
             assert(C.ld() != 0);
 
-            ia++; ja++;
-            ib++; jb++;
-            ic++; jc++;
-            FORTRAN(pdgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
-                            (ftn_len)1, (ftn_len)1);
+            ia++;
+            ja++;
+            ib++;
+            jb++;
+            ic++;
+            jc++;
+            FORTRAN(pdgemm)
+            (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
+             &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -718,11 +739,12 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
     }
 }
 
-template<>
+template <>
 inline void
 wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_complex const* alpha,
-                          dmatrix<ftn_complex> const& A, ftn_int ia, ftn_int ja, dmatrix<ftn_complex> const& B,
-                          ftn_int ib, ftn_int jb, ftn_complex const* beta, dmatrix<ftn_complex>& C, ftn_int ic, ftn_int jc)
+                        dmatrix<ftn_complex> const& A, ftn_int ia, ftn_int ja, dmatrix<ftn_complex> const& B,
+                        ftn_int ib, ftn_int jb, ftn_complex const* beta, dmatrix<ftn_complex>& C, ftn_int ic,
+                        ftn_int jc)
 {
     switch (la_) {
         case lib_t::scalapack: {
@@ -731,12 +753,15 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
             assert(B.ld() != 0);
             assert(C.ld() != 0);
 
-            ia++; ja++;
-            ib++; jb++;
-            ic++; jc++;
-            FORTRAN(pcgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
-                            (ftn_len)1, (ftn_len)1);
+            ia++;
+            ja++;
+            ib++;
+            jb++;
+            ic++;
+            jc++;
+            FORTRAN(pcgemm)
+            (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
+             &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -749,13 +774,12 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
     }
 }
 
-template<>
+template <>
 inline void
 wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k,
-                                  ftn_double_complex const* alpha, dmatrix<ftn_double_complex> const& A,
-                                  ftn_int ia, ftn_int ja, dmatrix<ftn_double_complex> const& B,
-                                  ftn_int ib, ftn_int jb, ftn_double_complex const* beta,
-                                  dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+                               ftn_double_complex const* alpha, dmatrix<ftn_double_complex> const& A, ftn_int ia,
+                               ftn_int ja, dmatrix<ftn_double_complex> const& B, ftn_int ib, ftn_int jb,
+                               ftn_double_complex const* beta, dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
 {
     switch (la_) {
         case lib_t::scalapack: {
@@ -764,12 +788,15 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
             assert(B.ld() != 0);
             assert(C.ld() != 0);
 
-            ia++; ja++;
-            ib++; jb++;
-            ic++; jc++;
-            FORTRAN(pzgemm)(&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
-                            B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
-                            (ftn_len)1, (ftn_len)1);
+            ia++;
+            ja++;
+            ib++;
+            jb++;
+            ic++;
+            jc++;
+            FORTRAN(pzgemm)
+            (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
+             &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -782,10 +809,11 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
     }
 }
 
-template<>
+template <>
 inline void
 wrap::hemm<ftn_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_complex const* alpha, ftn_complex const* A,
-                          ftn_len lda, ftn_complex const* B, ftn_len ldb, ftn_complex const* beta, ftn_complex* C, ftn_len ldc)
+                        ftn_len lda, ftn_complex const* B, ftn_len ldb, ftn_complex const* beta, ftn_complex* C,
+                        ftn_len ldc)
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -806,11 +834,11 @@ wrap::hemm<ftn_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_complex 
     }
 }
 
-template<>
+template <>
 inline void
 wrap::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_double_complex const* alpha,
-                                  ftn_double_complex const* A, ftn_len lda, ftn_double_complex const* B, ftn_len ldb,
-                                  ftn_double_complex const* beta, ftn_double_complex* C, ftn_len ldc)
+                               ftn_double_complex const* A, ftn_len lda, ftn_double_complex const* B, ftn_len ldb,
+                               ftn_double_complex const* beta, ftn_double_complex* C, ftn_len ldc)
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -819,9 +847,10 @@ wrap::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_d
     assert(n > 0);
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(zhemm)(&side, &uplo, &m, &n, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb,
-                           const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            FORTRAN(zhemm)
+            (&side, &uplo, &m, &n, const_cast<ftn_double_complex*>(alpha), const_cast<ftn_double_complex*>(A), &lda,
+             const_cast<ftn_double_complex*>(B), &ldb, const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1,
+             (ftn_len)1);
             break;
         }
         default: {
@@ -831,14 +860,16 @@ wrap::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_d
     }
 }
 
-template<>
-inline void wrap::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha, ftn_single const* x, ftn_int incx,
-                                    ftn_single const* y, ftn_int incy, ftn_single* A, ftn_int lda, acc::stream_id sid) const
+template <>
+inline void
+wrap::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha, ftn_single const* x, ftn_int incx,
+                      ftn_single const* y, ftn_int incy, ftn_single* A, ftn_int lda, acc::stream_id sid) const
 {
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(sger)(&m, &n, const_cast<ftn_single*>(alpha), const_cast<ftn_single*>(x), &incx,
-                          const_cast<ftn_single*>(y), &incy, A, &lda);
+            FORTRAN(sger)
+            (&m, &n, const_cast<ftn_single*>(alpha), const_cast<ftn_single*>(x), &incx, const_cast<ftn_single*>(y),
+             &incy, A, &lda);
             break;
         }
         case lib_t::gpublas: {
@@ -860,14 +891,16 @@ inline void wrap::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha,
     }
 }
 
-template<>
-inline void wrap::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
-                                     ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, acc::stream_id sid) const
+template <>
+inline void
+wrap::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
+                      ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, acc::stream_id sid) const
 {
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(dger)(&m, &n, const_cast<ftn_double*>(alpha), const_cast<ftn_double*>(x), &incx,
-                          const_cast<ftn_double*>(y), &incy, A, &lda);
+            FORTRAN(dger)
+            (&m, &n, const_cast<ftn_double*>(alpha), const_cast<ftn_double*>(x), &incx, const_cast<ftn_double*>(y),
+             &incy, A, &lda);
             break;
         }
         case lib_t::gpublas: {
@@ -890,16 +923,18 @@ inline void wrap::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha,
 }
 
 template <>
-inline void wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb, acc::stream_id sid) const
+inline void
+wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
+                       ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb, acc::stream_id sid) const
 {
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double*>(alpha),
-                           const_cast<ftn_double*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            FORTRAN(dtrmm)
+            (&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double*>(alpha), const_cast<ftn_double*>(A), &lda, B,
+             &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case  lib_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
             acc::blas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
@@ -923,16 +958,18 @@ inline void wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m,
 }
 
 template <>
-inline void wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_single const* alpha,
-                                     ftn_single const* A, ftn_int lda, ftn_single* B, ftn_int ldb, acc::stream_id sid) const
+inline void
+wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_single const* alpha,
+                       ftn_single const* A, ftn_int lda, ftn_single* B, ftn_int ldb, acc::stream_id sid) const
 {
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(strmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_single*>(alpha),
-                           const_cast<ftn_single*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            FORTRAN(strmm)
+            (&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_single*>(alpha), const_cast<ftn_single*>(A), &lda, B,
+             &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case  lib_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
             acc::blas::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
@@ -956,22 +993,23 @@ inline void wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m,
 }
 
 template <>
-inline void wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
-                                             ftn_double_complex const* alpha, ftn_double_complex const* A,
-                                             ftn_int lda, ftn_double_complex* B, ftn_int ldb, acc::stream_id sid) const
+inline void
+wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double_complex const* alpha,
+                               ftn_double_complex const* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb,
+                               acc::stream_id sid) const
 {
     switch (la_) {
         case lib_t::blas: {
-            FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1,
-                           (ftn_len)1, (ftn_len)1);
+            FORTRAN(ztrmm)
+            (&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double_complex*>(alpha),
+             const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case  lib_t::gpublas: {
+        case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
             acc::blas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                          reinterpret_cast<acc_complex_double_t const*>(A), lda,
-                          reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
+                             reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                             reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -980,7 +1018,8 @@ inline void wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ft
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                              reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
+                                 reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                                 reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -994,22 +1033,22 @@ inline void wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ft
 }
 
 template <>
-inline void wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
-                                      ftn_complex const* alpha, ftn_complex const* A,
-                                      ftn_int lda, ftn_complex* B, ftn_int ldb, acc::stream_id sid) const
+inline void
+wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_complex const* alpha,
+                        ftn_complex const* A, ftn_int lda, ftn_complex* B, ftn_int ldb, acc::stream_id sid) const
 {
     switch (la_) {
         case lib_t::blas: {
             FORTRAN(ctrmm)
-                (&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_complex*>(alpha), const_cast<ftn_complex*>(A), &lda, B,
-                 &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            (&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_complex*>(alpha), const_cast<ftn_complex*>(A), &lda, B,
+             &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
             break;
         }
         case lib_t::gpublas: {
 #if defined(SIRIUS_GPU)
             acc::blas::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
-                           reinterpret_cast<acc_complex_float_t const*>(A), lda,
-                           reinterpret_cast<acc_complex_float_t*>(B), ldb, sid());
+                             reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                             reinterpret_cast<acc_complex_float_t*>(B), ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -1018,8 +1057,8 @@ inline void wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m
         case lib_t::cublasxt: {
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::ctrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_float_t const*>(alpha),
-                               reinterpret_cast<acc_complex_float_t const*>(A), lda,
-                               reinterpret_cast<acc_complex_float_t*>(B), ldb);
+                                 reinterpret_cast<acc_complex_float_t const*>(A), lda,
+                                 reinterpret_cast<acc_complex_float_t*>(B), ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -1032,8 +1071,9 @@ inline void wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m
     }
 }
 
-template<>
-inline int wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1079,8 +1119,9 @@ inline int wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1126,8 +1167,9 @@ inline int wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1173,8 +1215,9 @@ inline int wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
     return -1;
 }
 
-template<>
-inline int wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1220,8 +1263,9 @@ inline int wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
     return -1;
 }
 
-template<>
-inline int wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1267,8 +1311,9 @@ inline int wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1314,8 +1359,9 @@ inline int wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1361,8 +1407,9 @@ inline int wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
     return -1;
 }
 
-template<>
-inline int wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* desca) const
+template <>
+inline int
+wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1408,9 +1455,10 @@ inline int wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_
     return -1;
 }
 
-template<>
-inline int wrap::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du,
-                                     ftn_double* b, ftn_int ldb) const
+template <>
+inline int
+wrap::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du, ftn_double* b,
+                       ftn_int ldb) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1427,9 +1475,10 @@ inline int wrap::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_d
     return -1;
 }
 
-template<>
-inline int wrap::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
-                                             ftn_double_complex* du, ftn_double_complex* b, ftn_int ldb) const
+template <>
+inline int
+wrap::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
+                               ftn_double_complex* du, ftn_double_complex* b, ftn_int ldb) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1446,8 +1495,9 @@ inline int wrap::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_co
     return -1;
 }
 
-template<>
-inline int wrap::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb) const
+template <>
+inline int
+wrap::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1465,9 +1515,10 @@ inline int wrap::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda,
-                                             ftn_double_complex* B, ftn_int ldb) const
+template <>
+inline int
+wrap::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda, ftn_double_complex* B,
+                               ftn_int ldb) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1486,8 +1537,9 @@ inline int wrap::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_co
 }
 
 // LU factorization, double
-template<>
-inline int wrap::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1505,8 +1557,9 @@ inline int wrap::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int 
 }
 
 // LU factorization, double_complex
-template<>
-inline int wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1523,13 +1576,14 @@ inline int wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_comp
     return -1;
 }
 
-template<>
-inline int wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
-                                              ftn_int ia, ftn_int ja, ftn_int* ipiv) const
+template <>
+inline int
+wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::scalapack: {
-#if defined (SIRIUS_SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             ftn_int info;
             ia++;
             ja++;
@@ -1548,10 +1602,10 @@ inline int wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_dou
     return -1;
 }
 
-template<>
+template <>
 inline int
 wrap::getrs<ftn_double_complex>(char trans, ftn_int n, ftn_int nrhs, const ftn_double_complex* A, ftn_int lda,
-                                  ftn_int* ipiv, ftn_double_complex* B, ftn_int ldb) const
+                                ftn_int* ipiv, ftn_double_complex* B, ftn_int ldb) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1563,7 +1617,7 @@ wrap::getrs<ftn_double_complex>(char trans, ftn_int n, ftn_int nrhs, const ftn_d
 #if defined(SIRIUS_GPU)
         case lib_t::gpublas: {
             return acc::lapack::getrs(trans, n, nrhs, reinterpret_cast<const acc_complex_double_t*>(A), lda, ipiv,
-                                    reinterpret_cast<acc_complex_double_t*>(B), ldb);
+                                      reinterpret_cast<acc_complex_double_t*>(B), ldb);
             break;
         }
 #endif
@@ -1583,74 +1637,17 @@ wrap::tranc<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
-            ic++; jc++;
+            ia++;
+            ja++;
+            ic++;
+            jc++;
 
             auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
             auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
-            FORTRAN(pctranc)(&m, &n, const_cast<ftn_complex*>(&constant<ftn_complex>::one()),
-                             A_ptr, &ia, &ja, A.descriptor(),
-                             const_cast<ftn_complex*>(&constant<ftn_complex>::zero()),
-                             C_ptr, &ic, &jc, C.descriptor());
-#else
-            throw std::runtime_error(linalg_msg_no_scalapack);
-#endif
-            break;
-        }
-        default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
-            break;
-        }
-    }
-}
-
-template<>
-inline void wrap::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
-    ftn_int ia, ftn_int ja, dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
-{
-    switch (la_) {
-        case lib_t::scalapack: {
-#if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
-            ic++; jc++;
-
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
-
-            FORTRAN(pztranu)(&m, &n, const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::one()),
-                             A_ptr, &ia, &ja, A.descriptor(),
-                             const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::zero()),
-                             C_ptr, &ic, &jc, C.descriptor());
-#else
-            throw std::runtime_error(linalg_msg_no_scalapack);
-#endif
-            break;
-        }
-        default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
-            break;
-        }
-    }
-}
-
-template<>
-inline void wrap::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
-    ftn_int ia, ftn_int ja, dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
-{
-    switch (la_) {
-        case lib_t::scalapack: {
-#if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
-            ic++; jc++;
-
-            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
-            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
-
-            FORTRAN(pztranc)(&m, &n, const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::one()),
-                             A_ptr, &ia, &ja, A.descriptor(),
-                             const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::zero()),
-                             C_ptr, &ic, &jc, C.descriptor());
+            FORTRAN(pctranc)
+            (&m, &n, const_cast<ftn_complex*>(&constant<ftn_complex>::one()), A_ptr, &ia, &ja, A.descriptor(),
+             const_cast<ftn_complex*>(&constant<ftn_complex>::zero()), C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1664,21 +1661,25 @@ inline void wrap::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_do
 }
 
 template <>
-inline void wrap::tranc<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia, ftn_int ja,
-                                      dmatrix<ftn_single>& C, ftn_int ic, ftn_int jc) const
+inline void
+wrap::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
-            ic++; jc++;
+            ia++;
+            ja++;
+            ic++;
+            jc++;
 
             auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
             auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
-            FORTRAN(pstran)(&m, &n, const_cast<ftn_single*>(&constant<ftn_single>::one()), A_ptr,
-                            &ia, &ja, A.descriptor(), const_cast<ftn_single*>(&constant<ftn_single>::zero()),
-                            C_ptr, &ic, &jc, C.descriptor());
+            FORTRAN(pztranu)
+            (&m, &n, const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::one()), A_ptr, &ia, &ja,
+             A.descriptor(), const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::zero()), C_ptr, &ic, &jc,
+             C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1692,21 +1693,25 @@ inline void wrap::tranc<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A
 }
 
 template <>
-inline void wrap::tranu<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
-    dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc) const
+inline void
+wrap::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+                                dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
-            ic++; jc++;
+            ia++;
+            ja++;
+            ic++;
+            jc++;
 
             auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
             auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
-            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr,
-                            &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&constant<ftn_double>::zero()),
-                            C_ptr, &ic, &jc, C.descriptor());
+            FORTRAN(pztranc)
+            (&m, &n, const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::one()), A_ptr, &ia, &ja,
+             A.descriptor(), const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::zero()), C_ptr, &ic, &jc,
+             C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1720,21 +1725,86 @@ inline void wrap::tranu<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A
 }
 
 template <>
-inline void wrap::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
-    dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc) const
+inline void
+wrap::tranc<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia, ftn_int ja, dmatrix<ftn_single>& C,
+                        ftn_int ic, ftn_int jc) const
 {
     switch (la_) {
         case lib_t::scalapack: {
 #if defined(SIRIUS_SCALAPACK)
-            ia++; ja++;
-            ic++; jc++;
+            ia++;
+            ja++;
+            ic++;
+            jc++;
 
             auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
             auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
 
-            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr,
-                            &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&constant<ftn_double>::zero()),
-                            C_ptr, &ic, &jc, C.descriptor());
+            FORTRAN(pstran)
+            (&m, &n, const_cast<ftn_single*>(&constant<ftn_single>::one()), A_ptr, &ia, &ja, A.descriptor(),
+             const_cast<ftn_single*>(&constant<ftn_single>::zero()), C_ptr, &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void
+wrap::tranu<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja, dmatrix<ftn_double>& C,
+                        ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case lib_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++;
+            ja++;
+            ic++;
+            jc++;
+
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pdtran)
+            (&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr, &ia, &ja, A.descriptor(),
+             const_cast<ftn_double*>(&constant<ftn_double>::zero()), C_ptr, &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
+template <>
+inline void
+wrap::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja, dmatrix<ftn_double>& C,
+                        ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case lib_t::scalapack: {
+#if defined(SIRIUS_SCALAPACK)
+            ia++;
+            ja++;
+            ic++;
+            jc++;
+
+            auto A_ptr = (A.num_rows_local() * A.num_cols_local() > 0) ? A.at(memory_t::host) : nullptr;
+            auto C_ptr = (C.num_rows_local() * C.num_cols_local() > 0) ? C.at(memory_t::host) : nullptr;
+
+            FORTRAN(pdtran)
+            (&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr, &ia, &ja, A.descriptor(),
+             const_cast<ftn_double*>(&constant<ftn_double>::zero()), C_ptr, &ic, &jc, C.descriptor());
 #else
             throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
@@ -1748,12 +1818,13 @@ inline void wrap::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A
 }
 
 // Inversion of LU factorized matrix, double
-template<>
-inline int wrap::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
-            ftn_int nb = linalg_base::ilaenv(1, "dgetri", "U", n, -1, -1, -1);
+            ftn_int nb    = linalg_base::ilaenv(1, "dgetri", "U", n, -1, -1, -1);
             ftn_int lwork = n * nb;
             std::vector<ftn_double> work(lwork);
 
@@ -1771,12 +1842,13 @@ inline int wrap::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
 }
 
 // Inversion of LU factorized matrix, double_complex
-template<>
-inline int wrap::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
-            ftn_int nb = linalg_base::ilaenv(1, "zgetri", "U", n, -1, -1, -1);
+            ftn_int nb    = linalg_base::ilaenv(1, "zgetri", "U", n, -1, -1, -1);
             ftn_int lwork = n * nb;
             std::vector<ftn_double_complex> work(lwork);
 
@@ -1793,12 +1865,13 @@ inline int wrap::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
     return -1;
 }
 
-template<>
-inline int wrap::sytrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::sytrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
-            ftn_int nb = linalg_base::ilaenv(1, "zhetrf", "U", n, -1, -1, -1);
+            ftn_int nb    = linalg_base::ilaenv(1, "zhetrf", "U", n, -1, -1, -1);
             ftn_int lwork = n * nb;
             std::vector<ftn_double_complex> work(lwork);
 
@@ -1815,12 +1888,13 @@ inline int wrap::sytrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
     return -1;
 }
 
-template<>
-inline int wrap::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
-            ftn_int nb = linalg_base::ilaenv(1, "dsytrf", "U", n, -1, -1, -1);
+            ftn_int nb    = linalg_base::ilaenv(1, "dsytrf", "U", n, -1, -1, -1);
             ftn_int lwork = n * nb;
             std::vector<ftn_double> work(lwork);
 
@@ -1837,8 +1911,9 @@ inline int wrap::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1856,8 +1931,10 @@ inline int wrap::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_in
     return -1;
 }
 
-template<>
-inline int wrap::sytrs<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_int* ipiv, ftn_double* b, ftn_int ldb) const
+template <>
+inline int
+wrap::sytrs<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_int* ipiv, ftn_double* b,
+                        ftn_int ldb) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1874,8 +1951,9 @@ inline int wrap::sytrs<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_i
     return -1;
 }
 
-template<>
-inline int wrap::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+template <>
+inline int
+wrap::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1892,8 +1970,9 @@ inline int wrap::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn
     return -1;
 }
 
-template<>
-inline std::tuple<ftn_double, ftn_double, ftn_double> wrap::lartg(ftn_double f, ftn_double g) const
+template <>
+inline std::tuple<ftn_double, ftn_double, ftn_double>
+wrap::lartg(ftn_double f, ftn_double g) const
 {
     switch (la_) {
         case lib_t::lapack: {
@@ -1909,13 +1988,14 @@ inline std::tuple<ftn_double, ftn_double, ftn_double> wrap::lartg(ftn_double f, 
 }
 
 template <typename T>
-inline void check_hermitian(std::string const& name, matrix<T> const& mtrx, int n = -1)
+inline void
+check_hermitian(std::string const& name, matrix<T> const& mtrx, int n = -1)
 {
     assert(mtrx.size(0) == mtrx.size(1));
 
     double maxdiff = 0.0;
-    int i0 = -1;
-    int j0 = -1;
+    int i0         = -1;
+    int j0         = -1;
 
     if (n == -1) {
         n = static_cast<int>(mtrx.size(0));
@@ -1926,8 +2006,8 @@ inline void check_hermitian(std::string const& name, matrix<T> const& mtrx, int 
             double diff = std::abs(mtrx(i, j) - std::conj(mtrx(j, i)));
             if (diff > maxdiff) {
                 maxdiff = diff;
-                i0 = i;
-                j0 = j;
+                i0      = i;
+                j0      = j;
             }
         }
     }
@@ -1942,7 +2022,8 @@ inline void check_hermitian(std::string const& name, matrix<T> const& mtrx, int 
 }
 
 template <typename T>
-inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
+inline real_type<T>
+check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
     real_type<T> max_diff{0};
     if (mtrx__.comm().size() != 1) {
@@ -1965,7 +2046,8 @@ inline real_type<T> check_hermitian(dmatrix<T>& mtrx__, int n__)
 }
 
 template <typename T>
-inline double check_identity(dmatrix<T>& mtrx__, int n__)
+inline double
+check_identity(dmatrix<T>& mtrx__, int n__)
 {
     real_type<T> max_diff{0};
     for (int i = 0; i < mtrx__.num_cols_local(); i++) {
@@ -1988,7 +2070,8 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
 }
 
 template <typename T>
-inline double check_diagonal(dmatrix<T>& mtrx__, int n__, mdarray<double, 1> const& diag__)
+inline double
+check_diagonal(dmatrix<T>& mtrx__, int n__, mdarray<double, 1> const& diag__)
 {
     double max_diff{0};
     for (int i = 0; i < mtrx__.num_cols_local(); i++) {
@@ -2006,7 +2089,7 @@ inline double check_diagonal(dmatrix<T>& mtrx__, int n__, mdarray<double, 1> con
             }
         }
     }
-    mtrx__.comm().template allreduce<double,  mpi::op_t::max>(&max_diff, 1);
+    mtrx__.comm().template allreduce<double, mpi::op_t::max>(&max_diff, 1);
     return max_diff;
 }
 
@@ -2015,7 +2098,8 @@ inline double check_diagonal(dmatrix<T>& mtrx__, int n__, mdarray<double, 1> con
  *    A <= U^{H} A U (kind = 1)
  */
 template <typename T>
-inline void unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T> const& U__, int n__)
+inline void
+unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T> const& U__, int n__)
 {
     // TODO: use memory pool to allocate tmp matrix
     if (!(kind__ == 0 || kind__ == 1)) {
@@ -2027,28 +2111,28 @@ inline void unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T>
         dmatrix<T> tmp(n__, n__, A__.blacs_grid(), A__.bs_row(), A__.bs_col());
 
         /* compute tmp <= U A or U^{H} A */
-        wrap(lib_t::scalapack).gemm(c1, 'N', n__, n__, n__, &constant<T>::one(),
-            U__, 0, 0, A__, 0, 0, &constant<T>::zero(), tmp, 0, 0);
+        wrap(lib_t::scalapack)
+            .gemm(c1, 'N', n__, n__, n__, &constant<T>::one(), U__, 0, 0, A__, 0, 0, &constant<T>::zero(), tmp, 0, 0);
 
         /* compute A <= tmp U^{H} or tmp U */
-        wrap(lib_t::scalapack).gemm('N', c2, n__, n__, n__, &constant<T>::one(),
-            tmp, 0, 0, U__, 0, 0, &constant<T>::zero(), A__, 0, 0);
+        wrap(lib_t::scalapack)
+            .gemm('N', c2, n__, n__, n__, &constant<T>::one(), tmp, 0, 0, U__, 0, 0, &constant<T>::zero(), A__, 0, 0);
     } else {
         dmatrix<T> tmp(n__, n__);
 
         /* compute tmp <= U A or U^{H} A */
-        wrap(lib_t::blas).gemm(c1, 'N', n__, n__, n__, &constant<T>::one(),
-            U__.at(memory_t::host), U__.ld(), A__.at(memory_t::host), A__.ld(), &constant<T>::zero(),
-            tmp.at(memory_t::host), tmp.ld());
+        wrap(lib_t::blas)
+            .gemm(c1, 'N', n__, n__, n__, &constant<T>::one(), U__.at(memory_t::host), U__.ld(), A__.at(memory_t::host),
+                  A__.ld(), &constant<T>::zero(), tmp.at(memory_t::host), tmp.ld());
 
         /* compute A <= tmp U^{H} or tmp U */
-        wrap(lib_t::blas).gemm('N', c2, n__, n__, n__, &constant<T>::one(),
-            tmp.at(memory_t::host), tmp.ld(), U__.at(memory_t::host), U__.ld(), &constant<T>::zero(),
-            A__.at(memory_t::host), A__.ld());
+        wrap(lib_t::blas)
+            .gemm('N', c2, n__, n__, n__, &constant<T>::one(), tmp.at(memory_t::host), tmp.ld(), U__.at(memory_t::host),
+                  U__.ld(), &constant<T>::zero(), A__.at(memory_t::host), A__.ld());
     }
 }
 
-} // namespace
+} // namespace la
 
 } // namespace sirius
 

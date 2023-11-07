@@ -1399,8 +1399,8 @@ class XC_functional_base
     /* forbid copy constructor */
     XC_functional_base(const XC_functional_base& src) = delete;
 
-        /* forbid assignment operator */
-        XC_functional_base& operator=(const XC_functional_base& src) = delete;
+    /* forbid assignment operator */
+    XC_functional_base& operator=(const XC_functional_base& src) = delete;
 
   public:
     XC_functional_base(const std::string libxc_name__, int num_spins__)
@@ -1487,7 +1487,7 @@ class XC_functional_base
 
     xc_func_type* handler()
     {
-        if(handler_) {
+        if (handler_) {
             return handler_.get();
         }
 
@@ -1557,7 +1557,8 @@ class XC_functional_base
     }
 
     /// Get LSDA contribution.
-    void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e) const
+    void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn,
+                 double* e) const
     {
         if (family() != XC_FAMILY_LDA) {
             RTE_THROW("wrong XC");
@@ -1568,8 +1569,7 @@ class XC_functional_base
         for (int i = 0; i < size; i++) {
             if (rho_up[i] < 0 || rho_dn[i] < 0) {
                 std::stringstream s;
-                s << "rho is negative : " << double_to_string(rho_up[i]) << " "
-                  << double_to_string(rho_dn[i]);
+                s << "rho is negative : " << double_to_string(rho_up[i]) << " " << double_to_string(rho_dn[i]);
                 RTE_THROW(s);
             }
 
@@ -1638,8 +1638,7 @@ class XC_functional_base
         for (int i = 0; i < size; i++) {
             if (rho_up[i] < 0 || rho_dn[i] < 0) {
                 std::stringstream s;
-                s << "rho is negative : " << double_to_string(rho_up[i]) << " "
-                  << double_to_string(rho_dn[i]);
+                s << "rho is negative : " << double_to_string(rho_up[i]) << " " << double_to_string(rho_dn[i]);
                 RTE_THROW(s);
             }
 
@@ -1686,7 +1685,7 @@ class XC_functional_base
             }
 
             for (int i = 0; i < size; i++) {
-                e[i]         += 0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                e[i] += 0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
                 vsigma_uu[i] = -0.001;
                 vsigma_ud[i] = -0.001;
                 vsigma_dd[i] = -0.001;
@@ -1694,14 +1693,14 @@ class XC_functional_base
         }
     }
 
-
     /// set density threshold of libxc, if density is below tre, all xc output will be set to 0.
     void set_dens_threshold(double tre)
     {
 #if XC_MAJOR_VERSION >= 4
         xc_func_set_dens_threshold(this->handler(), tre);
 #else
-        std::cout << "set_dens_threshold not available in old libxc versions, install at least 4.2.3" << "\n";
+        std::cout << "set_dens_threshold not available in old libxc versions, install at least 4.2.3"
+                  << "\n";
 #endif
     }
 };

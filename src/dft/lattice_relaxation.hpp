@@ -36,9 +36,10 @@ class Lattice_relaxation
 {
   private:
     DFT_ground_state& dft_;
+
   public:
     Lattice_relaxation(DFT_ground_state& dft__)
-      : dft_{dft__}
+        : dft_{dft__}
     {
     }
 
@@ -64,44 +65,48 @@ class Lattice_relaxation
         Eigen::Matrix3d stress;
 
         for (int ia = 0; ia < na; ia++) {
-            for (auto x: {0, 1, 2}) {
+            for (auto x : {0, 1, 2}) {
                 r(x, ia) = dft_.ctx().unit_cell().atom(ia).position()[x];
             }
         }
         /*
-         * @param initial_step_size initial step size. default is 1.0. For systems with hard bonds (e.g. C-C) use a value between and 1.0 and
-         * 2.5. If a system only contains weaker bonds a value up to 5.0 may speed up the convergence.
-         * @param nhist_max Maximal number of steps that will be stored in the history list. Use a value between 3 and 20. Must be <= than 3*nat + 9.
-         * @param lattice_weight weight / size of the supercell that is used to transform lattice derivatives. Use a value between 1 and 2. Default is 2.
+         * @param initial_step_size initial step size. default is 1.0. For systems with hard bonds (e.g. C-C) use a
+         * value between and 1.0 and 2.5. If a system only contains weaker bonds a value up to 5.0 may speed up the
+         * convergence.
+         * @param nhist_max Maximal number of steps that will be stored in the history list. Use a value between 3
+         * and 20. Must be <= than 3*nat + 9.
+         * @param lattice_weight weight / size of the supercell that is used to transform lattice derivatives. Use a
+         * value between 1 and 2. Default is 2.
          * @param alpha0 Lower limit on the step size. 1.e-2 is the default.
          * @param eps_subsp Lower limit on linear dependencies of basis vectors in history list. Default 1.e-4.
          * */
-        auto& inp = dft_.ctx().cfg().vcsqnm();
+        auto& inp                = dft_.ctx().cfg().vcsqnm();
         double initial_step_size = inp.initial_step_size();
-        int nhist_max = inp.nhist_max();
-        double lattice_weight = inp.lattice_weight();
-        double alpha0 = inp.alpha0();
-        double eps_subsp = inp.eps_subsp();
+        int nhist_max            = inp.nhist_max();
+        double lattice_weight    = inp.lattice_weight();
+        double alpha0            = inp.alpha0();
+        double eps_subsp         = inp.eps_subsp();
         if (compute_forces && compute_stress) {
-            geom_opt = std::make_unique<vcsqnm::PES_optimizer::periodic_optimizer>(na, lat_a, lat_b, lat_c,
-                    initial_step_size, nhist_max, lattice_weight, alpha0, eps_subsp);
+            geom_opt = std::make_unique<vcsqnm::PES_optimizer::periodic_optimizer>(
+                na, lat_a, lat_b, lat_c, initial_step_size, nhist_max, lattice_weight, alpha0, eps_subsp);
         } else if (compute_forces) {
-            geom_opt = std::make_unique<vcsqnm::PES_optimizer::periodic_optimizer>(na, initial_step_size,
-                    nhist_max, alpha0, eps_subsp);
+            geom_opt = std::make_unique<vcsqnm::PES_optimizer::periodic_optimizer>(na, initial_step_size, nhist_max,
+                                                                                   alpha0, eps_subsp);
         }
 
         bool stress_converged{true};
         bool forces_converged{true};
 
         for (int istep = 0; istep < max_num_steps__; istep++) {
-            RTE_OUT(dft_.ctx().out()) << "optimisation step " << istep + 1 << " out of " << max_num_steps__ << std::endl;
+            RTE_OUT(dft_.ctx().out()) << "optimisation step " << istep + 1 << " out of " << max_num_steps__
+                                      << std::endl;
 
             auto& inp = dft_.ctx().cfg().parameters();
             bool write_state{false};
 
             /* launch the calculation */
-            result = dft_.find(inp.density_tol(), inp.energy_tol(), dft_.ctx().cfg().iterative_solver().energy_tolerance(),
-                inp.num_dft_iter(), write_state);
+            result = dft_.find(inp.density_tol(), inp.energy_tol(),
+                               dft_.ctx().cfg().iterative_solver().energy_tolerance(), inp.num_dft_iter(), write_state);
 
             rte::ostream out(dft_.ctx().out(), __func__);
 
@@ -134,7 +139,7 @@ class Lattice_relaxation
                 auto& ft = dft_.forces().forces_total();
                 double d{0};
                 for (int i = 0; i < dft_.ctx().unit_cell().num_atoms(); i++) {
-                    for (int x: {0, 1, 2}) {
+                    for (int x : {0, 1, 2}) {
                         f(x, i) = ft(x, i);
                         d += std::abs(ft(x, i));
                     }
@@ -155,7 +160,7 @@ class Lattice_relaxation
             }
 
             /*
-             * compute new geometry 
+             * compute new geometry
              */
             if (compute_forces && compute_stress) {
                 geom_opt->step(r, etot, f, lat_a, lat_b, lat_c, stress);
@@ -166,8 +171,7 @@ class Lattice_relaxation
              * update geometry
              */
             auto& ctx = const_cast<Simulation_context&>(dft_.ctx());
-            ctx.unit_cell().set_lattice_vectors({lat_a[0], lat_a[1], lat_a[2]},
-                                                {lat_b[0], lat_b[1], lat_b[2]},
+            ctx.unit_cell().set_lattice_vectors({lat_a[0], lat_a[1], lat_a[2]}, {lat_b[0], lat_b[1], lat_b[2]},
                                                 {lat_c[0], lat_c[1], lat_c[2]});
             for (int ia = 0; ia < na; ia++) {
                 ctx.unit_cell().atom(ia).set_position({r(0, ia), r(1, ia), r(2, ia)});
@@ -185,6 +189,6 @@ class Lattice_relaxation
     }
 };
 
-}
+} // namespace sirius
 
 #endif

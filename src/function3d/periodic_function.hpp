@@ -51,7 +51,6 @@ template <typename T>
 class Periodic_function
 {
   private:
-
     /// Simulation contex.
     Simulation_context const& ctx_;
 
@@ -88,9 +87,9 @@ class Periodic_function
 
     /// Constructor for interstitial and muffin-tin parts (FP-LAPW case).
     Periodic_function(Simulation_context const& ctx__, std::function<lmax_t(int)> lmax__,
-            splindex_block<atom_index_t> const* spl_atoms__ = nullptr,
-            smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
-            spheric_function_set_ptr_t<T> const* mt_ptr__ = nullptr)
+                      splindex_block<atom_index_t> const* spl_atoms__   = nullptr,
+                      smooth_periodic_function_ptr_t<T> const* rg_ptr__ = nullptr,
+                      spheric_function_set_ptr_t<T> const* mt_ptr__     = nullptr)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
@@ -134,10 +133,8 @@ class Periodic_function
         return *this;
     }
 
-
     /// Return total integral, interstitial contribution and muffin-tin contributions.
-    inline std::tuple<T, T, std::vector<T>>
-    integrate() const
+    inline std::tuple<T, T, std::vector<T>> integrate() const
     {
         PROFILE("sirius::Periodic_function::integrate");
 
@@ -185,7 +182,7 @@ class Periodic_function
             if (ctx_.full_potential()) {
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     fout[path__].write("f_mt_" + std::to_string(ia), mt_component_[ia].at(memory_t::host),
-                            mt_component_[ia].size());
+                                       mt_component_[ia].size());
                 }
             }
         }
@@ -216,7 +213,7 @@ class Periodic_function
         if (ctx_.full_potential()) {
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 h5f[path__].read("f_mt_" + std::to_string(ia), mt_component_[ia].at(memory_t::host),
-                        mt_component_[ia].size());
+                                 mt_component_[ia].size());
             }
         }
     }
@@ -234,12 +231,12 @@ class Periodic_function
 
     T value(r3::vector<T> const& vc)
     {
-        int    ja{-1}, jr{-1};
+        int ja{-1}, jr{-1};
         T dr{0}, tp[2];
 
         if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
             auto& frlm = mt_component_[ja];
-            int lmax = sf::lmax(frlm.angular_domain_size());
+            int lmax   = sf::lmax(frlm.angular_domain_size());
             std::vector<T> rlm(frlm.angular_domain_size());
             sf::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
             T p{0};
@@ -285,12 +282,12 @@ class Periodic_function
 };
 
 template <typename T>
-inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
+inline T
+inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
     PROFILE("sirius::inner");
     if (f__.ctx().full_potential()) {
-        auto result = sirius::inner_local(f__.rg(), g__.rg(),
-                [&](int ir) { return f__.ctx().theta(ir); });
+        auto result = sirius::inner_local(f__.rg(), g__.rg(), [&](int ir) { return f__.ctx().theta(ir); });
         f__.ctx().comm_fft().allreduce(&result, 1);
         result += inner(f__.mt(), g__.mt());
         return result;
@@ -301,7 +298,8 @@ inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 
 /// Copy values of the function to the external location.
 template <typename T>
-inline void copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> dest__)
+inline void
+copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> dest__)
 {
     copy(src__.rg(), dest__.rg);
     if (src__.ctx().full_potential()) {
@@ -311,7 +309,8 @@ inline void copy(Periodic_function<T> const& src__, periodic_function_ptr_t<T> d
 
 /// Copy the values of the function from the external location.
 template <typename T>
-inline void copy(periodic_function_ptr_t<T> const src__, Periodic_function<T>& dest__ )
+inline void
+copy(periodic_function_ptr_t<T> const src__, Periodic_function<T>& dest__)
 {
     copy(src__.rg, dest__.rg());
     if (dest__.ctx().full_potential()) {

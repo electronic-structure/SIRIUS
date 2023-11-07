@@ -82,7 +82,8 @@ class Free_atom : public Atom_type_base
             #pragma omp critical
             for (int i = 0; i < np; i++) {
                 /* sum of squares of spherical harmonics for angular momentm l is (2l+1)/4pi */
-                free_atom_density_spline_(i) += atomic_level(ist).occupancy * free_atom_orbital_density_(i, ist) / fourpi;
+                free_atom_density_spline_(i) +=
+                    atomic_level(ist).occupancy * free_atom_orbital_density_(i, ist) / fourpi;
             }
         }
 
@@ -91,11 +92,9 @@ class Free_atom : public Atom_type_base
 
     void find_potential()
     {
-
     }
 
   public:
-
     Free_atom(Free_atom&& src) = default;
 
     /// Constructor
@@ -124,8 +123,9 @@ class Free_atom : public Atom_type_base
         free_atom_wave_functions_x_       = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_x_deriv_ = mdarray<double, 2>(np, num_atomic_levels());
 
-        XC_functional_base *Ex = nullptr;
-        XC_functional_base Ec("XC_LDA_C_VWN", 1);;
+        XC_functional_base* Ex = nullptr;
+        XC_functional_base Ec("XC_LDA_C_VWN", 1);
+        ;
         if (rel) {
             RTE_THROW("Fixme : the libxc staring with version 4 changed the way to set relativitic LDA exchange");
             Ex = new XC_functional_base("XC_LDA_REL_X", 1);
@@ -172,8 +172,8 @@ class Free_atom : public Atom_type_base
                 for (std::size_t i = 0; i < x.size(); ++i) {
                     auto xi = x[i];
                     auto yi = y[i];
-                    x[i] = xi * c + yi * s;
-                    y[i] = xi * -s + yi * c;
+                    x[i]    = xi * c + yi * s;
+                    y[i]    = xi * -s + yi * c;
                 }
             });
 
@@ -262,7 +262,8 @@ class Free_atom : public Atom_type_base
                 f(i) = vrho[i] * free_atom_density_spline_(i);
             }
             /* kinetic energy */
-            energy_kin = eval_sum - fourpi * (f.interpolate().integrate(2) - zn() * free_atom_density_spline_.integrate(1));
+            energy_kin =
+                eval_sum - fourpi * (f.interpolate().integrate(2) - zn() * free_atom_density_spline_.integrate(1));
 
             /* XC energy */
             for (int i = 0; i < np; i++) {
@@ -293,72 +294,72 @@ class Free_atom : public Atom_type_base
 
         json dict;
         if (num_iter >= 0) {
-            dict["converged"] = true;
+            dict["converged"]          = true;
             dict["num_scf_iterations"] = num_iter;
         } else {
             dict["converged"] = false;
         }
         dict["energy_diff"] = energy_diff;
-        dict["charge_rms"] = charge_rms;
-        dict["energy_tot"] = energy_tot;
+        dict["charge_rms"]  = charge_rms;
+        dict["energy_tot"]  = energy_tot;
 
         free_atom_electronic_potential_ = Spline<double>(free_atom_radial_grid_, vrho);
 
         return dict;
 
-        //double Eref = (rel) ? NIST_ScRLDA_Etot_ : NIST_LDA_Etot_;
+        // double Eref = (rel) ? NIST_ScRLDA_Etot_ : NIST_LDA_Etot_;
 
-        //printf("\n");
-        //printf("Radial gird\n");
-        //printf("-----------\n");
-        //printf("type             : %s\n", radial_grid().name().c_str());
-        //printf("number of points : %i\n", np);
-        //printf("origin           : %20.12f\n", radial_grid(0));
-        //printf("infinity         : %20.12f\n", radial_grid(np - 1));
-        //printf("\n");
-        //printf("Energy\n");
-        //printf("------\n");
-        //printf("Ekin  : %20.12f\n", energy_kin);
-        //printf("Ecoul : %20.12f\n", energy_coul);
-        //printf("Eenuc : %20.12f\n", energy_enuc);
-        //printf("Eexc  : %20.12f\n", energy_xc);
-        //printf("Total : %20.12f\n", energy_tot);
-        //printf("NIST  : %20.12f\n", Eref);
+        // printf("\n");
+        // printf("Radial gird\n");
+        // printf("-----------\n");
+        // printf("type             : %s\n", radial_grid().name().c_str());
+        // printf("number of points : %i\n", np);
+        // printf("origin           : %20.12f\n", radial_grid(0));
+        // printf("infinity         : %20.12f\n", radial_grid(np - 1));
+        // printf("\n");
+        // printf("Energy\n");
+        // printf("------\n");
+        // printf("Ekin  : %20.12f\n", energy_kin);
+        // printf("Ecoul : %20.12f\n", energy_coul);
+        // printf("Eenuc : %20.12f\n", energy_enuc);
+        // printf("Eexc  : %20.12f\n", energy_xc);
+        // printf("Total : %20.12f\n", energy_tot);
+        // printf("NIST  : %20.12f\n", Eref);
 
         ///* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-        //double dE = (Utils::round(energy_tot, 6) - Eref);
-        //std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
+        // double dE = (Utils::round(energy_tot, 6) - Eref);
+        // std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
 
-        //return energy_tot;
+        // return energy_tot;
     }
 
     inline void generate_local_orbitals(std::string const& recipe__)
     {
-        //json dict;
-        //std::istringstream(recipe__) >> dict;
+        // json dict;
+        // std::istringstream(recipe__) >> dict;
 
-        //int idxlo{0};
-        //for (auto& e: dict) {
-        //    for (auto& lo_desc: e) {
-        //        if (lo_desc.count("enu")) {
-        //        }
-        //        int n = lo_desc["n"];
-        //        int o = lo_desc["o"];
+        // int idxlo{0};
+        // for (auto& e: dict) {
+        //     for (auto& lo_desc: e) {
+        //         if (lo_desc.count("enu")) {
+        //         }
+        //         int n = lo_desc["n"];
+        //         int o = lo_desc["o"];
         //
-        //        //std::cout << r << "\n";
+        //         //std::cout << r << "\n";
 
         //    }
 
         //}
 
-//    for (int n = 1; n <= 7; n++) {
-//        for (int l = 0; l < 4; l++) {
-//            if (nl_v[n][l]) {
-//                if (lo_type.find("lo1") != std::string::npos) {
-//                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 0, 1);
-//                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
-//                    idxlo++;
-//
+        //    for (int n = 1; n <= 7; n++) {
+        //        for (int l = 0; l < 4; l++) {
+        //            if (nl_v[n][l]) {
+        //                if (lo_type.find("lo1") != std::string::npos) {
+        //                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 0, 1);
+        //                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
+        //                    idxlo++;
+        //
     }
 
     inline double free_atom_orbital_density(int ir, int ist) const
@@ -386,7 +387,7 @@ class Free_atom : public Atom_type_base
     {
         int np = free_atom_radial_grid().num_points();
         std::vector<double> v(np);
-        for (int i = 0; i< np; i++) {
+        for (int i = 0; i < np; i++) {
             v[i] = free_atom_wave_function(i, ist__);
         }
         return v;
@@ -396,7 +397,7 @@ class Free_atom : public Atom_type_base
     {
         int np = free_atom_radial_grid().num_points();
         std::vector<double> v(np);
-        for (int i = 0; i< np; i++) {
+        for (int i = 0; i < np; i++) {
             v[i] = free_atom_wave_functions_x_(i, ist__);
         }
         return v;
@@ -406,7 +407,7 @@ class Free_atom : public Atom_type_base
     {
         int np = free_atom_radial_grid().num_points();
         std::vector<double> v(np);
-        for (int i = 0; i< np; i++) {
+        for (int i = 0; i < np; i++) {
             v[i] = free_atom_wave_functions_x_deriv_(i, ist__);
         }
         return v;
@@ -436,8 +437,9 @@ class Free_atom : public Atom_type_base
         int l = atomic_level(ist__).l;
         for (int i = 0; i < np; i++) {
             double x = free_atom_radial_grid_[i];
-            v[i] = -0.5 * p.deriv(2, i) + (free_atom_electronic_potential_(i) - zn() / x +
-                   l * (l + 1) / x / x / 2) * p(i) - enu_[ist__] * p(i);
+            v[i]     = -0.5 * p.deriv(2, i) +
+                   (free_atom_electronic_potential_(i) - zn() / x + l * (l + 1) / x / x / 2) * p(i) -
+                   enu_[ist__] * p(i);
         }
         return v;
     }

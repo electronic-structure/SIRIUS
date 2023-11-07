@@ -8,8 +8,9 @@ namespace sirius {
 
 /// Generate matching coefficients for a block of atoms.
 template <bool conjugate, typename T>
-auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_atoms__,
-        Matching_coefficients const& alm__)
+auto
+generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_atoms__,
+                   Matching_coefficients const& alm__)
 {
     PROFILE("sirius::generate_alm_block");
 
@@ -23,13 +24,13 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
     mdarray<std::complex<T>, 2> result;
     switch (ctx__.processing_unit()) {
         case device_t::CPU: {
-            result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
-                    get_memory_pool(memory_t::host), mdarray_label("alm_block"));
+            result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw}, get_memory_pool(memory_t::host),
+                                                 mdarray_label("alm_block"));
             break;
         }
         case device_t::GPU: {
             result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
-                    get_memory_pool(memory_t::host_pinned), mdarray_label("alm_block"));
+                                                 get_memory_pool(memory_t::host_pinned), mdarray_label("alm_block"));
             result.allocate(get_memory_pool(memory_t::device));
             break;
         }
@@ -47,13 +48,14 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
             switch (ctx__.processing_unit()) {
                 case device_t::CPU: {
                     alm_atom = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), type.mt_aw_basis_size()},
-                            result.at(memory_t::host, 0, mt_aw_offset[i]), mdarray_label("alm_atom"));
+                                                           result.at(memory_t::host, 0, mt_aw_offset[i]),
+                                                           mdarray_label("alm_atom"));
                     break;
                 }
                 case device_t::GPU: {
-                    alm_atom = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), type.mt_aw_basis_size()},
-                            result.at(memory_t::host, 0, mt_aw_offset[i]),
-                            result.at(memory_t::device, 0, mt_aw_offset[i]), mdarray_label("alm_atom"));
+                    alm_atom = mdarray<std::complex<T>, 2>(
+                        {alm__.gkvec().count(), type.mt_aw_basis_size()}, result.at(memory_t::host, 0, mt_aw_offset[i]),
+                        result.at(memory_t::device, 0, mt_aw_offset[i]), mdarray_label("alm_atom"));
                     break;
                 }
             }
@@ -62,7 +64,6 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
             if (ctx__.processing_unit() == device_t::GPU) {
                 alm_atom.copy_to(memory_t::device, acc::stream_id(tid));
             }
-
         }
         if (ctx__.processing_unit() == device_t::GPU) {
             acc::sync_stream(acc::stream_id(tid));
@@ -71,6 +72,6 @@ auto generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int n
     return result;
 }
 
-}
+} // namespace sirius
 
 #endif

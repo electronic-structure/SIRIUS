@@ -635,6 +635,6 @@ class HDF5_tree
     }
 };
 
-}; // namespace
+}; // namespace sirius
 
 #endif // __HDF5_TREE_HPP__

@@ -93,7 +93,6 @@ struct magnetic_group_symmetry_descriptor
 class Crystal_symmetry
 {
   private:
-
     /// Matrix of lattice vectors.
     /** Spglib requires this matrix to have a positively defined determinant. */
     r3::matrix<double> lattice_vectors_;
@@ -140,10 +139,9 @@ class Crystal_symmetry
     }
 
   public:
-
     Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
-        std::vector<int> const& types__, mdarray<double, 2> const& positions__,
-        mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
+                     std::vector<int> const& types__, mdarray<double, 2> const& positions__,
+                     mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
 
     ~Crystal_symmetry()
     {
@@ -200,9 +198,8 @@ class Crystal_symmetry
     inline auto origin_shift() const
     {
         if (spg_dataset_) {
-            return r3::vector<double>(spg_dataset_->origin_shift[0],
-                                    spg_dataset_->origin_shift[1],
-                                    spg_dataset_->origin_shift[2]);
+            return r3::vector<double>(spg_dataset_->origin_shift[0], spg_dataset_->origin_shift[1],
+                                      spg_dataset_->origin_shift[2]);
         } else {
             return r3::vector<double>(0, 0, 0);
         }
@@ -267,7 +264,7 @@ class Crystal_symmetry
     void print_info(std::ostream& out__, int verbosity__) const;
 };
 
-} // namespace
+} // namespace sirius
 
 /** \page sym Symmetry
  *  \section section1 Definition of symmetry operation

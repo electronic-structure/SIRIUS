@@ -318,7 +318,8 @@ class Radial_grid_ext : public Radial_grid<T>
 };
 
 template <typename T>
-Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__, int num_points__, T rmin__, T rmax__, double p__)
+Radial_grid<T>
+Radial_grid_factory(radial_grid_t grid_type__, int num_points__, T rmin__, T rmax__, double p__)
 {
     Radial_grid<T> rgrid;
 
@@ -346,7 +347,8 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__, int num_points__, 
     return rgrid;
 };
 
-inline std::pair<radial_grid_t, double> get_radial_grid_t(std::string str__)
+inline std::pair<radial_grid_t, double>
+get_radial_grid_t(std::string str__)
 {
     auto pos = str__.find(",");
     if (pos == std::string::npos) {

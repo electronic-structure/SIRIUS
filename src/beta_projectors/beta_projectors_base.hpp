@@ -154,16 +154,17 @@ struct beta_projectors_coeffs_t
 namespace local {
 
 template <class T>
-void beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a,
-        mdarray<std::complex<T>, 3> const& pw_coeffs_t, int ichunk__, int j__,
-        beta_chunk_t const& beta_chunk, Simulation_context const& ctx, fft::Gvec const& gkvec);
+void beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a, mdarray<std::complex<T>, 3> const& pw_coeffs_t,
+                                  int ichunk__, int j__, beta_chunk_t const& beta_chunk, Simulation_context const& ctx,
+                                  fft::Gvec const& gkvec);
 
 template <class T>
 void beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
-        mdarray<std::complex<double>, 3> const& pw_coeffs_t_device,
-        mdarray<std::complex<double>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
-        fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord_, beta_chunk_t const& beta_chunk,
-        std::vector<int> const& igk__, int j__);
+                                  mdarray<std::complex<double>, 3> const& pw_coeffs_t_device,
+                                  mdarray<std::complex<double>, 3> const& pw_coeffs_t_host,
+                                  Simulation_context const& ctx, fft::Gvec const& gkvec,
+                                  mdarray<double, 2> const& gkvec_coord_, beta_chunk_t const& beta_chunk,
+                                  std::vector<int> const& igk__, int j__);
 
 } // namespace local
 
@@ -234,8 +235,8 @@ Beta_projector_generator<T>::Beta_projector_generator(Simulation_context& ctx, c
                                                       matrix<std::complex<T>> const& beta_pw_all,
                                                       sirius::device_t processing_unit,
                                                       std::vector<beta_chunk_t> const& beta_chunks,
-                                                      fft::Gvec const& gkvec,
-                                                      mdarray<double, 2> const& gkvec_coord, int num_gkvec_loc)
+                                                      fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord,
+                                                      int num_gkvec_loc)
     : ctx_(ctx)
     , pw_coeffs_t_host_(pw_coeffs_t_host)
     , beta_pw_all_atoms_(beta_pw_all)
@@ -477,7 +478,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
             const complex_t* B = bcoeffs_col.pw_coeffs_a_.at(mem_t);
             complex_t* C       = out.at(mem_t, dest_row, dest_col);
             la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B,
-                    bcoeffs_col.pw_coeffs_a_.ld(), &zero, C, out.ld());
+                              bcoeffs_col.pw_coeffs_a_.ld(), &zero, C, out.ld());
         }
     }
 
@@ -530,7 +531,8 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
 
             const complex_t* B2 = G.at(mem_t);
             complex_t* C        = out.at(mem_t, dest_row, dest_col);
-            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B2, G.ld(), &zero, C, out.ld());
+            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B2, G.ld(), &zero, C,
+                              out.ld());
         }
     }
     if (beta.comm().size() > 1) {

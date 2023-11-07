@@ -35,17 +35,18 @@ namespace sirius {
 class null_stream_t : public std::ostream
 {
   public:
-    null_stream_t() : std::ostream(nullptr)
+    null_stream_t()
+        : std::ostream(nullptr)
     {
     }
-    null_stream_t(null_stream_t&&) : std::ostream(nullptr)
-    {
-    };
+    null_stream_t(null_stream_t&&)
+        : std::ostream(nullptr){};
 };
 
 null_stream_t& null_stream();
 
-inline std::string boolstr(bool b__)
+inline std::string
+boolstr(bool b__)
 {
     if (b__) {
         return "true";
@@ -55,10 +56,12 @@ inline std::string boolstr(bool b__)
 }
 
 /// Horisontal bar.
-class hbar {
+class hbar
+{
   private:
     int w_;
     char c_;
+
   public:
     hbar(int w__, char c__)
         : w_(w__)
@@ -85,14 +88,16 @@ operator<<(std::ostream& out, hbar&& b)
 }
 
 /// Floating-point formatting (precision and width).
-class ffmt {
+class ffmt
+{
   private:
     int w_;
     int p_;
+
   public:
     ffmt(int w__, int p__)
-      : w_(w__)
-      , p_(p__)
+        : w_(w__)
+        , p_(p__)
     {
     }
     int w() const
@@ -133,7 +138,8 @@ operator<<(std::ostream& out, std::vector<T>& v)
 }
 
 /// Convert double to a string with a given precision.
-inline std::string double_to_string(double val, int precision = -1)
+inline std::string
+double_to_string(double val, int precision = -1)
 {
     char buf[100];
 
@@ -164,17 +170,19 @@ inline std::string double_to_string(double val, int precision = -1)
 }
 
 template <typename T, typename OUT>
-inline void print_checksum(std::string label__, T value__, OUT&& out__)
+inline void
+print_checksum(std::string label__, T value__, OUT&& out__)
 {
     out__ << "checksum(" << label__ << ") : " << ffmt(16, 8) << value__ << std::endl;
 }
 
 template <typename OUT>
-inline void print_hash(std::string label__, unsigned long long int hash__, OUT&& out__)
+inline void
+print_hash(std::string label__, unsigned long long int hash__, OUT&& out__)
 {
     out__ << "hashsum(" << label__ << ") : " << std::hex << hash__ << std::endl;
 }
 
-} // namespace
+} // namespace sirius
 
 #endif

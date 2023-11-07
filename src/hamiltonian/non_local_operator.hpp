@@ -122,10 +122,10 @@ class U_operator
  **/
 template <typename T, typename F>
 void
-apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__,
-                    Beta_projector_generator<T>& beta__, beta_projectors_coeffs_t<T>& beta_coeffs__,
-                    wf::Wave_functions<T> const& phi__, D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__,
-                    Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
+apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projector_generator<T>& beta__,
+                    beta_projectors_coeffs_t<T>& beta_coeffs__, wf::Wave_functions<T> const& phi__,
+                    D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__, Q_operator<T> const* q_op__,
+                    wf::Wave_functions<T>* sphi__)
 {
     if (is_device_memory(mem__)) {
         RTE_ASSERT(beta__.device_t() == device_t::GPU);
@@ -190,8 +190,8 @@ apply_S_operator(memory_t mem__, wf::spin_range spins__, wf::band_range br__, Be
  */
 template <typename T>
 void apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-                      wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
-                      wf::Wave_functions<T>& hphi__);
+                      wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__,
+                      U_operator<T> const& um__, wf::Wave_functions<T>& hphi__);
 /// Apply strain derivative of S-operator to all scalar functions.
 void apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
                                    beta_projectors_coeffs_t<double>& bp_coeffs__,

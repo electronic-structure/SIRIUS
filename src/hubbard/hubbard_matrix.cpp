@@ -78,7 +78,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             int il       = nl.l()[0];
             int jl       = nl.l()[1];
             nonlocal_[i] = mdarray<std::complex<double>, 3>({2 * il + 1, 2 * jl + 1, ctx_.num_spins()},
-                    mdarray_label("nonlocal_hubbard"));
+                                                            mdarray_label("nonlocal_hubbard"));
             nonlocal_[i].zero();
         }
     }
@@ -98,7 +98,8 @@ Hubbard_matrix::access(std::string const& what__, std::complex<double>* occ__, i
     if (ctx_.num_mag_dims() == 3) {
         occ_mtrx = mdarray<std::complex<double>, 4>({ld__, ld__, 4, ctx_.unit_cell().num_atoms()}, occ__);
     } else {
-        occ_mtrx = mdarray<std::complex<double>, 4>({ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms()}, occ__);
+        occ_mtrx =
+            mdarray<std::complex<double>, 4>({ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms()}, occ__);
     }
     if (what__ == "get") {
         occ_mtrx.zero();
@@ -210,8 +211,8 @@ Hubbard_matrix::print_nonlocal(int idx__, std::ostream& out__) const
     /* convert to Cartesian coordinates */
     auto rc = dot(ctx_.unit_cell().lattice_vectors(), r);
 
-    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T
-          << ", r: " << rc << std::endl;
+    out__ << "atom: " << ia << ", l: " << il << " -> atom: " << ja << ", l: " << jl << ", T: " << T << ", r: " << rc
+          << std::endl;
 
     int const prec{5};
     int const width{10};

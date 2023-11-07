@@ -86,7 +86,6 @@ class Grid : public std::array<int, 3>
     }
 
   public:
-
     /// Default constructor.
     Grid()
     {
@@ -146,7 +145,7 @@ class Grid : public std::array<int, 3>
     /// Linear index inside FFT buffer by grid coordinates.
     inline int index_by_coord(int x__, int y__, int z__) const
     {
-        return (x__ + (*this)[0] * (y__  + z__ * (*this)[1]));
+        return (x__ + (*this)[0] * (y__ + z__ * (*this)[1]));
     }
 
     /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside FFT buffer.
@@ -158,7 +157,8 @@ class Grid : public std::array<int, 3>
 };
 
 /// Get the minimum grid that circumscribes the cutoff sphere.
-inline auto get_min_grid(double cutoff__, r3::matrix<double> M__)
+inline auto
+get_min_grid(double cutoff__, r3::matrix<double> M__)
 {
     return Grid(r3::find_translations(cutoff__, M__) + r3::vector<int>({2, 2, 2}));
 }

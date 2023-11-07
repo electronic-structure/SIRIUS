@@ -45,13 +45,11 @@ class Beta_projectors : public Beta_projectors_base<T>
         auto& uc = this->ctx_.unit_cell();
 
         std::vector<int> offset_t(uc.num_atom_types());
-        std::generate(offset_t.begin(), offset_t.end(),
-                [n = 0, iat = 0, &uc] () mutable
-                {
-                    int offs = n;
-                    n += uc.atom_type(iat++).mt_basis_size();
-                    return offs;
-                });
+        std::generate(offset_t.begin(), offset_t.end(), [n = 0, iat = 0, &uc]() mutable {
+            int offs = n;
+            n += uc.atom_type(iat++).mt_basis_size();
+            return offs;
+        });
 
         auto& comm = this->gkvec_.comm();
 
@@ -121,7 +119,7 @@ class Beta_projectors : public Beta_projectors_base<T>
         for (int ichunk = 0; ichunk < this->num_chunks(); ++ichunk) {
             this->pw_coeffs_a_ =
                 matrix<std::complex<T>>({this->num_gkvec_loc(), this->beta_chunks_[ichunk].num_beta_},
-                        &this->beta_pw_all_atoms_(0, this->beta_chunks_[ichunk].offset_));
+                                        &this->beta_pw_all_atoms_(0, this->beta_chunks_[ichunk].offset_));
             local::beta_projectors_generate_cpu(this->pw_coeffs_a_, this->pw_coeffs_t_, ichunk, /*j*/ 0,
                                                 this->beta_chunks_[ichunk], ctx__, gkvec__);
         }

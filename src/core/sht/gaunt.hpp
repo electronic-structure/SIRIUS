@@ -37,7 +37,7 @@ struct gaunt_L3
 {
     int lm3;
     int l3;
-    T   coef;
+    T coef;
 };
 
 /// Used in the {lm1, lm2, coefficient} : {lm3} way of grouping non-zero Gaunt coefficients
@@ -46,12 +46,12 @@ struct gaunt_L1_L2
 {
     int lm1;
     int lm2;
-    T   coef;
+    T coef;
 };
 
 /// Compact storage of non-zero Gaunt coefficients \f$ \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle \f$.
-/** Very important! The following notation is adopted and used everywhere: lm1 and lm2 represent 'bra' and 'ket' 
- *  spherical harmonics of the Gaunt integral and lm3 represent the inner spherical harmonic. 
+/** Very important! The following notation is adopted and used everywhere: lm1 and lm2 represent 'bra' and 'ket'
+ *  spherical harmonics of the Gaunt integral and lm3 represent the inner spherical harmonic.
  */
 template <typename T>
 class Gaunt_coefficients
@@ -209,7 +209,7 @@ class Gaunt_coefficients
         for (int lm2 = 0; lm2 < lmmax2_; lm2++) {
             for (int lm1 = 0; lm1 < lmmax1_; lm1++) {
                 for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++) {
-                    int lm3 = gaunt_packed_L3_(lm1, lm2)[k].lm3;
+                    int lm3           = gaunt_packed_L3_(lm1, lm2)[k].lm3;
                     gc(lm3, lm1, lm2) = gaunt_packed_L3_(lm1, lm2)[k].coef;
                 }
             }

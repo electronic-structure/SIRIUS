@@ -48,7 +48,6 @@ using bf_lo_index = strong_type<int, struct __bf_lo_index_tag>;
 class angular_momentum
 {
   private:
-
     /// Orbital quantum number l.
     int l_;
 
@@ -58,10 +57,9 @@ class angular_momentum
     int s_{0};
 
   public:
-
     /// Constructor.
     explicit angular_momentum(int l__)
-      : l_(l__)
+        : l_(l__)
     {
         if (l__ < 0) {
             RTE_THROW("l can't be negative");
@@ -70,8 +68,8 @@ class angular_momentum
 
     /// Constructor.
     explicit angular_momentum(int l__, int s__)
-      : l_(l__)
-      , s_(s__)
+        : l_(l__)
+        , s_(s__)
     {
         if (l__ < 0) {
             RTE_THROW("l can't be negative");
@@ -117,18 +115,21 @@ class angular_momentum
     }
 };
 
-inline bool operator==(angular_momentum lhs__, angular_momentum rhs__)
+inline bool
+operator==(angular_momentum lhs__, angular_momentum rhs__)
 {
     return (lhs__.l() == rhs__.l()) && (lhs__.s() == rhs__.s());
 }
 
-inline bool operator!=(angular_momentum lhs__, angular_momentum rhs__)
+inline bool
+operator!=(angular_momentum lhs__, angular_momentum rhs__)
 {
     return !(lhs__ == rhs__);
 }
 
 /// Output angular momentum to a stream.
-inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
+inline std::ostream&
+operator<<(std::ostream& out, angular_momentum am)
 {
     if (am.s() == 0) {
         out << "{l: " << am.l() << "}";
@@ -157,7 +158,7 @@ struct radial_function_index_descriptor
     rf_index idxrf{-1};
 
     radial_function_index_descriptor(angular_momentum am__, int order__, rf_index idxrf__,
-            rf_lo_index idxlo__ = rf_lo_index(-1))
+                                     rf_lo_index idxlo__ = rf_lo_index(-1))
         : am{am__}
         , order{order__}
         , idxlo{idxlo__}
@@ -185,6 +186,7 @@ class radial_functions_index
 
     /// Starting index of local orbitals (if added in LAPW case).
     int offset_lo_{-1};
+
   public:
     /// Default constructor.
     radial_functions_index()
@@ -409,7 +411,7 @@ class radial_functions_index
     inline auto subshell_size(int l__, int o__) const
     {
         int size{0};
-        for (auto j: subshell(l__, o__)) {
+        for (auto j : subshell(l__, o__)) {
             size += j.subshell_size();
         }
         return size;
@@ -434,16 +436,18 @@ class radial_functions_index
     }
 };
 
-inline auto begin(radial_functions_index const& idx__)
+inline auto
+begin(radial_functions_index const& idx__)
 {
     return idx__.begin();
 }
 
-inline auto end(radial_functions_index const& idx__)
+inline auto
+end(radial_functions_index const& idx__)
 {
     return idx__.end();
 }
 
-}
+} // namespace sirius
 
 #endif

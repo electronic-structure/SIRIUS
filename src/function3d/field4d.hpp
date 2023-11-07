@@ -62,8 +62,8 @@ class Field4D
             }
             if (ctx_.full_potential()) {
                 /* allocate with global MT part */
-                components_[i] = std::make_unique<Periodic_function<double>>(ctx_, [&](int ia){return lmax__;}, nullptr,
-                        ptr_rg, ptr_mt);
+                components_[i] = std::make_unique<Periodic_function<double>>(
+                    ctx_, [&](int ia) { return lmax__; }, nullptr, ptr_rg, ptr_mt);
             } else {
                 components_[i] = std::make_unique<Periodic_function<double>>(ctx_, ptr_rg);
             }

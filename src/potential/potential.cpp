@@ -31,8 +31,9 @@
 namespace sirius {
 
 Potential::Potential(Simulation_context& ctx__)
-    : Field4D(ctx__, lmax_t(ctx__.lmax_pot()), {ctx__.periodic_function_ptr("veff"), ctx__.periodic_function_ptr("bz"),
-            ctx__.periodic_function_ptr("bx"), ctx__.periodic_function_ptr("by")})
+    : Field4D(ctx__, lmax_t(ctx__.lmax_pot()),
+              {ctx__.periodic_function_ptr("veff"), ctx__.periodic_function_ptr("bz"),
+               ctx__.periodic_function_ptr("bx"), ctx__.periodic_function_ptr("by")})
     , unit_cell_(ctx__.unit_cell())
     , comm_(ctx__.comm())
     , hubbard_potential_(ctx__)
@@ -52,8 +53,8 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     if (lmax >= 0) {
-        sht_  = std::make_unique<SHT>(ctx_.processing_unit(), lmax, ctx_.cfg().settings().sht_coverage());
-        if (ctx_.cfg().control().verification() >= 1)  {
+        sht_ = std::make_unique<SHT>(ctx_.processing_unit(), lmax, ctx_.cfg().settings().sht_coverage());
+        if (ctx_.cfg().control().verification() >= 1) {
             sht_->check();
         }
         l_by_lm_ = sf::l_by_lm(lmax);
@@ -74,46 +75,47 @@ Potential::Potential(Simulation_context& ctx__)
 
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
-        xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label,
-                    ctx_.num_spins()));
+        xc_func_.emplace_back(
+            XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
         if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
             xc_func_.back().set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
     }
 
-    using pf = Periodic_function<double>;
+    using pf  = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
     if (ctx_.full_potential()) {
-        hartree_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());},
-                &ctx_.unit_cell().spl_num_atoms());
-        xc_potential_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());},
-                &ctx_.unit_cell().spl_num_atoms());
-        xc_energy_density_ = std::make_unique<pf>(ctx_, [&](int ia){return lmax_t(ctx_.lmax_pot());},
-                &ctx_.unit_cell().spl_num_atoms());
+        hartree_potential_ = std::make_unique<pf>(
+            ctx_, [&](int ia) { return lmax_t(ctx_.lmax_pot()); }, &ctx_.unit_cell().spl_num_atoms());
+        xc_potential_ = std::make_unique<pf>(
+            ctx_, [&](int ia) { return lmax_t(ctx_.lmax_pot()); }, &ctx_.unit_cell().spl_num_atoms());
+        xc_energy_density_ = std::make_unique<pf>(
+            ctx_, [&](int ia) { return lmax_t(ctx_.lmax_pot()); }, &ctx_.unit_cell().spl_num_atoms());
     } else {
         hartree_potential_ = std::make_unique<pf>(ctx_);
-        xc_potential_ = std::make_unique<pf>(ctx_);
+        xc_potential_      = std::make_unique<pf>(ctx_);
         xc_energy_density_ = std::make_unique<pf>(ctx_);
     }
 
     if (this->is_gradient_correction()) {
         int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
-        for (int i = 0; i < nsigma ; i++) {
+        for (int i = 0; i < nsigma; i++) {
             vsigma_[i] = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         }
     }
 
     if (!ctx_.full_potential()) {
         local_potential_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
-        dveff_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+        dveff_           = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         dveff_->zero();
     }
 
     vh_el_ = mdarray<double, 1>({unit_cell_.num_atoms()});
 
     if (ctx_.full_potential()) {
-        gvec_ylm_ = mdarray<std::complex<double>, 2>({ctx_.lmmax_pot(), ctx_.gvec().count()}, mdarray_label("gvec_ylm_"));
+        gvec_ylm_ =
+            mdarray<std::complex<double>, 2>({ctx_.lmmax_pot(), ctx_.gvec().count()}, mdarray_label("gvec_ylm_"));
 
         switch (ctx_.valence_relativity()) {
             case relativity_t::iora: {
@@ -149,7 +151,8 @@ Potential::Potential(Simulation_context& ctx__)
     update();
 }
 
-void Potential::update()
+void
+Potential::update()
 {
     PROFILE("sirius::Potential::update");
 
@@ -159,7 +162,7 @@ void Potential::update()
     } else {
         gvec_ylm_ = generate_gvec_ylm(ctx_, ctx_.lmax_pot());
 
-        auto lmax = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+        auto lmax   = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
         sbessel_mt_ = generate_sbessel_mt(ctx_, lmax + pseudo_density_order_ + 1);
 
         /* compute moments of spherical Bessel functions
@@ -185,8 +188,8 @@ void Potential::update()
             for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
                 auto len = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc).length();
                 for (int l = 0; l <= ctx_.lmax_rho(); l++) {
-                    sbessel_mom_(l, igloc, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) *
-                                                  sbessel_mt_(l + 1, igloc, iat) / len;
+                    sbessel_mom_(l, igloc, iat) =
+                        std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) * sbessel_mt_(l + 1, igloc, iat) / len;
                 }
             }
         }
@@ -194,8 +197,8 @@ void Potential::update()
         /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
          *
          * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi] */
-        gamma_factors_R_ = mdarray<double, 2>({ctx_.lmax_rho() + 1, unit_cell_.num_atom_types()},
-                mdarray_label("gamma_factors_R_"));
+        gamma_factors_R_ =
+            mdarray<double, 2>({ctx_.lmax_rho() + 1, unit_cell_.num_atom_types()}, mdarray_label("gamma_factors_R_"));
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int l = 0; l <= ctx_.lmax_rho(); l++) {
                 long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
@@ -225,7 +228,8 @@ void Potential::update()
     }
 }
 
-bool Potential::is_gradient_correction() const
+bool
+Potential::is_gradient_correction() const
 {
     bool is_gga{false};
     for (auto& ixc : xc_func_) {
@@ -236,7 +240,8 @@ bool Potential::is_gradient_correction() const
     return is_gga;
 }
 
-void Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)
+void
+Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)
 {
     PROFILE("sirius::Potential::generate");
 
@@ -253,12 +258,12 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
     auto veff_callback = ctx_.veff_callback();
     if (veff_callback) {
         veff_callback();
-        //if (!ctx_.full_potential()) {
-        //    /* add local ionic potential to the effective potential */
-        //    effective_potential().add(local_potential());
-        //}
+        // if (!ctx_.full_potential()) {
+        //     /* add local ionic potential to the effective potential */
+        //     effective_potential().add(local_potential());
+        // }
         /* transform to real space */
-        //fft_transform(1);
+        // fft_transform(1);
     } else {
         /* solve Poisson equation */
         poisson(density__.rho());
@@ -375,11 +380,12 @@ void Potential::generate(Density const& density__, bool use_symmetry__, bool tra
     }
 }
 
-void Potential::save(std::string name__)
+void
+Potential::save(std::string name__)
 {
     effective_potential().hdf5_write(name__, "effective_potential");
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        effective_magnetic_field(j).hdf5_write(name__,  "effective_magnetic_field/" + std::to_string(j));
+        effective_magnetic_field(j).hdf5_write(name__, "effective_magnetic_field/" + std::to_string(j));
     }
     if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
         HDF5_tree fout(name__, hdf5_access_t::read_write);
@@ -392,7 +398,8 @@ void Potential::save(std::string name__)
     comm_.barrier();
 }
 
-void Potential::load(std::string name__)
+void
+Potential::load(std::string name__)
 {
     HDF5_tree fin(name__, hdf5_access_t::read_only);
 
@@ -421,7 +428,8 @@ void Potential::load(std::string name__)
     }
 }
 
-void Potential::update_atomic_potential()
+void
+Potential::update_atomic_potential()
 {
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
         int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
@@ -448,5 +456,4 @@ void Potential::update_atomic_potential()
     }
 }
 
-}
-
+} // namespace sirius

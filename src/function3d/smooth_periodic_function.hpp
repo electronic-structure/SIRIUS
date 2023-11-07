@@ -36,7 +36,7 @@ namespace sirius {
 template <typename T>
 inline void
 check_smooth_periodic_function_ptr(smooth_periodic_function_ptr_t<T> const& ptr__,
-        fft::spfft_transform_type<T> const& spfft__)
+                                   fft::spfft_transform_type<T> const& spfft__)
 {
     if (spfft__.dim_x() != ptr__.size_x) {
         std::stringstream s;
@@ -102,18 +102,15 @@ class Smooth_periodic_function
     }
 
     template <typename F>
-    friend void
-    copy(Smooth_periodic_function<F> const& src__, Smooth_periodic_function<F>& dest__);
+    friend void copy(Smooth_periodic_function<F> const& src__, Smooth_periodic_function<F>& dest__);
 
     template <typename F>
-    friend void
-    scale(F alpha__, Smooth_periodic_function<F>& x__);
+    friend void scale(F alpha__, Smooth_periodic_function<F>& x__);
 
     template <typename F>
-    friend void
-    axpy(F alpha__, Smooth_periodic_function<F> const& x__, Smooth_periodic_function<F>& y__);
+    friend void axpy(F alpha__, Smooth_periodic_function<F> const& x__, Smooth_periodic_function<F>& y__);
 
-    Smooth_periodic_function(Smooth_periodic_function<T> const& src__) = delete;
+    Smooth_periodic_function(Smooth_periodic_function<T> const& src__)               = delete;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T> const& src__) = delete;
 
   public:
@@ -124,7 +121,7 @@ class Smooth_periodic_function
 
     /// Constructor.
     Smooth_periodic_function(fft::spfft_transform_type<T> const& spfft__, std::shared_ptr<fft::Gvec_fft> gvecp__,
-        smooth_periodic_function_ptr_t<T> const* sptr__ = nullptr)
+                             smooth_periodic_function_ptr_t<T> const* sptr__ = nullptr)
         : spfft_{const_cast<fft::spfft_transform_type<T>*>(&spfft__)}
         , gvecp_{gvecp__}
     {
@@ -142,27 +139,27 @@ class Smooth_periodic_function
             int offs = (is_local_rg) ? 0 : spfft__.dim_x() * spfft__.dim_y() * spfft__.local_z_offset();
             /* wrap the pointer */
             f_rg_ = mdarray<T, 1>({fft::spfft_grid_size_local(spfft__)}, &sptr__->ptr[offs],
-                    mdarray_label("Smooth_periodic_function.f_rg_"));
+                                  mdarray_label("Smooth_periodic_function.f_rg_"));
 
         } else {
             f_rg_ = mdarray<T, 1>({fft::spfft_grid_size_local(spfft__)}, mp,
-                    mdarray_label("Smooth_periodic_function.f_rg_"));
+                                  mdarray_label("Smooth_periodic_function.f_rg_"));
         }
         f_rg_.zero();
 
         f_pw_local_ = mdarray<std::complex<T>, 1>({gvecp_->gvec().count()}, mp,
-                                            mdarray_label("Smooth_periodic_function.f_pw_local_"));
+                                                  mdarray_label("Smooth_periodic_function.f_pw_local_"));
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
-            f_pw_fft_ = mdarray<std::complex<T>, 1>({gvecp_->count()}, mp,
-                    mdarray_label("Smooth_periodic_function.f_pw_fft_"));
+            f_pw_fft_ =
+                mdarray<std::complex<T>, 1>({gvecp_->count()}, mp, mdarray_label("Smooth_periodic_function.f_pw_fft_"));
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
             f_pw_fft_ = mdarray<std::complex<T>, 1>({gvecp_->gvec().count()}, &f_pw_local_[0]);
         }
     }
-    Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
+    Smooth_periodic_function(Smooth_periodic_function<T>&& src__)               = default;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T>&& src__) = default;
 
     /// Zero the values on the regular real-space grid and plane-wave coefficients.
@@ -187,12 +184,12 @@ class Smooth_periodic_function
         return f_rg_;
     }
 
-    inline auto values() const -> const mdarray<T,1>&
+    inline auto values() const -> const mdarray<T, 1>&
     {
         return f_rg_;
     }
 
-    inline auto f_pw_local(int ig__)  -> std::complex<T>&
+    inline auto f_pw_local(int ig__) -> std::complex<T>&
     {
         return f_pw_local_(ig__);
     }
@@ -204,12 +201,12 @@ class Smooth_periodic_function
 
     inline auto f_pw_local() -> mdarray<std::complex<T>, 1>&
     {
-      return f_pw_local_;
+        return f_pw_local_;
     }
 
     inline auto f_pw_local() const -> const mdarray<std::complex<T>, 1>&
     {
-      return f_pw_local_;
+        return f_pw_local_;
     }
 
     inline auto& f_pw_fft(int ig__)
@@ -388,7 +385,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     /// Distribution of G-vectors.
     std::shared_ptr<fft::Gvec_fft> gvecp_{nullptr};
 
-    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
+    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__)               = delete;
     Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
 
   public:
@@ -405,7 +402,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
             (*this)[x] = Smooth_periodic_function<T>(spfft__, gvecp__);
         }
     }
-    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T>&& src__) = default;
+    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T>&& src__)               = default;
     Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T>&& src__) = default;
 
     spfft::Transform& spfft() const
@@ -421,11 +418,11 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     }
 };
 
-
 /// Gradient of the function in the plane-wave domain.
 /** Input functions is expected in the plane wave domain, output function is also in the plane-wave domain */
 template <typename T>
-inline Smooth_periodic_vector_function<T> gradient(Smooth_periodic_function<T>& f__)
+inline Smooth_periodic_vector_function<T>
+gradient(Smooth_periodic_function<T>& f__)
 {
     PROFILE("sirius::gradient");
 
@@ -444,7 +441,8 @@ inline Smooth_periodic_vector_function<T> gradient(Smooth_periodic_function<T>& 
 /// Divergence of the vecor function.
 /** Input and output functions are in plane-wave domain */
 template <typename T>
-inline Smooth_periodic_function<T> divergence(Smooth_periodic_vector_function<T>& g__)
+inline Smooth_periodic_function<T>
+divergence(Smooth_periodic_vector_function<T>& g__)
 {
     PROFILE("sirius::divergence");
 
@@ -463,7 +461,8 @@ inline Smooth_periodic_function<T> divergence(Smooth_periodic_vector_function<T>
 
 /// Laplacian of the function in the plane-wave domain.
 template <typename T>
-inline Smooth_periodic_function<T> laplacian(Smooth_periodic_function<T>& f__)
+inline Smooth_periodic_function<T>
+laplacian(Smooth_periodic_function<T>& f__)
 {
     PROFILE("sirius::laplacian");
 
@@ -522,7 +521,7 @@ template <typename T>
 inline T
 inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
 {
-    return inner_local(f__, g__, [](int ir){return 1;});
+    return inner_local(f__, g__, [](int ir) { return 1; });
 }
 
 template <typename T, typename F>
@@ -542,7 +541,7 @@ template <typename T>
 inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
 {
-    return inner(f__, g__, [](int ir){return 1;});
+    return inner(f__, g__, [](int ir) { return 1; });
 }
 
 /// Copy real-space values from the function to external pointer.
@@ -562,8 +561,7 @@ copy(Smooth_periodic_function<T> const& src__, smooth_periodic_function_ptr_t<T>
     int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
 
     /* copy local fraction of real-space points to local or global array */
-    std::copy(src__.values().at(memory_t::host),
-              src__.values().at(memory_t::host) + spfft.local_slice_size(),
+    std::copy(src__.values().at(memory_t::host), src__.values().at(memory_t::host) + spfft.local_slice_size(),
               dest__.ptr + offs);
 
     /* if output buffer stores the global data array */
@@ -589,8 +587,7 @@ copy(smooth_periodic_function_ptr_t<T> const src__, Smooth_periodic_function<T>&
     int offs = (is_local_rg) ? 0 : spfft.dim_x() * spfft.dim_y() * spfft.local_z_offset();
 
     /* copy local fraction of real-space points to local or global array */
-    std::copy(src__.ptr + offs, src__.ptr + offs + spfft.local_slice_size(),
-              dest__.values().at(memory_t::host));
+    std::copy(src__.ptr + offs, src__.ptr + offs + spfft.local_slice_size(), dest__.values().at(memory_t::host));
 }
 
 template <typename T>

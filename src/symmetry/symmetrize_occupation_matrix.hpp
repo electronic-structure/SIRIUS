@@ -33,7 +33,7 @@ inline void
 symmetrize_occupation_matrix(Occupation_matrix& om__)
 {
     auto& ctx = om__.ctx();
-    auto& uc = ctx.unit_cell();
+    auto& uc  = ctx.unit_cell();
 
     if (!ctx.hubbard_correction()) {
         return;
@@ -46,7 +46,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
     local_tmp.resize(om__.local().size());
 
     for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        const int ia     = om__.atomic_orbitals(at_lvl).first;
+        const int ia          = om__.atomic_orbitals(at_lvl).first;
         auto const& atom_type = uc.atom(ia).type();
         /* We can skip the symmetrization for this atomic level since it does not contribute
          * to the Hubbard correction (or U = 0) */
@@ -79,7 +79,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
 
                 int at_lvl1 =
                     om__.find_orbital_index(iap, atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).n(),
-                                       atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l());
+                                            atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l());
 
                 for (int ispn = 0; ispn < (ctx.num_mag_dims() == 3 ? 4 : ctx.num_spins()); ispn++) {
                     for (int m1 = 0; m1 < lmmax_at; m1++) {
@@ -194,8 +194,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
              * multiple orbitals involved in the hubbard correction */
 
             /* NOTE : the atom order is important here. */
-            int at1_lvl    = om__.find_orbital_index(iap, n1, il);
-            int at2_lvl    = om__.find_orbital_index(jap, n2, jl);
+            int at1_lvl          = om__.find_orbital_index(iap, n1, il);
+            int at2_lvl          = om__.find_orbital_index(jap, n2, jl);
             auto const& occ_mtrx = om__.occ_mtrx_T(Ttot);
 
             mdarray<std::complex<double>, 3> dm_ia_ja({2 * il + 1, 2 * jl + 1, ctx.num_spins()});
@@ -244,10 +244,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             }
         }
     }
-
-
 }
 
-}
+} // namespace sirius
 
 #endif

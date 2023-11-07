@@ -67,7 +67,7 @@ class Radial_integrals_base
 
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax_), 0, qmax_);
         spl_q_  = splindex_block<>(grid_q_.num_points(), n_blocks(unit_cell_.comm().size()),
-                block_id(unit_cell_.comm().rank()));
+                                  block_id(unit_cell_.comm().rank()));
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.
@@ -190,8 +190,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
             int nmax = unit_cell_.max_mt_radial_basis_size();
             int lmax = unit_cell_.lmax();
 
-            values_ =
-                mdarray<Spline<double>, 3>({nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types()});
+            values_ = mdarray<Spline<double>, 3>({nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types()});
 
             generate();
         }

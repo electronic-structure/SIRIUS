@@ -53,15 +53,13 @@ struct FunctionProperties
     ///
     /**
      *  \param [in]  size_         Function, which returns a measure of size of the (global) function.
-     *  \param [in]  inner_        Function, which computes the (global) inner product. This determines the contribution to mixing parameters rmse.
-     *  \param [in]  scal_         Function, which scales the input (x = alpha * x).
-     *  \param [in]  copy_         Function, which copies from one object to the other (y = x).
-     *  \param [in]  axpy_         Function, which scales and adds one object to the other (y = alpha * x + y).
+     *  \param [in]  inner_        Function, which computes the (global) inner product. This determines the contribution
+     * to mixing parameters rmse. \param [in]  scal_         Function, which scales the input (x = alpha * x). \param
+     * [in]  copy_         Function, which copies from one object to the other (y = x). \param [in]  axpy_ Function,
+     * which scales and adds one object to the other (y = alpha * x + y).
      */
-    FunctionProperties(std::function<double(const FUNC&)> size_,
-                       std::function<double(const FUNC&, const FUNC&)> inner_,
-                       std::function<void(double, FUNC&)> scal_,
-                       std::function<void(const FUNC&, FUNC&)> copy_,
+    FunctionProperties(std::function<double(const FUNC&)> size_, std::function<double(const FUNC&, const FUNC&)> inner_,
+                       std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_,
                        std::function<void(double, double, FUNC&, FUNC&)> rotate_)
         : size(size_)
@@ -117,7 +115,7 @@ struct InnerProduct
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
             /* compute inner product */
             auto v = std::get<FUNC_REVERSE_INDEX>(function_prop)
-                          .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+                         .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
             /* normalize if necessary */
             if (normalize) {
                 auto sx = std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(x));
@@ -408,8 +406,7 @@ class Mixer
     }
 
     template <bool normalize>
-    double inner_product(const std::tuple<std::unique_ptr<FUNCS>...>& x,
-                         const std::tuple<std::unique_ptr<FUNCS>...>& y)
+    double inner_product(const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         return mixer_impl::InnerProduct<sizeof...(FUNCS) - 1, normalize, FUNCS...>::apply(functions_, x, y);
     }

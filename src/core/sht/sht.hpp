@@ -44,23 +44,18 @@ namespace sirius {
 
 namespace sht {
 
-mdarray<double, 2>
-wigner_d_matrix(int l, double beta);
+mdarray<double, 2> wigner_d_matrix(int l, double beta);
 
 template <typename T>
-mdarray<T, 2>
-rotation_matrix_l(int l, r3::vector<double> euler_angles, int proper_rotation);
+mdarray<T, 2> rotation_matrix_l(int l, r3::vector<double> euler_angles, int proper_rotation);
 
 template <typename T>
-void
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm);
+void rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm);
 
 template <typename T>
-std::vector<mdarray<T, 2>>
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation);
+std::vector<mdarray<T, 2>> rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
-double
-ClebschGordan(const int l, const double j, const double mj, const int spin);
+double ClebschGordan(const int l, const double j, const double mj, const int spin);
 
 // this function computes the U^sigma_{ljm mj} coefficient that
 // rotates the complex spherical harmonics to the real one for the
@@ -68,10 +63,9 @@ ClebschGordan(const int l, const double j, const double mj, const int spin);
 
 // mj is normally half integer from -j to j but to avoid computation
 // error it is considered as integer so mj = 2 mj
-std::complex<double>
-calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
+std::complex<double> calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
 
-}
+} // namespace sht
 
 /// Spherical harmonics transformations and related oprtations.
 /** This class is responsible for the generation of complex and real spherical harmonics, generation of transformation
@@ -118,7 +112,7 @@ class SHT // TODO: better name
 
   public:
     /// Default constructor.
-    SHT(device_t pu__, int lmax__, int  mesh_type__ = 0)
+    SHT(device_t pu__, int lmax__, int mesh_type__ = 0)
         : pu_(pu__)
         , lmax_(lmax__)
         , mesh_type_(mesh_type__)
@@ -294,16 +288,17 @@ class SHT // TODO: better name
         }
     }
 
-    //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
+    // void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
     //{
-    //    Timer t("sirius::SHT::rlm_forward_iterative_transform");
+    //     Timer t("sirius::SHT::rlm_forward_iterative_transform");
     //
-    //    RTE_ASSERT(lmmax <= lmmax_);
+    //     RTE_ASSERT(lmmax <= lmmax_);
 
     //    mdarray<double, 2> ftp(ftp__, num_points_, ncol);
     //    mdarray<double, 2> ftp1(num_points_, ncol);
     //
-    //    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0), num_points_, 0.0,
+    //    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0),
+    //    num_points_, 0.0,
     //                    flm, lmmax);
     //
     //    for (int i = 0; i < 2; i++)
@@ -324,7 +319,8 @@ class SHT // TODO: better name
     //            tdiff += fabs(ftp1(itp, ncol - 1));
     //        }
     //        std::cout << "iter : " << i << " avg. MT diff = " << tdiff / num_points_ << std::endl;
-    //        blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0), num_points_, 1.0,
+    //        blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0),
+    //        num_points_, 1.0,
     //                        flm, lmmax);
     //    }
     //}
@@ -409,7 +405,8 @@ class SHT // TODO: better name
         RTE_ASSERT(m2 >= -l2 && m2 <= l2);
         RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
-        return std::pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
+        return std::pow(-1.0, std::abs(m1)) *
+               std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
     }
@@ -433,8 +430,7 @@ class SHT // TODO: better name
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k2 = -l2; k2 <= l2; k2++) {
                 for (int k3 = -l3; k3 <= l3; k3++) {
-                    d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
-                                   SHT::ylm_dot_rlm(l2, k2, m2) *
+                    d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l2, k2, m2) *
                                    SHT::ylm_dot_rlm(l3, k3, m3)) *
                          SHT::gaunt_yyy(l1, l2, l3, k1, k2, k3);
                 }
@@ -461,8 +457,7 @@ class SHT // TODO: better name
         double d = 0;
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k3 = -l3; k3 <= l3; k3++) {
-                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
-                               SHT::ylm_dot_rlm(l3, k3, m3)) *
+                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3)) *
                      SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
             }
         }

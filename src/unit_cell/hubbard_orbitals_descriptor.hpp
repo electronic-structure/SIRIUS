@@ -71,7 +71,7 @@ class hubbard_orbital_descriptor
     std::vector<double> initial_occupancy_;
 
     /// Index of the corresponding atomic wave-function.
-    int idx_wf_{-1}; //TODO: better name
+    int idx_wf_{-1}; // TODO: better name
 
     inline auto hubbard_F_coefficients() const
     {
@@ -152,7 +152,7 @@ class hubbard_orbital_descriptor
 
     inline void compute_hubbard_matrix()
     {
-        int l = this->l();
+        int l                 = this->l();
         this->hubbard_matrix_ = mdarray<double, 4>({2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         mdarray<double, 5> ak({l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         auto F = hubbard_F_coefficients();
@@ -201,7 +201,6 @@ class hubbard_orbital_descriptor
     }
 
   public:
-
     /// Constructor.
     hubbard_orbital_descriptor()
     {
@@ -350,7 +349,8 @@ class hubbard_orbital_descriptor
     }
 };
 
-inline std::ostream& operator<<(std::ostream& out, hubbard_orbital_descriptor const& ho)
+inline std::ostream&
+operator<<(std::ostream& out, hubbard_orbital_descriptor const& ho)
 {
     out << "{n: " << ho.n() << ", l: " << ho.l() << "}";
     return out;

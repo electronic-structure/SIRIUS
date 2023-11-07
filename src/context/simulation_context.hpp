@@ -71,7 +71,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     out__ << std::endl;
 
     std::vector<std::string> labels = {"host"};
-    std::vector<memory_pool*> mp = {&get_memory_pool(memory_t::host)};
+    std::vector<memory_pool*> mp    = {&get_memory_pool(memory_t::host)};
 
     int np{1};
     if (acc::num_devices() > 0) {
@@ -85,7 +85,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     for (int i = 0; i < np; i++) {
         out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
               << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
-              << "num.blocks: " <<  mp[i]->num_blocks() << std::endl;
+              << "num.blocks: " << mp[i]->num_blocks() << std::endl;
     }
 }
 
@@ -334,7 +334,8 @@ class Simulation_context : public Simulation_parameters
         init_common();
     }
 
-    Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__, mpi::Communicator const& comm_band__)
+    Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__,
+                       mpi::Communicator const& comm_band__)
         : comm_(comm__)
         , comm_k_(comm_k__)
         , comm_band_(comm_band__)
@@ -722,7 +723,7 @@ class Simulation_context : public Simulation_parameters
         bool const cart_pos{false};
         dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
         auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
-                        spfft_transform_coarse_->dim_z()};
+                                       spfft_transform_coarse_->dim_z()};
         dict["fft_coarse_grid"]     = fftgrid;
         dict["mpi_grid"]            = mpi_grid_dims();
         dict["omega"]               = unit_cell().omega();

@@ -46,7 +46,6 @@ class BLACS_grid
 
     std::unique_ptr<mpi::Grid> mpi_grid_;
 
-
 #ifdef SIRIUS_SCALAPACK
     int blacs_handler_{-1};
 #endif
@@ -101,13 +100,12 @@ class BLACS_grid
 
 #else
         for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
-          rank_map_[i] = i;
+            rank_map_[i] = i;
         }
 #ifdef SIRIUS_DLAF
         blacs_context_ = dlaf_create_grid(comm_.native(), num_ranks_row__, num_ranks_col__, 'R');
 #endif
 #endif
-
     }
 
     ~BLACS_grid()
@@ -181,7 +179,7 @@ class BLACS_grid
     }
 };
 
-} // namespace
+} // namespace la
 
 } // namespace sirius
 

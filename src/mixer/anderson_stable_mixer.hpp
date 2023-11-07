@@ -42,20 +42,20 @@ namespace sirius {
 namespace mixer {
 
 /// Anderson mixer.
-/** 
+/**
  * Quasi-Newton limited-memory method which updates \f$ x_{n+1} = x_n - G_nf_n \f$
  * where \f$ G_n \f$ is an approximate inverse Jacobian. Anderson is derived
  * by taking the low-rank update to the inverse Jacobian
- * 
+ *
  * \f[
  * G_{n+1} = (G_n + \Delta X_n - G_n \Delta F_n)(\Delta F_n^T \Delta F_n)^{-1}\Delta F_n^T
  * \f]
- * 
+ *
  * such that the secant equations \f$ G_{n+1} \Delta F_n = \Delta X_n \f$ are satisfied for previous
  * iterations. Then \f$ G_n \f$ is taken \f$ -\beta I \f$. This implementation uses Gram-Schmidt
  * to orthogonalize \f$ \Delta F_n \f$ to solve the least-squares problem. If stability is
  * not an issue, use Anderson instead.
- * 
+ *
  * Reference paper: Fang, Haw‐ren, and Yousef Saad. "Two classes of multisecant
  * methods for nonlinear acceleration." Numerical Linear Algebra with Applications
  * 16.3 (2009): 197-221.
@@ -72,8 +72,8 @@ class Anderson_stable : public Mixer<FUNCS...>
     Anderson_stable(std::size_t max_history, double beta)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
-        , R_({max_history - 1, max_history - 1}),
-        history_size_(0)
+        , R_({max_history - 1, max_history - 1})
+        , history_size_(0)
     {
         this->R_.zero();
     }
@@ -111,34 +111,28 @@ class Anderson_stable : public Mixer<FUNCS...>
 
             // orthogonalize residual_history_[step-1] w.r.t. residual_history_[1:step-2] using modified Gram-Schmidt.
             for (int i = 1; i <= history_size - 1; ++i) {
-                auto j = this->idx_hist(this->step_ - i - 1);
-                auto sz = this->template inner_product<normalize>(
-                    this->residual_history_[j],
-                    this->residual_history_[idx_step_prev]
-                );
+                auto j  = this->idx_hist(this->step_ - i - 1);
+                auto sz = this->template inner_product<normalize>(this->residual_history_[j],
+                                                                  this->residual_history_[idx_step_prev]);
                 this->R_(history_size - 1 - i, history_size - 1) = sz;
                 this->axpy(-sz, this->residual_history_[j], this->residual_history_[idx_step_prev]);
             }
 
             // repeat orthogonalization.. seems really necessary.
             for (int i = 1; i <= history_size - 1; ++i) {
-                auto j = this->idx_hist(this->step_ - i - 1);
-                auto sz = this->template inner_product<normalize>(
-                    this->residual_history_[j],
-                    this->residual_history_[idx_step_prev]
-                );
+                auto j  = this->idx_hist(this->step_ - i - 1);
+                auto sz = this->template inner_product<normalize>(this->residual_history_[j],
+                                                                  this->residual_history_[idx_step_prev]);
                 this->R_(history_size - 1 - i, history_size - 1) += sz;
                 this->axpy(-sz, this->residual_history_[j], this->residual_history_[idx_step_prev]);
             }
 
             // normalize the new residual difference vec itself
-            auto nrm2 = this->template inner_product<normalize>(
-                this->residual_history_[idx_step_prev],
-                this->residual_history_[idx_step_prev]
-            );
+            auto nrm2 = this->template inner_product<normalize>(this->residual_history_[idx_step_prev],
+                                                                this->residual_history_[idx_step_prev]);
 
             if (nrm2 > 0) {
-                auto sz = std::sqrt(nrm2);
+                auto sz                                      = std::sqrt(nrm2);
                 this->R_(history_size - 1, history_size - 1) = sz;
                 this->scale(1.0 / sz, this->residual_history_[idx_step_prev]);
 
@@ -147,8 +141,9 @@ class Anderson_stable : public Mixer<FUNCS...>
                 // Compute h = Q' * f_n
                 mdarray<double, 1> h({history_size});
                 for (int i = 1; i <= history_size; ++i) {
-                    auto j = this->idx_hist(this->step_ - i);
-                    h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j], this->residual_history_[idx_step]);
+                    auto j              = this->idx_hist(this->step_ - i);
+                    h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j],
+                                                                                  this->residual_history_[idx_step]);
                 }
 
                 // next compute k = R⁻¹ * h... just do that by hand for now, can dispatch to blas later.
@@ -194,21 +189,21 @@ class Anderson_stable : public Mixer<FUNCS...>
             // Restore [R12; R22] to upper triangular
             for (int row = 1; row <= history_size - 1; ++row) {
                 auto rotation = la::wrap(la::lib_t::lapack).lartg(this->R_(row - 1, row), this->R_(row, row));
-                auto c = std::get<0>(rotation);
-                auto s = std::get<1>(rotation);
-                auto nrm = std::get<2>(rotation);
+                auto c        = std::get<0>(rotation);
+                auto s        = std::get<1>(rotation);
+                auto nrm      = std::get<2>(rotation);
 
                 // Apply the Given's rotation to the initial column
                 this->R_(row - 1, row) = nrm;
-                this->R_(row    , row) = 0;
+                this->R_(row, row)     = 0;
 
                 // Apply Given's rotation to R
                 for (int col = row + 1; col < history_size; ++col) {
                     auto r1 = this->R_(row - 1, col);
-                    auto r2 = this->R_(row    , col);
+                    auto r2 = this->R_(row, col);
 
-                    this->R_(row - 1, col) =  c * r1 + s * r2;
-                    this->R_(row    , col) = -s * r1 + c * r2;
+                    this->R_(row - 1, col) = c * r1 + s * r2;
+                    this->R_(row, col)     = -s * r1 + c * r2;
                 }
 
                 // Apply the Given's rotation to Q (i.e. orthonormal basis for ΔF)

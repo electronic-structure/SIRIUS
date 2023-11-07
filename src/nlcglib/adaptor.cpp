@@ -44,15 +44,13 @@ std::shared_ptr<Matrix>
 make_vector(std::vector<wfc_ptr_t> const& wfct, Simulation_context const& ctx, K_point_set const& kset,
             nlcglib::memory_type memory = nlcglib::memory_type::none)
 {
-    std::map<memory_t, nlcglib::memory_type> memtype = {
-        {memory_t::device, nlcglib::memory_type::device},
-        {memory_t::host, nlcglib::memory_type::host},
-        {memory_t::host_pinned, nlcglib::memory_type::host}};
-    std::map<nlcglib::memory_type, memory_t> memtype_lookup = {
-        {nlcglib::memory_type::none, memory_t::none},
-        {nlcglib::memory_type::device, memory_t::device},
-        {nlcglib::memory_type::host, memory_t::host},
-        {nlcglib::memory_type::host, memory_t::host_pinned}};
+    std::map<memory_t, nlcglib::memory_type> memtype        = {{memory_t::device, nlcglib::memory_type::device},
+                                                               {memory_t::host, nlcglib::memory_type::host},
+                                                               {memory_t::host_pinned, nlcglib::memory_type::host}};
+    std::map<nlcglib::memory_type, memory_t> memtype_lookup = {{nlcglib::memory_type::none, memory_t::none},
+                                                               {nlcglib::memory_type::device, memory_t::device},
+                                                               {nlcglib::memory_type::host, memory_t::host},
+                                                               {nlcglib::memory_type::host, memory_t::host_pinned}};
 
     memory_t target_memory = memtype_lookup.at(memory);
     if (target_memory == memory_t::none) {
@@ -109,10 +107,10 @@ Energy::Energy(K_point_set& kset, Density& density, Potential& potential)
     hphis_.resize(nk);
     cphis_.resize(nk);
     for (auto it : kset.spl_num_kpoints()) {
-        auto& kp                          = *kset.get<double>(it.i);
+        auto& kp                    = *kset.get<double>(it.i);
         memory_t preferred_memory_t = ctx.processing_unit_memory_t();
-        auto num_mag_dims                 = wf::num_mag_dims(ctx.num_mag_dims());
-        auto num_bands                    = wf::num_bands(ctx.num_bands());
+        auto num_mag_dims           = wf::num_mag_dims(ctx.num_mag_dims());
+        auto num_bands              = wf::num_bands(ctx.num_bands());
         // make a new wf for Hamiltonian apply...
         hphis_[it.li] =
             std::make_shared<wf::Wave_functions<prec_t>>(kp.gkvec_sptr(), num_mag_dims, num_bands, preferred_memory_t);
@@ -255,7 +253,7 @@ Energy::get_ek()
     int nbands   = kset_.ctx().num_bands();
     std::vector<std::vector<double>> ek;
     std::vector<std::pair<int, int>> kindices;
-    for (auto it :  kset_.spl_num_kpoints()) {
+    for (auto it : kset_.spl_num_kpoints()) {
         auto& kp = *kset_.get<prec_t>(it.i);
         for (int ispn = 0; ispn < ns; ++ispn) {
             std::vector<double> ek_local(nbands);
@@ -276,7 +274,7 @@ Energy::get_gkvec_ekin()
     std::vector<std::vector<double>> gkvec_cart;
     std::vector<std::pair<int, int>> kindices;
     for (auto it : kset_.spl_num_kpoints()) {
-        auto& kp  = *kset_.get<prec_t>(it.i);
+        auto& kp = *kset_.get<prec_t>(it.i);
         for (int ispn = 0; ispn < ns; ++ispn) {
             int gkvec_count = kp.gkvec().count();
             auto& gkvec     = kp.gkvec();
@@ -298,7 +296,7 @@ Energy::get_kpoint_weights()
     std::vector<double> weights;
     std::vector<std::pair<int, int>> kindices;
     for (auto it : kset_.spl_num_kpoints()) {
-        auto& kp  = *kset_.get<double>(it.i);
+        auto& kp = *kset_.get<double>(it.i);
 
         // also return weights for every spin index
         for (int ispn = 0; ispn < ns; ++ispn) {

@@ -48,8 +48,10 @@ inverse_sqrt(la::dmatrix<T>& A__, int N__)
         Z = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols());
         B = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols());
     } else {
-        Z = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(), A__.bs_col());
-        B = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(), A__.bs_col());
+        Z = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(),
+                                             A__.bs_col());
+        B = std::make_unique<la::dmatrix<T>>(A__.num_rows(), A__.num_cols(), A__.blacs_grid(), A__.bs_row(),
+                                             A__.bs_col());
     }
     std::vector<real_type<T>> eval(N__);
 
@@ -66,18 +68,19 @@ inverse_sqrt(la::dmatrix<T>& A__, int N__)
     }
 
     if (A__.comm().size() == 1) {
-        la::wrap(la::lib_t::blas).gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(),
-            &A__(0, 0), A__.ld(), Z->at(memory_t::host), Z->ld(), &la::constant<T>::zero(),
-            B->at(memory_t::host), B->ld());
+        la::wrap(la::lib_t::blas)
+            .gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(), &A__(0, 0), A__.ld(), Z->at(memory_t::host),
+                  Z->ld(), &la::constant<T>::zero(), B->at(memory_t::host), B->ld());
     } else {
-        la::wrap(la::lib_t::scalapack).gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(),
-            A__, 0, 0, *Z, 0, 0, &la::constant<T>::zero(), *B, 0, 0);
+        la::wrap(la::lib_t::scalapack)
+            .gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(), A__, 0, 0, *Z, 0, 0, &la::constant<T>::zero(), *B,
+                  0, 0);
     }
 
     return std::make_tuple(std::move(B), std::move(Z), eval);
 }
 
-}
+} // namespace la
 
-}
+} // namespace sirius
 #endif

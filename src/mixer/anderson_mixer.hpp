@@ -43,20 +43,20 @@ namespace sirius {
 namespace mixer {
 
 /// Anderson mixer.
-/** 
+/**
  * Quasi-Newton limited-memory method which updates \f$ x_{n+1} = x_n - G_nf_n \f$
  * where \f$ G_n \f$ is an approximate inverse Jacobian. Anderson is derived
  * by taking the low-rank update to the inverse Jacobian
- * 
+ *
  * \f[
  * G_{n+1} = (G_n + \Delta X_n - G_n \Delta F_n)(\Delta F_n^T \Delta F_n)^{-1}\Delta F_n^T
  * \f]
- * 
+ *
  * such that the secant equations \f$ G_{n+1} \Delta F_n = \Delta X_n \f$ are satisfied for previous
  * iterations. Then \f$ G_n \f$ is taken \f$ -\beta I \f$. The Anderson class explicitly constructs
  * the Gram matrix \f$ \Delta F_n^T \Delta F_n \f$ to solve the least-squares problem. For more stability
  * use Anderson_stable, which comes at the cost of orthogonalizing \f$ \Delta F_n \f$.
- * 
+ *
  * Reference paper: Fang, Haw‐ren, and Yousef Saad. "Two classes of multisecant
  * methods for nonlinear acceleration." Numerical Linear Algebra with Applications
  * 16.3 (2009): 197-221.
@@ -71,6 +71,7 @@ class Anderson : public Mixer<FUNCS...>
     mdarray<double, 2> S_;
     mdarray<double, 2> S_factorized_;
     std::size_t history_size_;
+
   public:
     Anderson(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
         : Mixer<FUNCS...>(max_history)
@@ -123,11 +124,10 @@ class Anderson : public Mixer<FUNCS...>
 
             // Compute the new Gram matrix for the least-squares problem
             for (int i = 0; i <= history_size - 1; ++i) {
-                auto j = this->idx_hist(this->step_ - i - 1);
-                this->S_(history_size - 1, history_size - i - 1) = this->S_(history_size - i - 1, history_size - 1) = this->template inner_product<normalize>(
-                    this->residual_history_[j],
-                    this->residual_history_[idx_prev_step]
-                );
+                auto j                                           = this->idx_hist(this->step_ - i - 1);
+                this->S_(history_size - 1, history_size - i - 1) = this->S_(history_size - i - 1, history_size - 1) =
+                    this->template inner_product<normalize>(this->residual_history_[j],
+                                                            this->residual_history_[idx_prev_step]);
             }
 
             // Make a copy because factorizing destroys the matrix.
@@ -137,11 +137,9 @@ class Anderson : public Mixer<FUNCS...>
 
             mdarray<double, 1> h({history_size});
             for (int i = 1; i <= history_size; ++i) {
-                auto j = this->idx_hist(this->step_ - i);
-                h(history_size - i) = this->template inner_product<normalize>(
-                    this->residual_history_[j],
-                    this->residual_history_[idx_step]
-                );
+                auto j              = this->idx_hist(this->step_ - i);
+                h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j],
+                                                                              this->residual_history_[idx_step]);
             }
 
             bool invertible = la::wrap(la::lib_t::lapack).sysolve(history_size, this->S_factorized_, h);

@@ -383,8 +383,8 @@ class memory_pool
     auto get_unique_ptr(size_t n__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
-        return std::unique_ptr<T, std::function<void(void*)>>(this->allocate<T>(n__), [&mp=*this](void* ptr) {
-            mp.free(ptr);});
+        return std::unique_ptr<T, std::function<void(void*)>>(this->allocate<T>(n__),
+                                                              [&mp = *this](void* ptr) { mp.free(ptr); });
 #else
         return sirius::get_unique_ptr<T>(n__, M_);
 #endif

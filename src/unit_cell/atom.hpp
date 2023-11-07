@@ -118,8 +118,8 @@ class Atom
 
         if (!type().parameters().full_potential()) {
             int nbf = type().mt_basis_size();
-            d_mtrx_ = mdarray<double, 3>({nbf, nbf, type().parameters().num_mag_dims() + 1},
-                                               mdarray_label("Atom::d_mtrx_"));
+            d_mtrx_ =
+                mdarray<double, 3>({nbf, nbf, type().parameters().num_mag_dims() + 1}, mdarray_label("Atom::d_mtrx_"));
             d_mtrx_.zero();
         }
     }
@@ -207,8 +207,7 @@ class Atom
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
                     std::copy(rf_spline[i].coeffs().at(memory_t::host),
-                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
-                              rf_coef.at(memory_t::host, 0, 0, i));
+                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4, rf_coef.at(memory_t::host, 0, 0, i));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -241,11 +240,11 @@ class Atom
                                         rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
                                         result.at(memory_t::device));
             acc::sync();
-            //if (type().parameters().control().print_performance_) {
-            //    double tval = t2.stop();
-            //    DUMP("spline GPU integration performance: %12.6f GFlops",
-            //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-            //}
+            // if (type().parameters().control().print_performance_) {
+            //     double tval = t2.stop();
+            //     DUMP("spline GPU integration performance: %12.6f GFlops",
+            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+            // }
             result.copy_to(memory_t::host);
             result.deallocate(memory_t::device);
 #endif
@@ -279,11 +278,11 @@ class Atom
             for (int j = 0; j < (int)idx_ri.size(1); j++) {
                 result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
             }
-            //if (type().parameters().control().print_performance_) {
-            //    double tval = t2.stop();
-            //    DUMP("spline CPU integration performance: %12.6f GFlops",
-            //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-            //}
+            // if (type().parameters().control().print_performance_) {
+            //     double tval = t2.stop();
+            //     DUMP("spline CPU integration performance: %12.6f GFlops",
+            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+            // }
         }
 
         int n{0};
@@ -309,9 +308,9 @@ class Atom
             }
         }
 
-        //if (type().parameters().control().print_checksum_) {
-        //    DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
-        //}
+        // if (type().parameters().control().print_checksum_) {
+        //     DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
+        // }
     }
 
     /// Return const reference to corresponding atom type object.
@@ -416,8 +415,8 @@ class Atom
      *  \f]
      */
     template <spin_block_t sblock>
-    inline std::complex<double>
-    radial_integrals_sum_L3(int idxrf1__, int idxrf2__, std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
+    inline std::complex<double> radial_integrals_sum_L3(int idxrf1__, int idxrf2__,
+                                                        std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
     {
         std::complex<double> zsum(0, 0);
 
@@ -442,14 +441,16 @@ class Atom
                 }
                 case spin_block_t::ud: {
                     /* Bx - i By */
-                    zsum += gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-                                                           -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
+                    zsum +=
+                        gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
+                                                             -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                     break;
                 }
                 case spin_block_t::du: {
                     /* Bx + i By */
-                    zsum += gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-                                                           b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
+                    zsum +=
+                        gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
+                                                             b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                     break;
                 }
             }
@@ -551,6 +552,6 @@ class Atom
     }
 };
 
-} // namespace
+} // namespace sirius
 
 #endif // __ATOM_H__

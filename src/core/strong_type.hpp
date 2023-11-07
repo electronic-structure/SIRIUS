@@ -32,14 +32,14 @@ class strong_type
 {
   private:
     T val_;
-  public:
 
+  public:
     explicit strong_type(T const& val__)
         : val_{val__}
     {
     }
 
-    explicit strong_type(T&& val__) 
+    explicit strong_type(T&& val__)
         : val_{std::move(val__)}
     {
     }
@@ -76,6 +76,6 @@ class strong_type
     }
 };
 
-}
+} // namespace sirius
 
 #endif

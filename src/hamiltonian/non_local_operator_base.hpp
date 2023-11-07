@@ -67,9 +67,8 @@ class Non_local_operator
     /** \tparam F  Type of the subspace matrix
      */
     template <typename F>
-    void apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
-               wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__,
-               matrix<F> const& beta_phi__) const;
+    void apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__, wf::band_range br__,
+               beta_projectors_coeffs_t<T> const& beta_coeffs__, matrix<F> const& beta_phi__) const;
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename F>
@@ -79,13 +78,13 @@ class Non_local_operator
 
     /// computes α B*Q + β out
     template <typename F>
-    void lmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t,
-                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
+    void lmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t, identity_t<F> alpha = F{1},
+                 identity_t<F> beta = F{0}) const;
 
     /// computes α Q*B + β out
     template <typename F>
-    void rmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t,
-                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
+    void rmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t, identity_t<F> alpha = F{1},
+                 identity_t<F> beta = F{0}) const;
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
     inline F value(int xi1__, int xi2__, int ia__)

@@ -76,7 +76,8 @@ struct z_column_descriptor
 };
 
 /// Serialize a single z-column descriptor.
-inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
+inline void
+serialize(serializer& s__, z_column_descriptor const& zcol__)
 {
     serialize(s__, zcol__.x);
     serialize(s__, zcol__.y);
@@ -86,7 +87,8 @@ inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
 }
 
 /// Deserialize a single z-column descriptor.
-inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
+inline void
+deserialize(serializer& s__, z_column_descriptor& zcol__)
 {
     deserialize(s__, zcol__.x);
     deserialize(s__, zcol__.y);
@@ -96,16 +98,18 @@ inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
 }
 
 /// Serialize a vector of z-column descriptors.
-inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
+inline void
+serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
 {
     serialize(s__, zcol__.size());
-    for (auto& e: zcol__) {
+    for (auto& e : zcol__) {
         serialize(s__, e);
     }
 }
 
 /// Deserialize a vector of z-column descriptors.
-inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
+inline void
+deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
 {
     size_t sz;
     deserialize(s__, sz);
@@ -287,7 +291,7 @@ class Gvec
      *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
     Gvec(r3::vector<double> vk__, r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__,
-            bool reduce_gvec__, double sym_tol__ = 1e-6)
+         bool reduce_gvec__, double sym_tol__ = 1e-6)
         : vk_{vk__}
         , Gmax_{Gmax__}
         , lattice_vectors_{M__}
@@ -307,7 +311,7 @@ class Gvec
      *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
     Gvec(r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__, bool reduce_gvec__,
-            double sym_tol__ = 1e-6)
+         double sym_tol__ = 1e-6)
         : Gmax_{Gmax__}
         , lattice_vectors_{M__}
         , comm_{comm__}
@@ -326,7 +330,7 @@ class Gvec
      *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
     Gvec(r3::matrix<double> M__, double Gmax__, fft::Grid const& fft_grid__, mpi::Communicator const& comm__,
-            bool reduce_gvec__, double sym_tol__ = 1e-6)
+         bool reduce_gvec__, double sym_tol__ = 1e-6)
         : Gmax_{Gmax__}
         , lattice_vectors_{M__}
         , comm_{comm__}
@@ -362,7 +366,7 @@ class Gvec
 
     /// Construct with the defined order of G-vectors.
     Gvec(r3::vector<double> vk__, r3::matrix<double> M__, int ngv_loc__, int const* gv__,
-            mpi::Communicator const& comm__, bool reduce_gvec__)
+         mpi::Communicator const& comm__, bool reduce_gvec__)
         : vk_(vk__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -394,7 +398,7 @@ class Gvec
         for (int ig = 0; ig < ngv_loc__; ig++) {
             zcol(G(0, ig), G(1, ig))++;
             for (int x : {0, 1, 2}) {
-                gvec_(x, ig) = G(x, ig);
+                gvec_(x, ig)  = G(x, ig);
                 gkvec_(x, ig) = G(x, ig) + vk_[x];
             }
         }
@@ -462,7 +466,7 @@ class Gvec
     inline auto const unit_cell_lattice_vectors() const
     {
         double const twopi = 6.2831853071795864769;
-        auto r = r3::transpose(r3::inverse(lattice_vectors_)) * twopi;
+        auto r             = r3::transpose(r3::inverse(lattice_vectors_)) * twopi;
         return r;
     }
 
@@ -535,8 +539,7 @@ class Gvec
 
     /// Return G vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline r3::vector<int>
-    gvec(int ig__) const
+    inline r3::vector<int> gvec(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
@@ -552,8 +555,7 @@ class Gvec
 
     /// Return G+k vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline r3::vector<double>
-    gkvec(int ig__) const
+    inline r3::vector<double> gkvec(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
@@ -569,8 +571,7 @@ class Gvec
 
     /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline r3::vector<double>
-    gvec_cart(int ig__) const
+    inline r3::vector<double> gvec_cart(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
@@ -587,8 +588,7 @@ class Gvec
 
     /// Return G+k vector in fractional coordinates.
     template <index_domain_t idx_t>
-    inline r3::vector<double>
-    gkvec_cart(int ig__) const
+    inline r3::vector<double> gkvec_cart(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
@@ -632,8 +632,7 @@ class Gvec
 
     /// Return length of the G-vector.
     template <index_domain_t idx_t>
-    inline double
-    gvec_len(int ig__) const
+    inline double gvec_len(int ig__) const
     {
         switch (idx_t) {
             case index_domain_t::local: {
@@ -658,11 +657,11 @@ class Gvec
 
     std::pair<int, bool> index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const;
 
-    //inline int index_g12_safe(int ig1__, int ig2__) const
+    // inline int index_g12_safe(int ig1__, int ig2__) const
     //{
-    //    STOP();
-    //    return 0;
-    //}
+    //     STOP();
+    //     return 0;
+    // }
 
     /// Return a global G-vector index in the range [0, num_gvec) by the G-vector.
     /** The information about a G-vector index is encoded by two numbers: a starting index for the
@@ -867,7 +866,6 @@ class Gvec_fft
         /* collect scattered PW coefficients */
         comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_slab().counts.data(),
                                    gvec_slab().offsets.data());
-
     }
 
     template <typename T> // TODO: document
@@ -881,7 +879,7 @@ class Gvec_fft
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
     }
 
-    template<typename T>
+    template <typename T>
     void scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
@@ -897,7 +895,7 @@ class Gvec_fft
     void update_gkvec_cart()
     {
         for (int ig = 0; ig < this->count(); ig++) {
-            auto G = r3::vector<int>(&gvec_array_(0, ig));
+            auto G   = r3::vector<int>(&gvec_array_(0, ig));
             auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
             for (int x : {0, 1, 2}) {
                 gkvec_cart_array_(x, ig) = Gkc[x];
@@ -938,7 +936,6 @@ class Gvec_shells
     std::map<r3::vector<int>, int> idx_gvec_;
 
   public:
-
     Gvec_shells(Gvec const& gvec__);
 
     inline void print_gvec(std::ostream& out__) const
@@ -953,7 +950,7 @@ class Gvec_shells
             pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
         }
         pout << "-- reverse list --" << std::endl;
-        for (auto const& e: idx_gvec_) {
+        for (auto const& e : idx_gvec_) {
             pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
         }
         out__ << pout.flush(0);
@@ -1051,7 +1048,8 @@ gkvec_factory(r3::vector<double> vk__, r3::matrix<double> reciprocal_lattice_vec
     return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
 }
 
-inline void print(std::ostream& out__, Gvec const& gvec__)
+inline void
+print(std::ostream& out__, Gvec const& gvec__)
 {
     std::map<int, std::vector<int>> gsh_map;
     for (int i = 0; i < gvec__.num_gvec(); i++) {
@@ -1069,28 +1067,28 @@ inline void print(std::ostream& out__, Gvec const& gvec__)
         auto len = gvec__.shell_len(igsh);
         out__ << "shell : " << igsh << ", length : " << len << std::endl;
         for (auto ig : gsh_map[igsh]) {
-            auto G = gvec__.gvec<index_domain_t::global>(ig);
+            auto G  = gvec__.gvec<index_domain_t::global>(ig);
             auto Gc = gvec__.gvec_cart<index_domain_t::global>(ig);
             out__ << "  ig : " << ig << ", G = " << G << ", length diff : " << std::abs(Gc.length() - len) << std::endl;
         }
     }
-    //mpi::pstdout pout(gvec__.comm());
-    //pout << "rank: " << gvec_.comm().rank() << std::endl;
-    //pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
-    //for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
-    //    auto G = gvec_remapped(igloc);
+    // mpi::pstdout pout(gvec__.comm());
+    // pout << "rank: " << gvec_.comm().rank() << std::endl;
+    // pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
+    // for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
+    //     auto G = gvec_remapped(igloc);
 
     //    int igsh = gvec_shell_remapped(igloc);
     //    pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
     //}
-    //pout << "-- reverse list --" << std::endl;
-    //for (auto const& e: idx_gvec_) {
+    // pout << "-- reverse list --" << std::endl;
+    // for (auto const& e: idx_gvec_) {
     //    pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
     //}
-    //out__ << pout.flush(0);
+    // out__ << pout.flush(0);
 }
 
-} // namespace
+} // namespace fft
 
 } // namespace sirius
 

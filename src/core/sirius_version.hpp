@@ -41,6 +41,6 @@ std::string git_branchname();
 
 std::string build_date();
 
-}
+} // namespace sirius
 
 #endif

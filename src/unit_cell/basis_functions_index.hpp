@@ -99,9 +99,9 @@ class basis_functions_index
                 /* index of this block starts from the current size of basis functions descriptor */
                 auto size = this->size();
 
-                //if (e.am.s() != 0) {
-                //    RTE_THROW("full-j radial function index is not allowed here");
-                //}
+                // if (e.am.s() != 0) {
+                //     RTE_THROW("full-j radial function index is not allowed here");
+                // }
                 if (e.idxrf == indexr_.index_of(rf_lo_index(0))) {
                     offset_lo_ = size;
                 }
@@ -192,16 +192,18 @@ class basis_functions_index
     }
 };
 
-inline auto begin(basis_functions_index const& idx__)
+inline auto
+begin(basis_functions_index const& idx__)
 {
     return idx__.begin();
 }
 
-inline auto end(basis_functions_index const& idx__)
+inline auto
+end(basis_functions_index const& idx__)
 {
     return idx__.end();
 }
 
-}
+} // namespace sirius
 
 #endif

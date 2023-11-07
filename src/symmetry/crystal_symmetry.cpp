@@ -61,8 +61,8 @@ find_sym_atom(int num_atoms__, mdarray<double, 2> const& positions__, r3::matrix
             }
             /* translation vector rp_ia = r_ja + T is found */
             if (diff < tolerance__) {
-                found = true;
-                sym_atom[ia] = ja;
+                found          = true;
+                sym_atom[ia]   = ja;
                 sym_atom_T[ia] = T;
                 break;
             }
@@ -80,8 +80,8 @@ find_sym_atom(int num_atoms__, mdarray<double, 2> const& positions__, r3::matrix
 }
 
 static space_group_symmetry_descriptor
-get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> const& lattice_vectors__, int num_atoms__,
-    mdarray<double, 2> const& positions__, double tolerance__)
+get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> const& lattice_vectors__,
+               int num_atoms__, mdarray<double, 2> const& positions__, double tolerance__)
 {
     space_group_symmetry_descriptor sym_op;
 
@@ -99,9 +99,9 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> 
     /* inverse transpose */
     sym_op.invRT = transpose(sym_op.invR);
     /* fractional translation */
-    sym_op.t = r3::vector<double>(spg_dataset__->translations[isym_spg__][0],
-                                spg_dataset__->translations[isym_spg__][1],
-                                spg_dataset__->translations[isym_spg__][2]);
+    sym_op.t =
+        r3::vector<double>(spg_dataset__->translations[isym_spg__][0], spg_dataset__->translations[isym_spg__][1],
+                           spg_dataset__->translations[isym_spg__][2]);
     /* is this proper or improper rotation */
     sym_op.proper = p;
     /* rotation in Cartesian coordinates */
@@ -111,7 +111,7 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> 
     try {
         /* get Euler angles of the rotation */
         sym_op.euler_angles = euler_angles(sym_op.Rcp, tolerance__);
-    } catch(std::exception const& e) {
+    } catch (std::exception const& e) {
         std::stringstream s;
         s << e.what() << std::endl;
         s << "number of symmetry operations found by spglib: " << spg_dataset__->n_operations << std::endl
@@ -126,27 +126,25 @@ get_spg_sym_op(int isym_spg__, SpglibDataset* spg_dataset__, r3::matrix<double> 
     }
     try {
         /* get symmetry related atoms */
-        auto result = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__);
-        sym_op.sym_atom = result.first;
-        result = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__, true);
-        sym_op.inv_sym_atom = result.first;
+        auto result           = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__);
+        sym_op.sym_atom       = result.first;
+        result                = find_sym_atom(num_atoms__, positions__, sym_op.R, sym_op.t, tolerance__, true);
+        sym_op.inv_sym_atom   = result.first;
         sym_op.inv_sym_atom_T = result.second;
         for (int ia = 0; ia < num_atoms__; ia++) {
             int ja = sym_op.sym_atom[ia];
             if (sym_op.inv_sym_atom[ja] != ia) {
                 std::stringstream s;
                 s << "atom symmetry tables are not consistent" << std::endl
-                  << "ia: " << ia << " sym_atom[ia]: " << ja << " inv_sym_atom[sym_atom[ia]]: " 
-                  << sym_op.inv_sym_atom[ja];
+                  << "ia: " << ia << " sym_atom[ia]: " << ja
+                  << " inv_sym_atom[sym_atom[ia]]: " << sym_op.inv_sym_atom[ja];
                 RTE_THROW(s);
             }
         }
-    } catch(std::exception const& e) {
+    } catch (std::exception const& e) {
         std::stringstream s;
         s << e.what() << std::endl;
-        s << "R: " << sym_op.R << std::endl
-          << "t: " << sym_op.t << std::endl
-          << "tolerance: " << tolerance__;
+        s << "R: " << sym_op.R << std::endl << "t: " << sym_op.t << std::endl << "tolerance: " << tolerance__;
         RTE_THROW(s);
     }
 
@@ -182,9 +180,10 @@ get_identity_spg_sym_op(int num_atoms__)
     return sym_op;
 }
 
-Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__,
-    int num_atom_types__, std::vector<int> const& types__, mdarray<double, 2> const& positions__,
-    mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__)
+Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
+                                   std::vector<int> const& types__, mdarray<double, 2> const& positions__,
+                                   mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__,
+                                   bool use_sym__)
     : lattice_vectors_(lattice_vectors__)
     , num_atoms_(num_atoms__)
     , num_atom_types_(num_atom_types__)
@@ -204,8 +203,8 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
 
     double lattice[3][3];
-    for (int i: {0, 1, 2}) {
-        for (int j: {0, 1, 2}) {
+    for (int i : {0, 1, 2}) {
+        for (int j : {0, 1, 2}) {
             lattice[i][j] = lattice_vectors_(i, j);
         }
     }
@@ -219,7 +218,7 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
     PROFILE_START("sirius::Crystal_symmetry|spg");
     if (use_sym__) {
         /* make a call to spglib */
-        spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
+        spg_dataset_ = spg_get_dataset(lattice, (double(*)[3]) & positions_(0, 0), &types_[0], num_atoms_, tolerance_);
         if (spg_dataset_ == NULL) {
             RTE_THROW("spg_get_dataset() returned NULL");
         }
@@ -242,9 +241,10 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
         /* make a list of crystal symmetries */
         for (int isym = 0; isym < spg_dataset_->n_operations; isym++) {
             r3::matrix<int> R(spg_dataset_->rotations[isym]);
-            for (auto& e: lat_sym) {
+            for (auto& e : lat_sym) {
                 if (e == R) {
-                    auto sym_op = get_spg_sym_op(isym, spg_dataset_, lattice_vectors__, num_atoms__, positions__, tolerance__);
+                    auto sym_op =
+                        get_spg_sym_op(isym, spg_dataset_, lattice_vectors__, num_atoms__, positions__, tolerance__);
                     /* add symmetry operation to a list */
                     space_group_symmetry_.push_back(sym_op);
                 }
@@ -277,7 +277,7 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
                 /* now check that vector field transforms from atom ia to atom ja */
                 /* vector field of atom is expected to be in Cartesian coordinates */
                 auto vd = dot(Rspin, r3::vector<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia))) -
-                                  r3::vector<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
+                          r3::vector<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
 
                 if (vd.length() < 1e-10) {
                     n++;
@@ -303,7 +303,7 @@ double
 Crystal_symmetry::metric_tensor_error() const
 {
     double diff{0};
-    for (auto const& e: magnetic_group_symmetry_) {
+    for (auto const& e : magnetic_group_symmetry_) {
         diff = std::max(diff, sirius::metric_tensor_error(lattice_vectors_, e.spg_op.R));
     }
     return diff;
@@ -313,11 +313,11 @@ double
 Crystal_symmetry::sym_op_R_error() const
 {
     double diff{0};
-    for (auto const& e: magnetic_group_symmetry_) {
-        auto R = e.spg_op.Rcp;
+    for (auto const& e : magnetic_group_symmetry_) {
+        auto R  = e.spg_op.Rcp;
         auto R1 = inverse(transpose(R));
-        for (int i: {0, 1, 2}) {
-            for (int j: {0, 1, 2}) {
+        for (int i : {0, 1, 2}) {
+            for (int j : {0, 1, 2}) {
                 diff = std::max(diff, std::abs(R1(i, j) - R(i, j)));
             }
         }
@@ -347,7 +347,7 @@ Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
         }
         out__ << "space group origin shift : " << std::endl;
         auto t = this->origin_shift();
-        for (auto x: {0, 1, 2}) {
+        for (auto x : {0, 1, 2}) {
             out__ << ffmt(8, 4) << t[x];
         }
         out__ << std::endl;
@@ -358,56 +358,55 @@ Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
           << "rotation matrix error: " << std::scientific << this->sym_op_R_error() << std::endl;
 
     if (verbosity__ >= 2) {
-        out__ << std::endl
-              << "symmetry operations " << std::endl
-              << std::endl;
+        out__ << std::endl << "symmetry operations " << std::endl << std::endl;
         for (int isym = 0; isym < this->size(); isym++) {
-            auto R = this->operator[](isym).spg_op.R;
+            auto R  = this->operator[](isym).spg_op.R;
             auto Rc = this->operator[](isym).spg_op.Rc;
-            auto t = this->operator[](isym).spg_op.t;
-            auto S = this->operator[](isym).spin_rotation;
+            auto t  = this->operator[](isym).spg_op.t;
+            auto S  = this->operator[](isym).spin_rotation;
 
-            out__ << "isym : " << isym << std::endl
-                  << "R : ";
-            for (int i: {0, 1, 2}) {
+            out__ << "isym : " << isym << std::endl << "R : ";
+            for (int i : {0, 1, 2}) {
                 if (i) {
                     out__ << "    ";
                 }
-                for (int j: {0, 1, 2,}) {
+                for (int j : {
+                         0,
+                         1,
+                         2,
+                     }) {
                     out__ << std::setw(3) << R(i, j);
                 }
                 out__ << std::endl;
             }
             out__ << "Rc: ";
-            for (int i: {0, 1, 2}) {
+            for (int i : {0, 1, 2}) {
                 if (i) {
                     out__ << "    ";
                 }
-                for (int j: {0, 1, 2}) {
+                for (int j : {0, 1, 2}) {
                     out__ << ffmt(8, 4) << Rc(i, j);
                 }
                 out__ << std::endl;
             }
             out__ << "t : ";
-            for (int j: {0, 1, 2}) {
+            for (int j : {0, 1, 2}) {
                 out__ << ffmt(8, 4) << t[j];
             }
             out__ << std::endl;
             out__ << "S : ";
-            for (int i: {0, 1, 2}) {
+            for (int i : {0, 1, 2}) {
                 if (i) {
                     out__ << "    ";
                 }
-                for (int j: {0, 1, 2}) {
+                for (int j : {0, 1, 2}) {
                     out__ << ffmt(8, 4) << S(i, j);
                 }
                 out__ << std::endl;
             }
-            out__ << "proper: " << std::setw(2) << this->operator[](isym).spg_op.proper << std::endl
-                  << std::endl;
+            out__ << "proper: " << std::setw(2) << this->operator[](isym).spg_op.proper << std::endl << std::endl;
         }
     }
 }
 
-} // namespace
-
+} // namespace sirius

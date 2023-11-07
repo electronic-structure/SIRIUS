@@ -153,14 +153,14 @@ get_gpublasDiagonal_t(char c)
 
 #define CALL_GPU_BLAS(func__, args__)                                                                                  \
     {                                                                                                                  \
-        acc::blas_api::status_t status;                                                                                  \
-        if ((status = func__ args__) != acc::blas_api::status::Success) {                                                \
+        acc::blas_api::status_t status;                                                                                \
+        if ((status = func__ args__) != acc::blas_api::status::Success) {                                              \
             error_message(status);                                                                                     \
             char nm[1024];                                                                                             \
             gethostname(nm, 1024);                                                                                     \
             std::printf("hostname: %s\n", nm);                                                                         \
             std::printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);                           \
-            acc::stack_backtrace();                                                                                         \
+            acc::stack_backtrace();                                                                                    \
         }                                                                                                              \
     }
 
@@ -207,11 +207,11 @@ zgemv(char transa, int32_t m, int32_t n, acc_complex_double_t* alpha, acc_comple
 {
     // acc::set_device();
     CALL_GPU_BLAS(acc::blas_api::zgemv, (stream_handle(stream_id), get_gpublasOperation_t(transa), m, n,
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha),
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(a), lda,
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(x), incx,
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(beta),
-                                       reinterpret_cast<acc::blas_api::complex_double_t*>(y), incy));
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha),
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(a), lda,
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(x), incx,
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(beta),
+                                         reinterpret_cast<acc::blas_api::complex_double_t*>(y), incy));
 }
 
 inline void
@@ -237,11 +237,11 @@ zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, acc_complex_dou
     // acc::set_device();
     CALL_GPU_BLAS(acc::blas_api::zgemm,
                   (stream_handle(stream_id), get_gpublasOperation_t(transa), get_gpublasOperation_t(transb), m, n, k,
-                      reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha),
-                      reinterpret_cast<const acc::blas_api::complex_double_t*>(a), lda,
-                      reinterpret_cast<const acc::blas_api::complex_double_t*>(b), ldb,
-                      reinterpret_cast<const acc::blas_api::complex_double_t*>(beta),
-                      reinterpret_cast<acc::blas_api::complex_double_t*>(c), ldc));
+                   reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha),
+                   reinterpret_cast<const acc::blas_api::complex_double_t*>(a), lda,
+                   reinterpret_cast<const acc::blas_api::complex_double_t*>(b), ldb,
+                   reinterpret_cast<const acc::blas_api::complex_double_t*>(beta),
+                   reinterpret_cast<acc::blas_api::complex_double_t*>(c), ldc));
 }
 
 inline void
@@ -250,7 +250,7 @@ sgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, float const* al
 {
     // acc::set_device();
     CALL_GPU_BLAS(acc::blas_api::sgemm, (stream_handle(stream_id), get_gpublasOperation_t(transa),
-                                       get_gpublasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+                                         get_gpublasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
 inline void
@@ -259,7 +259,7 @@ dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, double const* a
 {
     // acc::set_device();
     CALL_GPU_BLAS(acc::blas_api::dgemm, (stream_handle(stream_id), get_gpublasOperation_t(transa),
-                                       get_gpublasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+                                         get_gpublasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
 inline void
@@ -273,7 +273,7 @@ strmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, fl
     // acc::set_device();
 #ifdef SIRIUS_CUDA
     CALL_GPU_BLAS(acc::blas_api::strmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__,
-                                       lda__, B__, ldb__, B__, ldb__));
+                                         lda__, B__, ldb__, B__, ldb__));
 #else
     // rocblas trmm function does not take three matrices
     CALL_GPU_BLAS(acc::blas_api::strmm,
@@ -292,7 +292,7 @@ dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, do
     // acc::set_device();
 #ifdef SIRIUS_CUDA
     CALL_GPU_BLAS(acc::blas_api::dtrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__,
-                                       lda__, B__, ldb__, B__, ldb__));
+                                         lda__, B__, ldb__, B__, ldb__));
 #else
     // rocblas trmm function does not take three matrices
     CALL_GPU_BLAS(acc::blas_api::dtrmm,
@@ -311,16 +311,16 @@ ctrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, ac
     // acc::set_device();
 #ifdef SIRIUS_CUDA
     CALL_GPU_BLAS(acc::blas_api::ctrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__,
-                                       reinterpret_cast<const acc::blas_api::complex_float_t*>(alpha__),
-                                       reinterpret_cast<const acc::blas_api::complex_float_t*>(A__), lda__,
-                                       reinterpret_cast<acc::blas_api::complex_float_t*>(B__), ldb__,
-                                       reinterpret_cast<acc::blas_api::complex_float_t*>(B__), ldb__));
+                                         reinterpret_cast<const acc::blas_api::complex_float_t*>(alpha__),
+                                         reinterpret_cast<const acc::blas_api::complex_float_t*>(A__), lda__,
+                                         reinterpret_cast<acc::blas_api::complex_float_t*>(B__), ldb__,
+                                         reinterpret_cast<acc::blas_api::complex_float_t*>(B__), ldb__));
 #else
     // rocblas trmm function does not take three matrices
     CALL_GPU_BLAS(acc::blas_api::ctrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__,
-        reinterpret_cast<const acc::blas_api::complex_float_t*>(alpha__),
-        reinterpret_cast<const acc::blas_api::complex_float_t*>(A__), lda__,
-        reinterpret_cast<acc::blas_api::complex_float_t*>(B__), ldb__));
+                                         reinterpret_cast<const acc::blas_api::complex_float_t*>(alpha__),
+                                         reinterpret_cast<const acc::blas_api::complex_float_t*>(A__), lda__,
+                                         reinterpret_cast<acc::blas_api::complex_float_t*>(B__), ldb__));
 #endif
 }
 
@@ -335,16 +335,16 @@ ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__, ac
     // acc::set_device();
 #ifdef SIRIUS_CUDA
     CALL_GPU_BLAS(acc::blas_api::ztrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__,
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha__),
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(A__), lda__,
-                                       reinterpret_cast<acc::blas_api::complex_double_t*>(B__), ldb__,
-                                       reinterpret_cast<acc::blas_api::complex_double_t*>(B__), ldb__));
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha__),
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(A__), lda__,
+                                         reinterpret_cast<acc::blas_api::complex_double_t*>(B__), ldb__,
+                                         reinterpret_cast<acc::blas_api::complex_double_t*>(B__), ldb__));
 #else
     // rocblas trmm function does not take three matrices
     CALL_GPU_BLAS(acc::blas_api::ztrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__,
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha__),
-                                       reinterpret_cast<const acc::blas_api::complex_double_t*>(A__), lda__,
-                                       reinterpret_cast<acc::blas_api::complex_double_t*>(B__), ldb__));
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(alpha__),
+                                         reinterpret_cast<const acc::blas_api::complex_double_t*>(A__), lda__,
+                                         reinterpret_cast<acc::blas_api::complex_double_t*>(B__), ldb__));
 #endif
 }
 
@@ -371,9 +371,9 @@ cgeru(int m, int n, acc_complex_float_t const* alpha, acc_complex_float_t const*
     // acc::set_device();
     CALL_GPU_BLAS(acc::blas_api::cgeru,
                   (stream_handle(stream_id), m, n, reinterpret_cast<const acc::blas_api::complex_float_t*>(alpha),
-                      reinterpret_cast<const acc::blas_api::complex_float_t*>(x), incx,
-                      reinterpret_cast<const acc::blas_api::complex_float_t*>(y), incy,
-                      reinterpret_cast<acc::blas_api::complex_float_t*>(A), lda));
+                   reinterpret_cast<const acc::blas_api::complex_float_t*>(x), incx,
+                   reinterpret_cast<const acc::blas_api::complex_float_t*>(y), incy,
+                   reinterpret_cast<acc::blas_api::complex_float_t*>(A), lda));
 }
 
 inline void
@@ -400,19 +400,17 @@ zaxpy(int n__, acc_complex_double_t const* alpha__, acc_complex_double_t const* 
 }
 
 inline void
-dscal(int n__, double const* alpha__, double * x__, int incx__)
+dscal(int n__, double const* alpha__, double* x__, int incx__)
 {
     // acc::set_device();
-    CALL_GPU_BLAS(acc::blas_api::dscal,
-                  (null_stream_handle(), n__, alpha__, x__, incx__));
+    CALL_GPU_BLAS(acc::blas_api::dscal, (null_stream_handle(), n__, alpha__, x__, incx__));
 }
 
 inline void
-sscal(int n__, float const* alpha__, float * x__, int incx__)
+sscal(int n__, float const* alpha__, float* x__, int incx__)
 {
     // acc::set_device();
-    CALL_GPU_BLAS(acc::blas_api::sscal,
-                  (null_stream_handle(), n__, alpha__, x__, incx__));
+    CALL_GPU_BLAS(acc::blas_api::sscal, (null_stream_handle(), n__, alpha__, x__, incx__));
 }
 
 #if defined(SIRIUS_CUDA)

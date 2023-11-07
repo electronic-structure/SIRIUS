@@ -505,7 +505,6 @@ class Simulation_parameters
         cfg_.settings().sht_coverage(sht_coverage__);
         return cfg_.settings().sht_coverage();
     }
-
 };
 
 }; // namespace sirius

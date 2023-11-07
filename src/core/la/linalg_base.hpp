@@ -86,18 +86,15 @@ enum class lib_t
     spla
 };
 
-inline auto get_lib_t(std::string name__)
+inline auto
+get_lib_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
     static const std::map<std::string, lib_t> map_to_type = {
-        {"blas",      lib_t::blas},
-        {"lapack",    lib_t::lapack},
-        {"scalapack", lib_t::scalapack},
-        {"cublas",    lib_t::gpublas},
-        {"gpublas",   lib_t::gpublas},
-        {"cublasxt",  lib_t::cublasxt},
-        {"magma",     lib_t::magma},
+        {"blas", lib_t::blas},      {"lapack", lib_t::lapack},   {"scalapack", lib_t::scalapack},
+        {"cublas", lib_t::gpublas}, {"gpublas", lib_t::gpublas}, {"cublasxt", lib_t::cublasxt},
+        {"magma", lib_t::magma},
     };
 
     if (map_to_type.count(name__) == 0) {
@@ -109,7 +106,8 @@ inline auto get_lib_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-inline std::string to_string(lib_t la__)
+inline std::string
+to_string(lib_t la__)
 {
     switch (la__) {
         case lib_t::none: {
@@ -173,31 +171,32 @@ void Cblacs_barrier(int ConTxt, const char* scope);
 void Cblacs_gridexit(int ConTxt);
 
 void FORTRAN(psgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_single const* aplha,
-                     ftn_single const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_single const* B, ftn_int* ib,
-                     ftn_int* jb, ftn_int const* descb, ftn_single const* beta, ftn_single* C, ftn_int* ic, ftn_int* jc,
-                     ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
+                     ftn_single const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_single const* B,
+                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_single const* beta, ftn_single* C, ftn_int* ic,
+                     ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double const* aplha,
-                     ftn_double const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double const* B, ftn_int* ib,
-                     ftn_int* jb, ftn_int const* descb, ftn_double const* beta, ftn_double* C, ftn_int* ic, ftn_int* jc,
-                     ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
+                     ftn_double const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double const* B,
+                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double const* beta, ftn_double* C, ftn_int* ic,
+                     ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(pcgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_complex const* aplha,
                      ftn_complex const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_complex const* B,
                      ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_complex const* beta, ftn_complex* C,
                      ftn_int* ic, ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex const* aplha,
-                     ftn_double_complex const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double_complex const* B,
-                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex const* beta, ftn_double_complex* C,
-                     ftn_int* ic, ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
+void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k,
+                     ftn_double_complex const* aplha, ftn_double_complex const* A, ftn_int* ia, ftn_int* ja,
+                     ftn_int const* desca, ftn_double_complex const* B, ftn_int* ib, ftn_int* jb, ftn_int const* descb,
+                     ftn_double_complex const* beta, ftn_double_complex* C, ftn_int* ic, ftn_int* jc,
+                     ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc,
                        ftn_int* icsrc, ftn_int* ictxt, ftn_int* lld, ftn_int* info);
 
-void FORTRAN(pctranc)(ftn_int* m, ftn_int* n, ftn_complex* alpha, ftn_complex* a, ftn_int* ia,
-                      ftn_int* ja, ftn_int const* desca, ftn_complex* beta, ftn_complex* c, ftn_int* ic,
-                      ftn_int* jc, ftn_int const* descc);
+void FORTRAN(pctranc)(ftn_int* m, ftn_int* n, ftn_complex* alpha, ftn_complex* a, ftn_int* ia, ftn_int* ja,
+                      ftn_int const* desca, ftn_complex* beta, ftn_complex* c, ftn_int* ic, ftn_int* jc,
+                      ftn_int const* descc);
 
 void FORTRAN(pztranc)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* ia,
                       ftn_int* ja, ftn_int const* desca, ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic,
@@ -311,8 +310,8 @@ class linalg_base
 #endif
 };
 
-} // namespace
+} // namespace la
 
-}
+} // namespace sirius
 
 #endif // __LINALG_BASE_HPP__

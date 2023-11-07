@@ -47,6 +47,7 @@ class PAW_field4D
     PAW_field4D(PAW_field4D const& src__) = delete;
     /* copy assignment operator is forbidden */
     PAW_field4D& operator=(PAW_field4D const& src__) = delete;
+
   public:
     /// Constructor
     PAW_field4D(std::string label__, Unit_cell const& uc__, bool is_global__)
@@ -60,10 +61,12 @@ class PAW_field4D
         auto ptr = (is_global__) ? nullptr : &uc__.spl_num_paw_atoms();
 
         for (int j = 0; j < uc__.parameters().num_mag_dims() + 1; j++) {
-            ae_components_[j] = Spheric_function_set<T, paw_atom_index_t>(label__ + std::to_string(j), uc__,
-                    uc__.paw_atoms(), [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
-            ps_components_[j] = Spheric_function_set<T, paw_atom_index_t>(label__ + std::to_string(j), uc__,
-                    uc__.paw_atoms(), [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
+            ae_components_[j] = Spheric_function_set<T, paw_atom_index_t>(
+                label__ + std::to_string(j), uc__, uc__.paw_atoms(),
+                [&uc__](int ia) { return lmax_t(2 * uc__.atom(ia).type().indexr().lmax()); }, ptr);
+            ps_components_[j] = Spheric_function_set<T, paw_atom_index_t>(
+                label__ + std::to_string(j), uc__, uc__.paw_atoms(),
+                [&uc__](int ia) { return lmax_t(2 * uc__.atom(ia).type().indexr().lmax()); }, ptr);
         }
     }
 
@@ -117,8 +120,7 @@ class PAW_field4D
     }
 
     template <typename T_>
-    friend T_
-    inner(PAW_field4D<T_> const& x__, PAW_field4D<T_> const& y__);
+    friend T_ inner(PAW_field4D<T_> const& x__, PAW_field4D<T_> const& y__);
 };
 
 template <typename T>
@@ -132,7 +134,6 @@ inner(PAW_field4D<T> const& x__, PAW_field4D<T> const& y__)
     }
     return result;
 }
-
 
 } // namespace sirius
 

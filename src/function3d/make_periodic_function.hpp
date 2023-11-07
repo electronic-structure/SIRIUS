@@ -32,7 +32,7 @@ namespace sirius {
 template <index_domain_t index_domain, typename F>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
-        mdarray<std::complex<double>, 2> const& phase_factors_t__, F&& form_factors__)
+                       mdarray<std::complex<double>, 2> const& phase_factors_t__, F&& form_factors__)
 {
     PROFILE("sirius::make_periodic_function");
 
@@ -65,8 +65,8 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 template <index_domain_t index_domain>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
-        mdarray<std::complex<double>, 2> const& phase_factors_t__,
-        mdarray<double, 2> const& form_factors__)
+                       mdarray<std::complex<double>, 2> const& phase_factors_t__,
+                       mdarray<double, 2> const& form_factors__)
 {
     PROFILE("sirius::make_periodic_function");
 
@@ -95,6 +95,6 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
     return f_pw;
 }
 
-}
+} // namespace sirius
 
 #endif

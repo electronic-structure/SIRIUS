@@ -107,7 +107,8 @@ Atom_type::init()
                 if (this->beta_radial_function(idxrf).first.l() == 0) {
                     indexr_.add(this->beta_radial_function(idxrf).first);
                 } else {
-                    indexr_.add(this->beta_radial_function(idxrf).first, this->beta_radial_function(rf_index(i + 1)).first);
+                    indexr_.add(this->beta_radial_function(idxrf).first,
+                                this->beta_radial_function(rf_index(i + 1)).first);
                     i++;
                 }
             } else {
@@ -142,7 +143,7 @@ Atom_type::init()
 
     if (!parameters_.full_potential()) {
         RTE_ASSERT(mt_radial_basis_size() == num_beta_radial_functions());
-        //RTE_ASSERT(lmax_beta() == indexr1().lmax());
+        // RTE_ASSERT(lmax_beta() == indexr1().lmax());
     }
 
     /* get number of valence electrons */
@@ -185,10 +186,10 @@ Atom_type::init()
     if (parameters_.processing_unit() == device_t::GPU && parameters_.full_potential()) {
         idx_radial_integrals_.allocate(memory_t::device).copy_to(memory_t::device);
         rf_coef_ = mdarray<double, 3>({num_mt_points(), 4, indexr().size()}, memory_t::host_pinned,
-                mdarray_label("Atom_type::rf_coef_"));
-        vrf_coef_ = mdarray<double, 3>(
-                {num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1)},
-                memory_t::host_pinned, mdarray_label("Atom_type::vrf_coef_"));
+                                      mdarray_label("Atom_type::rf_coef_"));
+        vrf_coef_ =
+            mdarray<double, 3>({num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1)},
+                               memory_t::host_pinned, mdarray_label("Atom_type::vrf_coef_"));
         rf_coef_.allocate(memory_t::device);
         vrf_coef_.allocate(memory_t::device);
     }
@@ -293,7 +294,7 @@ Atom_type::print_info(std::ostream& out__) const
     if (parameters_.full_potential()) {
         out__ << std::endl;
         out__ << "atomic levels" << std::endl;
-        for (auto& e: atomic_levels_) {
+        for (auto& e : atomic_levels_) {
             out__ << "n: " << e.n << ", l: " << e.l << ", k: " << e.k << ", occ: " << e.occupancy
                   << ", core: " << e.core << std::endl;
         }
@@ -339,7 +340,8 @@ Atom_type::print_info(std::ostream& out__) const
               << "charge augmentation              : " << boolstr(this->augment()) << std::endl
               << "vloc is set                      : " << boolstr(!this->local_potential().empty()) << std::endl
               << "ps_rho_core is set               : " << boolstr(!this->ps_core_charge_density().empty()) << std::endl
-              << "ps_rho_total is set              : " << boolstr(!this->ps_total_charge_density().empty()) << std::endl;
+              << "ps_rho_total is set              : " << boolstr(!this->ps_total_charge_density().empty())
+              << std::endl;
     }
     out__ << "Hubbard correction               : " << boolstr(this->hubbard_correction()) << std::endl;
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {
@@ -357,14 +359,14 @@ Atom_type::print_info(std::ostream& out__) const
             out__ << lo_descriptors_hub_[i];
         }
         out__ << std::endl;
-        out__ << "  orthogonalize                      : "
-              << boolstr(parameters_.cfg().hubbard().orthogonalize()) << std::endl
-              << "  normalize                          : "
-              << boolstr(parameters_.cfg().hubbard().normalize()) << std::endl
+        out__ << "  orthogonalize                      : " << boolstr(parameters_.cfg().hubbard().orthogonalize())
+              << std::endl
+              << "  normalize                          : " << boolstr(parameters_.cfg().hubbard().normalize())
+              << std::endl
               << "  full_orthogonalization             : "
               << boolstr(parameters_.cfg().hubbard().full_orthogonalization()) << std::endl
-              << "  simplified                         : "
-              << boolstr(parameters_.cfg().hubbard().simplified()) << std::endl;
+              << "  simplified                         : " << boolstr(parameters_.cfg().hubbard().simplified())
+              << std::endl;
     }
     out__ << "spin-orbit coupling              : " << boolstr(this->spin_orbit_coupling()) << std::endl;
     out__ << "atomic wave-functions            : ";
@@ -557,7 +559,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
                 l *= -1;
             }
         }
-        //add_beta_radial_function(l, beta);
+        // add_beta_radial_function(l, beta);
         if (spin_orbit_coupling_) {
             if (l >= 0) {
                 add_beta_radial_function(angular_momentum(l, 1), beta);
@@ -567,7 +569,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         } else {
             add_beta_radial_function(angular_momentum(l), beta);
         }
-     }
+    }
 
     mdarray<double, 2> d_mtrx({nbf, nbf});
     d_mtrx.zero();
@@ -582,9 +584,9 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
     if (parser["pseudo_potential"].count("augmentation")) {
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
-            int i = parser["pseudo_potential"]["augmentation"][k]["i"].get<int>();
-            int j = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
-            int l = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
+            int i    = parser["pseudo_potential"]["augmentation"][k]["i"].get<int>();
+            int j    = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
+            int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
             auto qij = parser["pseudo_potential"]["augmentation"][k]["radial_function"].get<std::vector<double>>();
             if ((int)qij.size() != num_mt_points()) {
                 RTE_THROW("wrong size of qij");

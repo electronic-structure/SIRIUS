@@ -2,7 +2,7 @@
 #define __SPHERIC_FUNCTION_SET_HPP__
 
 #include "unit_cell/unit_cell.hpp"
-//#include "core/strong_type.hpp"
+// #include "core/strong_type.hpp"
 
 namespace sirius {
 
@@ -30,15 +30,14 @@ class Spheric_function_set
     {
         func_.resize(unit_cell_->num_atoms());
 
-        auto set_func = [&](int ia)
-        {
+        auto set_func = [&](int ia) {
             if (sptr__) {
-                func_[ia] = Spheric_function<function_domain_t::spectral, T>(
-                            sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia,
-                            sptr__->lmmax, unit_cell_->atom(ia).radial_grid());
+                func_[ia] =
+                    Spheric_function<function_domain_t::spectral, T>(sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia,
+                                                                     sptr__->lmmax, unit_cell_->atom(ia).radial_grid());
             } else {
                 func_[ia] = Spheric_function<function_domain_t::spectral, T>(sf::lmmax(lmax__(ia)),
-                            unit_cell_->atom(ia).radial_grid());
+                                                                             unit_cell_->atom(ia).radial_grid());
             }
         };
 
@@ -60,8 +59,8 @@ class Spheric_function_set
 
     /// Constructor for all atoms.
     Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::function<lmax_t(int)> lmax__,
-            splindex_block<I> const* spl_atoms__ = nullptr,
-            spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
+                         splindex_block<I> const* spl_atoms__        = nullptr,
+                         spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , spl_atoms_{spl_atoms__}
@@ -79,7 +78,7 @@ class Spheric_function_set
 
     /// Constructor for a subset of atoms.
     Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::vector<int> atoms__,
-            std::function<lmax_t(int)> lmax__, splindex_block<I> const* spl_atoms__ = nullptr)
+                         std::function<lmax_t(int)> lmax__, splindex_block<I> const* spl_atoms__ = nullptr)
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , atoms_{atoms__}
@@ -132,7 +131,7 @@ class Spheric_function_set
     {
         for (int i = 0; i < spl_atoms__.size(); i++) {
             auto loc = spl_atoms__.location(typename I::global(i));
-            int ia = atoms_[i];
+            int ia   = atoms_[i];
             unit_cell_->comm().bcast(func_[ia].at(memory_t::host), static_cast<int>(func_[ia].size()), loc.ib);
         }
     }
@@ -148,32 +147,27 @@ class Spheric_function_set
     }
 
     template <typename T_, typename I_>
-    friend T_
-    inner(Spheric_function_set<T_, I_> const& f1__, Spheric_function_set<T_, I_> const& f2__);
+    friend T_ inner(Spheric_function_set<T_, I_> const& f1__, Spheric_function_set<T_, I_> const& f2__);
 
     template <typename T_, typename I_>
-    friend void
-    copy(Spheric_function_set<T_, I_> const& src__, Spheric_function_set<T_, I_>& dest__);
+    friend void copy(Spheric_function_set<T_, I_> const& src__, Spheric_function_set<T_, I_>& dest__);
 
     template <typename T_, typename I_>
-    friend void
-    copy(Spheric_function_set<T_, I_> const& src__, spheric_function_set_ptr_t<T_> dest__);
+    friend void copy(Spheric_function_set<T_, I_> const& src__, spheric_function_set_ptr_t<T_> dest__);
 
     template <typename T_, typename I_>
-    friend void
-    copy(spheric_function_set_ptr_t<T_> src__, Spheric_function_set<T_, I_> const& dest__);
+    friend void copy(spheric_function_set_ptr_t<T_> src__, Spheric_function_set<T_, I_> const& dest__);
 
     template <typename T_, typename I_>
-    friend void
-    scale(T_ alpha__, Spheric_function_set<T_, I_>& x__);
+    friend void scale(T_ alpha__, Spheric_function_set<T_, I_>& x__);
 
     template <typename T_, typename I_>
-    friend void
-    axpy(T_ alpha__, Spheric_function_set<T_, I_> const& x__, Spheric_function_set<T_, I_>& y__);
+    friend void axpy(T_ alpha__, Spheric_function_set<T_, I_> const& x__, Spheric_function_set<T_, I_>& y__);
 };
 
 template <typename T, typename I>
-inline T inner(Spheric_function_set<T, I> const& f1__, Spheric_function_set<T, I> const& f2__)
+inline T
+inner(Spheric_function_set<T, I> const& f1__, Spheric_function_set<T, I> const& f2__)
 {
     auto ptr = (f1__.spl_atoms_) ? f1__.spl_atoms_ : f2__.spl_atoms_;
 
@@ -226,7 +220,7 @@ copy(Spheric_function_set<T, I> const& src__, spheric_function_set_ptr_t<T> dest
     if (src__.spl_atoms_) {
         int ld = dest__.lmmax * dest__.nrmtmax;
         src__.unit_cell_->comm().allgather(dest__.ptr, ld * src__.spl_atoms_->local_size(),
-                ld * src__.spl_atoms_->global_offset());
+                                           ld * src__.spl_atoms_->global_offset());
     }
 }
 
@@ -286,6 +280,6 @@ axpy(T alpha__, Spheric_function_set<T, I> const& x__, Spheric_function_set<T, I
     }
 }
 
-}
+} // namespace sirius
 
 #endif

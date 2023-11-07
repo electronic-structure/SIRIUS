@@ -37,20 +37,34 @@ namespace fft {
 
 /// Type traits to handle Spfft grid for different precision type.
 template <typename T>
-struct SpFFT_Grid {};
+struct SpFFT_Grid
+{
+};
 
 template <>
-struct SpFFT_Grid<double> {using type = spfft::Grid;};
+struct SpFFT_Grid<double>
+{
+    using type = spfft::Grid;
+};
 
 template <>
-struct SpFFT_Grid<std::complex<double>> {using type = spfft::Grid;};
+struct SpFFT_Grid<std::complex<double>>
+{
+    using type = spfft::Grid;
+};
 
 #ifdef SIRIUS_USE_FP32
 template <>
-struct SpFFT_Grid<std::complex<float>> {using type = spfft::GridFloat;};
+struct SpFFT_Grid<std::complex<float>>
+{
+    using type = spfft::GridFloat;
+};
 
 template <>
-struct SpFFT_Grid<float> {using type = spfft::GridFloat;};
+struct SpFFT_Grid<float>
+{
+    using type = spfft::GridFloat;
+};
 #endif
 
 template <typename T>
@@ -58,32 +72,45 @@ using spfft_grid_type = typename SpFFT_Grid<T>::type;
 
 /// Type traits to handle Spfft driver for different precision type.
 template <typename T>
-struct SpFFT_Transform {};
+struct SpFFT_Transform
+{
+};
 
 template <>
-struct SpFFT_Transform<double> {using type = spfft::Transform;};
+struct SpFFT_Transform<double>
+{
+    using type = spfft::Transform;
+};
 
 template <>
-struct SpFFT_Transform<std::complex<double>> {using type = spfft::Transform;};
+struct SpFFT_Transform<std::complex<double>>
+{
+    using type = spfft::Transform;
+};
 
 #ifdef SIRIUS_USE_FP32
 template <>
-struct SpFFT_Transform<float> {using type = spfft::TransformFloat;};
+struct SpFFT_Transform<float>
+{
+    using type = spfft::TransformFloat;
+};
 
 template <>
-struct SpFFT_Transform<std::complex<float>> {using type = spfft::TransformFloat;};
+struct SpFFT_Transform<std::complex<float>>
+{
+    using type = spfft::TransformFloat;
+};
 #endif
 
 template <typename T>
 using spfft_transform_type = typename SpFFT_Transform<T>::type;
 
-const std::map<SpfftProcessingUnitType, memory_t> spfft_memory_t = {
-    {SPFFT_PU_HOST, memory_t::host},
-    {SPFFT_PU_GPU, memory_t::device}
-};
+const std::map<SpfftProcessingUnitType, memory_t> spfft_memory_t = {{SPFFT_PU_HOST, memory_t::host},
+                                                                    {SPFFT_PU_GPU, memory_t::device}};
 
-template <typename F, typename T, typename ...Args>
-using enable_return = typename std::enable_if<std::is_same<typename std::result_of<F(Args...)>::type, T>::value, void>::type;
+template <typename F, typename T, typename... Args>
+using enable_return =
+    typename std::enable_if<std::is_same<typename std::result_of<F(Args...)>::type, T>::value, void>::type;
 
 /// Load data from real-valued lambda.
 template <typename T, typename F>
@@ -137,13 +164,15 @@ spfft_input(spfft_transform_type<T>& spfft__, F&& fr__)
 
 /// Input CPU data to CPU buffer of SpFFT.
 template <typename T>
-inline void spfft_input(spfft_transform_type<T>& spfft__, T const* data__)
+inline void
+spfft_input(spfft_transform_type<T>& spfft__, T const* data__)
 {
-    spfft_input<T>(spfft__, [&](int ir){return data__[ir];});
+    spfft_input<T>(spfft__, [&](int ir) { return data__[ir]; });
 }
 
 template <typename T, typename F>
-inline void spfft_multiply(spfft_transform_type<T>& spfft__, F&& fr__)
+inline void
+spfft_multiply(spfft_transform_type<T>& spfft__, F&& fr__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
@@ -170,7 +199,8 @@ inline void spfft_multiply(spfft_transform_type<T>& spfft__, F&& fr__)
 
 /// Output CPU data from the CPU buffer of SpFFT.
 template <typename T>
-inline void spfft_output(spfft_transform_type<T>& spfft__, T* data__)
+inline void
+spfft_output(spfft_transform_type<T>& spfft__, T* data__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
@@ -196,7 +226,8 @@ inline void spfft_output(spfft_transform_type<T>& spfft__, T* data__)
 }
 
 template <typename T>
-inline void spfft_output(spfft_transform_type<T>& spfft__, std::complex<T>* data__)
+inline void
+spfft_output(spfft_transform_type<T>& spfft__, std::complex<T>* data__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
@@ -218,14 +249,16 @@ inline void spfft_output(spfft_transform_type<T>& spfft__, std::complex<T>* data
 
 /// Total size of the SpFFT transformation grid.
 template <typename T>
-inline size_t spfft_grid_size(T const& spfft__)
+inline size_t
+spfft_grid_size(T const& spfft__)
 {
     return spfft__.dim_x() * spfft__.dim_y() * spfft__.dim_z();
 }
 
 /// Local size of the SpFFT transformation grid.
 template <typename T>
-inline size_t spfft_grid_size_local(T const& spfft__)
+inline size_t
+spfft_grid_size_local(T const& spfft__)
 {
     return spfft__.local_slice_size();
 }
@@ -233,7 +266,8 @@ inline size_t spfft_grid_size_local(T const& spfft__)
 /// Split z-dimenstion of size_z between MPI ranks of the FFT communicator.
 /** SpFFT works with any z-distribution of the real-space FFT buffer. Here we split the z-dimenstion
  *  using block distribution. */
-inline auto split_z_dimension(int size_z__, mpi::Communicator const& comm_fft__)
+inline auto
+split_z_dimension(int size_z__, mpi::Communicator const& comm_fft__)
 {
     return splindex_block<>(size_z__, n_blocks(comm_fft__.size()), block_id(comm_fft__.rank()));
 }

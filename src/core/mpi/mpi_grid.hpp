@@ -91,8 +91,8 @@ class Grid
 
         /* communicator of the entire grid */
         std::vector<int> periods(dimensions_.size(), 0);
-        base_grid_communicator_ = parent_communicator_.cart_create((int)dimensions_.size(), dimensions_.data(),
-                                                                   periods.data());
+        base_grid_communicator_ =
+            parent_communicator_.cart_create((int)dimensions_.size(), dimensions_.data(), periods.data());
 
         /* total number of communicators inside the grid */
         int num_comm = 1 << dimensions_.size();
@@ -101,14 +101,14 @@ class Grid
 
         /* get all possible communicators */
         for (int i = 1; i < num_comm; i++) {
-            //bool is_root  = true;
-            //int comm_size = 1;
+            // bool is_root  = true;
+            // int comm_size = 1;
             std::vector<int> flg(dimensions_.size(), 0);
 
             /* each bit represents a directions */
             for (int j = 0; j < (int)dimensions_.size(); j++) {
                 if (i & (1 << j)) {
-                    flg[j]  = 1;
+                    flg[j] = 1;
                 }
             }
             /* subcommunicators */

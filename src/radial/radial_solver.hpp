@@ -892,8 +892,8 @@ class Bound_state : public Radial_solver
                     break;
                 }
                 case relativity_t::dirac: {
-                    nn = integrate_forward_rk4<relativity_t::dirac, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q,
-                                                                          dqdr);
+                    nn =
+                        integrate_forward_rk4<relativity_t::dirac, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr);
                     break;
                 }
                 default: {
@@ -1189,7 +1189,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                   throw std::runtime_error("not implemented"); 
+                    throw std::runtime_error("not implemented");
                 }
             }
             /* derivative at the boundary */
