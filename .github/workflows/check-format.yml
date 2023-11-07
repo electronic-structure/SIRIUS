@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check .cpp and .hpp files
         run: |
-          find ./src -name \*.cpp -o -name \*.hpp ! -name nlohmann_json.hpp | python3 check_format.py
+          find ./src -name \*.cpp -o -name \*.hpp ! -name nlohmann_json.hpp ! -name lebedev_grids.hpp | python3 check_format.py
           find ./apps -name \*.cpp -o -name \*.hpp | python3 check_format.py
           find ./python_module -maxdepth 1 -name \*.cpp -o -name \*.hpp | python3 check_format.py
 
