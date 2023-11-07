@@ -7,10 +7,6 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Check file formatting with clang-format')
 parser.add_argument('-f', '--fmt', action='store_true', help='Apply formatting to the file(s)')
-#parser.add_argument('-o', '--output', help='Output folder')
-#parser.add_argument('-a', '--action', help='Do one of the following actions: dry run, copy files, move files', default='dry', choices=["dry", "copy", "move"])
-#parser.add_argument('-d', '--date', action='store_true', help='Move/copy files to final destination folder based on their date stamps')
-#parser.add_argument('-e', '--ext', help='Allowed file extensions', nargs="+", type=str, default=['jpg', 'jpeg', 'dng'])
 args = parser.parse_args()
 
 env_copy = os.environ.copy()
