@@ -264,6 +264,12 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         dft.check_scf_density();
     }
 
+#if defined(SIRIUS_WANNIER90)
+    if (ctx.cfg().parameters().wannier()) {
+        kset.generate_w90_coeffs();
+    }
+#endif
+
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {
         auto lv = ctx.unit_cell().lattice_vectors();

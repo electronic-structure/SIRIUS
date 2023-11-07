@@ -7,11 +7,11 @@
  */
 
 #include <limits>
+#include <iomanip>
 #include "dft/smearing.hpp"
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
 #include "symmetry/get_irreducible_reciprocal_mesh.hpp"
-#include <iomanip>
 
 namespace sirius {
 

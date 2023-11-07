@@ -1,0 +1,25 @@
+include(FindPackageHandleStandardArgs)
+find_package(PkgConfig REQUIRED)
+
+find_library(SIRIUS_WANNIER90_LIBRARIES NAMES wannier wannier90
+  PATH_SUFFIXES lib
+  HINTS
+  ENV EBROOTWANNIER90
+  ENV WANNIER90_ROOT
+)
+
+find_path(SIRIUS_WANNIER90_INCLUDE_DIR NAMES w90_wannierise.mod
+  PATH_SUFFIXES modules
+  HINTS
+  ENV EBROOTWANNIER90
+  ENV WANNIER90_ROOT
+  )
+
+find_package_handle_standard_args(Wannier90 DEFAULT_MSG SIRIUS_WANNIER90_LIBRARIES SIRIUS_WANNIER90_INCLUDE_DIR)
+
+if(Wannier90_FOUND AND NOT TARGET sirius::wannier90)
+  add_library(sirius::wannier90 INTERFACE IMPORTED)
+  set_target_properties(sirius::wannier90 PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${SIRIUS_WANNIER90_INCLUDE_DIR}"
+    INTERFACE_LINK_LIBRARIES "${SIRIUS_WANNIER90_LIBRARIES}")
+endif()

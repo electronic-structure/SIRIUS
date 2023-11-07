@@ -34,6 +34,7 @@ option(SIRIUS_USE_PROFILER            "measure execution of functions with timer
 option(SIRIUS_USE_MEMORY_POOL         "use memory pool" ON)
 option(SIRIUS_USE_PUGIXML             "enable reading of UPF v2 files with pugixml" OFF)
 option(SIRIUS_USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
+option(SIRIUS_USE_WANNIER90           "use Wannier90 library" OFF)
 option(BUILD_TESTING                  "build test executables" OFF) # override default setting in CTest module
 option(SIRIUS_USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
 
@@ -191,6 +192,10 @@ if(SIRIUS_USE_VDWXC)
 endif(SIRIUS_USE_VDWXC)
 
 find_package(costa CONFIG REQUIRED)
+
+if(SIRIUS_USE_WANNIER90)
+  find_package(Wannier90 REQUIRED)
+endif()
 
 if(SIRIUS_USE_CUDA)
   enable_language(CUDA)

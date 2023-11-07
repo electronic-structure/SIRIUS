@@ -157,7 +157,7 @@ K_point<T>::initialize()
         spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(ctx_.num_mag_dims()),
                                                                          wf::num_bands(nst), ctx_.host_memory_t());
 
-        if (ctx_.hubbard_correction()) {
+        if (ctx_.hubbard_correction() || ctx_.cfg().parameters().wannier()) {
             /* allocate Hubbard wave-functions */
             int nwfh = unit_cell_.num_hubbard_wf().first;
             int nwf  = unit_cell_.num_ps_atomic_wf().first;
