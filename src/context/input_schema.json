@@ -642,6 +642,11 @@
                     "default" : "auto",
                     "enum" : ["auto", "fp32", "fp64"],
                     "title" : "The final floating point precision of the ground state DFT calculation (dev options)."
+                },
+                "wannier" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "True if Wannier functions have to be computed."
                 }
             }
         },

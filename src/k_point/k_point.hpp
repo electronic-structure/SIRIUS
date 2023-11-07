@@ -370,6 +370,7 @@ class K_point
         comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
     }
 
+    /// Return const. reference to G+k vector object.
     inline auto const& gkvec() const
     {
         return *gkvec_;

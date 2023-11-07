@@ -1353,6 +1353,18 @@ class config_t
             }
             dict_["/parameters/precision_gs"_json_pointer] = precision_gs__;
         }
+        /// True if Wannier functions have to be computed.
+        inline auto wannier() const
+        {
+            return dict_.at("/parameters/wannier"_json_pointer).get<bool>();
+        }
+        inline void wannier(bool wannier__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/wannier"_json_pointer] = wannier__;
+        }
       private:
         nlohmann::json& dict_;
     };
