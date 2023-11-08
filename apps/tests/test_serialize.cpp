@@ -2,20 +2,21 @@
 
 using namespace sirius;
 
-int test1()
+int
+test1()
 {
     int a1{100};
     double b1{200.88};
-    
+
     std::vector<std::complex<float>> c1;
     c1.push_back(std::complex<float>(1.2f, 2.3f));
     c1.push_back(std::complex<float>(3.5f, 4.6f));
     c1.push_back(std::complex<float>(-3.14f, -6.99f));
 
-    std::complex<double> d1(4.464663636,10.37374992921);
+    std::complex<double> d1(4.464663636, 10.37374992921);
 
     mdarray<double, 2> m1(4, 5);
-    m1 = [](uint64_t i1, uint64_t i2){return type_wrapper<double>::random();};
+    m1 = [](uint64_t i1, uint64_t i2) { return type_wrapper<double>::random(); };
 
     vector3d<double> v1{1.1, 2.2, 3.3};
     matrix3d<double> u1{{4.4, 5.5, 6.6}, {1.2, 2.43334, 4.56666}, {400.333, 1e14, 2.33e20}};
@@ -76,7 +77,8 @@ int test1()
     return 0;
 };
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -91,9 +93,15 @@ int main(int argn, char** argv)
     printf("%-30s", "testing serialization: ");
     int result = test1();
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     sirius::finalize();
 

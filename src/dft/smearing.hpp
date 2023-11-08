@@ -50,10 +50,10 @@ get_smearing_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
     std::map<std::string, smearing_t> const m = {
-        {"gaussian", smearing_t::gaussian},
-        {"fermi_dirac", smearing_t::fermi_dirac},
-        {"cold", smearing_t::cold},
-        {"methfessel_paxton", smearing_t::methfessel_paxton},
+            {"gaussian", smearing_t::gaussian},
+            {"fermi_dirac", smearing_t::fermi_dirac},
+            {"cold", smearing_t::cold},
+            {"methfessel_paxton", smearing_t::methfessel_paxton},
     };
 
     if (m.count(name__) == 0) {
@@ -66,31 +66,42 @@ get_smearing_t(std::string name__)
 
 struct gaussian
 {
-    static double delta(double x__, double width__);
-    static double occupancy(double x__, double width__);
-    static double entropy(double x__, double width__);
+    static double
+    delta(double x__, double width__);
+    static double
+    occupancy(double x__, double width__);
+    static double
+    entropy(double x__, double width__);
 };
 
 struct fermi_dirac
 {
-    static double dxdelta(double x__, double width__);
-    static double delta(double x__, double width__);
-    static double occupancy(double x__, double width__);
-    static double entropy(double x__, double width__);
+    static double
+    dxdelta(double x__, double width__);
+    static double
+    delta(double x__, double width__);
+    static double
+    occupancy(double x__, double width__);
+    static double
+    entropy(double x__, double width__);
 };
 
 struct cold
 {
-    static double delta(double x__, double width__);
-    static double occupancy(double x__, double width__);
-    static double entropy(double x__, double width__);
+    static double
+    delta(double x__, double width__);
+    static double
+    occupancy(double x__, double width__);
+    static double
+    entropy(double x__, double width__);
 
     /** Second derivative of the occupation function \f$f(x,w)\f$.
      *   \f[
      *     \frac{\partial^2 f(x,w)}{\partial x^2} = \frac{e^{-y^2} \left(2 \sqrt{2} y^2-2 y-\sqrt{2}\right)}{\sqrt{\pi }
      * w^2}, \qquad y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
      */
-    static double dxdelta(double x__, double width__);
+    static double
+    dxdelta(double x__, double width__);
 };
 
 /** Methfessel-Paxton smearing.
@@ -101,10 +112,14 @@ struct cold
  */
 struct methfessel_paxton
 {
-    static double dxdelta(double x__, double width__, int n__);
-    static double delta(double x__, double width__, int n__);
-    static double occupancy(double x__, double width__, int n__);
-    static double entropy(double x__, double width__, int n__);
+    static double
+    dxdelta(double x__, double width__, int n__);
+    static double
+    delta(double x__, double width__, int n__);
+    static double
+    occupancy(double x__, double width__, int n__);
+    static double
+    entropy(double x__, double width__, int n__);
 };
 
 inline std::function<double(double)>

@@ -30,12 +30,14 @@
 
 namespace sirius {
 
-/// Compute gradient of beta-projectors over atomic positions \f$ d \langle {\bf G+k} | \beta \rangle / d \tau_{\alpha} \f$.
+/// Compute gradient of beta-projectors over atomic positions \f$ d \langle {\bf G+k} | \beta \rangle / d \tau_{\alpha}
+/// \f$.
 template <typename T>
-class Beta_projectors_gradient: public Beta_projectors_base<T>
+class Beta_projectors_gradient : public Beta_projectors_base<T>
 {
   private:
-    void generate_pw_coefs_t(Beta_projectors<T>& beta__)
+    void
+    generate_pw_coefs_t(Beta_projectors<T>& beta__)
     {
         if (!this->num_beta_t()) {
             return;
@@ -45,7 +47,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<T>
             #pragma omp parallel for
             for (int i = 0; i < this->num_beta_t(); i++) {
                 for (int igkloc = 0; igkloc < this->num_gkvec_loc(); igkloc++) {
-                    auto vgc = this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc);
+                    auto vgc                         = this->gkvec_.template gkvec_cart<index_domain_t::local>(igkloc);
                     this->pw_coeffs_t_(igkloc, i, x) = std::complex<T>(0, -vgc[x]) * beta__.pw_coeffs_t(igkloc, i, 0);
                 }
             }

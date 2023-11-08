@@ -3,7 +3,8 @@
 
 using namespace sirius;
 
-int test1()
+int
+test1()
 {
     for (int num_ranks = 1; num_ranks < 20; num_ranks++) {
         for (int N = 1; N < 1130; N++) {
@@ -24,7 +25,7 @@ int test1()
                 throw std::runtime_error(s.str());
             }
             for (int i = 0; i < N; i++) {
-                int rank = spl.location(block_id(i)).ib;
+                int rank   = spl.location(block_id(i)).ib;
                 int offset = spl.location(block_id(i)).index_local;
                 if (i != (int)spl.global_index(offset, block_id(rank))) {
                     std::stringstream s;
@@ -42,7 +43,8 @@ int test1()
     return 0;
 }
 
-int test2()
+int
+test2()
 {
     for (int bs = 1; bs < 17; bs++) {
         for (int num_ranks = 1; num_ranks < 13; num_ranks++) {
@@ -66,7 +68,7 @@ int test2()
                 }
 
                 for (int i = 0; i < N; i++) {
-                    int rank = spl.location(block_id(i)).ib;
+                    int rank   = spl.location(block_id(i)).ib;
                     int offset = spl.location(block_id(i)).index_local;
                     if (i != (int)spl.global_index(offset, block_id(rank))) {
                         std::stringstream s;
@@ -87,7 +89,8 @@ int test2()
     return 0;
 }
 
-int test3()
+int
+test3()
 {
     for (int num_ranks = 1; num_ranks < 20; num_ranks++) {
         for (int N = 1; N < 1130; N++) {
@@ -96,7 +99,7 @@ int test3()
             splindex_chunk<> spl(N, n_blocks(num_ranks), block_id(0), spl_tmp.counts());
 
             for (int i = 0; i < N; i++) {
-                int rank = spl.location(block_id(i)).ib;
+                int rank   = spl.location(block_id(i)).ib;
                 int offset = spl.location(block_id(i)).index_local;
                 if (i != spl.global_index(offset, block_id(rank))) {
                     std::stringstream s;
@@ -109,7 +112,8 @@ int test3()
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     int err{0};
     err += call_test("test block index", test1);

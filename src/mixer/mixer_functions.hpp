@@ -36,15 +36,20 @@ namespace sirius {
 
 namespace mixer {
 
-FunctionProperties<Periodic_function<double>> periodic_function_property();
+FunctionProperties<Periodic_function<double>>
+periodic_function_property();
 
-FunctionProperties<Periodic_function<double>> periodic_function_property_modified(bool use_coarse_gvec__);
+FunctionProperties<Periodic_function<double>>
+periodic_function_property_modified(bool use_coarse_gvec__);
 
-FunctionProperties<density_matrix_t> density_function_property();
+FunctionProperties<density_matrix_t>
+density_function_property();
 
-FunctionProperties<PAW_density<double>> paw_density_function_property();
+FunctionProperties<PAW_density<double>>
+paw_density_function_property();
 
-FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property();
+FunctionProperties<Hubbard_matrix>
+hubbard_matrix_function_property();
 
 } // namespace mixer
 

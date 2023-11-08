@@ -99,9 +99,9 @@ class basis_functions_index
                 /* index of this block starts from the current size of basis functions descriptor */
                 auto size = this->size();
 
-                //if (e.am.s() != 0) {
-                //    RTE_THROW("full-j radial function index is not allowed here");
-                //}
+                // if (e.am.s() != 0) {
+                //     RTE_THROW("full-j radial function index is not allowed here");
+                // }
                 if (e.idxrf == indexr_.index_of(rf_lo_index(0))) {
                     offset_lo_ = size;
                 }
@@ -129,13 +129,15 @@ class basis_functions_index
         }
     }
     /// Return total number of MT basis functions.
-    inline int size() const
+    inline int
+    size() const
     {
         return static_cast<int>(vbd_.size());
     }
 
     /// Return size of AW part of basis functions in case of LAPW.
-    inline auto size_aw() const
+    inline auto
+    size_aw() const
     {
         if (offset_lo_ == -1) {
             return this->size();
@@ -145,7 +147,8 @@ class basis_functions_index
     }
 
     /// Return size of local-orbital part of basis functions in case of LAPW.
-    inline auto size_lo() const
+    inline auto
+    size_lo() const
     {
         if (offset_lo_ == -1) {
             return 0;
@@ -154,54 +157,63 @@ class basis_functions_index
         }
     }
 
-    inline int index_by_l_m_order(int l, int m, int order) const
+    inline int
+    index_by_l_m_order(int l, int m, int order) const
     {
         return index_by_lm_order_(sf::lm(l, m), order);
     }
 
-    inline int index_by_lm_order(int lm, int order) const
+    inline int
+    index_by_lm_order(int lm, int order) const
     {
         return index_by_lm_order_(lm, order);
     }
 
-    inline int index_of(rf_index idxrf__) const
+    inline int
+    index_of(rf_index idxrf__) const
     {
         return offset_[idxrf__];
     }
 
     /// Return descriptor of the given basis function.
-    inline auto const& operator[](int i) const
+    inline auto const&
+    operator[](int i) const
     {
         RTE_ASSERT(i >= 0 && i < this->size());
         return vbd_[i];
     }
 
-    inline auto begin() const
+    inline auto
+    begin() const
     {
         return vbd_.begin();
     }
 
-    inline auto end() const
+    inline auto
+    end() const
     {
         return vbd_.end();
     }
 
-    auto const& indexr() const
+    auto const&
+    indexr() const
     {
         return indexr_;
     }
 };
 
-inline auto begin(basis_functions_index const& idx__)
+inline auto
+begin(basis_functions_index const& idx__)
 {
     return idx__.begin();
 }
 
-inline auto end(basis_functions_index const& idx__)
+inline auto
+end(basis_functions_index const& idx__)
 {
     return idx__.end();
 }
 
-}
+} // namespace sirius
 
 #endif

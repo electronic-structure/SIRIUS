@@ -93,7 +93,8 @@ class any_ptr
     }
     /// Cast pointer to a given type and return a reference.
     template <typename T>
-    T& get() const
+    T&
+    get() const
     {
         return *static_cast<T*>(ptr_);
     }

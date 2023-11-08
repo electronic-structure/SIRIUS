@@ -41,19 +41,22 @@ namespace sirius {
 namespace sf {
 
 /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
-inline int lmmax(int lmax)
+inline int
+lmmax(int lmax)
 {
     return (lmax + 1) * (lmax + 1);
 }
 
 /// Get composite lm index by angular index l and azimuthal index m.
-inline int lm(int l, int m)
+inline int
+lm(int l, int m)
 {
     return (l * l + l + m);
 }
 
 /// Get maximum orbital quantum number by the maximum lm index.
-inline int lmax(int lmmax__)
+inline int
+lmax(int lmmax__)
 {
     RTE_ASSERT(lmmax__ >= 0);
     int lmax = static_cast<int>(std::sqrt(static_cast<double>(lmmax__)) + 1e-8) - 1;
@@ -66,7 +69,8 @@ inline int lmax(int lmmax__)
 }
 
 /// Get array of orbital quantum numbers for each lm component.
-inline std::vector<int> l_by_lm(int lmax__)
+inline std::vector<int>
+l_by_lm(int lmax__)
 {
     std::vector<int> v(lmmax(lmax__));
     for (int l = 0; l <= lmax__; l++) {
@@ -77,21 +81,24 @@ inline std::vector<int> l_by_lm(int lmax__)
     return v;
 }
 
-inline double hermiteh(int n, double x)
+inline double
+hermiteh(int n, double x)
 {
     // phycisists Hermite polynomials,
     // https://www.gnu.org/software/gsl/doc/html/specfunc.html#c.gsl_sf_hermite
     return gsl_sf_hermite(n, x);
 }
 
-inline std::vector<double> hermiteh_array(int n, double x)
+inline std::vector<double>
+hermiteh_array(int n, double x)
 {
     std::vector<double> result(n);
     gsl_sf_hermite_array(n, x, result.data());
     return result;
 }
 
-inline double hermiteh_series(int n, double x, const double* a)
+inline double
+hermiteh_series(int n, double x, const double* a)
 {
     return gsl_sf_hermite_series(n, x, a);
 }
@@ -120,7 +127,8 @@ inline double hermiteh_series(int n, double x, const double* a)
     \f]
  */
 template <typename T, typename F>
-inline void legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__)
+inline void
+legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__)
 {
     /* reference paper:
        Associated Legendre Polynomials and Spherical Harmonics Computation for Chemistry Applications
@@ -208,7 +216,8 @@ inline void legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__)
     See sirius::legendre_plm() for basic definitions.
  */
 template <typename T, typename F>
-inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, T* p1lm__, T* p2lm__)
+inline void
+legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, T* p1lm__, T* p2lm__)
 {
     double y = std::sqrt(1 - x__ * x__);
 
@@ -234,8 +243,8 @@ inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, 
         for (int l = m + 2; l <= lmax__; l++) {
             double alm = std::sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
             double blm = std::sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
-            p1lm__[ilm__(l, m)] = alm * (x__ * p1lm__[ilm__(l - 1, m)] + y * plm__[ilm__(l - 1, m)] -
-                blm * p1lm__[ilm__(l - 2, m)]);
+            p1lm__[ilm__(l, m)] =
+                    alm * (x__ * p1lm__[ilm__(l - 1, m)] + y * plm__[ilm__(l - 1, m)] - blm * p1lm__[ilm__(l - 2, m)]);
             p2lm__[ilm__(l, m)] = alm * (x__ * p2lm__[ilm__(l - 1, m)] - blm * p2lm__[ilm__(l - 2, m)]);
         }
     }
@@ -270,7 +279,8 @@ inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, 
         Assumptions -> {0 <= t <= Pi}]]], {l, 0, 4}, {m, 0, l}]
     \endverbatim
  */
-inline void spherical_harmonics_ref(int lmax, double theta, double phi, std::complex<double>* ylm)
+inline void
+spherical_harmonics_ref(int lmax, double theta, double phi, std::complex<double>* ylm)
 {
     double x = std::cos(theta);
 
@@ -295,7 +305,8 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, std::com
 }
 
 /// Optimized implementation of complex spherical harmonics.
-inline void spherical_harmonics(int lmax, double theta, double phi, std::complex<double>* ylm)
+inline void
+spherical_harmonics(int lmax, double theta, double phi, std::complex<double>* ylm)
 {
     double x = std::cos(theta);
 
@@ -311,15 +322,15 @@ inline void spherical_harmonics(int lmax, double theta, double phi, std::complex
 
     for (int m = 1; m <= lmax; m++) {
         double c = c2 * c1 - c0;
-        c0 = c1;
-        c1 = c;
+        c0       = c1;
+        c1       = c;
         double s = c2 * s1 - s0;
-        s0 = s1;
-        s1 = s;
+        s0       = s1;
+        s1       = s;
         for (int l = m; l <= lmax; l++) {
-            double p = std::real(ylm[sf::lm(l, m)]);
-            double p1 = p * phase;
-            ylm[sf::lm(l, m)] = std::complex<double>(p * c, p * s);
+            double p           = std::real(ylm[sf::lm(l, m)]);
+            double p1          = p * phase;
+            ylm[sf::lm(l, m)]  = std::complex<double>(p * c, p * s);
             ylm[sf::lm(l, -m)] = std::complex<double>(p1 * c, -p1 * s);
         }
         phase = -phase;
@@ -371,7 +382,8 @@ inline void spherical_harmonics(int lmax, double theta, double phi, std::complex
 
     \endverbatim
  */
-inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* rlm)
+inline void
+spherical_harmonics_ref(int lmax, double theta, double phi, double* rlm)
 {
     /* reference code */
     int lmmax = (lmax + 1) * (lmax + 1);
@@ -393,7 +405,8 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* 
 }
 
 /// Optimized implementation of real spherical harmonics.
-inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
+inline void
+spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 {
     double x = std::cos(theta);
 
@@ -411,14 +424,14 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 
     for (int m = 1; m <= lmax; m++) {
         double c = c2 * c1 - c0;
-        c0 = c1;
-        c1 = c;
+        c0       = c1;
+        c1       = c;
         double s = c2 * s1 - s0;
-        s0 = s1;
-        s1 = s;
+        s0       = s1;
+        s1       = s;
         for (int l = m; l <= lmax; l++) {
-            double p = rlm[sf::lm(l, m)];
-            rlm[sf::lm(l, m)] = t * p * c;
+            double p           = rlm[sf::lm(l, m)];
+            rlm[sf::lm(l, m)]  = t * p * c;
             rlm[sf::lm(l, -m)] = -t * p * s * phase;
         }
         phase = -phase;
@@ -426,7 +439,8 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 }
 
 /// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
-inline mdarray<double, 1> cosxn(int n__, double x__)
+inline mdarray<double, 1>
+cosxn(int n__, double x__)
 {
     assert(n__ > 0);
     mdarray<double, 1> data({n__});
@@ -436,14 +450,15 @@ inline mdarray<double, 1> cosxn(int n__, double x__)
     double c2 = 2 * c0;
     for (int m = 0; m < n__; m++) {
         data[m] = c2 * c1 - c0;
-        c0 = c1;
-        c1 = data[m];
+        c0      = c1;
+        c1      = data[m];
     }
     return data;
 }
 
 /// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
-inline mdarray<double, 1> sinxn(int n__, double x__)
+inline mdarray<double, 1>
+sinxn(int n__, double x__)
 {
     assert(n__ > 0);
     mdarray<double, 1> data({n__});
@@ -454,8 +469,8 @@ inline mdarray<double, 1> sinxn(int n__, double x__)
 
     for (int m = 0; m < n__; m++) {
         data[m] = c2 * s1 - s0;
-        s0 = s1;
-        s1 = data[m];
+        s0      = s1;
+        s1      = data[m];
     }
     return data;
 }
@@ -479,9 +494,9 @@ inline mdarray<double, 1> sinxn(int n__, double x__)
        \frac{\partial \phi_r}{\partial r_{y}} = \frac{\cos(\phi_r)}{\sin(\theta_r) r} \\
        \frac{\partial \phi_r}{\partial r_{z}} = 0
     \f]
-    The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
-    multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
-    \f[
+    The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a
+   problem, because multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have
+   to be hardcoded: \f[
       \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
       \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)}
     \f]
@@ -509,7 +524,8 @@ inline mdarray<double, 1> sinxn(int n__, double x__)
     Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
     \endverbatim
  */
-inline void dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
+inline void
+dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
     /* get spherical coordinates of the Cartesian vector */
     auto vrs = r3::spherical_coordinates(r__);
@@ -522,7 +538,7 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& dat
     int lmmax = (lmax__ + 1) * (lmax__ + 1);
 
     double theta = vrs[1];
-    double phi = vrs[2];
+    double phi   = vrs[2];
 
     double sint = std::sin(theta);
     double sinp = std::sin(phi);
@@ -540,9 +556,9 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& dat
     std::vector<double> dplm((lmax__ + 1) * (lmax__ + 2) / 2);
     std::vector<double> plm_y((lmax__ + 1) * (lmax__ + 2) / 2);
 
-    auto ilm = [](int l, int m){return l * (l + 1) / 2 + m;};
+    auto ilm = [](int l, int m) { return l * (l + 1) / 2 + m; };
 
-    dRlm_dt[0] = 0;
+    dRlm_dt[0]       = 0;
     dRlm_dp_sin_t[0] = 0;
 
     /* compute Legendre polynomials */
@@ -559,24 +575,24 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& dat
     double const t = std::sqrt(2.0);
 
     for (int l = 0; l <= lmax__; l++) {
-       dRlm_dt[sf::lm(l, 0)] = -dplm[ilm(l, 0)];
-       dRlm_dp_sin_t[sf::lm(l, 0)] = 0;
+        dRlm_dt[sf::lm(l, 0)]       = -dplm[ilm(l, 0)];
+        dRlm_dp_sin_t[sf::lm(l, 0)] = 0;
     }
 
     int phase{-1};
     for (int m = 1; m <= lmax__; m++) {
         double c = c2 * c1 - c0;
-        c0 = c1;
-        c1 = c;
+        c0       = c1;
+        c1       = c;
         double s = c2 * s1 - s0;
-        s0 = s1;
-        s1 = s;
+        s0       = s1;
+        s1       = s;
         for (int l = m; l <= lmax__; l++) {
-            double p = -dplm[ilm(l, m)];
-            dRlm_dt[sf::lm(l, m)] = t * p * c;
-            dRlm_dt[sf::lm(l, -m)] = -t * p * s * phase;
-            p = plm_y[ilm(l, m)];
-            dRlm_dp_sin_t[sf::lm(l, m)] = -t * p * s * m;
+            double p                     = -dplm[ilm(l, m)];
+            dRlm_dt[sf::lm(l, m)]        = t * p * c;
+            dRlm_dt[sf::lm(l, -m)]       = -t * p * s * phase;
+            p                            = plm_y[ilm(l, m)];
+            dRlm_dp_sin_t[sf::lm(l, m)]  = -t * p * s * m;
             dRlm_dp_sin_t[sf::lm(l, -m)] = -t * p * c * m * phase;
         }
 
@@ -594,7 +610,8 @@ inline void dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& dat
     }
 }
 
-inline void dRlm_dr_numerical(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
+inline void
+dRlm_dr_numerical(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
     /* get spherical coordinates of the Cartesian vector */
     auto vrs = r3::spherical_coordinates(r__);

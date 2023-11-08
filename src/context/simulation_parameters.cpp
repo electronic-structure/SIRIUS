@@ -170,9 +170,9 @@ Simulation_parameters::import(cmd_args const& args__)
     cfg_.control().processing_unit(args__.value("control.processing_unit", cfg_.control().processing_unit()));
     cfg_.control().mpi_grid_dims(args__.value("control.mpi_grid_dims", cfg_.control().mpi_grid_dims()));
     cfg_.control().std_evp_solver_name(
-        args__.value("control.std_evp_solver_name", cfg_.control().std_evp_solver_name()));
+            args__.value("control.std_evp_solver_name", cfg_.control().std_evp_solver_name()));
     cfg_.control().gen_evp_solver_name(
-        args__.value("control.gen_evp_solver_name", cfg_.control().gen_evp_solver_name()));
+            args__.value("control.gen_evp_solver_name", cfg_.control().gen_evp_solver_name()));
     cfg_.control().fft_mode(args__.value("control.fft_mode", cfg_.control().fft_mode()));
     cfg_.control().verbosity(args__.value("control.verbosity", cfg_.control().verbosity()));
     cfg_.control().verification(args__.value("control.verification", cfg_.control().verification()));
@@ -183,7 +183,7 @@ Simulation_parameters::import(cmd_args const& args__)
     cfg_.parameters().gk_cutoff(args__.value("parameters.gk_cutoff", cfg_.parameters().gk_cutoff()));
 
     cfg_.iterative_solver().early_restart(
-        args__.value("iterative_solver.early_restart", cfg_.iterative_solver().early_restart()));
+            args__.value("iterative_solver.early_restart", cfg_.iterative_solver().early_restart()));
     cfg_.mixer().beta(args__.value("mixer.beta", cfg_.mixer().beta()));
     cfg_.mixer().type(args__.value("mixer.type", cfg_.mixer().type()));
 }
@@ -230,8 +230,8 @@ Simulation_parameters::electronic_structure_method(std::string name__)
     cfg_.parameters().electronic_structure_method(name__);
 
     std::map<std::string, electronic_structure_method_t> m = {
-        {"full_potential_lapwlo", electronic_structure_method_t::full_potential_lapwlo},
-        {"pseudopotential", electronic_structure_method_t::pseudopotential}};
+            {"full_potential_lapwlo", electronic_structure_method_t::full_potential_lapwlo},
+            {"pseudopotential", electronic_structure_method_t::pseudopotential}};
 
     if (m.count(name__) == 0) {
         std::stringstream s;

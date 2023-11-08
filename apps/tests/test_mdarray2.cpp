@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-mdarray<double_complex, 1>& buf(size_t size__)
+mdarray<double_complex, 1>&
+buf(size_t size__)
 {
     static mdarray<double_complex, 1> buf_;
     if (buf_.size() < size__) {
@@ -11,7 +12,7 @@ mdarray<double_complex, 1>& buf(size_t size__)
     return buf_;
 }
 
-struct A 
+struct A
 {
     static mdarray<double, 1> a;
 
@@ -25,11 +26,10 @@ struct A
     {
         a.deallocate_on_device();
     }
-
-
 };
 
-int main(int argn, char **argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(1);
 
@@ -43,10 +43,9 @@ int main(int argn, char **argv)
 
     A a;
 
-
-    #ifndef NDEBUG
+#ifndef NDEBUG
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
-    #endif
+#endif
 
     sirius::finalize();
 }

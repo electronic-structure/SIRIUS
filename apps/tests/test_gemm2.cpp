@@ -11,9 +11,8 @@ typedef std::complex<double> gemm_type;
 int const nop_gemm = 8;
 #endif
 
-
-double test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memory_t memB__,
-                 memory_t memC__)
+double
+test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memory_t memB__, memory_t memC__)
 {
     mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
@@ -32,7 +31,7 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA_
     if (!is_host_memory(memA__)) {
         a.allocate(memory_t::host);
     }
-    a = [](int64_t i, int64_t j){return random<gemm_type>();};
+    a = [](int64_t i, int64_t j) {  return random<gemm_type>(); };
     if (!is_host_memory(memA__)) {
         a.copy_to(memory_t::device);
     }
@@ -40,7 +39,7 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA_
     if (!is_host_memory(memB__)) {
         b.allocate(memory_t::host);
     }
-    b = [](int64_t i, int64_t j){return random<gemm_type>();};
+    b = [](int64_t i, int64_t j) {  return random<gemm_type>(); };
     if (!is_host_memory(memB__)) {
         b.copy_to(memory_t::device);
     }
@@ -57,10 +56,8 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA_
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     double t = -::sirius::wtime();
-    la::wrap(la__).gemm(TA[transa], 'N', M, N, K, &la::constant<gemm_type>::one(),
-                       a.at(memA__), a.ld(), b.at(memB__), b.ld(),
-                       &la::constant<gemm_type>::zero(),
-                       c.at(memC__), c.ld());
+    la::wrap(la__).gemm(TA[transa], 'N', M, N, K, &la::constant<gemm_type>::one(), a.at(memA__), a.ld(), b.at(memB__),
+                        b.ld(), &la::constant<gemm_type>::zero(), c.at(memC__), c.ld());
     double t2 = t + ::sirius::wtime();
     if (is_device_memory(memC__)) {
         c.copy_to(memory_t::host);
@@ -75,7 +72,8 @@ double test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA_
     return perf;
 }
 
-int main(int argn, char **argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--M=", "{int} M");
@@ -104,9 +102,9 @@ int main(int argn, char **argv)
     int repeat = args.value<int>("repeat", 5);
 
     std::string lib_t_str = args.value<std::string>("lib_t", "blas");
-    auto memA = get_memory_t(args.value<std::string>("memA", "host"));
-    auto memB = get_memory_t(args.value<std::string>("memB", "host"));
-    auto memC = get_memory_t(args.value<std::string>("memC", "host"));
+    auto memA             = get_memory_t(args.value<std::string>("memA", "host"));
+    auto memB             = get_memory_t(args.value<std::string>("memB", "host"));
+    auto memC             = get_memory_t(args.value<std::string>("memC", "host"));
 
     sirius::initialize(true);
 

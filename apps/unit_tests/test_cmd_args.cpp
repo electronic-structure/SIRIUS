@@ -4,7 +4,8 @@
 
 using namespace sirius;
 
-int run_test(cmd_args const& args)
+int
+run_test(cmd_args const& args)
 {
     auto i1 = args.value<int>("i1");
     if (i1 != 100) {
@@ -32,7 +33,7 @@ int run_test(cmd_args const& args)
 
     std::array<int, 3> a{0, 0, 0};
     auto vi2 = args.value("vi1", a);
-    ok = true;
+    ok       = true;
     if (vi2[0] != 1 || vi2[1] != 4 || vi2[2] != 3) {
         ok = false;
     }
@@ -44,15 +45,15 @@ int run_test(cmd_args const& args)
     return 0;
 }
 
-int main(int arg, char** argv)
+int
+main(int arg, char** argv)
 {
     const char* param[] = {"test_cmd_args", "--i1=100", "--d1=3.14", "--vi1=1:4:3"};
 
-    cmd_args args(4, (char**)param, {
-        {"i1=", "(int) integer parameter"},
-        {"d1=", "(double) double parameter"},
-        {"vi1=", "(vector<int>) vector of integers"}
-    });
+    cmd_args args(4, (char**)param,
+                  {{"i1=", "(int) integer parameter"},
+                   {"d1=", "(double) double parameter"},
+                   {"vi1=", "(vector<int>) vector of integers"}});
 
     return sirius::call_test(argv[0], run_test, args);
 }

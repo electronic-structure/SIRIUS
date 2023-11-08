@@ -2,12 +2,13 @@
 
 using namespace sirius;
 
-void test_gvec_send_recv(double cutoff__)
+void
+test_gvec_send_recv(double cutoff__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
     MPI_grid mpi_grid({2, 2}, mpi_comm_world());
-    //MPI_grid mpi_grid({1, 1}, mpi_comm_world());
+    // MPI_grid mpi_grid({1, 1}, mpi_comm_world());
 
     Gvec gvec(mpi_grid.communicator(1 << 0));
 
@@ -26,7 +27,8 @@ void test_gvec_send_recv(double cutoff__)
     gvec.send_recv(comm_k, 0, 0, gvec1);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test(vector3d<double> G)
+void
+test(vector3d<double> G)
 {
     int lmax{7};
 
@@ -22,14 +23,14 @@ void test(vector3d<double> G)
     Spherical_Bessel_functions::sbessel(lmax, r * vgs[0], jl);
 
     std::vector<double> rlm(Utils::lmmax(lmax));
-    
+
     double diff{0};
     for (int i = 0; i < sht.num_points(); i++) {
         SHT::spherical_harmonics(lmax, sht.theta(i), sht.phi(i), &rlm[0]);
         auto coord = sht.coord(i);
 
         double_complex z(0, 0);
-        
+
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 int lm = Utils::lm_by_l_m(l, m);
@@ -42,8 +43,8 @@ void test(vector3d<double> G)
     std::cout << "diff=" << diff << std::endl;
 }
 
-
-void test1(int mu, vector3d<double> G)
+void
+test1(int mu, vector3d<double> G)
 {
     int lmax{7};
 
@@ -54,14 +55,13 @@ void test1(int mu, vector3d<double> G)
 
     auto vgs = SHT::spherical_coordinates(G);
 
-
     double theta = vgs[1];
     double phi   = vgs[2];
 
     std::vector<double> rlm_g(lmmax);
     SHT::spherical_harmonics(lmax, theta, phi, &rlm_g[0]);
 
-    mdarray<double ,2> rlm_dg(lmmax, 3);
+    mdarray<double, 2> rlm_dg(lmmax, 3);
 
     SHT::dRlm_dr(lmax, G, rlm_dg);
 
@@ -73,18 +73,19 @@ void test1(int mu, vector3d<double> G)
     double jl_dq[lmax + 1];
     std::cout << "computing djl" << std::endl;
     Spherical_Bessel_functions::sbessel_deriv_q(lmax, vgs[0], r, &jl_dq[0]);
-    
+
     double diff{0};
     for (int i = 0; i < sht.num_points(); i++) {
         SHT::spherical_harmonics(lmax, sht.theta(i), sht.phi(i), &rlm[0]);
         auto coord = sht.coord(i);
 
         double_complex z(0, 0);
-        
+
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 int lm = Utils::lm_by_l_m(l, m);
-                z += fourpi * std::pow(double_complex(0, 1), l) * rlm[lm] * (rlm_g[lm] * jl_dq[l] * G[mu] / vgs[0] + rlm_dg(lm, mu) * jl[l]);
+                z += fourpi * std::pow(double_complex(0, 1), l) * rlm[lm] *
+                     (rlm_g[lm] * jl_dq[l] * G[mu] / vgs[0] + rlm_dg(lm, mu) * jl[l]);
             }
         }
 
@@ -92,10 +93,10 @@ void test1(int mu, vector3d<double> G)
     }
 
     std::cout << "derivatives diff=" << diff << std::endl;
-
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -123,7 +124,7 @@ int main(int argn, char** argv)
     test1(0, {0.0, 0, 0.4});
     test1(1, {0.0, 0, 0.4});
     test1(2, {0.0, 0, 0.4});
-    
+
     test1(0, {0.1, 0.2, 0.3});
     test1(1, {0.1, 0.2, 0.3});
     test1(2, {0.1, 0.2, 0.3});

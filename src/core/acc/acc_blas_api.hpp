@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file acc_blas_api.hpp
@@ -44,64 +44,64 @@ namespace acc {
 namespace blas_api {
 
 #if defined(SIRIUS_CUDA)
-using handle_t = cublasHandle_t;
-using status_t = cublasStatus_t;
-using operation_t = cublasOperation_t;
-using side_mode_t = cublasSideMode_t;
-using diagonal_t = cublasDiagType_t;
-using fill_mode_t = cublasFillMode_t;
-using complex_float_t = cuComplex;
+using handle_t         = cublasHandle_t;
+using status_t         = cublasStatus_t;
+using operation_t      = cublasOperation_t;
+using side_mode_t      = cublasSideMode_t;
+using diagonal_t       = cublasDiagType_t;
+using fill_mode_t      = cublasFillMode_t;
+using complex_float_t  = cuComplex;
 using complex_double_t = cuDoubleComplex;
 #endif
 
 #if defined(SIRIUS_ROCM)
-using handle_t = rocblas_handle;
-using status_t = rocblas_status;
-using operation_t = rocblas_operation;
-using side_mode_t = rocblas_side;
-using diagonal_t = rocblas_diagonal;
-using fill_mode_t = rocblas_fill;
-using complex_float_t = rocblas_float_complex;
+using handle_t         = rocblas_handle;
+using status_t         = rocblas_status;
+using operation_t      = rocblas_operation;
+using side_mode_t      = rocblas_side;
+using diagonal_t       = rocblas_diagonal;
+using fill_mode_t      = rocblas_fill;
+using complex_float_t  = rocblas_float_complex;
 using complex_double_t = rocblas_double_complex;
 #endif
 
 namespace operation {
 #if defined(SIRIUS_CUDA)
-constexpr auto None = CUBLAS_OP_N;
-constexpr auto Transpose = CUBLAS_OP_T;
+constexpr auto None               = CUBLAS_OP_N;
+constexpr auto Transpose          = CUBLAS_OP_T;
 constexpr auto ConjugateTranspose = CUBLAS_OP_C;
 #endif
 
 #if defined(SIRIUS_ROCM)
-constexpr auto None = rocblas_operation_none;
-constexpr auto Transpose = rocblas_operation_transpose;
+constexpr auto None               = rocblas_operation_none;
+constexpr auto Transpose          = rocblas_operation_transpose;
 constexpr auto ConjugateTranspose = rocblas_operation_conjugate_transpose;
 #endif
-}  // namespace operation
+} // namespace operation
 
 namespace side {
 #if defined(SIRIUS_CUDA)
-constexpr auto Left = CUBLAS_SIDE_LEFT;
+constexpr auto Left  = CUBLAS_SIDE_LEFT;
 constexpr auto Right = CUBLAS_SIDE_RIGHT;
 #endif
 
 #if defined(SIRIUS_ROCM)
-constexpr auto Left = rocblas_side_left;
+constexpr auto Left  = rocblas_side_left;
 constexpr auto Right = rocblas_side_right;
 #endif
-}  // namespace side
+} // namespace side
 
 namespace diagonal {
 #if defined(SIRIUS_CUDA)
 constexpr auto NonUnit = CUBLAS_DIAG_NON_UNIT;
-constexpr auto Unit = CUBLAS_DIAG_UNIT;
+constexpr auto Unit    = CUBLAS_DIAG_UNIT;
 #endif
 
 #if defined(SIRIUS_ROCM)
 constexpr auto NonUnit = rocblas_diagonal_non_unit;
-constexpr auto Unit = rocblas_diagonal_unit;
+constexpr auto Unit    = rocblas_diagonal_unit;
 #endif
-}  // namespace diagonal
+} // namespace diagonal
 
 namespace fill {
 #if defined(SIRIUS_CUDA)
@@ -113,7 +113,7 @@ constexpr auto Lower = CUBLAS_FILL_MODE_LOWER;
 constexpr auto Upper = rocblas_fill_upper;
 constexpr auto Lower = rocblas_fill_lower;
 #endif
-}  // namespace fill
+} // namespace fill
 
 namespace status {
 #if defined(SIRIUS_CUDA)
@@ -123,59 +123,70 @@ constexpr auto Success = CUBLAS_STATUS_SUCCESS;
 #if defined(SIRIUS_ROCM)
 constexpr auto Success = rocblas_status_success;
 #endif
-}  // namespace status
+} // namespace status
 
 // =======================================
 // Forwarding functions of to GPU BLAS API
 // =======================================
 template <typename... ARGS>
-inline auto create(ARGS&&... args) -> status_t {
+inline auto
+create(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_create_handle(std::forward<ARGS>(args)...);
+    return rocblas_create_handle(std::forward<ARGS>(args)...);
 #else
-  return cublasCreate(std::forward<ARGS>(args)...);
+    return cublasCreate(std::forward<ARGS>(args)...);
 #endif
 }
 
 template <typename... ARGS>
-inline auto destroy(ARGS&&... args) -> status_t {
+inline auto
+destroy(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_destroy_handle(std::forward<ARGS>(args)...);
+    return rocblas_destroy_handle(std::forward<ARGS>(args)...);
 #else
-  return cublasDestroy(std::forward<ARGS>(args)...);
+    return cublasDestroy(std::forward<ARGS>(args)...);
 #endif
 }
 
 template <typename... ARGS>
-inline auto set_stream(ARGS&&... args) -> status_t {
+inline auto
+set_stream(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_set_stream(std::forward<ARGS>(args)...);
+    return rocblas_set_stream(std::forward<ARGS>(args)...);
 #else
-  return cublasSetStream(std::forward<ARGS>(args)...);
+    return cublasSetStream(std::forward<ARGS>(args)...);
 #endif
 }
 
 template <typename... ARGS>
-inline auto get_stream(ARGS&&... args) -> status_t {
+inline auto
+get_stream(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_get_stream(std::forward<ARGS>(args)...);
+    return rocblas_get_stream(std::forward<ARGS>(args)...);
 #else
-  return cublasGetStream(std::forward<ARGS>(args)...);
+    return cublasGetStream(std::forward<ARGS>(args)...);
 #endif
 }
 
-
 template <typename... ARGS>
-inline auto sgemm(ARGS&&... args) -> status_t {
+inline auto
+sgemm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_sgemm(std::forward<ARGS>(args)...);
+    return rocblas_sgemm(std::forward<ARGS>(args)...);
 #else
-  return cublasSgemm(std::forward<ARGS>(args)...);
+    return cublasSgemm(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto dgemm(ARGS&&... args) -> status_t {
+inline auto
+dgemm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_dgemm(std::forward<ARGS>(args)...);
 #else
@@ -184,7 +195,9 @@ inline auto dgemm(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
-inline auto cgemm(ARGS&&... args) -> status_t {
+inline auto
+cgemm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_cgemm(std::forward<ARGS>(args)...);
 #else
@@ -193,43 +206,53 @@ inline auto cgemm(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
-inline auto zgemm(ARGS&&... args) -> status_t {
+inline auto
+zgemm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_zgemm(std::forward<ARGS>(args)...);
+    return rocblas_zgemm(std::forward<ARGS>(args)...);
 #else
-  return cublasZgemm(std::forward<ARGS>(args)...);
+    return cublasZgemm(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto dgemv(ARGS&&... args) -> status_t {
+inline auto
+dgemv(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_dgemv(std::forward<ARGS>(args)...);
+    return rocblas_dgemv(std::forward<ARGS>(args)...);
 #else
-  return cublasDgemv(std::forward<ARGS>(args)...);
+    return cublasDgemv(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto zgemv(ARGS&&... args) -> status_t {
+inline auto
+zgemv(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_zgemv(std::forward<ARGS>(args)...);
+    return rocblas_zgemv(std::forward<ARGS>(args)...);
 #else
-  return cublasZgemv(std::forward<ARGS>(args)...);
+    return cublasZgemv(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto strmm(ARGS&&... args) -> status_t {
+inline auto
+strmm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_strmm(std::forward<ARGS>(args)...);
+    return rocblas_strmm(std::forward<ARGS>(args)...);
 #else
-  return cublasStrmm(std::forward<ARGS>(args)...);
+    return cublasStrmm(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto dtrmm(ARGS&&... args) -> status_t {
+inline auto
+dtrmm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_dtrmm(std::forward<ARGS>(args)...);
 #else
@@ -238,7 +261,9 @@ inline auto dtrmm(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
-inline auto ctrmm(ARGS&&... args) -> status_t {
+inline auto
+ctrmm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_ctrmm(std::forward<ARGS>(args)...);
 #else
@@ -247,25 +272,31 @@ inline auto ctrmm(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
-inline auto ztrmm(ARGS&&... args) -> status_t {
+inline auto
+ztrmm(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_ztrmm(std::forward<ARGS>(args)...);
+    return rocblas_ztrmm(std::forward<ARGS>(args)...);
 #else
-  return cublasZtrmm(std::forward<ARGS>(args)...);
+    return cublasZtrmm(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto sger(ARGS&&... args) -> status_t {
+inline auto
+sger(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_sger(std::forward<ARGS>(args)...);
+    return rocblas_sger(std::forward<ARGS>(args)...);
 #else
-  return cublasSger(std::forward<ARGS>(args)...);
+    return cublasSger(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto dger(ARGS&&... args) -> status_t {
+inline auto
+dger(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_dger(std::forward<ARGS>(args)...);
 #else
@@ -274,7 +305,9 @@ inline auto dger(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
-inline auto cgeru(ARGS&&... args) -> status_t {
+inline auto
+cgeru(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_cgeru(std::forward<ARGS>(args)...);
 #else
@@ -283,34 +316,42 @@ inline auto cgeru(ARGS&&... args) -> status_t {
 }
 
 template <typename... ARGS>
-inline auto zgeru(ARGS&&... args) -> status_t {
+inline auto
+zgeru(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_zgeru(std::forward<ARGS>(args)...);
+    return rocblas_zgeru(std::forward<ARGS>(args)...);
 #else
-  return cublasZgeru(std::forward<ARGS>(args)...);
+    return cublasZgeru(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto zaxpy(ARGS&&... args) -> status_t {
+inline auto
+zaxpy(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_zaxpy(std::forward<ARGS>(args)...);
+    return rocblas_zaxpy(std::forward<ARGS>(args)...);
 #else
-  return cublasZaxpy(std::forward<ARGS>(args)...);
+    return cublasZaxpy(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto dscal(ARGS&&... args) -> status_t {
+inline auto
+dscal(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
-  return rocblas_dscal(std::forward<ARGS>(args)...);
+    return rocblas_dscal(std::forward<ARGS>(args)...);
 #else
-  return cublasDscal(std::forward<ARGS>(args)...);
+    return cublasDscal(std::forward<ARGS>(args)...);
 #endif // SIRIUS_ROCM
 }
 
 template <typename... ARGS>
-inline auto sscal(ARGS&&... args) -> status_t {
+inline auto
+sscal(ARGS&&... args) -> status_t
+{
 #if defined(SIRIUS_ROCM)
     return rocblas_sscal(std::forward<ARGS>(args)...);
 #else
@@ -318,7 +359,7 @@ inline auto sscal(ARGS&&... args) -> status_t {
 #endif // SIRIUS_ROCM
 }
 
-} // namespace blas
+} // namespace blas_api
 } // namespace acc
 } // namespace sirius
 

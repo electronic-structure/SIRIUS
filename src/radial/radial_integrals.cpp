@@ -27,7 +27,8 @@
 namespace sirius {
 
 template <bool jl_deriv>
-void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double> const&(int, int)> fl__)
+void
+Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double> const&(int, int)> fl__)
 {
     PROFILE("sirius::Radial_integrals|atomic_wfs");
 
@@ -53,7 +54,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
 
-            int l = indexr_(iat).am(rf_index(i)).l();
+            int l     = indexr_(iat).am(rf_index(i)).l();
             auto& rwf = fl__(iat, i);
 
             #pragma omp parallel for
@@ -71,8 +72,9 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
     }
 }
 
-template<bool jl_deriv>
-void Radial_integrals_aug<jl_deriv>::generate()
+template <bool jl_deriv>
+void
+Radial_integrals_aug<jl_deriv>::generate()
 {
     PROFILE("sirius::Radial_integrals|aug");
 
@@ -113,10 +115,10 @@ void Radial_integrals_aug<jl_deriv>::generate()
                             if (jl_deriv) {
                                 auto s = jl.deriv_q(l3);
                                 values_(idx, l3, iat)(iq) =
-                                    sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
+                                        sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                             } else {
                                 values_(idx, l3, iat)(iq) =
-                                    sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
+                                        sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                             }
                         }
                     }
@@ -138,7 +140,8 @@ void Radial_integrals_aug<jl_deriv>::generate()
     }
 }
 
-void Radial_integrals_rho_pseudo::generate()
+void
+Radial_integrals_rho_pseudo::generate()
 {
     PROFILE("sirius::Radial_integrals|rho_pseudo");
 
@@ -165,8 +168,9 @@ void Radial_integrals_rho_pseudo::generate()
     }
 }
 
-template<bool jl_deriv>
-void Radial_integrals_rho_core_pseudo<jl_deriv>::generate()
+template <bool jl_deriv>
+void
+Radial_integrals_rho_core_pseudo<jl_deriv>::generate()
 {
     PROFILE("sirius::Radial_integrals|rho_core_pseudo");
 
@@ -198,14 +202,15 @@ void Radial_integrals_rho_core_pseudo<jl_deriv>::generate()
     }
 }
 
-template<bool jl_deriv>
-void Radial_integrals_beta<jl_deriv>::generate()
+template <bool jl_deriv>
+void
+Radial_integrals_beta<jl_deriv>::generate()
 {
     PROFILE("sirius::Radial_integrals|beta");
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        int nrb = atom_type.num_beta_radial_functions();
+        int nrb         = atom_type.num_beta_radial_functions();
 
         if (!nrb) {
             continue;
@@ -220,14 +225,16 @@ void Radial_integrals_beta<jl_deriv>::generate()
             int iq = it.i;
             sf::Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                int l  = atom_type.indexr(idxrf).am.l();
+                int l = atom_type.indexr(idxrf).am.l();
                 /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
                 /* remember that beta(r) are defined as miltiplied by r */
                 if (jl_deriv) {
-                    auto s  = jl.deriv_q(l);
-                    values_(idxrf, iat)(iq) = sirius::inner(s, atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
+                    auto s = jl.deriv_q(l);
+                    values_(idxrf, iat)(iq) =
+                            sirius::inner(s, atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
                 } else {
-                    values_(idxrf, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
+                    values_(idxrf, iat)(iq) =
+                            sirius::inner(jl[l], atom_type.beta_radial_function(rf_index(idxrf)).second, 1);
                 }
             }
         }
@@ -240,7 +247,8 @@ void Radial_integrals_beta<jl_deriv>::generate()
 }
 
 template <bool jl_deriv>
-void Radial_integrals_vloc<jl_deriv>::generate()
+void
+Radial_integrals_vloc<jl_deriv>::generate()
 {
     PROFILE("sirius::Radial_integrals|vloc");
 
@@ -305,7 +313,8 @@ void Radial_integrals_vloc<jl_deriv>::generate()
     }
 }
 
-void Radial_integrals_rho_free_atom::generate()
+void
+Radial_integrals_rho_free_atom::generate()
 {
     PROFILE("sirius::Radial_integrals|rho_free_atom");
 
@@ -347,6 +356,5 @@ template class Radial_integrals_beta<false>;
 
 template class Radial_integrals_vloc<true>;
 template class Radial_integrals_vloc<false>;
-
 
 } // namespace sirius

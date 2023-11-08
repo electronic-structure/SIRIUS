@@ -4,15 +4,16 @@
 
 using namespace sirius;
 
-//void get_exc_vxc(int np, double* rhoup, double* rhodn, double* exc, double* vxcup, double* vxcdn)
+// void get_exc_vxc(int np, double* rhoup, double* rhodn, double* exc, double* vxcup, double* vxcdn)
 //{
-//    for (int i = 0; i < np; i++) {
-//        exc[i] = std::pow(rhoup[i] + rhodn[i], 1 / 3.0) + std::pow(rhoup[i], 1 / 2.0);
-//        vxcup[i] = 
-//    }
-//}
+//     for (int i = 0; i < np; i++) {
+//         exc[i] = std::pow(rhoup[i] + rhodn[i], 1 / 3.0) + std::pow(rhoup[i], 1 / 2.0);
+//         vxcup[i] =
+//     }
+// }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     int np{1000};
     auto rg = Radial_grid_factory<double>(radial_grid_t::linear, np, 0.0, 2.0, 0);
@@ -22,20 +23,14 @@ int main(int argn, char** argv)
     std::vector<double> rhoup(np);
     std::vector<double> rhodn(np);
 
-    auto get_rho = [](double x)
-    {
-        return 1 + std::pow(std::cos(x), 2);
-    };
+    auto get_rho = [](double x) { return 1 + std::pow(std::cos(x), 2); };
 
-    auto get_mag = [](double x)
-    {
-        return 0.5 + 0.25 * std::pow(std::sin(x), 2);
-    };
+    auto get_mag = [](double x) { return 0.5 + 0.25 * std::pow(std::sin(x), 2); };
 
     for (int i = 0; i < np; i++) {
         double x = rg[i];
-        rho[i] = get_rho(x);
-        mag[i] = get_mag(x);
+        rho[i]   = get_rho(x);
+        mag[i]   = get_mag(x);
         rhoup[i] = 0.5 * (rho[i] + mag[i]);
         rhodn[i] = 0.5 * (rho[i] - mag[i]);
     }
@@ -60,7 +55,7 @@ int main(int argn, char** argv)
         s2(i) = rhodn[i] * vxcdn[i];
         s3(i) = (rhoup[i] + rhodn[i]) * exc[i];
     }
-    double Exc = s3.interpolate().integrate(0);
+    double Exc    = s3.interpolate().integrate(0);
     double evxcup = s1.interpolate().integrate(0);
     double evxcdn = s2.interpolate().integrate(0);
     printf("Exc: %18.12f   evxcup: %18.12f   evxcdn: %18.12f\n", Exc, evxcup, evxcdn);
@@ -69,8 +64,8 @@ int main(int argn, char** argv)
 
     for (int i = 0; i < np; i++) {
         double x = rg[i];
-        rho[i] = get_rho(x);
-        mag[i] = get_mag(x);
+        rho[i]   = get_rho(x);
+        mag[i]   = get_mag(x);
         rhoup[i] = 0.5 * (rho[i] + mag[i]) * (1 + eps);
         rhodn[i] = 0.5 * (rho[i] - mag[i]);
     }
@@ -83,8 +78,8 @@ int main(int argn, char** argv)
 
     for (int i = 0; i < np; i++) {
         double x = rg[i];
-        rho[i] = get_rho(x);
-        mag[i] = get_mag(x);
+        rho[i]   = get_rho(x);
+        mag[i]   = get_mag(x);
         rhoup[i] = 0.5 * (rho[i] + mag[i]);
         rhodn[i] = 0.5 * (rho[i] - mag[i]) * (1 + eps);
     }
@@ -94,7 +89,4 @@ int main(int argn, char** argv)
     }
     Exc_2 = s2.interpolate().integrate(0);
     printf("spin dn: %18.12f\n", std::abs((Exc_2 - Exc) / eps - evxcdn));
-
-
-
 }

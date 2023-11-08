@@ -5,8 +5,8 @@ using namespace sirius;
 
 template <typename T>
 double
-test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int bs__, bool test_gen__, std::string name__,
-          la::Eigensolver& solver)
+test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int bs__, bool test_gen__,
+          std::string name__, la::Eigensolver& solver)
 {
     auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
     la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
@@ -18,7 +18,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     la::dmatrix<T> B_ref;
     if (test_gen__) {
         B_ref = random_positive_definite<T>(N__, bs__, &blacs_grid__);
-        B = la::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+        B     = la::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
         copy(B_ref, B);
     }
 
@@ -92,22 +92,26 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     if (test_gen__) {
         /* lambda * B * Z */
 #if defined(SIRIUS_SCALAPACK)
-        la::wrap(la::lib_t::scalapack).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(),
-                B_ref, 0, 0, A, 0, 0, &la::constant<T>::zero(), B, 0, 0);
+        la::wrap(la::lib_t::scalapack)
+                .gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), B_ref, 0, 0, A, 0, 0,
+                      &la::constant<T>::zero(), B, 0, 0);
 #else
-        la::wrap(la::lib_t::blas).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(),
-                &B_ref(0, 0), B_ref.ld(), &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
+        la::wrap(la::lib_t::blas)
+                .gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), &B_ref(0, 0), B_ref.ld(), &A(0, 0), A.ld(),
+                      &la::constant<T>::zero(), &B(0, 0), B.ld());
 #endif
         copy(B, A);
     }
 
     /* A * Z - lambda * B * Z */
 #if defined(SIRIUS_SCALAPACK)
-    la::wrap(la::lib_t::scalapack).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), A_ref, 0, 0, Z, 0, 0,
-        &la::constant<T>::m_one(), A, 0, 0);
+    la::wrap(la::lib_t::scalapack)
+            .gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), A_ref, 0, 0, Z, 0, 0, &la::constant<T>::m_one(),
+                  A, 0, 0);
 #else
-    la::wrap(la::lib_t::blas).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), &A_ref(0, 0), A_ref.ld(),
-            &Z(0, 0), Z.ld(), &la::constant<T>::m_one(), &A(0, 0), A.ld());
+    la::wrap(la::lib_t::blas)
+            .gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(), &A_ref(0, 0), A_ref.ld(), &Z(0, 0), Z.ld(),
+                  &la::constant<T>::m_one(), &A(0, 0), A.ld());
 #endif
     double diff{0};
     for (int j = 0; j < A.num_cols_local(); j++) {
@@ -123,18 +127,22 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     }
     if (blacs_grid__.comm().rank() == 0) {
         if (diff > 1e-10) {
-            printf("\x1b[31m" "Wrong residual\n" "\x1b[0m" "\n");
+            printf("\x1b[31m"
+                   "Wrong residual\n"
+                   "\x1b[0m"
+                   "\n");
         } else {
-            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+            printf("\x1b[32m"
+                   "OK\n"
+                   "\x1b[0m"
+                   "\n");
         }
     }
     return t;
 }
 
-void test_diag2(la::BLACS_grid const& blacs_grid__,
-                int bs__,
-                std::string name__,
-                std::string fname__)
+void
+test_diag2(la::BLACS_grid const& blacs_grid__, int bs__, std::string name__, std::string fname__)
 {
     auto solver = la::Eigensolver_factory(name__);
 
@@ -179,16 +187,9 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
     }
 }
 
-void call_test(std::vector<int> mpi_grid__,
-               int N__,
-               int n__,
-               int nev__,
-               int bs__,
-               bool test_gen__,
-               std::string name__,
-               std::string fname__,
-               int repeat__,
-               int type__)
+void
+call_test(std::vector<int> mpi_grid__, int N__, int n__, int nev__, int bs__, bool test_gen__, std::string name__,
+          std::string fname__, int repeat__, int type__)
 {
     auto solver = la::Eigensolver_factory(name__);
     la::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
@@ -214,31 +215,31 @@ void call_test(std::vector<int> mpi_grid__,
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-        {"N=", "{int} total size of the matrix"},
-        {"n=", "{int} size of the sub-matrix to diagonalize"},
-        {"nev=", "{int} number of eigen-vectors"},
-        {"bs=", "{int} block size"},
-        {"repeat=", "{int} number of repeats"},
-        {"gen", "test generalized problem"},
-        {"name=", "{string} name of the solver"},
-        {"file=", "{string} input file name"},
-        {"type=", "{int} data type: 0-real, 1-complex"}
-    });
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"N=", "{int} total size of the matrix"},
+                   {"n=", "{int} size of the sub-matrix to diagonalize"},
+                   {"nev=", "{int} number of eigen-vectors"},
+                   {"bs=", "{int} block size"},
+                   {"repeat=", "{int} number of repeats"},
+                   {"gen", "test generalized problem"},
+                   {"name=", "{string} name of the solver"},
+                   {"file=", "{string} input file name"},
+                   {"type=", "{int} data type: 0-real, 1-complex"}});
 
     auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
-    auto N        = args.value<int>("N", 200);
-    auto n        = args.value<int>("n", 100);
-    auto nev      = args.value<int>("nev", 50);
-    auto bs       = args.value<int>("bs", 32);
-    auto repeat   = args.value<int>("repeat", 2);
-    auto type     = args.value<int>("type", 0);
-    auto test_gen = args.exist("gen");
-    auto name     = args.value<std::string>("name", "lapack");
-    auto fname    = args.value<std::string>("file", "");
+    auto N             = args.value<int>("N", 200);
+    auto n             = args.value<int>("n", 100);
+    auto nev           = args.value<int>("nev", 50);
+    auto bs            = args.value<int>("bs", 32);
+    auto repeat        = args.value<int>("repeat", 2);
+    auto type          = args.value<int>("type", 0);
+    auto test_gen      = args.exist("gen");
+    auto name          = args.value<std::string>("name", "lapack");
+    auto fname         = args.value<std::string>("file", "");
 
     sirius::initialize(1);
     call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);

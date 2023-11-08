@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-int test1(int size)
+int
+test1(int size)
 {
     double t = -wtime();
     mdarray<char, 1> buf({size});
@@ -10,9 +11,10 @@ int test1(int size)
     buf.zero();
 
     for (int r = 0; r < mpi::Communicator::world().size(); r++) {
-        int rank = mpi::Communicator::world().rank();
+        int rank  = mpi::Communicator::world().rank();
         int rank1 = (rank + 1) % mpi::Communicator::world().size();
-        auto req = mpi::Communicator::world().isend(buf.at(memory_t::host), size, rank1, mpi::Communicator::get_tag(rank, rank1));
+        auto req  = mpi::Communicator::world().isend(buf.at(memory_t::host), size, rank1,
+                                                     mpi::Communicator::get_tag(rank, rank1));
         int rank2 = rank - 1;
         if (rank2 < 0) {
             rank2 = mpi::Communicator::world().size() - 1;
@@ -27,7 +29,8 @@ int test1(int size)
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--size=", "buffer size in bytes");

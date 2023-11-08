@@ -4,7 +4,8 @@
 
 using namespace sirius;
 
-int run_test(cmd_args& args)
+int
+run_test(cmd_args& args)
 {
     int err{0};
     if (std::abs(round(1.525252525, 4) - 1.5253) > 1e-20) {
@@ -25,7 +26,8 @@ int run_test(cmd_args& args)
     return err;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -40,9 +42,15 @@ int main(int argn, char** argv)
     printf("running %-30s : ", argv[0]);
     int result = run_test(args);
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     sirius::finalize();
 

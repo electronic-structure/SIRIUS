@@ -26,7 +26,8 @@
 
 namespace sirius {
 
-void Augmentation_operator::generate_pw_coeffs()
+void
+Augmentation_operator::generate_pw_coeffs()
 {
     if (!atom_type_.augment()) {
         return;
@@ -70,37 +71,39 @@ void Augmentation_operator::generate_pw_coeffs()
                     int idxrf12 = idx_(2, idx12);
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
                         v[lm3] = std::conj(zilm_[lm3]) * rlm[lm3] *
-                            ri_values_(idxrf12, l_by_lm_[lm3], gvec_.gvec_shell_idx_local(igloc));
+                                 ri_values_(idxrf12, l_by_lm_[lm3], gvec_.gvec_shell_idx_local(igloc));
                     }
-                    std::complex<double> z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                    std::complex<double> z      = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
                     q_pw_(idx12, 2 * igloc + 1) = z.imag();
                 }
             }
             break;
         }
-//        case device_t::GPU: {
-//#if defined(SIRIUS_GPU)
-//            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, atom_type_.parameters().cfg().control().gvec_chunk_size());
-//            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
-//            /* allocate buffer for Rlm on GPUs */
-//            mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
-//            /* allocate buffer for Q(G) on GPUs */
-//            mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
-//
-//            int g_begin{0};
-//            /* loop over blocks of G-vectors */
-//            for (auto ng : spl_ngv_loc) {
-//                /* generate Rlm spherical harmonics */
-//                spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
-//                        tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld());
-//                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm.at(sddk::memory_t::device), gvec_rlm.ld(), qpw);
-//                acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin), qpw.at(sddk::memory_t::device), 2 * ng * nqlm);
-//                g_begin += ng;
-//            }
-//#endif
-//            break;
-//        }
+            //        case device_t::GPU: {
+            // #if defined(SIRIUS_GPU)
+            //            auto spl_ngv_loc = utils::split_in_blocks(gvec_count,
+            //            atom_type_.parameters().cfg().control().gvec_chunk_size()); auto& mpd =
+            //            sddk::get_memory_pool(sddk::memory_t::device);
+            //            /* allocate buffer for Rlm on GPUs */
+            //            mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
+            //            /* allocate buffer for Q(G) on GPUs */
+            //            mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
+            //
+            //            int g_begin{0};
+            //            /* loop over blocks of G-vectors */
+            //            for (auto ng : spl_ngv_loc) {
+            //                /* generate Rlm spherical harmonics */
+            //                spherical_harmonics_rlm_gpu(2 * lmax_beta, ng, tp.at(sddk::memory_t::device, g_begin, 0),
+            //                        tp.at(sddk::memory_t::device, g_begin, 1), gvec_rlm.at(sddk::memory_t::device),
+            //                        gvec_rlm.ld());
+            //                this->generate_pw_coeffs_chunk_gpu(g_begin, ng, gvec_rlm.at(sddk::memory_t::device),
+            //                gvec_rlm.ld(), qpw); acc::copyout(q_pw_.at(sddk::memory_t::host, 0, 2 * g_begin),
+            //                qpw.at(sddk::memory_t::device), 2 * ng * nqlm); g_begin += ng;
+            //            }
+            // #endif
+            //            break;
+            //        }
     }
 
     q_mtrx_ = mdarray<double, 2>({nbf, nbf});
@@ -119,7 +122,7 @@ void Augmentation_operator::generate_pw_coeffs()
     gvec_.comm().bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
 
     if (env::print_checksum()) {
-        auto cs = q_pw_.checksum();
+        auto cs  = q_pw_.checksum();
         auto cs1 = q_mtrx_.checksum();
         gvec_.comm().allreduce(&cs, 1);
         if (gvec_.comm().rank() == 0) {
@@ -129,7 +132,8 @@ void Augmentation_operator::generate_pw_coeffs()
     }
 }
 
-void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
+void
+Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
 {
     if (!atom_type_.augment()) {
         return;
@@ -157,7 +161,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
                 /* index of the G-vector shell */
                 int igsh = gvec_.gvec_shell_idx_local(igloc);
 
-                auto gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
+                auto gvc      = gvec_.gvec_cart<index_domain_t::local>(igloc);
                 double gvc_nu = gvc[nu__];
 
                 std::vector<double> rlm(lmmax);
@@ -172,11 +176,11 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
                     int lm2     = idx_(1, idx12);
                     int idxrf12 = idx_(2, idx12);
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                        int l = l_by_lm_[lm3];
+                        int l  = l_by_lm_[lm3];
                         v[lm3] = std::conj(zilm_[lm3]) * (rlm_dq(lm3, nu__) * ri_values_(idxrf12, l, igsh) +
-                             rlm[lm3] * ri_dq_values_(idxrf12, l, igsh) * gvc_nu);
+                                                          rlm[lm3] * ri_dq_values_(idxrf12, l, igsh) * gvc_nu);
                     }
-                    std::complex<double> z = fourpi * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
+                    std::complex<double> z      = fourpi * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
                     q_pw_(idx12, 2 * igloc + 1) = z.imag();
                 }

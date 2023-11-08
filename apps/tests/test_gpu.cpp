@@ -3,11 +3,13 @@
 using namespace sirius;
 
 #ifdef SIRIUS_GPU
-void test_gpu(int N)
+void
+test_gpu(int N)
 {
     mdarray<char, 1> buf(N * 1024);
 
-    for (size_t i = 0; i < buf.size(); i++) buf(i) = char(i % 255);
+    for (size_t i = 0; i < buf.size(); i++)
+        buf(i) = char(i % 255);
 
     // DUMP("hash(buf): %llX", buf.hash());
 
@@ -16,7 +18,7 @@ void test_gpu(int N)
     buf.zero();
     buf.copy_to_host();
 
-    void* ptr = cuda_malloc_host(N);
+    void* ptr  = cuda_malloc_host(N);
     void* ptr1 = std::malloc(N);
 
     // DUMP("hash(buf): %llX", buf.hash());
@@ -28,14 +30,14 @@ void test_gpu(int N)
 }
 #endif
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--N=", "{int} buffer size (Kb)");
 
     args.parse_args(argn, argv);
-    if (argn == 1)
-    {
+    if (argn == 1) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         exit(0);
@@ -46,9 +48,9 @@ int main(int argn, char** argv)
     sirius::initialize(1);
     cuda_device_info();
 
-    #ifdef SIRIUS_GPU
+#ifdef SIRIUS_GPU
     test_gpu(N);
-    #endif
+#endif
 
     sirius::finalize();
 }

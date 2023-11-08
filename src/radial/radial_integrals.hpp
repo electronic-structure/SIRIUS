@@ -67,12 +67,13 @@ class Radial_integrals_base
 
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax_), 0, qmax_);
         spl_q_  = splindex_block<>(grid_q_.num_points(), n_blocks(unit_cell_.comm().size()),
-                block_id(unit_cell_.comm().rank()));
+                                  block_id(unit_cell_.comm().rank()));
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.
     /** The following condition is satisfied: q = grid_q[iq] + dq */
-    inline std::pair<int, double> iqdq(double q__) const
+    inline std::pair<int, double>
+    iqdq(double q__) const
     {
         if (q__ > grid_q_.last()) {
             std::stringstream s;
@@ -93,18 +94,21 @@ class Radial_integrals_base
 
     /// Return value of the radial integral with specific indices.
     template <typename... Args>
-    inline double value(Args... args, double q__) const
+    inline double
+    value(Args... args, double q__) const
     {
         auto idx = iqdq(q__);
         return values_(args...)(idx.first, idx.second);
     }
 
-    inline int nq() const
+    inline int
+    nq() const
     {
         return grid_q_.num_points();
     }
 
-    inline double qmax() const
+    inline double
+    qmax() const
     {
         return qmax_;
     }
@@ -121,7 +125,8 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     /// Return radial basis index for a given atom type.
     std::function<radial_functions_index const&(int)> indexr_;
     /// Generate radial integrals.
-    void generate(std::function<Spline<double> const&(int, int)> fl__);
+    void
+    generate(std::function<Spline<double> const&(int, int)> fl__);
 
   public:
     /// Constructor.
@@ -146,13 +151,15 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     }
 
     /// Retrieve a value for a given orbital of an atom type.
-    inline Spline<double> const& values(int iwf__, int iat__) const
+    inline Spline<double> const&
+    values(int iwf__, int iat__) const
     {
         return values_(iwf__, iat__);
     }
 
     /// Get all values for a given atom type and q-point.
-    inline mdarray<double, 1> values(int iat__, double q__) const
+    inline mdarray<double, 1>
+    values(int iat__, double q__) const
     {
         auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
@@ -178,7 +185,8 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
   private:
     std::function<void(int, double, double*, int, int)> ri_callback_{nullptr};
 
-    void generate();
+    void
+    generate();
 
   public:
     Radial_integrals_aug(Unit_cell const& unit_cell__, double qmax__, int np__,
@@ -190,14 +198,14 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
             int nmax = unit_cell_.max_mt_radial_basis_size();
             int lmax = unit_cell_.lmax();
 
-            values_ =
-                mdarray<Spline<double>, 3>({nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types()});
+            values_ = mdarray<Spline<double>, 3>({nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types()});
 
             generate();
         }
     }
 
-    inline mdarray<double, 2> values(int iat__, double q__) const
+    inline mdarray<double, 2>
+    values(int iat__, double q__) const
     {
         auto& atom_type = unit_cell_.atom_type(iat__);
         int lmax        = atom_type.indexr().lmax();
@@ -224,7 +232,8 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
 {
   private:
     std::function<void(int, int, double*, double*)> ri_callback_{nullptr};
-    void generate();
+    void
+    generate();
 
   public:
     Radial_integrals_rho_pseudo(Unit_cell const& unit_cell__, double qmax__, int np__,
@@ -251,7 +260,8 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline auto values(std::vector<double>& q__, mpi::Communicator const& comm__) const
+    inline auto
+    values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
         splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
@@ -280,7 +290,8 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
 {
   private:
     std::function<void(int, int, double*, double*)> ri_callback_{nullptr};
-    void generate();
+    void
+    generate();
 
   public:
     Radial_integrals_rho_core_pseudo(Unit_cell const& unit_cell__, double qmax__, int np__,
@@ -295,7 +306,8 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline auto values(std::vector<double>& q__, mpi::Communicator const& comm__) const
+    inline auto
+    values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
         splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
@@ -328,7 +340,8 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
     std::function<void(int, double, double*, int)> ri_callback_{nullptr};
 
     /// Generate radial integrals on the q-grid.
-    void generate();
+    void
+    generate();
 
   public:
     Radial_integrals_beta(Unit_cell const& unit_cell__, double qmax__, int np__,
@@ -344,7 +357,8 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
     }
 
     /// Get all values for a given atom type and q-point.
-    inline mdarray<double, 1> values(int iat__, double q__) const
+    inline mdarray<double, 1>
+    values(int iat__, double q__) const
     {
         auto& atom_type = unit_cell_.atom_type(iat__);
         mdarray<double, 1> val({atom_type.mt_radial_basis_size()});
@@ -365,7 +379,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 {
   private:
     std::function<void(int, int, double*, double*)> ri_callback_{nullptr};
-    void generate();
+    void
+    generate();
 
   public:
     Radial_integrals_vloc(Unit_cell const& unit_cell__, double qmax__, int np__,
@@ -380,7 +395,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     }
 
     /// Special implementation to recover the true radial integral value.
-    inline double value(int iat__, double q__) const
+    inline double
+    value(int iat__, double q__) const
     {
         if (unit_cell_.atom_type(iat__).local_potential().empty()) {
             return 0;
@@ -406,7 +422,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline auto values(std::vector<double>& q__, mpi::Communicator const& comm__) const
+    inline auto
+    values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
         splindex_block<> splq(nq, n_blocks(comm__.size()), block_id(comm__.rank()));
@@ -433,7 +450,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
 {
   private:
-    void generate();
+    void
+    generate();
 
   public:
     Radial_integrals_rho_free_atom(Unit_cell const& unit_cell__, double qmax__, int np__)
@@ -444,7 +462,8 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
     }
 
     /// Special implementation to recover the true radial integral value.
-    inline double value(int iat__, double q__) const
+    inline double
+    value(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
         if (std::abs(q__) < 1e-12) {

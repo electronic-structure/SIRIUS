@@ -32,19 +32,20 @@ class strong_type
 {
   private:
     T val_;
-  public:
 
+  public:
     explicit strong_type(T const& val__)
         : val_{val__}
     {
     }
 
-    explicit strong_type(T&& val__) 
+    explicit strong_type(T&& val__)
         : val_{std::move(val__)}
     {
     }
 
-    inline T get() const
+    inline T
+    get() const
     {
         return val_;
     }
@@ -54,28 +55,32 @@ class strong_type
         return val_;
     }
 
-    inline bool operator!=(strong_type<T, Tag> const& rhs__)
+    inline bool
+    operator!=(strong_type<T, Tag> const& rhs__)
     {
         return this->val_ != rhs__.val_;
     }
 
-    inline bool operator==(strong_type<T, Tag> const& rhs__)
+    inline bool
+    operator==(strong_type<T, Tag> const& rhs__)
     {
         return this->val_ == rhs__.val_;
     }
 
-    inline strong_type<T, Tag>& operator++(int)
+    inline strong_type<T, Tag>&
+    operator++(int)
     {
         this->val_++;
         return *this;
     }
-    inline strong_type<T, Tag>& operator+=(T rhs__)
+    inline strong_type<T, Tag>&
+    operator+=(T rhs__)
     {
         this->val_ += rhs__;
         return *this;
     }
 };
 
-}
+} // namespace sirius
 
 #endif

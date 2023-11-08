@@ -46,7 +46,6 @@ class BLACS_grid
 
     std::unique_ptr<mpi::Grid> mpi_grid_;
 
-
 #ifdef SIRIUS_SCALAPACK
     int blacs_handler_{-1};
 #endif
@@ -58,7 +57,8 @@ class BLACS_grid
     /* forbid copy constructor */
     BLACS_grid(BLACS_grid const& src) = delete;
     /* forbid assignment operator */
-    BLACS_grid& operator=(BLACS_grid const& src) = delete;
+    BLACS_grid&
+    operator=(BLACS_grid const& src) = delete;
 
   public:
     BLACS_grid(mpi::Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
@@ -101,13 +101,12 @@ class BLACS_grid
 
 #else
         for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
-          rank_map_[i] = i;
+            rank_map_[i] = i;
         }
 #ifdef SIRIUS_DLAF
         blacs_context_ = dlaf_create_grid(comm_.native(), num_ranks_row__, num_ranks_col__, 'R');
 #endif
 #endif
-
     }
 
     ~BLACS_grid()
@@ -125,63 +124,74 @@ class BLACS_grid
 #endif
     }
 
-    inline int context() const
+    inline int
+    context() const
     {
         return blacs_context_;
     }
 
-    inline auto const& comm() const
+    inline auto const&
+    comm() const
     {
         return comm_;
     }
 
-    inline auto const& comm_row() const
+    inline auto const&
+    comm_row() const
     {
         return mpi_grid_->communicator(1 << 0);
     }
 
-    inline auto const& comm_col() const
+    inline auto const&
+    comm_col() const
     {
         return mpi_grid_->communicator(1 << 1);
     }
 
-    inline int num_ranks_row() const
+    inline int
+    num_ranks_row() const
     {
         return comm_row().size();
     }
 
-    inline int rank_row() const
+    inline int
+    rank_row() const
     {
         return comm_row().rank();
     }
 
-    inline int num_ranks_col() const
+    inline int
+    num_ranks_col() const
     {
         return comm_col().size();
     }
 
-    inline int rank_col() const
+    inline int
+    rank_col() const
     {
         return comm_col().rank();
     }
 
-    inline int cart_rank(int irow__, int icol__) const
+    inline int
+    cart_rank(int irow__, int icol__) const
     {
         return mpi_grid_->communicator().cart_rank({irow__, icol__});
     }
 
-    auto const& mpi_grid() const
+    auto const&
+    mpi_grid() const
     {
         return *mpi_grid_;
     }
 
-    auto const& rank_map() const
+    auto const&
+    rank_map() const
     {
         return rank_map_;
     }
 };
 
-} // namespace
+} // namespace la
 
 } // namespace sirius
 

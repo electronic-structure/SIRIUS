@@ -52,7 +52,8 @@ namespace rocsolver {
         }                                                                                                              \
     }
 
-acc::blas_api::handle_t& rocsolver_handle();
+acc::blas_api::handle_t&
+rocsolver_handle();
 
 inline rocblas_operation
 get_rocblas_operation(char trans)

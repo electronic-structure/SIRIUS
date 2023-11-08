@@ -6,7 +6,8 @@
 
 using namespace sirius;
 
-int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int use_gpu__, int bs__)
+int
+test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int use_gpu__, int bs__)
 {
     auto pu = use_gpu__ ? device_t::GPU : device_t::CPU;
     spla::Context spla_ctx(pu == device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
@@ -36,13 +37,13 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
     }
 
     wf::orthogonalize(spla_ctx, mem, wf::spin_range(0), wf::band_range(0, 0), wf::band_range(0, num_bands__), phi, phi,
-            {&phi}, ovlp, tmp, true);
+                      {&phi}, ovlp, tmp, true);
 
     wf::orthogonalize(spla_ctx, mem, wf::spin_range(0), wf::band_range(0, num_bands__),
-            wf::band_range(num_bands__, 2 * num_bands__), phi, phi, {&phi}, ovlp, tmp, true);
+                      wf::band_range(num_bands__, 2 * num_bands__), phi, phi, {&phi}, ovlp, tmp, true);
 
-    wf::inner(spla_ctx, mem, wf::spin_range(0), phi, wf::band_range(0, 2 * num_bands__),
-            phi, wf::band_range(0, 2 * num_bands__), ovlp, 0, 0);
+    wf::inner(spla_ctx, mem, wf::spin_range(0), phi, wf::band_range(0, 2 * num_bands__), phi,
+              wf::band_range(0, 2 * num_bands__), ovlp, 0, 0);
 
     auto diff = la::check_identity(ovlp, 2 * num_bands__);
     if (diff > 1e-12) {
@@ -52,11 +53,12 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
     return 0;
 }
 
-int run_test(cmd_args const& args)
+int
+run_test(cmd_args const& args)
 {
     auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
-    auto cutoff = args.value<double>("cutoff", 8.0);
-    auto use_gpu = args.value<int>("use_gpu", 0);
+    auto cutoff        = args.value<double>("cutoff", 8.0);
+    auto use_gpu       = args.value<int>("use_gpu", 0);
 
     auto result{0};
     for (int bs = 1; bs < 16; bs++) {
@@ -67,7 +69,8 @@ int run_test(cmd_args const& args)
     return result;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");

@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-double test1_angular_radial_double(int lmax__)
+double
+test1_angular_radial_double(int lmax__)
 {
     SHT sht(device_t::CPU, lmax__);
     int lmmax = sf::lmmax(lmax__);
@@ -28,7 +29,8 @@ double test1_angular_radial_double(int lmax__)
     return d;
 }
 
-double test1_angular_radial_complex(int lmax__)
+double
+test1_angular_radial_complex(int lmax__)
 {
     SHT sht(device_t::CPU, lmax__);
     int lmmax = sf::lmmax(lmax__);
@@ -41,7 +43,7 @@ double test1_angular_radial_complex(int lmax__)
         for (int l = 0; l <= lmax__; l++) {
             f1(sf::lm(l, 0), ir) = random<double>();
             for (int m = 1; m <= l; m++) {
-                f1(sf::lm(l, m), ir) = random<std::complex<double>>();
+                f1(sf::lm(l, m), ir)  = random<std::complex<double>>();
                 f1(sf::lm(l, -m), ir) = std::pow(-1, m) * std::conj(f1(sf::lm(l, m), ir));
             }
         }
@@ -58,7 +60,8 @@ double test1_angular_radial_complex(int lmax__)
     return d;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(true);
 

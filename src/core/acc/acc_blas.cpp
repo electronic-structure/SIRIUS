@@ -31,10 +31,10 @@ cublasxt_handle()
 }
 } // namespace xt
 #endif
-} // blas
+} // namespace blas
 
-} // acc
+} // namespace acc
 
-} // sirius
+} // namespace sirius
 
 #endif

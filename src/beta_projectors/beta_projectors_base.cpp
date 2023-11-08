@@ -52,9 +52,9 @@ namespace local {
 
 template <class T>
 void
-beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a,
-        mdarray<std::complex<T>, 3> const& pw_coeffs_t, int ichunk__, int j__, beta_chunk_t const& beta_chunk,
-        Simulation_context const& ctx, fft::Gvec const& gkvec)
+beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a, mdarray<std::complex<T>, 3> const& pw_coeffs_t,
+                             int ichunk__, int j__, beta_chunk_t const& beta_chunk, Simulation_context const& ctx,
+                             fft::Gvec const& gkvec)
 {
     PROFILE("beta_projectors_generate_cpu");
 
@@ -84,7 +84,7 @@ beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a,
         for (int xi = 0; xi < nbeta; xi++) {
             for (int igk_loc = 0; igk_loc < num_gkvec_loc; igk_loc++) {
                 pw_coeffs_a(igk_loc, offset_a + xi) =
-                    pw_coeffs_t(igk_loc, offset_t + xi, j__) * static_cast<numeric_t>(phase_gk[igk_loc]);
+                        pw_coeffs_t(igk_loc, offset_t + xi, j__) * static_cast<numeric_t>(phase_gk[igk_loc]);
             }
         }
     }
@@ -92,28 +92,26 @@ beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a,
 
 // explicit instantiation
 template void
-beta_projectors_generate_cpu<double>(matrix<std::complex<double>>&,
-        mdarray<std::complex<double>, 3> const&, int, int, beta_chunk_t const&, Simulation_context const&,
-        fft::Gvec const&);
+beta_projectors_generate_cpu<double>(matrix<std::complex<double>>&, mdarray<std::complex<double>, 3> const&, int, int,
+                                     beta_chunk_t const&, Simulation_context const&, fft::Gvec const&);
 #ifdef SIRIUS_USE_FP32
 // explicit instantiation
 template void
-beta_projectors_generate_cpu<float>(matrix<std::complex<float>>&, mdarray<std::complex<float>, 3> const&,
-        int, int, beta_chunk_t const&, Simulation_context const&, fft::Gvec const&);
+beta_projectors_generate_cpu<float>(matrix<std::complex<float>>&, mdarray<std::complex<float>, 3> const&, int, int,
+                                    beta_chunk_t const&, Simulation_context const&, fft::Gvec const&);
 #endif
 
 template <class T>
 void
-beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
-        mdarray<std::complex<T>, 3> const& pw_coeffs_t_device,
-        mdarray<std::complex<T>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
+beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out, mdarray<std::complex<T>, 3> const& pw_coeffs_t_device,
+                             mdarray<std::complex<T>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
                              fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord_,
                              beta_chunk_t const& beta_chunk, int j__)
 {
     PROFILE("beta_projectors_generate_gpu");
 #if defined(SIRIUS_GPU)
     int num_gkvec_loc = gkvec.count();
-    auto& desc = beta_chunk.desc_;
+    auto& desc        = beta_chunk.desc_;
     create_beta_gk_gpu(beta_chunk.num_atoms_, num_gkvec_loc, desc.at(memory_t::device),
                        pw_coeffs_t_device.at(memory_t::device, 0, 0, j__), gkvec_coord_.at(memory_t::device),
                        beta_chunk.atom_pos_.at(memory_t::device), out.pw_coeffs_a_.at(memory_t::device));
@@ -123,14 +121,14 @@ beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
 // explicit instantiation
 template void
 beta_projectors_generate_gpu<double>(beta_projectors_coeffs_t<double>&, mdarray<std::complex<double>, 3> const&,
-        mdarray<std::complex<double>, 3> const&, Simulation_context const&, fft::Gvec const&,
-        mdarray<double, 2> const&, beta_chunk_t const&, int);
+                                     mdarray<std::complex<double>, 3> const&, Simulation_context const&,
+                                     fft::Gvec const&, mdarray<double, 2> const&, beta_chunk_t const&, int);
 #ifdef SIRIUS_USE_FP32
 // explicit instantiation
 template void
 beta_projectors_generate_gpu<float>(beta_projectors_coeffs_t<float>&, mdarray<std::complex<float>, 3> const&,
-        mdarray<std::complex<float>, 3> const&, Simulation_context const&, fft::Gvec const&,
-        mdarray<double, 2> const&, beta_chunk_t const&, int);
+                                    mdarray<std::complex<float>, 3> const&, Simulation_context const&, fft::Gvec const&,
+                                    mdarray<double, 2> const&, beta_chunk_t const&, int);
 #endif
 } // namespace local
 
@@ -141,13 +139,11 @@ Beta_projectors_base<T>::split_in_chunks()
     auto& uc = ctx_.unit_cell();
 
     std::vector<int> offset_t(uc.num_atom_types());
-    std::generate(offset_t.begin(), offset_t.end(),
-            [n = 0, iat = 0, &uc] () mutable
-            {
-                int offs = n;
-                n += uc.atom_type(iat++).mt_basis_size();
-                return offs;
-            });
+    std::generate(offset_t.begin(), offset_t.end(), [n = 0, iat = 0, &uc]() mutable {
+        int offs = n;
+        n += uc.atom_type(iat++).mt_basis_size();
+        return offs;
+    });
 
     if (uc.max_mt_basis_size() == 0) {
         /* no beta projectors at all */
@@ -189,7 +185,7 @@ Beta_projectors_base<T>::split_in_chunks()
             /* offset in beta_gk*/
             beta_chunks_[ib].desc_(beta_desc_idx::offset, i) = num_beta;
             /* offset in beta_gk_t */
-            beta_chunks_[ib].desc_(beta_desc_idx::offset_t, i) = offset_t[type.id()]; //offset_lo();
+            beta_chunks_[ib].desc_(beta_desc_idx::offset_t, i) = offset_t[type.id()]; // offset_lo();
             /* global index of atom */
             beta_chunks_[ib].desc_(beta_desc_idx::ia, i) = ia;
 
@@ -263,13 +259,12 @@ Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichu
     switch (processing_unit_) {
         case device_t::CPU: {
             out.pw_coeffs_a_ =
-                matrix<numeric_t>({gk_size, beta_chunks_[ichunk__].num_beta_},
-                        const_cast<numeric_t*>(&beta_pw_all_atoms_(0, beta_chunks_[ichunk__].offset_)));
+                    matrix<numeric_t>({gk_size, beta_chunks_[ichunk__].num_beta_},
+                                      const_cast<numeric_t*>(&beta_pw_all_atoms_(0, beta_chunks_[ichunk__].offset_)));
             break;
         }
         case device_t::GPU: {
-            out.pw_coeffs_a_ = matrix<numeric_t>({gk_size, num_beta}, nullptr, 
-                    out.pw_coeffs_a_buffer_.device_data());
+            out.pw_coeffs_a_ = matrix<numeric_t>({gk_size, num_beta}, nullptr, out.pw_coeffs_a_buffer_.device_data());
             local::beta_projectors_generate_gpu(out, pw_coeffs_t_device_, pw_coeffs_t_host_, ctx_, gkvec_, gkvec_coord_,
                                                 beta_chunks_[ichunk__], j);
             break;
@@ -299,8 +294,7 @@ Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichu
         }
         case device_t::GPU: {
             // view of internal buffer with correct number of cols (= num_beta)
-            out.pw_coeffs_a_ =
-                matrix<numeric_t>({gk_size, num_beta}, nullptr, out.pw_coeffs_a_buffer_.device_data());
+            out.pw_coeffs_a_ = matrix<numeric_t>({gk_size, num_beta}, nullptr, out.pw_coeffs_a_buffer_.device_data());
             // g0 coefficients reside in host memory
 
             local::beta_projectors_generate_gpu(out, pw_coeffs_t_device_, pw_coeffs_t_host_, ctx_, gkvec_, gkvec_coord_,

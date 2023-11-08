@@ -37,7 +37,7 @@ namespace sirius {
  */
 inline auto
 sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> const* fpw__, mdarray<double, 3>& fl__,
-        matrix<std::complex<double>>& gvec_ylm__)
+             matrix<std::complex<double>>& gvec_ylm__)
 {
     PROFILE("sirius::sum_fg_fl_yg");
 
@@ -68,7 +68,7 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
             auto& mp      = get_memory_pool(memory_t::host);
             auto& mpd     = get_memory_pool(memory_t::device);
             phase_factors = matrix<std::complex<double>>({ngv_loc, na_max}, mpd);
-            zm = matrix<std::complex<double>>({lmmax, ngv_loc}, mp);
+            zm            = matrix<std::complex<double>>({lmmax, ngv_loc}, mp);
             zm.allocate(mpd);
             tmp = matrix<std::complex<double>>({lmmax, na_max}, mp);
             tmp.allocate(mpd);
@@ -99,17 +99,17 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
         switch (ctx__.processing_unit()) {
             case device_t::CPU: {
                 la::wrap(la::lib_t::blas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(memory_t::host),
-                          zm.ld(), phase_factors.at(memory_t::host), phase_factors.ld(),
-                          &la::constant<std::complex<double>>::zero(), tmp.at(memory_t::host), tmp.ld());
+                        .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(),
+                              zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host), phase_factors.ld(),
+                              &la::constant<std::complex<double>>::zero(), tmp.at(memory_t::host), tmp.ld());
                 break;
             }
             case device_t::GPU: {
                 zm.copy_to(memory_t::device);
                 la::wrap(la::lib_t::gpublas)
-                    .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(), zm.at(memory_t::device),
-                          zm.ld(), phase_factors.at(memory_t::device), phase_factors.ld(),
-                          &la::constant<std::complex<double>>::zero(), tmp.at(memory_t::device), tmp.ld());
+                        .gemm('N', 'N', lmmax, na, ngv_loc, &la::constant<std::complex<double>>::one(),
+                              zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device), phase_factors.ld(),
+                              &la::constant<std::complex<double>>::zero(), tmp.at(memory_t::device), tmp.ld());
                 tmp.copy_to(memory_t::host);
                 break;
             }
@@ -127,6 +127,6 @@ sum_fg_fl_yg(Simulation_context const& ctx__, int lmax__, std::complex<double> c
     return flm;
 }
 
-}
+} // namespace sirius
 
 #endif
