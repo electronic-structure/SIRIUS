@@ -647,153 +647,154 @@ class Density : public Field4D
     void
     save_to_xsf()
     {
-        //== FILE* fout = fopen("unit_cell.xsf", "w");
-        //== fprintf(fout, "CRYSTAL\n");
-        //== fprintf(fout, "PRIMVEC\n");
-        //== auto& lv = unit_cell_.lattice_vectors();
-        //== for (int i = 0; i < 3; i++)
-        //== {
-        //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-        //== }
-        //== fprintf(fout, "CONVVEC\n");
-        //== for (int i = 0; i < 3; i++)
-        //== {
-        //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-        //== }
-        //== fprintf(fout, "PRIMCOORD\n");
-        //== fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
-        //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        //== {
-        //==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
-        //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
-        //== }
-        //== fclose(fout);
+        /*
+        FILE* fout = fopen("unit_cell.xsf", "w");
+        fprintf(fout, "CRYSTAL\n");
+        fprintf(fout, "PRIMVEC\n");
+        auto& lv = unit_cell_.lattice_vectors();
+        for (int i = 0; i < 3; i++)
+        {
+            fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
+        }
+        fprintf(fout, "CONVVEC\n");
+        for (int i = 0; i < 3; i++)
+        {
+            fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
+        }
+        fprintf(fout, "PRIMCOORD\n");
+        fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
+            fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
+        }
+        fclose(fout);
+        */
     }
 
     void
     save_to_ted()
     {
+        /*
+           mdarray<double, 3> vloc_3d_map(&vloc_it[0], fft_->size(0), fft_->size(1), fft_->size(2));
+           int nx = fft_->size(0);
+           int ny = fft_->size(1);
+           int nz = fft_->size(2);
 
-        //== void write_periodic_function()
-        //== {
-        //==     //== mdarray<double, 3> vloc_3d_map(&vloc_it[0], fft_->size(0), fft_->size(1), fft_->size(2));
-        //==     //== int nx = fft_->size(0);
-        //==     //== int ny = fft_->size(1);
-        //==     //== int nz = fft_->size(2);
+           auto p = parameters_.unit_cell()->unit_cell_parameters();
 
-        //==     //== auto p = parameters_.unit_cell()->unit_cell_parameters();
-
-        //==     //== FILE* fout = fopen("potential.ted", "w");
-        //==     //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
-        //==     //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha,
-        //p.beta, p.gamma);
-        //==     //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
-        //==     //== for (int i0 = 0; i0 <= nx; i0++)
-        //==     //== {
-        //==     //==     for (int i1 = 0; i1 <= ny; i1++)
-        //==     //==     {
-        //==     //==         for (int i2 = 0; i2 <= nz; i2++)
-        //==     //==         {
-        //==     //==             fprintf(fout, "%14.8f\n", vloc_3d_map(i0 % nx, i1 % ny, i2 % nz));
-        //==     //==         }
-        //==     //==     }
-        //==     //== }
-        //==     //== fclose(fout);
-        //== }
+           FILE* fout = fopen("potential.ted", "w");
+           fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
+           fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+           fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
+           for (int i0 = 0; i0 <= nx; i0++)
+           {
+               for (int i1 = 0; i1 <= ny; i1++)
+               {
+                   for (int i2 = 0; i2 <= nz; i2++)
+                   {
+                       fprintf(fout, "%14.8f\n", vloc_3d_map(i0 % nx, i1 % ny, i2 % nz));
+                   }
+               }
+           }
+           fclose(fout);
+        */
     }
 
     void
     save_to_xdmf()
-    {
-        //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
-        //== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+    { /*
+         mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
+         mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
 
-        //== mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
-        //== mag_grid.zero();
+         mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
+         mag_grid.zero();
 
-        //== // loop over 3D array (real space)
-        //== for (int j0 = 0; j0 < fft_->size(0); j0++)
-        //== {
-        //==     for (int j1 = 0; j1 < fft_->size(1); j1++)
-        //==     {
-        //==         for (int j2 = 0; j2 < fft_->size(2); j2++)
-        //==         {
-        //==             int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
-        //==             // get real space fractional coordinate
-        //==             double frv[] = {double(j0) / fft_->size(0),
-        //==                             double(j1) / fft_->size(1),
-        //==                             double(j2) / fft_->size(2)};
-        //==             r3::vector<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(r3::vector<double>(frv));
-        //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
-        //==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
-        //==             if (ctx_.num_mag_dims() == 3)
-        //==             {
-        //==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
-        //==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
-        //==             }
-        //==         }
-        //==     }
-        //== }
+         // loop over 3D array (real space)
+         for (int j0 = 0; j0 < fft_->size(0); j0++)
+         {
+             for (int j1 = 0; j1 < fft_->size(1); j1++)
+             {
+                 for (int j2 = 0; j2 < fft_->size(2); j2++)
+                 {
+                     int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
+                     // get real space fractional coordinate
+                     double frv[] = {double(j0) / fft_->size(0),
+                                     double(j1) / fft_->size(1),
+                                     double(j2) / fft_->size(2)};
+                     r3::vector<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(r3::vector<double>(frv));
+                     for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
+                     if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
+                     if (ctx_.num_mag_dims() == 3)
+                     {
+                         mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
+                         mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
+                     }
+                 }
+             }
+         }
 
-        //== HDF5_tree h5_rho("rho.hdf5", true);
-        //== h5_rho.write("rho", rho_grid);
-        //== h5_rho.write("pos", pos_grid);
-        //== h5_rho.write("mag", mag_grid);
+         HDF5_tree h5_rho("rho.hdf5", true);
+         h5_rho.write("rho", rho_grid);
+         h5_rho.write("pos", pos_grid);
+         h5_rho.write("mag", mag_grid);
 
-        //== FILE* fout = fopen("rho.xdmf", "w");
-        //== //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-        //== //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-        //== //==               "<Xdmf>\n"
-        //== //==               "  <Domain Name=\"name1\">\n"
-        //== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-        //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-        //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
-        //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
-        //Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-        //== //==               "      </Geometry>\n"
-        //== //==               "      <Attribute\n"
-        //== //==               "           AttributeType=\"Scalar\"\n"
-        //== //==               "           Center=\"Node\"\n"
-        //== //==               "           Name=\"rho\">\n"
-        //== //==               "          <DataItem\n"
-        //== //==               "             NumberType=\"Float\"\n"
-        //== //==               "             Precision=\"8\"\n"
-        //== //==               "             Dimensions=\"%i %i %i\"\n"
-        //== //==               "             Format=\"HDF\">\n"
-        //== //==               "             rho.hdf5:/rho\n"
-        //== //==               "          </DataItem>\n"
-        //== //==               "        </Attribute>\n"
-        //== //==               "    </Grid>\n"
-        //== //==               "  </Domain>\n"
-        //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
-        //fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-        //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-        //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-        //==               "<Xdmf>\n"
-        //==               "  <Domain Name=\"name1\">\n"
-        //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-        //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-        //==               "      <Geometry GeometryType=\"XYZ\">\n"
-        //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
-        //Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-        //==               "      </Geometry>\n"
-        //==               "      <Attribute\n"
-        //==               "           AttributeType=\"Vector\"\n"
-        //==               "           Center=\"Node\"\n"
-        //==               "           Name=\"mag\">\n"
-        //==               "          <DataItem\n"
-        //==               "             NumberType=\"Float\"\n"
-        //==               "             Precision=\"8\"\n"
-        //==               "             Dimensions=\"%i %i %i 3\"\n"
-        //==               "             Format=\"HDF\">\n"
-        //==               "             rho.hdf5:/mag\n"
-        //==               "          </DataItem>\n"
-        //==               "        </Attribute>\n"
-        //==               "    </Grid>\n"
-        //==               "  </Domain>\n"
-        //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
-        //fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-        //== fclose(fout);
+         FILE* fout = fopen("rho.xdmf", "w");
+         fprintf(fout, "<?xml version=\"1.0\" ?>\n"
+                       "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
+                       "<Xdmf>\n"
+                       "  <Domain Name=\"name1\">\n"
+                       "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
+                       "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
+                       "      <Geometry GeometryType=\"XYZ\">\n"
+                       "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" "
+                       "Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+                       "      </Geometry>\n"
+                       "      <Attribute\n"
+                       "           AttributeType=\"Scalar\"\n"
+                       "           Center=\"Node\"\n"
+                       "           Name=\"rho\">\n"
+                       "          <DataItem\n"
+                       "             NumberType=\"Float\"\n"
+                       "             Precision=\"8\"\n"
+                       "             Dimensions=\"%i %i %i\"\n"
+                       "             Format=\"HDF\">\n"
+                       "             rho.hdf5:/rho\n"
+                       "          </DataItem>\n"
+                       "        </Attribute>\n"
+                       "    </Grid>\n"
+                       "  </Domain>\n"
+                       "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0),
+                                     fft_->size(1),fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+
+         fprintf(fout, "<?xml version=\"1.0\" ?>\n"
+                       "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
+                       "<Xdmf>\n"
+                       "  <Domain Name=\"name1\">\n"
+                       "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
+                       "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
+                       "      <Geometry GeometryType=\"XYZ\">\n"
+                       "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" "
+                       "Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+                       "      </Geometry>\n"
+                       "      <Attribute\n"
+                       "           AttributeType=\"Vector\"\n"
+                       "           Center=\"Node\"\n"
+                       "           Name=\"mag\">\n"
+                       "          <DataItem\n"
+                       "             NumberType=\"Float\"\n"
+                       "             Precision=\"8\"\n"
+                       "             Dimensions=\"%i %i %i 3\"\n"
+                       "             Format=\"HDF\">\n"
+                       "             rho.hdf5:/mag\n"
+                       "          </DataItem>\n"
+                       "        </Attribute>\n"
+                       "    </Grid>\n"
+                       "  </Domain>\n"
+                       "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0),
+                           fft_->size(1),fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+         fclose(fout);
+         */
     }
 };
 
