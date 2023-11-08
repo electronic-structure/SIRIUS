@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 using namespace la;
 
 template <typename T, typename F>
@@ -27,10 +26,10 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_band
     }
 
     wf::Wave_functions<T> phi(gvec, num_mt_coeffs, wf::num_mag_dims(num_mag_dims__), wf::num_bands(2 * num_bands__),
-            sddk::memory_t::host);
+            memory_t::host);
 
     wf::Wave_functions<T> tmp(gvec, num_mt_coeffs, wf::num_mag_dims(num_mag_dims__), wf::num_bands(2 * num_bands__),
-            sddk::memory_t::host);
+            memory_t::host);
 
     auto sr = num_mag_dims__ == 3 ? wf::spin_range(0, 2) : wf::spin_range(0, 1);
 

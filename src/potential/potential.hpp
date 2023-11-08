@@ -76,11 +76,11 @@ class Potential : public Field4D
     std::unique_ptr<Smooth_periodic_function<double>> dveff_;
 
     /// Moments of the spherical Bessel functions.
-    sddk::mdarray<double, 3> sbessel_mom_;
+    mdarray<double, 3> sbessel_mom_;
 
-    sddk::mdarray<double, 3> sbessel_mt_;
+    mdarray<double, 3> sbessel_mt_;
 
-    sddk::mdarray<double, 2> gamma_factors_R_;
+    mdarray<double, 2> gamma_factors_R_;
 
     std::unique_ptr<SHT> sht_;
 
@@ -92,24 +92,24 @@ class Potential : public Field4D
 
     std::vector<int> l_by_lm_;
 
-    sddk::mdarray<std::complex<double>, 2> gvec_ylm_;
+    mdarray<std::complex<double>, 2> gvec_ylm_;
 
     double energy_vha_{0};
 
     /// Electronic part of Hartree potential.
     /** Used to compute electron-nuclear contribution to the total energy */
-    sddk::mdarray<double, 1> vh_el_;
+    mdarray<double, 1> vh_el_;
 
     std::vector<XC_functional> xc_func_;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
-    sddk::mdarray<std::complex<double>, 1> veff_pw_;
+    mdarray<std::complex<double>, 1> veff_pw_;
 
     /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
-    sddk::mdarray<std::complex<double>, 1> rm_inv_pw_;
+    mdarray<std::complex<double>, 1> rm_inv_pw_;
 
     /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
-    sddk::mdarray<std::complex<double>, 1> rm2_inv_pw_;
+    mdarray<std::complex<double>, 1> rm2_inv_pw_;
 
     /// Hartree contribution to total energy from PAW atoms.
     double paw_hartree_total_energy_{0.0};
@@ -124,9 +124,9 @@ class Potential : public Field4D
     std::unique_ptr<Spheric_function_set<double, paw_atom_index_t>> paw_ae_exc_;
 
     /// Contribution to D-operator matrix from the PAW atoms.
-    std::vector<sddk::mdarray<double, 3>> paw_dij_;
+    std::vector<mdarray<double, 3>> paw_dij_;
 
-    sddk::mdarray<double, 2> aux_bf_;
+    mdarray<double, 2> aux_bf_;
 
     /// Hubbard potential correction operator.
     std::unique_ptr<Hubbard> U_;
@@ -149,19 +149,19 @@ class Potential : public Field4D
     double calc_PAW_local_potential(typename atom_index_t::global ia__, std::vector<Flm const*> ae_density,
             std::vector<Flm const*> ps_density);
 
-    void calc_PAW_local_Dij(typename atom_index_t::global ia__, sddk::mdarray<double, 3>& paw_dij__);
+    void calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__);
 
     double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
-    double calc_PAW_one_elec_energy(Atom const& atom__, sddk::mdarray<double, 2> const& density_matrix__,
-            sddk::mdarray<double, 3> const& paw_dij__) const;
+    double calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const& density_matrix__,
+            mdarray<double, 3> const& paw_dij__) const;
 
     /// Compute MT part of the potential and MT multipole moments
     auto poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
-        sddk::mdarray<std::complex<double>, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
+        mdarray<std::complex<double>, 2> qmt({ctx_.lmmax_rho(), unit_cell_.num_atoms()});
         qmt.zero();
 
         for (auto it : unit_cell_.spl_num_atoms()) {
@@ -178,8 +178,8 @@ class Potential : public Field4D
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
-    void poisson_add_pseudo_pw(sddk::mdarray<std::complex<double>, 2>& qmt__,
-            sddk::mdarray<std::complex<double>, 2>& qit__, std::complex<double>* rho_pw__);
+    void poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__,
+            mdarray<std::complex<double>, 2>& qit__, std::complex<double>* rho_pw__);
 
     /// Generate local part of pseudo potential.
     /** Total local potential is a lattice sum:
@@ -610,7 +610,7 @@ class Potential : public Field4D
 
     void update_atomic_potential();
 
-    template <sddk::device_t pu>
+    template <device_t pu>
     void add_mt_contribution_to_pw();
 
     /// Generate plane-wave coefficients of the potential in the interstitial region.
@@ -792,7 +792,7 @@ class Potential : public Field4D
 
     void set_veff_pw(std::complex<double> const* veff_pw__)
     {
-        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(sddk::memory_t::host));
+        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
     }
 
     auto const& rm_inv_pw(int ig__) const
@@ -802,7 +802,7 @@ class Potential : public Field4D
 
     void set_rm_inv_pw(std::complex<double> const* rm_inv_pw__)
     {
-        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(sddk::memory_t::host));
+        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
     }
 
     auto const& rm2_inv_pw(int ig__) const
@@ -812,7 +812,7 @@ class Potential : public Field4D
 
     inline void set_rm2_inv_pw(std::complex<double> const* rm2_inv_pw__)
     {
-        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(sddk::memory_t::host));
+        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(memory_t::host));
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.

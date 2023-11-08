@@ -37,7 +37,6 @@
 #include "core/mpi/pstdout.hpp"
 #include "core/rte/rte.hpp"
 #include "core/profiler.hpp"
-#include "SDDK/memory.hpp"
 
 namespace sirius {
 
@@ -158,16 +157,16 @@ class Gvec
      *
      *  Limitations: size of z-dimension of FFT grid: 4096, number of z-columns: 1048576
      */
-    sddk::mdarray<uint32_t, 1> gvec_full_index_;
+    mdarray<uint32_t, 1> gvec_full_index_;
 
     /// Index of the shell to which the given G-vector belongs.
-    sddk::mdarray<int, 1> gvec_shell_;
+    mdarray<int, 1> gvec_shell_;
 
     /// Number of G-vector shells (groups of G-vectors with the same length).
     int num_gvec_shells_;
 
     /// Radii (or lengths) of G-vector shells in a.u.^-1.
-    sddk::mdarray<double, 1> gvec_shell_len_;
+    mdarray<double, 1> gvec_shell_len_;
 
     /// Local number of G-vector shells for the local number of G-vectors.
     /** G-vectors are distributed by sticks, not by G-shells. This means that each rank stores local fraction of
@@ -181,7 +180,7 @@ class Gvec
     /// Mapping between local index of G-vector and local G-shell index.
     std::vector<int> gvec_shell_idx_local_;
 
-    sddk::mdarray<int, 3> gvec_index_by_xy_;
+    mdarray<int, 3> gvec_index_by_xy_;
 
     /// Global list of non-zero z-columns.
     std::vector<z_column_descriptor> z_columns_;
@@ -208,29 +207,29 @@ class Gvec
         }
         \endcode
     */
-    sddk::mdarray<int, 1> gvec_base_mapping_;
+    mdarray<int, 1> gvec_base_mapping_;
 
     /// Lattice coordinates of a local set of G-vectors.
     /** This are also known as Miller indices */
-    sddk::mdarray<int, 2> gvec_;
+    mdarray<int, 2> gvec_;
 
     /// Lattice coordinates of a local set of G+k-vectors.
-    sddk::mdarray<double, 2> gkvec_;
+    mdarray<double, 2> gkvec_;
 
     /// Cartiesian coordinaes of a local set of G-vectors.
-    sddk::mdarray<double, 2> gvec_cart_;
+    mdarray<double, 2> gvec_cart_;
 
     /// Cartesian coordinaes of a local set of G+k-vectors.
-    sddk::mdarray<double, 2> gkvec_cart_;
+    mdarray<double, 2> gkvec_cart_;
 
     /// Length of the local fraction of G-vectors.
-    sddk::mdarray<double, 1> gvec_len_;
+    mdarray<double, 1> gvec_len_;
 
     // Theta- and phi- angles of G-vectors.
-    sddk::mdarray<double, 2> gvec_tp_;
+    mdarray<double, 2> gvec_tp_;
 
     // Theta- and phi- angles of G+k-vectors.
-    sddk::mdarray<double, 2> gkvec_tp_;
+    mdarray<double, 2> gkvec_tp_;
 
     /// Offset in the global index for the local part of G-vectors.
     int offset_{-1};
@@ -371,10 +370,10 @@ class Gvec
         , bare_gvec_(false)
         , count_(ngv_loc__)
     {
-        sddk::mdarray<int, 2> G(const_cast<int*>(gv__), 3, ngv_loc__);
+        mdarray<int, 2> G({3, ngv_loc__}, const_cast<int*>(gv__));
 
-        gvec_  = sddk::mdarray<int, 2>(3, count(), sddk::memory_t::host, "gvec_");
-        gkvec_ = sddk::mdarray<double, 2>(3, count(), sddk::memory_t::host, "gkvec_");
+        gvec_  = mdarray<int, 2>({3, count()}, mdarray_label("gvec_"));
+        gkvec_ = mdarray<double, 2>({3, count()}, mdarray_label("gkvec_"));
 
         /* do a first pass: determine boundaries of the grid */
         int xmin{0}, xmax{0};
@@ -390,7 +389,7 @@ class Gvec
         comm_.allreduce<int, mpi::op_t::max>(&xmax, 1);
         comm_.allreduce<int, mpi::op_t::max>(&ymax, 1);
 
-        sddk::mdarray<int, 2> zcol(sddk::mdarray_index_descriptor(xmin, xmax), sddk::mdarray_index_descriptor(ymin, ymax));
+        mdarray<int, 2> zcol({index_range(xmin, xmax + 1), index_range(ymin, ymax + 1)});
         zcol.zero();
         for (int ig = 0; ig < ngv_loc__; ig++) {
             zcol(G(0, ig), G(1, ig))++;
@@ -734,7 +733,7 @@ class Gvec
     {
         int ngv = this->count();
         this->comm().bcast(&ngv, 1, rank__);
-        sddk::mdarray<int, 2> result(3, ngv);
+        mdarray<int, 2> result({3, ngv});
         if (this->comm().rank() == rank__) {
             RTE_ASSERT(ngv == this->count());
             copy(this->gvec_, result);
@@ -790,14 +789,14 @@ class Gvec_fft
     mpi::block_data_descriptor gvec_fft_slab_;
 
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
-    sddk::mdarray<int, 2> rank_map_;
+    mdarray<int, 2> rank_map_;
 
     /// Lattice coordinates of a local set of G-vectors.
     /** These are also known as Miller indices */
-    sddk::mdarray<int, 2> gvec_array_;
+    mdarray<int, 2> gvec_array_;
 
     /// Cartesian coordinaes of a local set of G+k-vectors.
-    sddk::mdarray<double, 2> gkvec_cart_array_;
+    mdarray<double, 2> gkvec_cart_array_;
 
     void build_fft_distr();
 
@@ -925,10 +924,10 @@ class Gvec_shells
     splindex_block_cyclic<> spl_num_gsh_;
 
     /// List of G-vectors in the remapped storage.
-    sddk::mdarray<int, 2> gvec_remapped_;
+    mdarray<int, 2> gvec_remapped_;
 
     /// Mapping between index of local G-vector and global index of G-vector shell.
-    sddk::mdarray<int, 1> gvec_shell_remapped_;
+    mdarray<int, 1> gvec_shell_remapped_;
 
     /// Alias for the G-vector communicator.
     mpi::Communicator const& comm_;

@@ -29,14 +29,13 @@
 #include "k_point/k_point.hpp"
 #include "density/augmentation_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
-#include "SDDK/memory.hpp"
 
 namespace sirius {
 
 /** \tparam T  Precision type of the wave-functions */
 template<typename T, typename F>
 void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_base<T>& bp_base__,
-        K_point<T>& kp__, sddk::mdarray<real_type<F>, 2>& collect_res__)
+        K_point<T>& kp__, mdarray<real_type<F>, 2>& collect_res__)
 {
     PROFILE("sirius::add_k_point_contribution_nonlocal");
 
@@ -63,18 +62,14 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
         bp_gen.generate(beta_coeffs, icnk);
 
         /* store <beta|psi> for spin up and down */
-        sddk::matrix<F> beta_phi_chunks[2];
+        matrix<F> beta_phi_chunks[2];
 
         for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
             int nbnd = kp__.num_occupied_bands(ispn);
-            // beta_phi_chunks[ispn] = bp.template inner<F>(ctx__.processing_unit_memory_t(), icnk,
-            //         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
-            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt),
+            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt),
                                                        beta_coeffs, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
-        // bp.dismiss();
 
-        // bp_base__.prepare();
         for (int x = 0; x < bp_base__.num_comp(); x++) {
             /* generate chunk for inner product of beta gradient */
             bp_base_gen.generate(beta_coeffs_base, icnk, x);
@@ -86,7 +81,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
                 /* inner product of beta gradient and WF */
                 auto bp_base_phi_chunk = inner_prod_beta<F>(
-                    ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), beta_coeffs_base,
+                    ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt), beta_coeffs_base,
                     kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
                 splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
@@ -106,7 +101,7 @@ void add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projector
 
                     /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                     auto for_bnd = [&](int ibf, int jbf, std::complex<real_type<F>> dij, real_type<F> qij,
-                                       sddk::matrix<F>& beta_phi_chunk) {
+                                       matrix<F>& beta_phi_chunk) {
                         /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd.global_index(ibnd_loc);

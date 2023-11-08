@@ -183,14 +183,14 @@ Density::initial_density_pseudo()
                 ctx_.phase_factors_t(), ff);
 
     if (env::print_checksum()) {
-        auto z1 = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
+        auto z1 = mdarray<std::complex<double>, 1>({ctx_.gvec().count()}, &v[0]).checksum();
         ctx_.comm().allreduce(&z1, 1);
         print_checksum("rho_pw_init", z1, ctx_.out());
     }
     std::copy(v.begin(), v.end(), &rho().rg().f_pw_local(0));
 
     if (env::print_hash()) {
-        auto h = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).hash();
+        auto h = mdarray<std::complex<double>, 1>({ctx_.gvec().count()}, &v[0]).hash();
         print_hash("rho_pw_init", h, ctx_.out());
     }
 
@@ -288,7 +288,7 @@ Density::initial_density_full_pot()
     }
 
     if (env::print_checksum()) {
-        auto z = sddk::mdarray<std::complex<double>, 1>(&v[0], ctx_.gvec().count()).checksum();
+        auto z = mdarray<std::complex<double>, 1>({ctx_.gvec().count()}, &v[0]).checksum();
         ctx_.comm().allreduce(&z, 1);
         print_checksum("rho_pw", z, ctx_.out());
     }
@@ -333,7 +333,7 @@ Density::initial_density_full_pot()
 
     auto sbessel_mt = generate_sbessel_mt(ctx_, lmax);
 
-    auto flm = sum_fg_fl_yg(ctx_, lmax, v.at(sddk::memory_t::host), sbessel_mt, gvec_ylm);
+    auto flm = sum_fg_fl_yg(ctx_, lmax, v.at(memory_t::host), sbessel_mt, gvec_ylm);
 
     /* this is the difference between the value of periodic charge density at MT boundary and
        a value of the atom's free density at the boundary */
@@ -345,7 +345,7 @@ Density::initial_density_full_pot()
 
     /* match density at MT */
     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
-        sddk::mdarray<double, 2> rRl(ctx_.unit_cell().max_num_mt_points(), lmax + 1);
+        mdarray<double, 2> rRl({ctx_.unit_cell().max_num_mt_points(), lmax + 1});
         double R = ctx_.unit_cell().atom_type(iat).mt_radius();
         int nmtp = ctx_.unit_cell().atom_type(iat).num_mt_points();
 
@@ -566,8 +566,8 @@ Density::generate_paw_density()
 /// Compute non-magnetic or up- or dn- contribution of the wave-functions to the charge density.
 template <typename T>
 static void
-add_k_point_contribution_rg_collinear(fft::spfft_transform_type<T>& fft__, int ispn__, T w__, T const* inp_wf__,
-                                      int nr__, bool gamma__, sddk::mdarray<T, 2>& density_rg__)
+add_k_point_contribution_rg_collinear(fft::spfft_transform_type<T>& fft__, int ispn__, T w__, T const* inp_wf__, int nr__,
+        bool gamma__, mdarray<T, 2>& density_rg__)
 {
     /* transform to real space */
     fft__.backward(inp_wf__, fft__.processing_unit());
@@ -595,10 +595,10 @@ add_k_point_contribution_rg_collinear(fft::spfft_transform_type<T>& fft__, int i
         case SPFFT_PU_GPU: {
 #if defined(SIRIUS_GPU)
             if (gamma__) {
-                update_density_rg_1_real_gpu(nr__, data_ptr, w__, density_rg__.at(sddk::memory_t::device, 0, ispn__));
+                update_density_rg_1_real_gpu(nr__, data_ptr, w__, density_rg__.at(memory_t::device, 0, ispn__));
             } else {
                 auto data = reinterpret_cast<std::complex<T>*>(data_ptr);
-                update_density_rg_1_complex_gpu(nr__, data, w__, density_rg__.at(sddk::memory_t::device, 0, ispn__));
+                update_density_rg_1_complex_gpu(nr__, data, w__, density_rg__.at(memory_t::device, 0, ispn__));
             }
 #endif
             break;
@@ -608,10 +608,9 @@ add_k_point_contribution_rg_collinear(fft::spfft_transform_type<T>& fft__, int i
 
 /// Compute contribution to density and megnetisation from the 2-component spinor wave-functions.
 template <typename T>
-static void
-add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T w__, T const* inp_wf_up__,
-                                         T const* inp_wf_dn__, int nr__, sddk::mdarray<std::complex<T>, 1>& psi_r_up__,
-                                         sddk::mdarray<T, 2>& density_rg__)
+static
+void add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T w__, T const* inp_wf_up__,
+        T const* inp_wf_dn__, int nr__, mdarray<std::complex<T>, 1>& psi_r_up__, mdarray<T, 2>& density_rg__)
 {
     /* location of the real-space wave-functions psi(r) */
     auto data_ptr = fft__.space_domain_data(fft__.processing_unit());
@@ -623,11 +622,11 @@ add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T 
     switch (fft__.processing_unit()) {
         case SPFFT_PU_HOST: {
             auto inp = reinterpret_cast<std::complex<T>*>(data_ptr);
-            std::copy(inp, inp + nr__, psi_r_up__.at(sddk::memory_t::host));
+            std::copy(inp, inp + nr__, psi_r_up__.at(memory_t::host));
             break;
         }
         case SPFFT_PU_GPU: {
-            acc::copy(psi_r_up__.at(sddk::memory_t::device), reinterpret_cast<std::complex<T>*>(data_ptr), nr__);
+            acc::copy(psi_r_up__.at(memory_t::device), reinterpret_cast<std::complex<T>*>(data_ptr), nr__);
             break;
         }
     }
@@ -658,14 +657,14 @@ add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T 
         case SPFFT_PU_GPU: {
 #ifdef SIRIUS_GPU
             /* add up-up contribution */
-            update_density_rg_1_complex_gpu(nr__, psi_r_up.at(sddk::memory_t::device), w__,
-                                            density_rg__.at(sddk::memory_t::device, 0, 0));
+            update_density_rg_1_complex_gpu(nr__, psi_r_up.at(memory_t::device), w__,
+                                            density_rg__.at(memory_t::device, 0, 0));
             /* add dn-dn contribution */
-            update_density_rg_1_complex_gpu(nr__, psi_r_dn, w__, density_rg__.at(sddk::memory_t::device, 0, 1));
+            update_density_rg_1_complex_gpu(nr__, psi_r_dn, w__, density_rg__.at(memory_t::device, 0, 1));
             /* add off-diagonal contribution */
-            update_density_rg_2_gpu(nr__, psi_r_up.at(sddk::memory_t::device), psi_r_dn, w__,
-                                    density_rg__.at(sddk::memory_t::device, 0, 2),
-                                    density_rg__.at(sddk::memory_t::device, 0, 3));
+            update_density_rg_2_gpu(nr__, psi_r_up.at(memory_t::device), psi_r_dn, w__,
+                                    density_rg__.at(memory_t::device, 0, 2),
+                                    density_rg__.at(memory_t::device, 0, 3));
 #endif
             break;
         }
@@ -686,11 +685,12 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
     int nr = fft.local_slice_size();
 
     /* get preallocated memory */
-    sddk::mdarray<T, 2> density_rg(nr, ctx_.num_mag_dims() + 1, get_memory_pool(sddk::memory_t::host), "density_rg");
+    mdarray<T, 2> density_rg({nr, ctx_.num_mag_dims() + 1}, get_memory_pool(memory_t::host),
+            mdarray_label("density_rg"));
     density_rg.zero();
 
     if (fft.processing_unit() == SPFFT_PU_GPU) {
-        density_rg.allocate(get_memory_pool(sddk::memory_t::device)).zero(sddk::memory_t::device);
+        density_rg.allocate(get_memory_pool(memory_t::device)).zero(memory_t::device);
     }
 
     /* non-magnetic or collinear case */
@@ -698,7 +698,7 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
         /* loop over pure spinor components */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* where fft-transformed wave-functions are stored */
-            auto wf_mem = wf_fft__[ispn].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto wf_mem = wf_fft__[ispn].on_device() ? memory_t::device : memory_t::host;
             /* local number of bands for a fft-distribution */
             int nbnd = wf_fft__[ispn].num_wf_local();
             for (int i = 0; i < nbnd; i++) {
@@ -713,9 +713,9 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
         }    // ispn
     } else { /* non-collinear case */
         /* allocate on CPU or GPU */
-        sddk::mdarray<std::complex<T>, 1> psi_r_up(nr, get_memory_pool(sddk::memory_t::host));
+        mdarray<std::complex<T>, 1> psi_r_up({nr}, get_memory_pool(memory_t::host));
         if (fft.processing_unit() == SPFFT_PU_GPU) {
-            psi_r_up.allocate(get_memory_pool(sddk::memory_t::device));
+            psi_r_up.allocate(get_memory_pool(memory_t::device));
         }
 
         RTE_ASSERT(wf_fft__[0].num_wf_local() == wf_fft__[1].num_wf_local());
@@ -725,8 +725,8 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
             auto j = wf_fft__[0].spl_num_wf().global_index(i);
             T w    = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
-            auto wf_mem_up = wf_fft__[0].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
-            auto wf_mem_dn = wf_fft__[1].on_device() ? sddk::memory_t::device : sddk::memory_t::host;
+            auto wf_mem_up = wf_fft__[0].on_device() ? memory_t::device : memory_t::host;
+            auto wf_mem_dn = wf_fft__[1].on_device() ? memory_t::device : memory_t::host;
 
             /* up- and dn- components */
             auto inp_wf_up = wf_fft__[0].pw_coeffs_spfft(wf_mem_up, wf::band_index(i));
@@ -738,7 +738,7 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
     }
 
     if (fft.processing_unit() == SPFFT_PU_GPU) {
-        density_rg.copy_to(sddk::memory_t::host);
+        density_rg.copy_to(memory_t::host);
     }
 
     /* switch from real density matrix to density and magnetization */
@@ -781,9 +781,9 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 /* add |psi_j> n_j <psi_j| to density matrix */
 #pragma omp parallel
     {
-        sddk::mdarray<std::complex<double>, 3> wf1(uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins());
-        sddk::mdarray<std::complex<double>, 3> wf2(uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins());
-#pragma omp for
+        mdarray<std::complex<double>, 3> wf1({uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins()});
+        mdarray<std::complex<double>, 3> wf2({uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins()});
+        #pragma omp for
         for (auto it : kp__.spinor_wave_functions().spl_num_atoms()) {
             int ia            = it.i;
             int mt_basis_size = uc.atom(ia).type().mt_basis_size();
@@ -802,17 +802,15 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
 
             /* compute diagonal terms */
             for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
-                la::wrap(la::lib_t::blas)
-                    .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(ispn), &one, &wf1(0, 0, ispn),
-                          wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), &one,
-                          density_matrix__[ia].at(sddk::memory_t::host, 0, 0, ispn), density_matrix__[ia].ld());
+                la::wrap(la::lib_t::blas).gemm('N', 'T', mt_basis_size, mt_basis_size,
+                        kp__.num_occupied_bands(ispn), &one, &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), &one,
+                        density_matrix__[ia].at(memory_t::host, 0, 0, ispn), density_matrix__[ia].ld());
             }
             /* offdiagonal term */
             if (ctx__.num_mag_dims() == 3) {
-                la::wrap(la::lib_t::blas)
-                    .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(), &one, &wf1(0, 0, 0),
-                          wf1.ld(), &wf2(0, 0, 1), wf2.ld(), &one,
-                          density_matrix__[ia].at(sddk::memory_t::host, 0, 0, 2), density_matrix__[ia].ld());
+                la::wrap(la::lib_t::blas).gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(),
+                        &one, &wf1(0, 0, 0), wf1.ld(), &wf2(0, 0, 1), wf2.ld(), &one,
+                        density_matrix__[ia].at(memory_t::host, 0, 0, 2), density_matrix__[ia].ld());
             }
         }
     }
@@ -832,27 +830,27 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
         int nbnd = kp__.num_occupied_bands(ispn);
         /* compute <beta|psi> */
         auto beta_psi =
-            inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), bp_coeffs__,
-                               kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+            inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt),
+                    bp_coeffs__, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
         /* use communicator of the k-point to split band index */
         splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
         int nbnd_loc = spl_nbnd.local_size();
         if (nbnd_loc) { // TODO: this part can also be moved to GPU
-#pragma omp parallel
-            {
-                /* auxiliary arrays */
-                sddk::mdarray<std::complex<double>, 2> bp1(nbeta, nbnd_loc);
-                sddk::mdarray<std::complex<double>, 2> bp2(nbeta, nbnd_loc);
-#pragma omp for
-                for (int ia = 0; ia < bp_coeffs__.beta_chunk_.num_atoms_; ia++) {
-                    int nbf = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::nbf, ia);
-                    if (!nbf) {
-                        continue;
-                    }
-                    int offs = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, ia);
-                    int ja   = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, ia);
+        #pragma omp parallel
+        {
+            /* auxiliary arrays */
+            mdarray<std::complex<double>, 2> bp1({nbeta, nbnd_loc});
+            mdarray<std::complex<double>, 2> bp2({nbeta, nbnd_loc});
+            #pragma omp for
+            for (int ia = 0; ia < bp_coeffs__.beta_chunk_.num_atoms_; ia++) {
+                int nbf = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::nbf, ia);
+                if (!nbf) {
+                    continue;
+                }
+                int offs = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, ia);
+                int ja = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, ia);
 
                     for (int i = 0; i < nbnd_loc; i++) {
                         /* global index of band */
@@ -890,8 +888,8 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
     int nbnd_loc = spl_nbnd.local_size();
 
     /* auxiliary arrays */
-    sddk::mdarray<std::complex<double>, 3> bp1(nbeta, nbnd_loc, ctx__.num_spins());
-    sddk::mdarray<std::complex<double>, 3> bp2(nbeta, nbnd_loc, ctx__.num_spins());
+    mdarray<std::complex<double>, 3> bp1({nbeta, nbnd_loc, ctx__.num_spins()});
+    mdarray<std::complex<double>, 3> bp2({nbeta, nbnd_loc, ctx__.num_spins()});
 
     auto& uc = ctx__.unit_cell();
 
@@ -899,8 +897,8 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* compute <beta|psi> */
         auto beta_psi =
-            inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), sddk::is_device_memory(mt), bp_coeffs__,
-                               kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
+            inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt),
+                    bp_coeffs__, kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
 #pragma omp parallel for schedule(static)
         for (int i = 0; i < nbnd_loc; i++) {
@@ -921,7 +919,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
         int offs = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, ia);
         int ja   = bp_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, ia);
         if (uc.atom(ja).type().spin_orbit_coupling()) {
-            sddk::mdarray<std::complex<double>, 3> bp3(nbf, nbnd_loc, 2);
+            mdarray<std::complex<double>, 3> bp3({nbf, nbnd_loc, 2});
             bp3.zero();
             /* We already have the <beta|psi> but we need to rotate
              *  them when the spin orbit interaction is included in the
@@ -1270,7 +1268,7 @@ Density::generate_valence(K_point_set const& ks__)
         rho_mag_coarse_[i]->zero();
     }
 
-    auto mem = ctx_.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+    auto mem = ctx_.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
 
     /* start the main loop over k-points */
     for (auto it : ks__.spl_num_kpoints()) {
@@ -1311,7 +1309,7 @@ Density::generate_valence(K_point_set const& ks__)
     }
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        ctx_.comm().allreduce(density_matrix(ia).at(sddk::memory_t::host), static_cast<int>(density_matrix(ia).size()));
+        ctx_.comm().allreduce(density_matrix(ia).at(memory_t::host), static_cast<int>(density_matrix(ia).size()));
     }
 
     if (occupation_matrix_) {
@@ -1326,7 +1324,7 @@ Density::generate_valence(K_point_set const& ks__)
         comm.allreduce(ptr, ctx_.spfft_coarse<double>().local_slice_size());
         /* print checksum if needed */
         if (env::print_checksum()) {
-            auto cs = sddk::mdarray<double, 1>(ptr, ctx_.spfft_coarse<double>().local_slice_size()).checksum();
+            auto cs = mdarray<double, 1>({ctx_.spfft_coarse<double>().local_slice_size()}, ptr).checksum();
             mpi::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
             print_checksum("rho_mag_coarse_rg", cs, ctx_.out());
         }
@@ -1347,7 +1345,7 @@ Density::generate_valence(K_point_set const& ks__)
         }
 
         if (env::print_hash()) {
-            auto h = sddk::mdarray<std::complex<double>, 1>(&rho().rg().f_pw_local(0), ctx_.gvec().count()).hash();
+            auto h = mdarray<std::complex<double>, 1>({ctx_.gvec().count()}, &rho().rg().f_pw_local(0)).hash();
             print_hash("rho", h, ctx_.out());
         }
 
@@ -1369,7 +1367,7 @@ Density::generate_valence(K_point_set const& ks__)
     }
 }
 
-sddk::mdarray<std::complex<double>, 2>
+mdarray<std::complex<double>, 2>
 Density::generate_rho_aug() const
 {
     PROFILE("sirius::Density::generate_rho_aug");
@@ -1378,19 +1376,19 @@ Density::generate_rho_aug() const
     int gvec_count = ctx_.gvec().count();
     auto spl_ngv_loc = split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
-    auto& mph = get_memory_pool(sddk::memory_t::host);
-    sddk::memory_pool* mpd{nullptr};
+    auto& mph = get_memory_pool(memory_t::host);
+    memory_pool* mpd{nullptr};
 
-    sddk::mdarray<std::complex<double>, 2> rho_aug(gvec_count, ctx_.num_mag_dims() + 1, mph);
+    mdarray<std::complex<double>, 2> rho_aug({gvec_count, ctx_.num_mag_dims() + 1}, mph);
 
     switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
-            rho_aug.zero(sddk::memory_t::host);
+        case device_t::CPU: {
+            rho_aug.zero(memory_t::host);
             break;
         }
-        case sddk::device_t::GPU: {
-            mpd = &get_memory_pool(sddk::memory_t::device);
-            rho_aug.allocate(*mpd).zero(sddk::memory_t::device);
+        case device_t::GPU: {
+            mpd = &get_memory_pool(memory_t::device);
+            rho_aug.allocate(*mpd).zero(memory_t::device);
             break;
         }
     }
@@ -1416,30 +1414,29 @@ Density::generate_rho_aug() const
             print_checksum("density_matrix_aux", cs, ctx_.out());
         }
 
-        int ndm_pw = (ctx_.processing_unit() == sddk::device_t::CPU) ? 1 : ctx_.num_mag_dims() + 1;
+        int ndm_pw = (ctx_.processing_unit() == device_t::CPU) ? 1 : ctx_.num_mag_dims() + 1;
         /* treat auxiliary array as real with x2 size */
-        sddk::mdarray<double, 3> dm_pw(nqlm, spl_ngv_loc[0] * 2, ndm_pw, mph);
-        sddk::mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc[0] * 2, mph);
+        mdarray<double, 3> dm_pw({nqlm, spl_ngv_loc[0] * 2, ndm_pw}, mph);
+        mdarray<double, 2> phase_factors({atom_type.num_atoms(), spl_ngv_loc[0] * 2}, mph);
 
         print_memory_usage(ctx_.out(), FILE_LINE);
 
         switch (ctx_.processing_unit()) {
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 break;
             }
-            case sddk::device_t::GPU: {
+            case device_t::GPU: {
                 phase_factors.allocate(*mpd);
                 dm_pw.allocate(*mpd);
-                dm.allocate(*mpd).copy_to(sddk::memory_t::device);
+                dm.allocate(*mpd).copy_to(memory_t::device);
                 break;
             }
         }
 
         print_memory_usage(ctx_.out(), FILE_LINE);
 
-        auto qpw = (ctx_.processing_unit() == sddk::device_t::CPU)
-                       ? sddk::mdarray<double, 2>()
-                       : sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], *mpd, "qpw");
+        auto qpw = (ctx_.processing_unit() ==  device_t::CPU) ? mdarray<double, 2>() :
+            mdarray<double, 2>({nqlm, 2 * spl_ngv_loc[0]}, *mpd, mdarray_label("qpw"));
 
         int g_begin{0};
         /* loop over blocks of G-vectors */
@@ -1447,9 +1444,9 @@ Density::generate_rho_aug() const
 
             /* work on the block of the local G-vectors */
             switch (ctx_.processing_unit()) {
-                case sddk::device_t::CPU: {
-/* generate phase factors */
-#pragma omp parallel for
+                case device_t::CPU: {
+                    /* generate phase factors */
+                    #pragma omp parallel for
                     for (int g = 0; g < ng; g++) {
                         int ig = ctx_.gvec().offset() + g_begin + g;
                         for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -1461,11 +1458,12 @@ Density::generate_rho_aug() const
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         PROFILE_START("sirius::Density::generate_rho_aug|gemm");
-                        la::wrap(la::lib_t::blas)
-                            .gemm('N', 'N', nqlm, 2 * ng, atom_type.num_atoms(), &la::constant<double>::one(),
-                                  dm.at(sddk::memory_t::host, 0, 0, iv), dm.ld(),
-                                  phase_factors.at(sddk::memory_t::host), phase_factors.ld(),
-                                  &la::constant<double>::zero(), dm_pw.at(sddk::memory_t::host, 0, 0, 0), dm_pw.ld());
+                        la::wrap(la::lib_t::blas).gemm('N', 'N', nqlm, 2 * ng, atom_type.num_atoms(),
+                                  &la::constant<double>::one(),
+                                  dm.at(memory_t::host, 0, 0, iv), dm.ld(),
+                                  phase_factors.at(memory_t::host), phase_factors.ld(),
+                                  &la::constant<double>::zero(),
+                                  dm_pw.at(memory_t::host, 0, 0, 0), dm_pw.ld());
                         PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
                         PROFILE_START("sirius::Density::generate_rho_aug|sum");
 #pragma omp parallel for
@@ -1487,24 +1485,23 @@ Density::generate_rho_aug() const
                     }
                     break;
                 }
-                case sddk::device_t::GPU: {
+                case device_t::GPU: {
 #if defined(SIRIUS_GPU)
-                    acc::copyin(qpw.at(sddk::memory_t::device),
-                                ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin),
-                                2 * ng * nqlm);
+                    acc::copyin(qpw.at(memory_t::device),
+                            ctx_.augmentation_op(iat).q_pw().at(memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
 
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        generate_dm_pw_gpu(
-                            atom_type.num_atoms(), ng, nbf, ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
-                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
-                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
-                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
-                            phase_factors.at(sddk::memory_t::device), dm.at(sddk::memory_t::device, 0, 0, iv),
-                            dm_pw.at(sddk::memory_t::device, 0, 0, iv), 1 + iv);
-                        sum_q_pw_dm_pw_gpu(ng, nbf, qpw.at(sddk::memory_t::device), qpw.ld(),
-                                           dm_pw.at(sddk::memory_t::device, 0, 0, iv), dm_pw.ld(),
-                                           ctx_.augmentation_op(iat).sym_weight().at(sddk::memory_t::device),
-                                           rho_aug.at(sddk::memory_t::device, g_begin, iv), 1 + iv);
+                        generate_dm_pw_gpu(atom_type.num_atoms(), ng, nbf,
+                                           ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
+                                           ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
+                                           ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
+                                           ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
+                                           phase_factors.at(memory_t::device), dm.at(memory_t::device, 0, 0, iv),
+                                           dm_pw.at(memory_t::device, 0, 0, iv), 1 + iv);
+                        sum_q_pw_dm_pw_gpu(ng, nbf, qpw.at(memory_t::device), qpw.ld(),
+                                           dm_pw.at(memory_t::device, 0, 0, iv), dm_pw.ld(),
+                                           ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
+                                           rho_aug.at(memory_t::device, g_begin, iv), 1 + iv);
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         acc::sync_stream(acc::stream_id(1 + iv));
@@ -1518,8 +1515,8 @@ Density::generate_rho_aug() const
         }
     }
 
-    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        rho_aug.copy_to(sddk::memory_t::host);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        rho_aug.copy_to(memory_t::host);
     }
 
     if (env::print_checksum()) {
@@ -1537,9 +1534,8 @@ Density::generate_rho_aug() const
 }
 
 template <int num_mag_dims>
-void
-Density::reduce_density_matrix(Atom_type const& atom_type__, sddk::mdarray<std::complex<double>, 3> const& zdens__,
-                               sddk::mdarray<double, 3>& mt_density_matrix__)
+void Density::reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::complex<double>, 3> const& zdens__,
+                                    mdarray<double, 3>& mt_density_matrix__)
 {
     mt_density_matrix__.zero();
 
@@ -1642,10 +1638,10 @@ Density::generate_valence_mt()
     int max_num_rf_pairs = unit_cell_.max_mt_radial_basis_size() * (unit_cell_.max_mt_radial_basis_size() + 1) / 2;
 
     // real density matrix
-    sddk::mdarray<double, 3> mt_density_matrix(ctx_.lmmax_rho(), max_num_rf_pairs, ctx_.num_mag_dims() + 1);
+    mdarray<double, 3> mt_density_matrix({ctx_.lmmax_rho(), max_num_rf_pairs, ctx_.num_mag_dims() + 1});
 
-    sddk::mdarray<double, 2> rf_pairs(unit_cell_.max_num_mt_points(), max_num_rf_pairs);
-    sddk::mdarray<double, 3> dlm(ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), ctx_.num_mag_dims() + 1);
+    mdarray<double, 2> rf_pairs({unit_cell_.max_num_mt_points(), max_num_rf_pairs});
+    mdarray<double, 3> dlm({ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(), ctx_.num_mag_dims() + 1});
 
     for (auto it : unit_cell_.spl_num_atoms()) {
         auto& atom_type = unit_cell_.atom(it.i).type();
@@ -1715,12 +1711,12 @@ Density::generate_valence_mt()
     }
 }
 
-sddk::mdarray<double, 2>
+mdarray<double, 2>
 Density::compute_atomic_mag_mom() const
 {
     PROFILE("sirius::Density::compute_atomic_mag_mom");
 
-    sddk::mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
+    mdarray<double, 2> mmom({3, unit_cell_.num_atoms()});
     mmom.zero();
 
 #pragma omp parallel for
@@ -1777,11 +1773,11 @@ Density::get_magnetisation() const
     return std::make_tuple(total_mag, it_mag, mt_mag);
 }
 
-sddk::mdarray<double, 2>
+mdarray<double, 2>
 Density::density_matrix_aux(typename atom_index_t::global ia__) const
 {
     auto nbf = ctx_.unit_cell().atom(ia__).type().mt_basis_size();
-    sddk::mdarray<double, 2> dm(nbf * (nbf + 1) / 2, ctx_.num_mag_dims() + 1);
+    mdarray<double, 2> dm({nbf * (nbf + 1) / 2, ctx_.num_mag_dims() + 1});
     for (int xi2 = 0; xi2 < nbf; xi2++) {
         for (int xi1 = 0; xi1 <= xi2; xi1++) {
             auto idx12 = packed_index(xi1, xi2);
@@ -1807,14 +1803,14 @@ Density::density_matrix_aux(typename atom_index_t::global ia__) const
     return dm;
 }
 
-sddk::mdarray<double, 3>
+mdarray<double, 3>
 Density::density_matrix_aux(Atom_type const& atom_type__) const
 {
     auto nbf = atom_type__.mt_basis_size();
 
     /* convert to real matrix */
-    sddk::mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type__.num_atoms(), ctx_.num_mag_dims() + 1);
-#pragma omp parallel for
+    mdarray<double, 3> dm({nbf * (nbf + 1) / 2, atom_type__.num_atoms(), ctx_.num_mag_dims() + 1});
+    #pragma omp parallel for
     for (int i = 0; i < atom_type__.num_atoms(); i++) {
         int ia   = atom_type__.atom_id(i);
         auto dm1 = this->density_matrix_aux(typename atom_index_t::global(ia));

@@ -55,8 +55,8 @@ void Augmentation_operator::generate_pw_coeffs()
      *   then copy the chunks of Q(G) to GPU when computing D-operator and augment charge density.
      */
     switch (atom_type_.parameters().processing_unit()) {
-        case sddk::device_t::CPU:
-        case sddk::device_t::GPU: {
+        case device_t::CPU:
+        case device_t::GPU: {
             /* Gaunt coefficients of three real spherical harmonics */
             Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rrr);
             #pragma omp parallel for
@@ -79,14 +79,14 @@ void Augmentation_operator::generate_pw_coeffs()
             }
             break;
         }
-//        case sddk::device_t::GPU: {
+//        case device_t::GPU: {
 //#if defined(SIRIUS_GPU)
 //            auto spl_ngv_loc = utils::split_in_blocks(gvec_count, atom_type_.parameters().cfg().control().gvec_chunk_size());
 //            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
 //            /* allocate buffer for Rlm on GPUs */
-//            sddk::mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
+//            mdarray<double, 2> gvec_rlm(lmmax, spl_ngv_loc[0], mpd, "gvec_rlm");
 //            /* allocate buffer for Q(G) on GPUs */
-//            sddk::mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
+//            mdarray<double, 2> qpw(nqlm, 2 * spl_ngv_loc[0], mpd, "qpw");
 //
 //            int g_begin{0};
 //            /* loop over blocks of G-vectors */
@@ -103,7 +103,7 @@ void Augmentation_operator::generate_pw_coeffs()
 //        }
     }
 
-    q_mtrx_ = sddk::mdarray<double, 2>(nbf, nbf);
+    q_mtrx_ = mdarray<double, 2>({nbf, nbf});
     q_mtrx_.zero();
 
     if (gvec_.comm().rank() == 0) {
@@ -148,8 +148,8 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
     int gvec_count = gvec_.count();
 
     switch (atom_type_.parameters().processing_unit()) {
-        case sddk::device_t::GPU:
-        case sddk::device_t::CPU: {
+        case device_t::GPU:
+        case device_t::CPU: {
             /* Gaunt coefficients of three real spherical harmonics */
             Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rrr);
             #pragma omp parallel for
@@ -161,7 +161,7 @@ void Augmentation_operator::generate_pw_coeffs_gvec_deriv(int nu__)
                 double gvc_nu = gvc[nu__];
 
                 std::vector<double> rlm(lmmax);
-                sddk::mdarray<double, 2> rlm_dq(lmmax, 3);
+                mdarray<double, 2> rlm_dq({lmmax, 3});
                 sf::spherical_harmonics(2 * lmax_beta, tp(igloc, 0), tp(igloc, 1), rlm.data());
                 const bool divide_by_r{false};
                 sf::dRlm_dr(2 * lmax_beta, gvc, rlm_dq, divide_by_r);

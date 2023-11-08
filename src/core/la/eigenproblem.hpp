@@ -51,7 +51,7 @@ class Eigensolver_lapack : public Eigensolver
 {
   public:
     Eigensolver_lapack()
-        : Eigensolver(ev_solver_t::lapack, false, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::lapack, false, memory_t::host, memory_t::host)
     {
     }
 
@@ -93,7 +93,7 @@ class Eigensolver_lapack : public Eigensolver
             lwork = 2 * matrix_size__ + matrix_size__ * matrix_size__;
         }
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
 
         auto work  = mph.get_unique_ptr<T>(lwork);
         auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
@@ -101,30 +101,30 @@ class Eigensolver_lapack : public Eigensolver
 
         if (std::is_same<T, double>::value) {
             FORTRAN(dsyevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(work.get()), &lwork, iwork.get(), &liwork,
              &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(zheevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(work.get()), &lwork,
              reinterpret_cast<double*>(rwork.get()), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(ssyevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(work.get()), &lwork, iwork.get(), &liwork,
              &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(cheevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(work.get()), &lwork,
              reinterpret_cast<float*>(rwork.get()), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
         }
 
         if (!info) {
             for (int i = 0; i < matrix_size__; i++) {
-                std::copy(A__.at(sddk::memory_t::host, 0, i), A__.at(sddk::memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(sddk::memory_t::host, 0, i));
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
             }
         }
         return info;
@@ -161,7 +161,7 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int m{-1};
         ftn_int info;
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
 
         auto w      = mph.get_unique_ptr<real_type<T>>(matrix_size__);
         auto isuppz = mph.get_unique_ptr<ftn_int>(2 * matrix_size__); // for real matrix
@@ -204,34 +204,34 @@ class Eigensolver_lapack : public Eigensolver
 
         if (std::is_same<T, double>::value) {
             FORTRAN(dsyevr)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<double*>(&vl), reinterpret_cast<double*>(&vu), &il, &nev__,
              reinterpret_cast<double*>(&abs_tol), &m, reinterpret_cast<double*>(w.get()),
-             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ldz, isuppz.get(),
+             reinterpret_cast<double*>(Z__.at(memory_t::host)), &ldz, isuppz.get(),
              reinterpret_cast<double*>(work.get()), &lwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1,
              (ftn_int)1);
             lwork = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
         } else if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(zheevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<double*>(&vl), reinterpret_cast<double*>(&vu), &il, &nev__,
              reinterpret_cast<double*>(&abs_tol), &m, reinterpret_cast<double*>(w.get()),
-             reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ldz,
              reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
              iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(ssyevr)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<float*>(&vl), reinterpret_cast<float*>(&vu), &il, &nev__,
              reinterpret_cast<float*>(&abs_tol), &m, reinterpret_cast<float*>(w.get()),
-             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ldz, isuppz.get(), reinterpret_cast<float*>(work.get()),
+             reinterpret_cast<float*>(Z__.at(memory_t::host)), &ldz, isuppz.get(), reinterpret_cast<float*>(work.get()),
              &lwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(cheevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &lda,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &lda,
              reinterpret_cast<float*>(&vl), reinterpret_cast<float*>(&vu), &il, &nev__,
              reinterpret_cast<float*>(&abs_tol), &m, reinterpret_cast<float*>(w.get()),
-             reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ldz,
              reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
              iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
@@ -301,7 +301,7 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
 
         auto w     = mph.get_unique_ptr<real_type<T>>(matrix_size__);
         auto ifail = mph.get_unique_ptr<ftn_int>(matrix_size__);
@@ -334,35 +334,35 @@ class Eigensolver_lapack : public Eigensolver
 
         if (std::is_same<T, double>::value) {
             FORTRAN(dsygvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &lda,
-             reinterpret_cast<double*>(B__.at(sddk::memory_t::host)), &ldb, reinterpret_cast<double*>(&vl),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<double*>(B__.at(memory_t::host)), &ldb, reinterpret_cast<double*>(&vl),
              reinterpret_cast<double*>(&vu), &ione, &nev__, reinterpret_cast<double*>(&abs_tol), &m,
-             reinterpret_cast<double*>(w.get()), reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ldz,
+             reinterpret_cast<double*>(w.get()), reinterpret_cast<double*>(Z__.at(memory_t::host)), &ldz,
              reinterpret_cast<double*>(work.get()), &lwork, iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1,
              (ftn_int)1);
         } else if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(zhegvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)),
-             &lda, reinterpret_cast<std::complex<double>*>(B__.at(sddk::memory_t::host)), &ldb,
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)),
+             &lda, reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), &ldb,
              reinterpret_cast<double*>(&vl), reinterpret_cast<double*>(&vu), &ione, &nev__,
              reinterpret_cast<double*>(&abs_tol), &m, reinterpret_cast<double*>(w.get()),
-             reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), &ldz,
+             reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ldz,
              reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
              iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(ssygvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &lda,
-             reinterpret_cast<float*>(B__.at(sddk::memory_t::host)), &ldb, reinterpret_cast<float*>(&vl),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<float*>(B__.at(memory_t::host)), &ldb, reinterpret_cast<float*>(&vl),
              reinterpret_cast<float*>(&vu), &ione, &nev__, reinterpret_cast<float*>(&abs_tol), &m,
-             reinterpret_cast<float*>(w.get()), reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ldz,
+             reinterpret_cast<float*>(w.get()), reinterpret_cast<float*>(Z__.at(memory_t::host)), &ldz,
              reinterpret_cast<float*>(work.get()), &lwork, iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1,
              (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(chegvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &lda,
-             reinterpret_cast<std::complex<float>*>(B__.at(sddk::memory_t::host)), &ldb, reinterpret_cast<float*>(&vl),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &lda,
+             reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), &ldb, reinterpret_cast<float*>(&vl),
              reinterpret_cast<float*>(&vu), &ione, &nev__, reinterpret_cast<float*>(&abs_tol), &m,
-             reinterpret_cast<float*>(w.get()), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), &ldz,
+             reinterpret_cast<float*>(w.get()), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ldz,
              reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
              iwork.get(), ifail.get(), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
@@ -418,9 +418,9 @@ class Eigensolver_elpa : public Eigensolver
     //    }
 
     //    /* Cholesky factorization B = U^{H}*U */
-    //    linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(sddk::memory_t::host), B__.ld(), B__.descriptor());
+    //    linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
     //    /* inversion of the triangular matrix */
-    //    linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(sddk::memory_t::host), B__.ld(), B__.descriptor());
+    //    linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
     //    /* U^{-1} is upper triangular matrix */
     //    for (int i = 0; i < matrix_size__; i++) {
     //        for (int j = i + 1; j < matrix_size__; j++) {
@@ -483,7 +483,7 @@ class Eigensolver_elpa : public Eigensolver
 {
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::elpa, true, memory_t::host, memory_t::host)
     {
     }
 };
@@ -498,7 +498,7 @@ class Eigensolver_scalapack : public Eigensolver
 
   public:
     Eigensolver_scalapack()
-        : Eigensolver(ev_solver_t::scalapack, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::scalapack, true, memory_t::host, memory_t::host)
     {
     }
 
@@ -527,14 +527,14 @@ class Eigensolver_scalapack : public Eigensolver
         /* work size query */
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)),
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione,
+             desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(&work1), &lwork, reinterpret_cast<double*>(&rwork1),
              &lrwork, &iwork1, &liwork, &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pcheevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)),
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione,
+             desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(&work1),  &lwork, reinterpret_cast<float*>(&rwork1),
              &lrwork, &iwork1, &liwork, &info, (ftn_int)1, (ftn_int)1);
         }
@@ -543,21 +543,21 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = static_cast<ftn_int>(rwork1) + 1;
         liwork = iwork1;
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
         auto work  = mph.get_unique_ptr<T>(lwork);
         auto rwork = mph.get_unique_ptr<real_type<T>>(lrwork);
         auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)),
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione,
+             desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
              &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pcheevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
-             desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)),
+            ("V", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione,
+             desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
              &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
         }
@@ -591,16 +591,16 @@ class Eigensolver_scalapack : public Eigensolver
         /* work size query */
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<double*>(eval__),
-             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<double*>(Z__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<double*>(work1), &lwork, iwork1, &liwork, &info,
              (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssyevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<float*>(eval__),
-             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<float*>(Z__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<float*>(work1), &lwork, iwork1, &liwork, &info,
              (ftn_int)1, (ftn_int)1);
         }
@@ -608,22 +608,22 @@ class Eigensolver_scalapack : public Eigensolver
         lwork  = static_cast<ftn_int>(work1[0]) + 1;
         liwork = iwork1[0];
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
         auto work  = mph.get_unique_ptr<T>(lwork);
         auto iwork = mph.get_unique_ptr<ftn_int>(liwork);
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<double*>(eval__),
-             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<double*>(Z__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<double*>(work.get()), &lwork, iwork.get(),
              &liwork, &info, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssyevd)
-            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(A__.descriptor()), reinterpret_cast<float*>(eval__),
-             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<float*>(Z__.at(memory_t::host)), &ione, &ione,
              const_cast<ftn_int*>(Z__.descriptor()), reinterpret_cast<float*>(work.get()), &lwork, iwork.get(),
              &liwork, &info, (ftn_int)1, (ftn_int)1);
         }
@@ -661,7 +661,7 @@ class Eigensolver_scalapack : public Eigensolver
         T d1;
         ftn_int info{-1};
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
 
         auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
         auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
@@ -676,16 +676,16 @@ class Eigensolver_scalapack : public Eigensolver
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &ione, &ione, desca,
              reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<double*>(Z__.at(memory_t::host)), &ione, &ione,
              descz, reinterpret_cast<double*>(work3), &lwork, &iwork1, &liwork, ifail.get(), iclustr.get(),
              reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssyevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &ione, &ione, desca,
              reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<float*>(Z__.at(memory_t::host)), &ione, &ione,
              descz, reinterpret_cast<float*>(work3), &lwork, &iwork1, &liwork, ifail.get(), iclustr.get(),
              reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
@@ -698,16 +698,16 @@ class Eigensolver_scalapack : public Eigensolver
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsyevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &ione, &ione, desca,
              reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<double*>(Z__.at(memory_t::host)), &ione, &ione,
              descz, reinterpret_cast<double*>(work.get()),  &lwork, iwork.get(), &liwork, ifail.get(), iclustr.get(),
              reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssyevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &ione, &ione, desca,
              reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione,
+             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<float*>(Z__.at(memory_t::host)), &ione, &ione,
              descz, reinterpret_cast<float*>(work.get()), &lwork, iwork.get(), &liwork, ifail.get(), iclustr.get(),
              reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
@@ -783,7 +783,7 @@ class Eigensolver_scalapack : public Eigensolver
         real_type<T> d1;
         ftn_int info{-1};
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
 
         auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
         auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
@@ -800,17 +800,17 @@ class Eigensolver_scalapack : public Eigensolver
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione,
              desca, reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)),
+             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(work3), &lwork, reinterpret_cast<double*>(rwork3),
              &lrwork, &iwork1, &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1,
              (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pcheevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione,
              desca, reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)),
+             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(work3), &lwork, reinterpret_cast<float*>(rwork3),
              &lrwork, &iwork1, &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1,
              (ftn_int)1, (ftn_int)1);
@@ -826,17 +826,17 @@ class Eigensolver_scalapack : public Eigensolver
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzheevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione,
              desca, reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)),
+             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(work.get()), &lwork, reinterpret_cast<double*>(rwork.get()),
              &lrwork, iwork.get(), &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info,
              (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pcheevx)
-            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &ione, &ione,
+            ("V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione,
              desca, reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)),
+             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(work.get()), &lwork, reinterpret_cast<float*>(rwork.get()),
              &lrwork, iwork.get(), &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info,
              (ftn_int)1, (ftn_int)1, (ftn_int)1);
@@ -910,7 +910,7 @@ class Eigensolver_scalapack : public Eigensolver
         linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
         auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
         auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
         auto gap     = mph.get_unique_ptr<T>(A__.blacs_grid().comm().size());
@@ -929,17 +929,17 @@ class Eigensolver_scalapack : public Eigensolver
         /* work size query */
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsygvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
-             reinterpret_cast<double*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb, reinterpret_cast<double*>(&d1),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<double*>(B__.at(memory_t::host)), &ione, &ione, descb, reinterpret_cast<double*>(&d1),
              reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz, reinterpret_cast<double*>(w.get()), &ortfac_,
-             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione, descz, reinterpret_cast<double*>(work1), &lwork, &liwork, &lwork,
+             reinterpret_cast<double*>(Z__.at(memory_t::host)), &ione, &ione, descz, reinterpret_cast<double*>(work1), &lwork, &liwork, &lwork,
              ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssygvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
-             reinterpret_cast<float*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb, reinterpret_cast<float*>(&d1),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<float*>(B__.at(memory_t::host)), &ione, &ione, descb, reinterpret_cast<float*>(&d1),
              reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz, reinterpret_cast<float*>(w.get()), &ortfac_,
-             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione, descz, reinterpret_cast<float*>(work1), &lwork, &liwork, &lwork,
+             reinterpret_cast<float*>(Z__.at(memory_t::host)), &ione, &ione, descz, reinterpret_cast<float*>(work1), &lwork, &liwork, &lwork,
              ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
 
@@ -950,18 +950,18 @@ class Eigensolver_scalapack : public Eigensolver
 
         if (std::is_same<T, double>::value) {
             FORTRAN(pdsygvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
-             reinterpret_cast<double*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb, reinterpret_cast<double*>(&d1),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<double*>(B__.at(memory_t::host)), &ione, &ione, descb, reinterpret_cast<double*>(&d1),
              reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz, reinterpret_cast<double*>(w.get()), &ortfac_,
-             reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), &ione, &ione, descz, reinterpret_cast<double*>(work.get()),
+             reinterpret_cast<double*>(Z__.at(memory_t::host)), &ione, &ione, descz, reinterpret_cast<double*>(work.get()),
              &lwork, iwork.get(), &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()), &info,
              (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, float>::value) {
             FORTRAN(pssygvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
-             reinterpret_cast<float*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb, reinterpret_cast<float*>(&d1),
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<float*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<float*>(B__.at(memory_t::host)), &ione, &ione, descb, reinterpret_cast<float*>(&d1),
              reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz, reinterpret_cast<float*>(w.get()), &ortfac_,
-             reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), &ione, &ione, descz, reinterpret_cast<float*>(work.get()),
+             reinterpret_cast<float*>(Z__.at(memory_t::host)), &ione, &ione, descz, reinterpret_cast<float*>(work.get()),
              &lwork, iwork.get(), &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info,
              (ftn_int)1, (ftn_int)1, (ftn_int)1);
         }
@@ -1034,7 +1034,7 @@ class Eigensolver_scalapack : public Eigensolver
         linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
 
         auto ifail   = mph.get_unique_ptr<ftn_int>(matrix_size__);
         auto iclustr = mph.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
@@ -1060,22 +1060,22 @@ class Eigensolver_scalapack : public Eigensolver
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzhegvx)
             (&ione, "V", "I", "U", &matrix_size__,
-             reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
-             reinterpret_cast<std::complex<double>*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb,
+             reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), &ione, &ione, descb,
              reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
              reinterpret_cast<double*>(w.get()), &ortfac_,
-             reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), &ione, &ione, descz,
+             reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), &ione, &ione, descz,
              reinterpret_cast<std::complex<double>*>(&work1), &lwork, reinterpret_cast<double*>(rwork3),
              &lrwork, &iwork1, &liwork, ifail.get(), iclustr.get(), reinterpret_cast<double*>(gap.get()),
              &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pchegvx)
             (&ione, "V", "I", "U", &matrix_size__,
-             reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &ione, &ione, desca,
-             reinterpret_cast<std::complex<float>*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb,
+             reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione, &ione, desca,
+             reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), &ione, &ione, descb,
              reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
              reinterpret_cast<float*>(w.get()), &ortfac_,
-             reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), &ione, &ione, descz,
+             reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), &ione, &ione, descz,
              reinterpret_cast<std::complex<float>*>(&work1), &lwork, reinterpret_cast<float*>(rwork3), &lrwork, &iwork1,
              &liwork, ifail.get(), iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1,
              (ftn_int)1, (ftn_int)1);
@@ -1091,19 +1091,19 @@ class Eigensolver_scalapack : public Eigensolver
 
         if (std::is_same<T, std::complex<double>>::value) {
             FORTRAN(pzhegvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), &ione,
-             &ione, desca, reinterpret_cast<std::complex<double>*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb,
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), &ione,
+             &ione, desca, reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), &ione, &ione, descb,
              reinterpret_cast<double*>(&d1), reinterpret_cast<double*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)),
+             reinterpret_cast<double*>(w.get()), &ortfac_, reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<double>*>(work.get()), &lwork,
              reinterpret_cast<double*>(rwork.get()), &lrwork, iwork.get(), &liwork, ifail.get(),
              iclustr.get(), reinterpret_cast<double*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
         } else if (std::is_same<T, std::complex<float>>::value) {
             FORTRAN(pchegvx)
-            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), &ione,
-             &ione, desca, reinterpret_cast<std::complex<float>*>(B__.at(sddk::memory_t::host)), &ione, &ione, descb,
+            (&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), &ione,
+             &ione, desca, reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), &ione, &ione, descb,
              reinterpret_cast<float*>(&d1), reinterpret_cast<float*>(&d1), &ione, &nev__, &abstol_, &m, &nz,
-             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)),
+             reinterpret_cast<float*>(w.get()), &ortfac_, reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
              &ione, &ione, descz, reinterpret_cast<std::complex<float>*>(work.get()), &lwork,
              reinterpret_cast<float*>(rwork.get()), &lrwork, iwork.get(), &liwork, ifail.get(),
              iclustr.get(), reinterpret_cast<float*>(gap.get()), &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
@@ -1169,7 +1169,7 @@ class Eigensolver_scalapack : public Eigensolver
 {
   public:
     Eigensolver_scalapack()
-        : Eigensolver(ev_solver_t::scalapack, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::scalapack, true, memory_t::host, memory_t::host)
     {
     }
 };
@@ -1180,7 +1180,7 @@ class Eigensolver_dlaf : public Eigensolver
 {
   public:
     Eigensolver_dlaf()
-        : Eigensolver(ev_solver_t::dlaf, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::dlaf, true, memory_t::host, memory_t::host)
     {
     }
     
@@ -1196,14 +1196,14 @@ class Eigensolver_dlaf : public Eigensolver
         DLAF_descriptor descz{matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
             
         if (std::is_same_v<T, std::complex<double>>) {
-            return dlaf_hermitian_eigensolver_z(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_hermitian_eigensolver_z(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), descz);
         } else if (std::is_same_v<T, std::complex<float>>) {
-            return dlaf_hermitian_eigensolver_c(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_hermitian_eigensolver_c(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), descz);
         }
         else if (std::is_same_v<T, double>){
-            return dlaf_symmetric_eigensolver_d(A__.blacs_grid().context(), 'L', reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_symmetric_eigensolver_d(A__.blacs_grid().context(), 'L', reinterpret_cast<double*>(A__.at(memory_t::host)), desca, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(memory_t::host)), descz);
         } else if (std::is_same_v<T, float>){
-            return dlaf_symmetric_eigensolver_s(A__.blacs_grid().context(), 'L', reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_symmetric_eigensolver_s(A__.blacs_grid().context(), 'L', reinterpret_cast<float*>(A__.at(memory_t::host)), desca, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(memory_t::host)), descz);
         }
     }
 
@@ -1236,7 +1236,7 @@ class Eigensolver_dlaf : public Eigensolver
     template <typename T>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
         auto w = mph.get_unique_ptr<real_type<T>>(matrix_size__);
 
         auto info = solve_(matrix_size__, A__, w.get(), Z__);
@@ -1279,14 +1279,14 @@ class Eigensolver_dlaf : public Eigensolver
         DLAF_descriptor descz{matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
             
         if (std::is_same_v<T, std::complex<double>>) {
-            return dlaf_hermitian_generalized_eigensolver_z(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<double>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<std::complex<double>*>(B__.at(sddk::memory_t::host)), descb, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_hermitian_generalized_eigensolver_z(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), desca, reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), descb, reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), descz);
         } else if (std::is_same_v<T, std::complex<float>>) {
-            return dlaf_hermitian_generalized_eigensolver_c(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<float>*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<std::complex<float>*>(B__.at(sddk::memory_t::host)), descb, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_hermitian_generalized_eigensolver_c(A__.blacs_grid().context(), 'L', reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), desca, reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), descb, reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), descz);
         }
         else if (std::is_same_v<T, double>){
-            return dlaf_symmetric_generalized_eigensolver_d(A__.blacs_grid().context(), 'L', reinterpret_cast<double*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<double*>(B__.at(sddk::memory_t::host)), descb, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_symmetric_generalized_eigensolver_d(A__.blacs_grid().context(), 'L', reinterpret_cast<double*>(A__.at(memory_t::host)), desca, reinterpret_cast<double*>(B__.at(memory_t::host)), descb, reinterpret_cast<double*>(eval__), reinterpret_cast<double*>(Z__.at(memory_t::host)), descz);
         } else if (std::is_same_v<T, float>){
-            return dlaf_symmetric_generalized_eigensolver_s(A__.blacs_grid().context(), 'L', reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), desca, reinterpret_cast<float*>(A__.at(sddk::memory_t::host)), descb, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(sddk::memory_t::host)), descz);
+            return dlaf_symmetric_generalized_eigensolver_s(A__.blacs_grid().context(), 'L', reinterpret_cast<float*>(A__.at(memory_t::host)), desca, reinterpret_cast<float*>(A__.at(memory_t::host)), descb, reinterpret_cast<float*>(eval__), reinterpret_cast<float*>(Z__.at(memory_t::host)), descz);
         }
     }
 
@@ -1318,7 +1318,7 @@ class Eigensolver_dlaf : public Eigensolver
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     template <typename T>
     int solve_(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__){
-        auto& mph = get_memory_pool(sddk::memory_t::host);
+        auto& mph = get_memory_pool(memory_t::host);
         auto w = mph.get_unique_ptr<real_type<T>>(matrix_size__);
 
         auto info = solve_(matrix_size__, A__, B__, w.get(), Z__);
@@ -1358,7 +1358,7 @@ class Eigensolver_dlaf : public Eigensolver
 {
   public:
     Eigensolver_dlaf()
-        : Eigensolver(ev_solver_t::dlaf, true, sddk::memory_t::host, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::dlaf, true, memory_t::host, memory_t::host)
     {
     }
 };
@@ -1370,7 +1370,7 @@ class Eigensolver_magma: public Eigensolver
   public:
 
     Eigensolver_magma()
-        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::magma, false, memory_t::host_pinned, memory_t::host)
     {
     }
 
@@ -1384,8 +1384,8 @@ class Eigensolver_magma: public Eigensolver
         int lda = A__.ld();
         int ldb = B__.ld();
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto& mph = get_memory_pool(memory_t::host);
+        auto& mphp = get_memory_pool(memory_t::host_pinned);
         auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int m;
@@ -1398,8 +1398,8 @@ class Eigensolver_magma: public Eigensolver
         auto h_work = mphp.get_unique_ptr<double>(lwork);
         auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
-        magma_dsygvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(sddk::memory_t::host), lda,
-                             B__.at(sddk::memory_t::host), ldb, 0.0, 0.0, 1, nev__, &m, w.get(), h_work.get(), lwork,
+        magma_dsygvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda,
+                             B__.at(memory_t::host), ldb, 0.0, 0.0, 1, nev__, &m, w.get(), h_work.get(), lwork,
                              iwork.get(), liwork, &info);
 
 
@@ -1415,8 +1415,8 @@ class Eigensolver_magma: public Eigensolver
             std::copy(w.get(), w.get() + nev__, eval__);
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
-                std::copy(A__.at(sddk::memory_t::host, 0, i), A__.at(sddk::memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(sddk::memory_t::host, 0, i));
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
             }
         }
 
@@ -1433,8 +1433,8 @@ class Eigensolver_magma: public Eigensolver
         int lda = A__.ld();
         int ldb = B__.ld();
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto& mph = get_memory_pool(memory_t::host);
+        auto& mphp = get_memory_pool(memory_t::host_pinned);
         auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int m;
@@ -1450,8 +1450,8 @@ class Eigensolver_magma: public Eigensolver
         auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
-                             reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::host)), lda,
-                             reinterpret_cast<magmaDoubleComplex*>(B__.at(sddk::memory_t::host)), ldb, 0.0, 0.0,
+                             reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda,
+                             reinterpret_cast<magmaDoubleComplex*>(B__.at(memory_t::host)), ldb, 0.0, 0.0,
                              1, nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork,
                              rwork.get(), lrwork, iwork.get(), liwork, &info);
 
@@ -1467,8 +1467,8 @@ class Eigensolver_magma: public Eigensolver
             std::copy(w.get(), w.get() + nev__, eval__);
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
-                std::copy(A__.at(sddk::memory_t::host, 0, i), A__.at(sddk::memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(sddk::memory_t::host, 0, i));
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
             }
         }
 
@@ -1485,8 +1485,8 @@ class Eigensolver_magma: public Eigensolver
             return Eigensolver_lapack().solve(matrix_size__, nev__, A__, eval__, Z__);
         }
 
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto& mph = get_memory_pool(memory_t::host);
+        auto& mphp = get_memory_pool(memory_t::host_pinned);
 
         int nt  = omp_get_max_threads();
         int lda = A__.ld();
@@ -1502,7 +1502,7 @@ class Eigensolver_magma: public Eigensolver
         int info;
         int m;
 
-        magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(sddk::memory_t::host), lda, 0.0, 0.0, 1,
+        magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
@@ -1517,8 +1517,8 @@ class Eigensolver_magma: public Eigensolver
             std::copy(w.get(), w.get() + nev__, eval__);
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
-                std::copy(A__.at(sddk::memory_t::host, 0, i), A__.at(sddk::memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(sddk::memory_t::host, 0, i));
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
             }
         }
 
@@ -1532,8 +1532,8 @@ class Eigensolver_magma: public Eigensolver
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
-        auto& mph = get_memory_pool(sddk::memory_t::host);
-        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto& mph = get_memory_pool(memory_t::host);
+        auto& mphp = get_memory_pool(memory_t::host_pinned);
         auto w = mph.get_unique_ptr<double>(matrix_size__);
 
         int info, m;
@@ -1548,7 +1548,7 @@ class Eigensolver_magma: public Eigensolver
         auto iwork = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_2stage(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
-                      reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::host)), lda, 0.0, 0.0, 1,
+                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(),
                       lrwork, iwork.get(), liwork, &info);
 
@@ -1564,8 +1564,8 @@ class Eigensolver_magma: public Eigensolver
             std::copy(w.get(), w.get() + nev__, eval__);
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
-                std::copy(A__.at(sddk::memory_t::host, 0, i), A__.at(sddk::memory_t::host, 0, i) + matrix_size__,
-                          Z__.at(sddk::memory_t::host, 0, i));
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
             }
         }
 
@@ -1577,7 +1577,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
     Eigensolver_magma_gpu()
-        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+        : Eigensolver(ev_solver_t::magma, false, memory_t::host_pinned, memory_t::device)
     {
     }
 
@@ -1589,11 +1589,11 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         int nt     = omp_get_max_threads();
         int lda    = A__.ld();
-        auto& mph  = get_memory_pool(sddk::memory_t::host);
-        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto& mph  = get_memory_pool(memory_t::host);
+        auto& mphp = get_memory_pool(memory_t::host_pinned);
         auto w     = mph.get_unique_ptr<double>(matrix_size__);
 
-        acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__,
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__,
                     matrix_size__);
 
         int info, m;
@@ -1611,7 +1611,7 @@ class Eigensolver_magma_gpu: public Eigensolver
         auto iwork  = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
-                          reinterpret_cast<magmaDoubleComplex*>(A__.at(sddk::memory_t::device)), lda, 0.0, 0.0, 1,
+                          reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::device)), lda, 0.0, 0.0, 1,
                           nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(z_work.get()), llda,
                           reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(), lrwork, iwork.get(),
                           liwork, &info);
@@ -1626,7 +1626,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-            acc::copyout(Z__.at(sddk::memory_t::host), Z__.ld(), A__.at(sddk::memory_t::device), A__.ld(),
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(),
                          matrix_size__, nev__);
         }
 
@@ -1640,11 +1640,11 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         int nt     = omp_get_max_threads();
         int lda    = A__.ld();
-        auto& mph  = get_memory_pool(sddk::memory_t::host);
-        auto& mphp = get_memory_pool(sddk::memory_t::host_pinned);
+        auto& mph  = get_memory_pool(memory_t::host);
+        auto& mphp = get_memory_pool(memory_t::host_pinned);
         auto w     = mph.get_unique_ptr<double>(matrix_size__);
 
-        acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__,
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__,
                     matrix_size__);
 
         int info, m;
@@ -1659,7 +1659,7 @@ class Eigensolver_magma_gpu: public Eigensolver
         auto iwork  = mph.get_unique_ptr<magma_int_t>(liwork);
 
         magma_dsyevdx_gpu(MagmaVec /*jobz*/, MagmaRangeI /*range*/, MagmaLower /*uplo*/, matrix_size__ /*n*/,
-                          A__.at(sddk::memory_t::device) /*dA*/, lda /*ldda*/, 0.0 /*vl*/, 0.0 /*vu*/, 1 /*il*/,
+                          A__.at(memory_t::device) /*dA*/, lda /*ldda*/, 0.0 /*vl*/, 0.0 /*vu*/, 1 /*il*/,
                           nev__ /*iu*/, &m /*mout*/, w.get() /*w*/, z_work.get() /*wA*/, llda /*ldwa*/,
                           h_work.get() /*work*/, lwork /*lwork*/, iwork.get() /*iwork*/, liwork /*liwork*/,
                           &info /*info*/);
@@ -1674,7 +1674,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-            acc::copyout(Z__.at(sddk::memory_t::host), Z__.ld(), A__.at(sddk::memory_t::device), A__.ld(),
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(),
                          matrix_size__, nev__);
         }
 
@@ -1687,7 +1687,7 @@ class Eigensolver_magma: public Eigensolver
 {
   public:
     Eigensolver_magma()
-        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::host)
+        : Eigensolver(ev_solver_t::magma, false, memory_t::host_pinned, memory_t::host)
     {
     }
 };
@@ -1696,7 +1696,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
     Eigensolver_magma_gpu()
-        : Eigensolver(ev_solver_t::magma, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+        : Eigensolver(ev_solver_t::magma, false, memory_t::host_pinned, memory_t::device)
     {
     }
 };
@@ -1707,7 +1707,7 @@ class Eigensolver_cuda: public Eigensolver
 {
   public:
     Eigensolver_cuda()
-        : Eigensolver(ev_solver_t::cusolver, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+        : Eigensolver(ev_solver_t::cusolver, false, memory_t::host_pinned, memory_t::device)
     {
     }
 
@@ -1718,9 +1718,9 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
         cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto& mpd = get_memory_pool(sddk::memory_t::device);
+        auto& mpd = get_memory_pool(memory_t::device);
         auto w = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
-        acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
         int h_meig;
@@ -1729,19 +1729,19 @@ class Eigensolver_cuda: public Eigensolver
 
         if (std::is_same<T, double>::value) {
             CALL_CUSOLVER(cusolverDnDsyevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
+                                                         reinterpret_cast<double*>(A__.at(memory_t::device)), A__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, float>::value) {
             CALL_CUSOLVER(cusolverDnSsyevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(), vl,
+                                                         reinterpret_cast<float*>(A__.at(memory_t::device)), A__.ld(), vl,
                                                          vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<double>>::value) {
             CALL_CUSOLVER(cusolverDnZheevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)),
+                                                         reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)),
                                                          A__.ld(), vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<float>>::value) {
             CALL_CUSOLVER(cusolverDnCheevdx_bufferSize, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)),
+                                                         reinterpret_cast<cuFloatComplex*>(A__.at(memory_t::device)),
                                                          A__.ld(), vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         }
 
@@ -1751,20 +1751,20 @@ class Eigensolver_cuda: public Eigensolver
         auto dinfo = mpd.get_unique_ptr<int>(1);
         if (std::is_same<T, double>::value) {
             CALL_CUSOLVER(cusolverDnDsyevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
+                                              reinterpret_cast<double*>(A__.at(memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                               reinterpret_cast<double*>(w.get()), reinterpret_cast<double*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, float>::value) {
             CALL_CUSOLVER(cusolverDnSsyevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
+                                              reinterpret_cast<float*>(A__.at(memory_t::device)), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                               reinterpret_cast<float*>(w.get()), reinterpret_cast<float*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<double>>::value) {
             CALL_CUSOLVER(cusolverDnZheevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
+                                              reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()),
                                               reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<float>>::value) {
             CALL_CUSOLVER(cusolverDnCheevdx, (acc::cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
+                                              reinterpret_cast<cuFloatComplex*>(A__.at(memory_t::device)), A__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()),
                                               reinterpret_cast<cuFloatComplex*>(work.get()), lwork, dinfo.get()));
         }
@@ -1772,7 +1772,7 @@ class Eigensolver_cuda: public Eigensolver
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(sddk::memory_t::host), Z__.ld(), A__.at(sddk::memory_t::device), A__.ld(), matrix_size__, nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
         }
         return info;
     }
@@ -1810,10 +1810,10 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
         cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto& mpd = get_memory_pool(sddk::memory_t::device);
+        auto& mpd = get_memory_pool(memory_t::device);
         auto w = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
-        acc::copyin(A__.at(sddk::memory_t::device), A__.ld(), A__.at(sddk::memory_t::host), A__.ld(), matrix_size__, matrix_size__);
-        acc::copyin(B__.at(sddk::memory_t::device), B__.ld(), B__.at(sddk::memory_t::host), B__.ld(), matrix_size__, matrix_size__);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+        acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
         int h_meig;
@@ -1822,23 +1822,23 @@ class Eigensolver_cuda: public Eigensolver
 
         if (std::is_same<T, double>::value) {
             CALL_CUSOLVER(cusolverDnDsygvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                                         reinterpret_cast<double*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                                         reinterpret_cast<double*>(A__.at(memory_t::device)), A__.ld(),
+                                                         reinterpret_cast<double*>(B__.at(memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, float>::value) {
             CALL_CUSOLVER(cusolverDnSsygvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                                         reinterpret_cast<float*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                                         reinterpret_cast<float*>(A__.at(memory_t::device)), A__.ld(),
+                                                         reinterpret_cast<float*>(B__.at(memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<double>>::value) {
             CALL_CUSOLVER(cusolverDnZhegvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                                         reinterpret_cast<cuDoubleComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                                         reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                                         reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()), &lwork));
         } else if (std::is_same<T, std::complex<float>>::value) {
             CALL_CUSOLVER(cusolverDnChegvdx_bufferSize, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                                         reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                                         reinterpret_cast<cuFloatComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                                         reinterpret_cast<cuFloatComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                                         reinterpret_cast<cuFloatComplex*>(B__.at(memory_t::device)), B__.ld(),
                                                          vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()), &lwork));
         }
 
@@ -1848,26 +1848,26 @@ class Eigensolver_cuda: public Eigensolver
         auto dinfo = mpd.get_unique_ptr<int>(1);
         if (std::is_same<T, double>::value) {
             CALL_CUSOLVER(cusolverDnDsygvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<double*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                              reinterpret_cast<double*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                              reinterpret_cast<double*>(A__.at(memory_t::device)), A__.ld(),
+                                              reinterpret_cast<double*>(B__.at(memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()),
                                               reinterpret_cast<double*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, float>::value) {
             CALL_CUSOLVER(cusolverDnSsygvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<float*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                              reinterpret_cast<float*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                              reinterpret_cast<float*>(A__.at(memory_t::device)), A__.ld(),
+                                              reinterpret_cast<float*>(B__.at(memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()),
                                               reinterpret_cast<float*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<double>>::value) {
             CALL_CUSOLVER(cusolverDnZhegvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<cuDoubleComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                              reinterpret_cast<cuDoubleComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                              reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                              reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<double*>(w.get()),
                                               reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
         } else if (std::is_same<T, std::complex<float>>::value) {
             CALL_CUSOLVER(cusolverDnChegvdx, (acc::cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
-                                              reinterpret_cast<cuFloatComplex*>(A__.at(sddk::memory_t::device)), A__.ld(),
-                                              reinterpret_cast<cuFloatComplex*>(B__.at(sddk::memory_t::device)), B__.ld(),
+                                              reinterpret_cast<cuFloatComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                              reinterpret_cast<cuFloatComplex*>(B__.at(memory_t::device)), B__.ld(),
                                               vl, vu, 1, nev__, &h_meig, reinterpret_cast<float*>(w.get()),
                                               reinterpret_cast<cuFloatComplex*>(work.get()), lwork, dinfo.get()));
         }
@@ -1875,7 +1875,7 @@ class Eigensolver_cuda: public Eigensolver
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(sddk::memory_t::host), Z__.ld(), A__.at(sddk::memory_t::device), A__.ld(), matrix_size__, nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
         }
         return info;
     }
@@ -1935,7 +1935,7 @@ class Eigensolver_cuda: public Eigensolver
 {
   public:
     Eigensolver_cuda()
-        : Eigensolver(ev_solver_t::cusolver, false, sddk::memory_t::host_pinned, sddk::memory_t::device)
+        : Eigensolver(ev_solver_t::cusolver, false, memory_t::host_pinned, memory_t::device)
     {
     }
 };

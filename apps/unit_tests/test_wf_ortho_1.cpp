@@ -8,8 +8,8 @@ using namespace sirius;
 
 int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int use_gpu__, int bs__)
 {
-    auto pu = use_gpu__ ? sddk::device_t::GPU : sddk::device_t::CPU;
-    spla::Context spla_ctx(pu == sddk::device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
+    auto pu = use_gpu__ ? device_t::GPU : device_t::CPU;
+    spla::Context spla_ctx(pu == device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
 
     la::BLACS_grid blacs_grid(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
@@ -23,16 +23,16 @@ int test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ban
     for (int ia = 0; ia < num_atoms; ia++) {
         nmt.push_back(ia);
     }
-    wf::Wave_functions<double> phi(gvec, nmt, wf::num_mag_dims(0), wf::num_bands(2 * num_bands__), sddk::memory_t::host);
-    wf::Wave_functions<double> tmp(gvec, nmt, wf::num_mag_dims(0), wf::num_bands(2 * num_bands__), sddk::memory_t::host);
+    wf::Wave_functions<double> phi(gvec, nmt, wf::num_mag_dims(0), wf::num_bands(2 * num_bands__), memory_t::host);
+    wf::Wave_functions<double> tmp(gvec, nmt, wf::num_mag_dims(0), wf::num_bands(2 * num_bands__), memory_t::host);
 
     sirius::randomize(phi);
 
     la::dmatrix<std::complex<double>> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
 
-    sddk::memory_t mem{sddk::memory_t::host};
-    if (pu == sddk::device_t::GPU) {
-        mem = sddk::memory_t::device;
+    memory_t mem{memory_t::host};
+    if (pu == device_t::GPU) {
+        mem = memory_t::device;
     }
 
     wf::orthogonalize(spla_ctx, mem, wf::spin_range(0), wf::band_range(0, 0), wf::band_range(0, num_bands__), phi, phi,

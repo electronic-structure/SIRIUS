@@ -78,7 +78,7 @@ K_point<T>::initialize()
         if (ctx_.cfg().control().use_second_variation()) {
 
             RTE_ASSERT(ctx_.num_fv_states() > 0);
-            fv_eigen_values_ = sddk::mdarray<double, 1>(ctx_.num_fv_states(), sddk::memory_t::host, "fv_eigen_values");
+            fv_eigen_values_ = mdarray<double, 1>({ctx_.num_fv_states()}, mdarray_label("fv_eigen_values"));
 
             if (ctx_.need_sv()) {
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
@@ -98,7 +98,7 @@ K_point<T>::initialize()
                     gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()),
                     ctx_.host_memory_t());
 
-            fv_eigen_vectors_slab_->zero(sddk::memory_t::host, wf::spin_index(0),
+            fv_eigen_vectors_slab_->zero(memory_t::host, wf::spin_index(0),
                     wf::band_range(0, ctx_.num_fv_states()));
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
@@ -132,7 +132,7 @@ K_point<T>::initialize()
                 singular_components_ = std::make_unique<wf::Wave_functions<T>>(
                     gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ncomp), ctx_.host_memory_t());
 
-                singular_components_->zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ncomp));
+                singular_components_->zero(memory_t::host, wf::spin_index(0), wf::band_range(0, ncomp));
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
                     for (int igloc = 0; igloc < gkvec().count(); igloc++) {
@@ -209,7 +209,7 @@ K_point<T>::generate_hubbard_orbitals()
 
     auto pcs = env::print_checksum();
     if (pcs) {
-        auto cs = atomic_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
+        auto cs = atomic_wave_functions_->checksum(memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
             print_checksum("atomic_wave_functions", cs, RTE_OUT(std::cout));
         }
@@ -280,7 +280,7 @@ K_point<T>::generate_hubbard_orbitals()
    }
 
     if (pcs) {
-        auto cs = atomic_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
+        auto cs = atomic_wave_functions_S_->checksum(memory_t::host, wf::spin_index(0), wf::band_range(0, nwf));
         if (this->comm().rank() == 0) {
             print_checksum("atomic_wave_functions_S", cs, RTE_OUT(std::cout));
         }
@@ -304,11 +304,11 @@ K_point<T>::generate_hubbard_orbitals()
                 int offset_in_wf = num_ps_atomic_wf.second[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
                 int offset_in_hwf = num_hubbard_wf.second[ia] + type.indexb_hub().index_of(e.idxrf);
 
-                wf::copy(sddk::memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
+                wf::copy(memory_t::host, *atomic_wave_functions_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_,
                         wf::spin_index(0), wf::band_range(offset_in_hwf, offset_in_hwf + mmax));
 
-                wf::copy(sddk::memory_t::host, *atomic_wave_functions_S_, wf::spin_index(0),
+                wf::copy(memory_t::host, *atomic_wave_functions_S_, wf::spin_index(0),
                         wf::band_range(offset_in_wf, offset_in_wf + mmax), *hubbard_wave_functions_S_,
                         wf::spin_index(0), wf::band_range(offset_in_hwf, offset_in_hwf + mmax));
             }
@@ -317,16 +317,16 @@ K_point<T>::generate_hubbard_orbitals()
     /* restore phi and sphi */
     if (ctx_.cfg().hubbard().full_orthogonalization()) {
 
-        wf::copy(sddk::memory_t::host, *wf_tmp, wf::spin_index(0), wf::band_range(0, nwf),
+        wf::copy(memory_t::host, *wf_tmp, wf::spin_index(0), wf::band_range(0, nwf),
                 *atomic_wave_functions_, wf::spin_index(0), wf::band_range(0, nwf));
-        wf::copy(sddk::memory_t::host, *swf_tmp, wf::spin_index(0), wf::band_range(0, nwf),
+        wf::copy(memory_t::host, *swf_tmp, wf::spin_index(0), wf::band_range(0, nwf),
                 *atomic_wave_functions_S_, wf::spin_index(0), wf::band_range(0, nwf));
     }
 
     if (pcs) {
-        auto cs1 = hubbard_wave_functions_->checksum(sddk::memory_t::host, wf::spin_index(0),
+        auto cs1 = hubbard_wave_functions_->checksum(memory_t::host, wf::spin_index(0),
                 wf::band_range(0, num_hubbard_wf.first));
-        auto cs2 = hubbard_wave_functions_S_->checksum(sddk::memory_t::host, wf::spin_index(0),
+        auto cs2 = hubbard_wave_functions_S_->checksum(memory_t::host, wf::spin_index(0),
                 wf::band_range(0, num_hubbard_wf.first));
         if (comm().rank() == 0) {
             print_checksum("hubbard_wave_functions", cs1, RTE_OUT(std::cout));
@@ -345,23 +345,23 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
         this->gkvec(), ctx_.comm_fft_coarse(), ctx_.comm_band_ortho_fft_coarse());
 
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
-    const auto spfft_pu = ctx_.processing_unit() == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+    const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto const& gv      = gkvec_partition_->gvec_array();
     /* create transformation */
     spfft_transform_.reset(new fft::spfft_transform_type<T>(ctx_.spfft_grid_coarse<T>().create_transform(
         spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
         ctx_.spfft_coarse<double>().local_z_length(), gkvec_partition_->count(), SPFFT_INDEX_TRIPLETS,
-        gv.at(sddk::memory_t::host))));
+        gv.at(memory_t::host))));
 
     splindex_block_cyclic<> spl_ngk_row(num_gkvec(), n_blocks(num_ranks_row_), block_id(rank_row_),
             ctx_.cyclic_block_size());
     num_gkvec_row_ = spl_ngk_row.local_size();
-    sddk::mdarray<int, 2> gkvec_row(3, num_gkvec_row_);
+    mdarray<int, 2> gkvec_row({3, num_gkvec_row_});
 
     splindex_block_cyclic<> spl_ngk_col(num_gkvec(), n_blocks(num_ranks_col_), block_id(rank_col_),
             ctx_.cyclic_block_size());
     num_gkvec_col_ = spl_ngk_col.local_size();
-    sddk::mdarray<int, 2> gkvec_col(3, num_gkvec_col_);
+    mdarray<int, 2> gkvec_col({3, num_gkvec_col_});
 
     for (int rank = 0; rank < comm().size(); rank++) {
         auto gv = gkvec_->gvec_local(rank);
@@ -422,13 +422,13 @@ K_point<T>::update()
 
 template <typename T>
 void
-K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) const
+K_point<T>::get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const
 {
     RTE_ASSERT((int)fv_evec__.size(0) >= gklo_basis_size());
     RTE_ASSERT((int)fv_evec__.size(1) == ctx_.num_fv_states());
     RTE_ASSERT(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
 
-    sddk::mdarray<std::complex<T>, 1> tmp(gklo_basis_size_row());
+    mdarray<std::complex<T>, 1> tmp({gklo_basis_size_row()});
 
     /* zero global array */
     fv_evec__.zero();
@@ -439,7 +439,7 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
                 int ig = this->gkvec().offset() + igloc;
                 fv_evec__(ig, ist) = fv_eigen_vectors_slab_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(ist));
             }
-            this->comm().allgather(fv_evec__.at(sddk::memory_t::host, 0, ist), this->gkvec().count(),
+            this->comm().allgather(fv_evec__.at(memory_t::host, 0, ist), this->gkvec().count(),
                     this->gkvec().offset());
         }
     } catch(std::exception const& e) {
@@ -467,7 +467,7 @@ K_point<T>::get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) c
                 offs += nlo;
             }
             auto& mtd = fv_eigen_vectors_slab_->mt_coeffs_distr();
-            this->comm().allgather(fv_evec__.at(sddk::memory_t::host, this->num_gkvec(), ist),
+            this->comm().allgather(fv_evec__.at(memory_t::host, this->num_gkvec(), ist),
                     mtd.counts.data(), mtd.offsets.data());
         }
     } catch(std::exception const& e) {
@@ -555,7 +555,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         //fout["K_point_set"][id__].write("gkvec", s.stream());
 
         /* save the order of G-vectors */
-        sddk::mdarray<int, 2> gv(3, num_gkvec());
+        mdarray<int, 2> gv({3, num_gkvec()});
         for (int i = 0; i < num_gkvec(); i++) {
             auto v = gkvec().template gvec<index_domain_t::global>(i);
             for (int x : {0, 1, 2}) {
@@ -694,12 +694,12 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     }
 
     /* allocate memory to store wave-functions for atom types */
-    std::vector<sddk::mdarray<std::complex<T>, 2>> wf_t(unit_cell_.num_atom_types());
+    std::vector<mdarray<std::complex<T>, 2>> wf_t(unit_cell_.num_atom_types());
     for (int ia : atoms__) {
         int iat = unit_cell_.atom(ia).type_id();
         if (wf_t[iat].size() == 0) {
-            wf_t[iat] = sddk::mdarray<std::complex<T>, 2>(this->num_gkvec_loc(), indexb__(iat)->size(),
-                                                          get_memory_pool(sddk::memory_t::host));
+            wf_t[iat] = mdarray<std::complex<T>, 2>({this->num_gkvec_loc(), indexb__(iat)->size()},
+                                                          get_memory_pool(memory_t::host));
         }
     }
 
@@ -713,7 +713,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         sf::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
 
         /* get all values of the radial integrals for a given G+k vector */
-        std::vector<sddk::mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
+        std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (wf_t[iat].size() != 0) {
                 ri_values[iat] = ri__.values(iat, vs[0]);

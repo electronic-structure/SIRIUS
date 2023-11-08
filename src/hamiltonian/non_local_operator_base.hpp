@@ -38,16 +38,16 @@ class Non_local_operator
   protected:
     Simulation_context const& ctx_;
 
-    sddk::device_t pu_;
+    device_t pu_;
 
     int packed_mtrx_size_;
 
     int size_;
 
-    sddk::mdarray<int, 1> packed_mtrx_offset_;
+    mdarray<int, 1> packed_mtrx_offset_;
 
     /// Non-local operator matrix.
-    sddk::mdarray<T, 3> op_;
+    mdarray<T, 3> op_;
 
     bool is_null_{false};
 
@@ -67,24 +67,24 @@ class Non_local_operator
     /** \tparam F  Type of the subspace matrix
      */
     template <typename F>
-    void apply(sddk::memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
+    void apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
                wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__,
-               sddk::matrix<F> const& beta_phi__) const;
+               matrix<F> const& beta_phi__) const;
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename F>
     std::enable_if_t<std::is_same<std::complex<T>, F>::value, void>
-    apply(sddk::memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
-          wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__, sddk::matrix<F>& beta_phi__);
+    apply(memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
+          wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__, matrix<F>& beta_phi__);
 
     /// computes α B*Q + β out
     template <typename F>
-    void lmatmul(sddk::matrix<F>& out, sddk::matrix<F> const& B__, int ispn_block__, sddk::memory_t mem_t,
+    void lmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t,
                  identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     /// computes α Q*B + β out
     template <typename F>
-    void rmatmul(sddk::matrix<F>& out, sddk::matrix<F> const& B__, int ispn_block__, sddk::memory_t mem_t,
+    void rmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t,
                  identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
@@ -116,15 +116,15 @@ class Non_local_operator
     }
 
     template <typename F>
-    sddk::matrix<F> get_matrix(int ispn, sddk::memory_t mem) const;
+    matrix<F> get_matrix(int ispn, memory_t mem) const;
 };
 
 template <class T>
 template <class F>
 void
-Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
+Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
                              wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__,
-                             sddk::matrix<F> const& beta_phi__) const
+                             matrix<F> const& beta_phi__) const
 {
     PROFILE("sirius::Non_local_operator::apply");
 
@@ -138,10 +138,10 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
 
     /* setup linear algebra parameters */
     la::lib_t la{la::lib_t::blas};
-    sddk::device_t pu{sddk::device_t::CPU};
+    device_t pu{device_t::CPU};
     if (is_device_memory(mem__)) {
         la = la::lib_t::gpublas;
-        pu = sddk::device_t::GPU;
+        pu = device_t::GPU;
     }
 
     int size_factor = 1;
@@ -149,7 +149,7 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
         size_factor = 2;
     }
 
-    auto work = sddk::mdarray<F, 2>(nbeta, br__.size(), get_memory_pool(mem__));
+    auto work = mdarray<F, 2>({nbeta, br__.size()}, get_memory_pool(mem__));
 
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel
@@ -173,13 +173,13 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
         }
     }
     switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
             /* wait for previous zgemms */
             #pragma omp parallel
             acc::sync_stream(acc::stream_id(omp_get_thread_num()));
             break;
         }
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             break;
         }
     }
@@ -194,11 +194,11 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
                       op_phi__.ld() * size_factor);
 
     switch (pu) {
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
             acc::sync_stream(acc::stream_id(-1));
             break;
         }
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             break;
         }
     }
@@ -207,9 +207,9 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, int ispn_block__
 template <class T>
 template <class F>
 std::enable_if_t<std::is_same<std::complex<T>, F>::value, void>
-Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__,
+Non_local_operator<T>::apply(memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__,
                              wf::Wave_functions<T>& op_phi__, wf::band_range br__,
-                             beta_projectors_coeffs_t<T> const& beta_coeffs__, sddk::matrix<F>& beta_phi__)
+                             beta_projectors_coeffs_t<T> const& beta_coeffs__, matrix<F>& beta_phi__)
 {
     if (is_null_) {
         return;
@@ -227,13 +227,13 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, atom_index_t::lo
     }
 
     la::lib_t la{la::lib_t::blas};
-    sddk::device_t pu{sddk::device_t::CPU};
+    device_t pu{device_t::CPU};
     if (is_device_memory(mem__)) {
         la = la::lib_t::gpublas;
-        pu = sddk::device_t::GPU;
+        pu = device_t::GPU;
     }
 
-    auto work = sddk::mdarray<std::complex<T>, 1>(nbf * br__.size(), get_memory_pool(mem__));
+    auto work = mdarray<std::complex<T>, 1>({nbf * br__.size()}, get_memory_pool(mem__));
 
     la::wrap(la).gemm('N', 'N', nbf, br__.size(), nbf, &la::constant<std::complex<T>>::one(),
                       reinterpret_cast<std::complex<T>*>(op_.at(mem__, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
@@ -248,10 +248,10 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, atom_index_t::lo
                       op_phi__.at(mem__, 0, wf::spin_index(jspn), wf::band_index(br__.begin())), op_phi__.ld());
 
     switch (pu) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             break;
         }
-        case sddk::device_t::GPU: {
+        case device_t::GPU: {
 #ifdef SIRIUS_GPU
             acc::sync_stream(acc::stream_id(-1));
 #endif
@@ -263,7 +263,7 @@ Non_local_operator<T>::apply(sddk::memory_t mem__, int chunk__, atom_index_t::lo
 template <class T>
 template <class F>
 void
-Non_local_operator<T>::lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+Non_local_operator<T>::lmatmul(matrix<F>& out, const matrix<F>& B__, int ispn_block__, memory_t mem_t,
                                identity_t<F> alpha, identity_t<F> beta) const
 {
     /* Computes Cᵢⱼ =∑ₖ Bᵢₖ Qₖⱼ = Bᵢⱼ Qⱼⱼ
@@ -302,7 +302,7 @@ Non_local_operator<T>::lmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__,
 template <class T>
 template <class F>
 void
-Non_local_operator<T>::rmatmul(sddk::matrix<F>& out, const sddk::matrix<F>& B__, int ispn_block__, sddk::memory_t mem_t,
+Non_local_operator<T>::rmatmul(matrix<F>& out, const matrix<F>& B__, int ispn_block__, memory_t mem_t,
                                identity_t<F> alpha, identity_t<F> beta) const
 {
     /* Computes Cᵢⱼ =  ∑ₖ Qᵢₖ * Bₖⱼ = Qᵢᵢ * Bᵢⱼ

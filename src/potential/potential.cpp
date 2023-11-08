@@ -110,25 +110,25 @@ Potential::Potential(Simulation_context& ctx__)
         dveff_->zero();
     }
 
-    vh_el_ = sddk::mdarray<double, 1>(unit_cell_.num_atoms());
+    vh_el_ = mdarray<double, 1>({unit_cell_.num_atoms()});
 
     if (ctx_.full_potential()) {
-        gvec_ylm_ = sddk::mdarray<std::complex<double>, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), sddk::memory_t::host, "gvec_ylm_");
+        gvec_ylm_ = mdarray<std::complex<double>, 2>({ctx_.lmmax_pot(), ctx_.gvec().count()}, mdarray_label("gvec_ylm_"));
 
         switch (ctx_.valence_relativity()) {
             case relativity_t::iora: {
-                rm2_inv_pw_ = sddk::mdarray<std::complex<double>, 1>(ctx_.gvec().num_gvec());
+                rm2_inv_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
             }
             case relativity_t::zora: {
-                rm_inv_pw_ = sddk::mdarray<std::complex<double>, 1>(ctx_.gvec().num_gvec());
+                rm_inv_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
             }
             default: {
-                veff_pw_ = sddk::mdarray<std::complex<double>, 1>(ctx_.gvec().num_gvec());
+                veff_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
             }
         }
     }
 
-    aux_bf_ = sddk::mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+    aux_bf_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     aux_bf_.zero();
 
     if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {
@@ -169,10 +169,8 @@ void Potential::update()
          *
          * and use relation between Bessel and spherical Bessel functions:
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
-        sbessel_mom_ = sddk::mdarray<double, 3>(ctx_.lmax_rho() + 1,
-                                          ctx_.gvec().count(),
-                                          unit_cell_.num_atom_types(),
-                                          sddk::memory_t::host, "sbessel_mom_");
+        sbessel_mom_ = mdarray<double, 3>({ctx_.lmax_rho() + 1, ctx_.gvec().count(), unit_cell_.num_atom_types()},
+                                          mdarray_label("sbessel_mom_"));
         sbessel_mom_.zero();
         int ig0{0};
         if (ctx_.comm().rank() == 0) {
@@ -196,8 +194,8 @@ void Potential::update()
         /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
          *
          * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi] */
-        gamma_factors_R_ = sddk::mdarray<double, 2>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(),
-                sddk::memory_t::host, "gamma_factors_R_");
+        gamma_factors_R_ = mdarray<double, 2>({ctx_.lmax_rho() + 1, unit_cell_.num_atom_types()},
+                mdarray_label("gamma_factors_R_"));
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int l = 0; l <= ctx_.lmax_rho(); l++) {
                 long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
@@ -403,7 +401,7 @@ void Potential::load(std::string name__)
     if (ngv != ctx_.gvec().num_gvec()) {
         RTE_THROW("wrong number of G-vectors");
     }
-    sddk::mdarray<int, 2> gv(3, ngv);
+    mdarray<int, 2> gv({3, ngv});
     fin.read("/parameters/gvec", gv);
 
     effective_potential().hdf5_read(name__, "effective_potential", gv);

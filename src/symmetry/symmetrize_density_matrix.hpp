@@ -30,11 +30,11 @@
 namespace sirius {
 
 inline void
-apply_symmetry_to_density_matrix(sddk::mdarray<std::complex<double>, 3> const& dm_ia__,
+apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__,
         basis_functions_index const& indexb__, const int num_mag_comp__,
-        std::vector<sddk::mdarray<double, 2>> const& rotm__,
-        sddk::mdarray<std::complex<double>, 2> const& spin_rot_su2__,
-        sddk::mdarray<std::complex<double>, 3>& dm_ja__)
+        std::vector<mdarray<double, 2>> const& rotm__,
+        mdarray<std::complex<double>, 2> const& spin_rot_su2__,
+        mdarray<std::complex<double>, 3>& dm_ja__)
 {
     auto& indexr = indexb__.indexr();
 

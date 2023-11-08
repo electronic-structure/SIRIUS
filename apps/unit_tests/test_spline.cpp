@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 void check_spline(Spline<double> const& s__, std::function<double(double)> f__, double x0, double x1)
 {
@@ -144,7 +143,7 @@ void test_spline_5()
         s1[i].interpolate();
         s2[i].interpolate();
     }
-    mdarray<double, 2> prod(n, n);
+    mdarray<double, 2> prod({n, n});
     double t = -wtime();
     #pragma omp parallel for
     for (int i = 0; i < n; i++) {
@@ -159,7 +158,7 @@ void test_spline_5()
 
 void test_spline_6()
 {
-    mdarray<Spline<double>, 1> array(20);
+    mdarray<Spline<double>, 1> array({20});
     Radial_grid_exp<double> rgrid(300, 1e-7, 4);
 
     for (int i = 0; i < 20; i++)

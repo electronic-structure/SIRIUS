@@ -33,7 +33,7 @@ generate_sbessel_mt(Simulation_context const& ctx__, int lmax__)
 {
     PROFILE("sirius::generate_sbessel_mt");
 
-    sddk::mdarray<double, 3> sbessel_mt(lmax__ + 1, ctx__.gvec().count(), ctx__.unit_cell().num_atom_types());
+    mdarray<double, 3> sbessel_mt({lmax__ + 1, ctx__.gvec().count(), ctx__.unit_cell().num_atom_types()});
     for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx__.gvec().count(); igloc++) {

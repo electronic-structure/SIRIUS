@@ -35,7 +35,7 @@
 #include "core/typedefs.hpp"
 #include "core/rte/rte.hpp"
 #include "core/json.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 
@@ -52,7 +52,7 @@ std::ostream& operator<<(std::ostream& out, std::complex<T> z)
 
 /// Distributed matrix.
 template <typename T>
-class dmatrix: public sddk::matrix<T>
+class dmatrix: public matrix<T>
 {
   private:
     /// Global number of matrix rows.
@@ -93,7 +93,7 @@ class dmatrix: public sddk::matrix<T>
 #endif
             grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
                     this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
-                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(sddk::memory_t::host), this->ld(), 'C',
+                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
                     this->blacs_grid().comm().rank());
         }
     }
@@ -110,16 +110,16 @@ class dmatrix: public sddk::matrix<T>
     }
 
     dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
-            sddk::memory_t mem_type__ = sddk::memory_t::host);
+            memory_t mem_type__ = memory_t::host);
 
-    dmatrix(int num_rows__, int num_cols__, sddk::memory_t mem_type__ = sddk::memory_t::host);
+    dmatrix(int num_rows__, int num_cols__, memory_t mem_type__ = memory_t::host);
 
-    dmatrix(int num_rows__, int num_cols__, sddk::memory_pool& mp__, std::string const& label__ = "");
+    dmatrix(int num_rows__, int num_cols__, memory_pool& mp__, std::string const& label__ = "");
 
     dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__);
 
     dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
-            sddk::memory_pool& mp__);
+            memory_pool& mp__);
 
     dmatrix(T* ptr__, int num_rows__, int num_cols__);
 
@@ -218,9 +218,9 @@ class dmatrix: public sddk::matrix<T>
     //    }
     //}
 
-    using sddk::matrix<T>::copy_to;
+    using matrix<T>::copy_to;
 
-    void copy_to(sddk::memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
+    void copy_to(memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
     {
         int m0, m1, n0, n1;
         if (blacs_grid_ != nullptr) {
@@ -246,12 +246,12 @@ class dmatrix: public sddk::matrix<T>
         }
 
         if (is_host_memory(mem__)) {
-            acc::copyout(this->at(sddk::memory_t::host, m0, n0), this->ld(),
-                         this->at(sddk::memory_t::device, m0, n0), this->ld(), m1 - m0, n1 - n0);
+            acc::copyout(this->at(memory_t::host, m0, n0), this->ld(),
+                         this->at(memory_t::device, m0, n0), this->ld(), m1 - m0, n1 - n0);
         }
         if (is_device_memory(mem__)) {
-            acc::copyin(this->at(sddk::memory_t::device, m0, n0), this->ld(),
-                        this->at(sddk::memory_t::host, m0, n0), this->ld(), m1 - m0, n1 - n0);
+            acc::copyin(this->at(memory_t::device, m0, n0), this->ld(),
+                        this->at(memory_t::host, m0, n0), this->ld(), m1 - m0, n1 - n0);
         }
     }
 
@@ -265,7 +265,7 @@ class dmatrix: public sddk::matrix<T>
 
     void make_real_diag(int n__);
 
-    sddk::mdarray<T, 1> get_diag(int n__);
+    mdarray<T, 1> get_diag(int n__);
 
     inline auto const& spl_col() const
     {
@@ -319,7 +319,7 @@ class dmatrix: public sddk::matrix<T>
 
     auto get_full_matrix() const
     {
-        sddk::mdarray<T, 2> full_mtrx(num_rows(), num_cols());
+        mdarray<T, 2> full_mtrx({num_rows(), num_cols()});
         full_mtrx.zero();
 
         for (int j = 0; j < num_cols_local(); j++) {
@@ -328,7 +328,7 @@ class dmatrix: public sddk::matrix<T>
             }
         }
         if (blacs_grid_) {
-            blacs_grid_->comm().allreduce(full_mtrx.at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()));
+            blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
         }
         return full_mtrx;
     }
@@ -429,7 +429,7 @@ class dmatrix: public sddk::matrix<T>
     {
         return costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
                 this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
-                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(sddk::memory_t::host), this->ld(), 'C',
+                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
                 this->blacs_grid().comm().rank());
     }
 };

@@ -232,7 +232,7 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
             atype.local_potential(vloc);
             /* set Dion matrix */
             int nbf = atype.num_beta_radial_functions();
-            sddk::matrix<double> dion(nbf, nbf);
+            matrix<double> dion({nbf, nbf});
             dion.zero();
             if (add_dion__) {
                 for (int i = 0; i < nbf; i++) {
@@ -263,7 +263,7 @@ randomize(wf::Wave_functions<T>& wf__)
 {
     for (int i = 0; i < wf__.num_wf().get(); i++) {
         for (int s = 0; s < wf__.num_sc().get(); s++) {
-            auto ptr = wf__.at(sddk::memory_t::host, 0, wf::spin_index(s), wf::band_index(i));
+            auto ptr = wf__.at(memory_t::host, 0, wf::spin_index(s), wf::band_index(i));
             for (int j = 0; j < wf__.ld(); j++) {
                 ptr[j] = random<std::complex<double>>();
             }

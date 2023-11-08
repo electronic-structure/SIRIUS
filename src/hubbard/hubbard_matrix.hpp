@@ -40,11 +40,11 @@ class Hubbard_matrix
     /// table indicating if we should apply constraints on the hubbard occupation
     /// to given atomic orbital group
     std::vector<bool> apply_constraints_;
-    std::vector<sddk::mdarray<std::complex<double>, 3>> local_;
+    std::vector<mdarray<std::complex<double>, 3>> local_;
     /// Non-local part of Hubbard matrix.
-    std::vector<sddk::mdarray<std::complex<double>, 3>> nonlocal_;
-    std::vector<sddk::mdarray<std::complex<double>, 3>> local_constraints_;
-    std::vector<sddk::mdarray<std::complex<double>, 3>> multipliers_constraints_;
+    std::vector<mdarray<std::complex<double>, 3>> nonlocal_;
+    std::vector<mdarray<std::complex<double>, 3>> local_constraints_;
+    std::vector<mdarray<std::complex<double>, 3>> multipliers_constraints_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     std::vector<int> offset_;
 
@@ -227,17 +227,17 @@ inline void
 copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
     for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
-        sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
+        copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
 
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
-        sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
+        copy(src__.nonlocal(i), dest__.nonlocal(i));
 
         if (src__.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
             for (int i = 0; i < static_cast<int>(src__.atomic_orbitals().size()); i++) {
                 if (src__.apply_constraints(i)) {
-                    sddk::copy(src__.local_constraints(i), dest__.local_constraints(i));
-                    sddk::copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
+                    copy(src__.local_constraints(i), dest__.local_constraints(i));
+                    copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
                     dest__.apply_constraints()[i] = src__.apply_constraints(i);
                 }
             }

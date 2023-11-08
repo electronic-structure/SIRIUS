@@ -60,7 +60,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     Hk__.set_fv_h_o(h, o);
 
     if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
-        auto& mpd = get_memory_pool(sddk::memory_t::device);
+        auto& mpd = get_memory_pool(memory_t::device);
         h.allocate(mpd);
         o.allocate(mpd);
         kp__.fv_eigen_vectors().allocate(mpd);
@@ -101,9 +101,9 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     print_memory_usage(ctx.out(), FILE_LINE);
 
     if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
-        h.deallocate(sddk::memory_t::device);
-        o.deallocate(sddk::memory_t::device);
-        kp__.fv_eigen_vectors().deallocate(sddk::memory_t::device);
+        h.deallocate(memory_t::device);
+        o.deallocate(memory_t::device);
+        kp__.fv_eigen_vectors().deallocate(memory_t::device);
     }
     kp__.set_fv_eigen_values(&eval[0]);
 
@@ -137,8 +137,8 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     }
 
     if (pcs) {
-        auto z1 = kp__.fv_eigen_vectors_slab().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
-        auto z2 = kp__.fv_eigen_vectors_slab().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
+        auto z1 = kp__.fv_eigen_vectors_slab().checksum_pw(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
+        auto z2 = kp__.fv_eigen_vectors_slab().checksum_mt(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
         print_checksum("fv_eigen_vectors_slab", z1 + z2, kp__.out(1));
     }
 
@@ -150,10 +150,10 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
             num_mt_coeffs[ia] = ctx.unit_cell().atom(ia).mt_lo_basis_size();
         }
         wf::Wave_functions<double> ofv_new(kp__.gkvec_sptr(), num_mt_coeffs, wf::num_mag_dims(0),
-                wf::num_bands(ctx.num_fv_states()), sddk::memory_t::host);
+                wf::num_bands(ctx.num_fv_states()), memory_t::host);
 
         {
-            auto mem = ctx.processing_unit() == sddk::device_t::CPU ? sddk::memory_t::host : sddk::memory_t::device;
+            auto mem = ctx.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
             auto mg1 = kp__.fv_eigen_vectors_slab().memory_guard(mem, wf::copy_to::device);
             auto mg2 = ofv_new.memory_guard(mem, wf::copy_to::host);
 
@@ -161,7 +161,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
                     nullptr, &ofv_new);
         }
 
-        auto norm1 = wf::inner_diag<double, std::complex<double>>(sddk::memory_t::host, kp__.fv_eigen_vectors_slab(),
+        auto norm1 = wf::inner_diag<double, std::complex<double>>(memory_t::host, kp__.fv_eigen_vectors_slab(),
                 ofv_new, wf::spin_range(0), wf::num_bands(ctx.num_fv_states()));
 
         std::vector<double> norm;
@@ -169,7 +169,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
             norm.push_back(1 / std::sqrt(std::real(e)));
         }
 
-        wf::axpby<double, double>(sddk::memory_t::host, wf::spin_range(0), wf::band_range(0, ctx.num_fv_states()),
+        wf::axpby<double, double>(memory_t::host, wf::spin_range(0), wf::band_range(0, ctx.num_fv_states()),
                 nullptr, nullptr, norm.data(), &kp__.fv_eigen_vectors_slab());
     }
 
@@ -184,10 +184,10 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     //                        ctx.preferred_memory_t());
 
     //    if (ctx.processing_unit() == sddk::device_t::GPU) {
-    //        kp.fv_eigen_vectors_slab().allocate(sddk::spin_range(0), sddk::memory_t::device);
-    //        kp.fv_eigen_vectors_slab().copy_to(sddk::spin_range(0), sddk::memory_t::device, 0, ctx.num_fv_states());
-    //        hphi.allocate(sddk::spin_range(0), sddk::memory_t::device);
-    //        ophi.allocate(sddk::spin_range(0), sddk::memory_t::device);
+    //        kp.fv_eigen_vectors_slab().allocate(sddk::spin_range(0), memory_t::device);
+    //        kp.fv_eigen_vectors_slab().copy_to(sddk::spin_range(0), memory_t::device, 0, ctx.num_fv_states());
+    //        hphi.allocate(sddk::spin_range(0), memory_t::device);
+    //        ophi.allocate(sddk::spin_range(0), memory_t::device);
     //    }
 
     //    Hk__.apply_fv_h_o(false, false, 0, ctx.num_fv_states(), kp.fv_eigen_vectors_slab(), &hphi, &ophi);
@@ -294,11 +294,11 @@ diagonalize_fp_fv_davidson(Hamiltonian_k<double> const& Hk__, K_point<double>& k
     int nlo = ctx.unit_cell().mt_lo_basis_size();
 
     auto phi_extra_new = wave_function_factory(ctx, kp__, wf::num_bands(nlo + ncomp), wf::num_mag_dims(0), true);
-    phi_extra_new->zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nlo + ncomp));
+    phi_extra_new->zero(memory_t::host, wf::spin_index(0), wf::band_range(0, nlo + ncomp));
 
     if (ncomp) {
         /* copy [0, ncomp) from kp.singular_components() to [0, ncomp) in phi_extra */
-        wf::copy(sddk::memory_t::host, kp__.singular_components(), wf::spin_index(0), wf::band_range(0, ncomp),
+        wf::copy(memory_t::host, kp__.singular_components(), wf::spin_index(0), wf::band_range(0, ncomp),
                 *phi_extra_new, wf::spin_index(0), wf::band_range(0, ncomp));
     }
 
@@ -321,7 +321,7 @@ diagonalize_fp_fv_davidson(Hamiltonian_k<double> const& Hk__, K_point<double>& k
         }
     }
     if (env::print_checksum()) {
-        auto cs = phi_extra_new->checksum(sddk::memory_t::host, wf::band_range(0, nlo + ncomp));
+        auto cs = phi_extra_new->checksum(memory_t::host, wf::band_range(0, nlo + ncomp));
         if (kp__.comm().rank() == 0) {
             print_checksum("phi_extra", cs, RTE_OUT(ctx.out()));
         }
@@ -368,7 +368,7 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     int nfv = ctx.num_fv_states();
     int bs  = ctx.cyclic_block_size();
 
-    sddk::mdarray<double, 2> band_energies(ctx.num_bands(), ctx.num_spinors());
+    mdarray<double, 2> band_energies({ctx.num_bands(), ctx.num_spinors()});
 
     std::vector<int> num_mt_coeffs(ctx.unit_cell().num_atoms());
     for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
@@ -383,8 +383,8 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     }
 
     if (pcs) {
-        auto cs1 = kp.fv_states().checksum_pw(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
-        auto cs2 = kp.fv_states().checksum_mt(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs1 = kp.fv_states().checksum_pw(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs2 = kp.fv_states().checksum_mt(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
         if (kp.comm().rank() == 0) {
             print_checksum("psi_pw", cs1, RTE_OUT(ctx.out()));
             print_checksum("psi_mt", cs2, RTE_OUT(ctx.out()));
@@ -395,7 +395,7 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     if (ctx.num_spins() == 2) {
         Hk__.apply_b(kp.fv_states(), hpsi);
     } else {
-        hpsi[0].zero(sddk::memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        hpsi[0].zero(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
 
     print_memory_usage(ctx.out(), FILE_LINE);
@@ -432,8 +432,8 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
 
     if (ctx.num_mag_dims() != 3) {
         la::dmatrix<std::complex<double>> h(nfv, nfv, ctx.blacs_grid(), bs, bs);
-        if (ctx.blacs_grid().comm().size() == 1 && ctx.processing_unit() == sddk::device_t::GPU) {
-            h.allocate(get_memory_pool(sddk::memory_t::device));
+        if (ctx.blacs_grid().comm().size() == 1 && ctx.processing_unit() == device_t::GPU) {
+            h.allocate(get_memory_pool(memory_t::device));
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
@@ -461,8 +461,8 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     } else {
         int nb = ctx.num_bands();
         la::dmatrix<std::complex<double>> h(nb, nb, ctx.blacs_grid(), bs, bs);
-        if (ctx.blacs_grid().comm().size() == 1 && ctx.processing_unit() == sddk::device_t::GPU) {
-            h.allocate(get_memory_pool(sddk::memory_t::device));
+        if (ctx.blacs_grid().comm().size() == 1 && ctx.processing_unit() == device_t::GPU) {
+            h.allocate(get_memory_pool(memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
         wf::inner(ctx.spla_context(), mem, sr, kp.fv_states(), br, hpsi[0], br, h, 0, 0);

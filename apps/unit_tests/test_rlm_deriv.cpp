@@ -1,7 +1,6 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 /* reference values are generated with the following Mathematica script:
 
@@ -68,7 +67,7 @@ int test1()
     int lmax = 8;
     int lmmax = sf::lmmax(lmax);
 
-    mdarray<double, 2> data(lmmax, 3);
+    mdarray<double, 2> data({lmmax, 3});
 
     double ref[][6][3] ={{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, 
    {{0.018654930590386358, -0.09327465295193178, 0.05596479177115907}, {-0.08614085243649676, -0.0864509595052682, 
@@ -330,7 +329,7 @@ int test2()
     int lmax = 8;
     int lmmax = sf::lmmax(lmax);
 
-    mdarray<double, 2> data(lmmax, 3);
+    mdarray<double, 2> data({lmmax, 3});
 
     double ref[][6][3] = {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, 
   {{0, -0.4886025119029198, 0}, {0, -0.4886025119029198, 0}, {0, 0, 0}, {0, 0, 0}, 
@@ -474,7 +473,7 @@ int test3()
     int lmax = 8;
     int lmmax = sf::lmmax(lmax);
 
-    mdarray<double, 2> data(lmmax, 3);
+    mdarray<double, 2> data({lmmax, 3});
     double max_diff{0};
 
     for (int i = 0; i < 300; i++) {
@@ -488,7 +487,7 @@ int test3()
 
         sf::dRlm_dr(lmax, v, data);
 
-        mdarray<double, 2> drlm(lmmax, 3);
+        mdarray<double, 2> drlm({lmmax, 3});
         for (int x = 0; x < 3; x++) {
             r3::vector<double> v1 = v;
             v1[x] += dr;

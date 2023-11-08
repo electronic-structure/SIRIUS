@@ -24,15 +24,14 @@
 #include "potential/xc_functional.hpp"
 
 using namespace sirius;
-using namespace sirius::sddk;
 
 double const rmin{1e-5};
 
 class Free_atom : public sirius::Atom_type
 {
   private:
-    sddk::mdarray<double, 2> free_atom_orbital_density_;
-    sddk::mdarray<double, 2> free_atom_wave_functions_;
+    mdarray<double, 2> free_atom_orbital_density_;
+    mdarray<double, 2> free_atom_wave_functions_;
     sirius::Spline<double> free_atom_potential_;
 
   public:
@@ -59,8 +58,8 @@ class Free_atom : public sirius::Atom_type
         int np = radial_grid().num_points();
         assert(np > 0);
 
-        free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels());
-        free_atom_wave_functions_  = mdarray<double, 2>(np, num_atomic_levels());
+        free_atom_orbital_density_ = mdarray<double, 2>({np, num_atomic_levels()});
+        free_atom_wave_functions_  = mdarray<double, 2>({np, num_atomic_levels()});
 
         sirius::XC_functional_base *Ex;
         sirius::XC_functional_base Ec("XC_LDA_C_VWN", 1);

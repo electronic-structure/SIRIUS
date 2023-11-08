@@ -1,14 +1,13 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 void test1()
 {
     int N = 400;
-    sddk::matrix<std::complex<double>> A(N, N);
-    sddk::matrix<std::complex<double>> B(N, N);
-    sddk::matrix<std::complex<double>> C(N, N);
+    matrix<std::complex<double>> A({N, N});
+    matrix<std::complex<double>> B({N, N});
+    matrix<std::complex<double>> C({N, N});
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++) B(j, i) = random<std::complex<double>>();
@@ -18,7 +17,7 @@ void test1()
     {
         for (int j = 0; j < N; j++) A(i, j) = B(i, j) + std::conj(B(j, i));
     }
-    sddk::copy(A, B);
+    copy(A, B);
 
     la::wrap(la::lib_t::lapack).syinv(N, A);
     la::wrap(la::lib_t::blas).hemm('L', 'U', N, N, &la::constant<std::complex<double>>::one(),
@@ -62,15 +61,15 @@ template <typename T>
 void test2()
 {
     int N = 400;
-    matrix<T> A(N, N);
-    matrix<T> B(N, N);
-    matrix<T> C(N, N);
+    matrix<T> A({N, N});
+    matrix<T> B({N, N});
+    matrix<T> C({N, N});
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             A(j, i) = random<T>();
         }
     }
-    sddk::copy(A, B);
+    copy(A, B);
 
     la::wrap(la::lib_t::lapack).geinv(N, A);
     la::wrap(la::lib_t::blas).gemm('N', 'N', N, N, N, &la::constant<T>::one(), A.at(memory_t::host), A.ld(),

@@ -51,14 +51,14 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     splindex_block<Index_t> spl_atoms(frlm.atoms().size(), n_blocks(comm__.size()), block_id(comm__.rank()));
 
     /* space for real Rlm rotation matrix */
-    sddk::mdarray<double, 2> rotm(lmmax, lmmax);
+    mdarray<double, 2> rotm({lmmax, lmmax});
 
     /* symmetry-transformed functions */
-    sddk::mdarray<double, 4> fsym_loc(lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1,
-            spl_atoms.local_size());
+    mdarray<double, 4> fsym_loc({lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1,
+            spl_atoms.local_size()});
     fsym_loc.zero();
 
-    sddk::mdarray<double, 3> ftmp(lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1);
+    mdarray<double, 3> ftmp({lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1});
 
     double alpha = 1.0 / sym__.size();
 
@@ -78,9 +78,9 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
             /* apply {R|t} part of symmetry operation to all components */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
                 la::wrap(la::lib_t::blas).gemm('N', 'N', lmmax_ia, nrmax_ia, lmmax_ia, &alpha,
-                    rotm.at(sddk::memory_t::host), rotm.ld(), (*frlm__[j])[ja].at(sddk::memory_t::host),
+                    rotm.at(memory_t::host), rotm.ld(), (*frlm__[j])[ja].at(memory_t::host),
                     (*frlm__[j])[ja].ld(), &la::constant<double>::zero(),
-                    ftmp.at(sddk::memory_t::host, 0, 0, j), ftmp.ld());
+                    ftmp.at(memory_t::host, 0, 0, j), ftmp.ld());
             }
             /* always symmetrize the scalar component */
             for (int ir = 0; ir < nrmax_ia; ir++) {
@@ -112,13 +112,13 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     }
 
     /* gather full function */
-    double* sbuf = spl_atoms.local_size() ? fsym_loc.at(sddk::memory_t::host) : nullptr;
+    double* sbuf = spl_atoms.local_size() ? fsym_loc.at(memory_t::host) : nullptr;
     auto ld = static_cast<int>(fsym_loc.size(0) * fsym_loc.size(1) * fsym_loc.size(2));
 
-    sddk::mdarray<double, 4> fsym_glob(lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1,
-            frlm.atoms().size());
+    mdarray<double, 4> fsym_glob({lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1,
+            frlm.atoms().size()});
 
-    comm__.allgather(sbuf, fsym_glob.at(sddk::memory_t::host), ld * spl_atoms.local_size(),
+    comm__.allgather(sbuf, fsym_glob.at(memory_t::host), ld * spl_atoms.local_size(),
             ld * spl_atoms.global_offset());
 
     /* copy back the result */

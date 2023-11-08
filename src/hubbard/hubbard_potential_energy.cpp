@@ -30,10 +30,10 @@ namespace sirius {
 
 static void
 generate_constrained_potential(Simulation_context const& ctx__, Atom_type const& atom_type__, const int idx_hub_wf,
-                               const int at_lvl, sddk::mdarray<std::complex<double>, 3> const& om__, // __unused__
-                               sddk::mdarray<std::complex<double>, 3> const& om_ref__,               // __unused__
-                               sddk::mdarray<std::complex<double>, 3> const& lagrange_multiplier__,
-                               sddk::mdarray<std::complex<double>, 3>& um__)
+                               const int at_lvl, mdarray<std::complex<double>, 3> const& om__, // __unused__
+                               mdarray<std::complex<double>, 3> const& om_ref__,               // __unused__
+                               mdarray<std::complex<double>, 3> const& lagrange_multiplier__,
+                               mdarray<std::complex<double>, 3>& um__)
 {
     auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf);
 
@@ -50,8 +50,8 @@ generate_constrained_potential(Simulation_context const& ctx__, Atom_type const&
 
 static void
 generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int index__,
-                                      sddk::mdarray<std::complex<double>, 3> const& om__,
-                                      sddk::mdarray<std::complex<double>, 3>& um__)
+                                      mdarray<std::complex<double>, 3> const& om__,
+                                      mdarray<std::complex<double>, 3>& um__)
 {
     auto nl = ctx__.cfg().hubbard().nonlocal(index__);
     um__.zero();
@@ -72,8 +72,7 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
 
 static void
 generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__, const int idx_hub_wf,
-                                   sddk::mdarray<std::complex<double>, 3> const& om__,
-                                   sddk::mdarray<std::complex<double>, 3>& um__)
+                                   mdarray<std::complex<double>, 3> const& om__, mdarray<std::complex<double>, 3>& um__)
 {
     /* quick exit */
     if (!atom_type__.hubbard_correction()) {
@@ -184,9 +183,9 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
 
 static double
 calculate_energy_constrained_contribution(Simulation_context const& ctx__, Atom_type const& atom_type__,
-                                          const int idx_hub_wf, sddk::mdarray<std::complex<double>, 3> const& om__,
-                                          sddk::mdarray<std::complex<double>, 3> const& om_constraints__,
-                                          sddk::mdarray<std::complex<double>, 3> const& lagrange_multipliers__)
+                                          const int idx_hub_wf, mdarray<std::complex<double>, 3> const& om__,
+                                          mdarray<std::complex<double>, 3> const& om_constraints__,
+                                          mdarray<std::complex<double>, 3> const& lagrange_multipliers__)
 {
     std::complex<double> hubbard_energy_constraint{0};
     /* quick exit */
@@ -217,7 +216,7 @@ calculate_energy_constrained_contribution(Simulation_context const& ctx__, Atom_
 
 static double
 calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int index__,
-                                    sddk::mdarray<std::complex<double>, 3> const& om__)
+                                    mdarray<std::complex<double>, 3> const& om__)
 {
     auto nl = ctx__.cfg().hubbard().nonlocal(index__);
     double hubbard_energy{0.0};
@@ -244,7 +243,7 @@ calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int i
 
 static double
 calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__, const int idx_hub_wf,
-                                 sddk::mdarray<std::complex<double>, 3> const& om__)
+                                 mdarray<std::complex<double>, 3> const& om__)
 {
     double hubbard_energy{0};
     double hubbard_energy_u{0};
@@ -379,8 +378,8 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
 
 static void
 generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__,
-                                       const int idx_hub_wf, sddk::mdarray<std::complex<double>, 3> const& om__,
-                                       sddk::mdarray<std::complex<double>, 3>& um__)
+                                       const int idx_hub_wf, mdarray<std::complex<double>, 3> const& om__,
+                                       mdarray<std::complex<double>, 3>& um__)
 {
     /* quick exit */
     if (!atom_type__.hubbard_correction()) {
@@ -469,7 +468,7 @@ generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_typ
 
 static double
 calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__,
-                                     const int idx_hub_wf, sddk::mdarray<std::complex<double>, 3> const& om__)
+                                     const int idx_hub_wf, mdarray<std::complex<double>, 3> const& om__)
 {
     /* quick exit */
     if (!atom_type__.hubbard_correction()) {
@@ -670,8 +669,8 @@ one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm
             auto& hub_wf = atype.lo_descriptor_hub(lo_ind);
 
             if (hub_wf.use_for_calculation()) {
-                auto src1 = om__.local(at_lvl).at(sddk::memory_t::host);
-                auto src2 = pm__.local(at_lvl).at(sddk::memory_t::host);
+                auto src1 = om__.local(at_lvl).at(memory_t::host);
+                auto src2 = pm__.local(at_lvl).at(memory_t::host);
 
                 for (int i = 0; i < static_cast<int>(om__.local(at_lvl).size()); i++) {
                     tmp += src1[i] * std::conj(src2[i]);

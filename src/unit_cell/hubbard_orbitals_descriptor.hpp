@@ -60,7 +60,7 @@ class hubbard_orbital_descriptor
         hubbard_coefficients[5] = U_beta */
     std::array<double, 4> hubbard_coefficients_ = {0.0, 0.0, 0.0, 0.0};
 
-    sddk::mdarray<double, 4> hubbard_matrix_;
+    mdarray<double, 4> hubbard_matrix_;
 
     /* simplifed hubbard theory */
     double alpha_{0.0};
@@ -110,7 +110,7 @@ class hubbard_orbital_descriptor
         return F;
     }
 
-    inline void calculate_ak_coefficients(sddk::mdarray<double, 5>& ak)
+    inline void calculate_ak_coefficients(mdarray<double, 5>& ak)
     {
         // compute the ak coefficients appearing in the general treatment of
         // hubbard corrections.  expression taken from Liechtenstein {\it et
@@ -154,8 +154,8 @@ class hubbard_orbital_descriptor
     inline void compute_hubbard_matrix()
     {
         int l = this->l();
-        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
-        sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
+        this->hubbard_matrix_ = mdarray<double, 4>({2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
+        mdarray<double, 5> ak({l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         auto F = hubbard_F_coefficients();
         calculate_ak_coefficients(ak);
 
@@ -179,11 +179,11 @@ class hubbard_orbital_descriptor
     void initialize_hubbard_matrix()
     {
         int l = this->l();
-        sddk::mdarray<double, 5> ak(l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
+        mdarray<double, 5> ak({l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         auto F = hubbard_F_coefficients();
         calculate_ak_coefficients(ak);
 
-        this->hubbard_matrix_ = sddk::mdarray<double, 4>(2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1);
+        this->hubbard_matrix_ = mdarray<double, 4>({2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         // the indices are rotated around
 
         // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')

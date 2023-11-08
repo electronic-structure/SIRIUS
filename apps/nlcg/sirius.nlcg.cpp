@@ -70,8 +70,8 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
                            inp.num_dft_iter(), write_state);
 
     std::cout << "nlcg after scf init (freeCudaMem): " << acc::get_free_mem() << "\n";
-    std::cout << "mempool (total/free): " << sddk::get_memory_pool(sddk::memory_t::device).total_size() << " / "
-              << sddk::get_memory_pool(sddk::memory_t::device).free_size() << "\n";
+    std::cout << "mempool (total/free): " << get_memory_pool(memory_t::device).total_size() << " / "
+              << get_memory_pool(memory_t::device).free_size() << "\n";
     auto& nlcg_params = ctx.cfg().nlcg();
     if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();

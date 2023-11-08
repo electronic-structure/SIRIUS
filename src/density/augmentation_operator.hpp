@@ -114,20 +114,20 @@ class Augmentation_operator
 
     fft::Gvec const& gvec_;
 
-    sddk::mdarray<double, 2> q_mtrx_;
+    mdarray<double, 2> q_mtrx_;
 
-    sddk::mdarray<double, 2> q_pw_;
+    mdarray<double, 2> q_pw_;
 
-    sddk::mdarray<double, 1> sym_weight_;
+    mdarray<double, 1> sym_weight_;
 
-    sddk::mdarray<std::complex<double>, 1> zilm_;
+    mdarray<std::complex<double>, 1> zilm_;
 
-    sddk::mdarray<double, 3> ri_values_;
-    sddk::mdarray<double, 3> ri_dq_values_;
+    mdarray<double, 3> ri_values_;
+    mdarray<double, 3> ri_dq_values_;
 
-    sddk::mdarray<int, 2> idx_;
+    mdarray<int, 2> idx_;
 
-    sddk::mdarray<int, 1> l_by_lm_;
+    mdarray<int, 1> l_by_lm_;
 
   public:
     /// Constructor.
@@ -146,11 +146,11 @@ class Augmentation_operator
 
         /* compute l of lm index */
         auto l_by_lm = sf::l_by_lm(lmax);
-        l_by_lm_ = sddk::mdarray<int, 1>(lmmax);
+        l_by_lm_ = mdarray<int, 1>({lmmax});
         std::copy(l_by_lm.begin(), l_by_lm.end(), &l_by_lm_[0]);
 
         /* compute i^l array */
-        zilm_ = sddk::mdarray<std::complex<double>, 1>(lmmax);
+        zilm_ = mdarray<std::complex<double>, 1>({lmmax});
         for (int l = 0, lm = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++, lm++) {
                 zilm_[lm] = std::pow(std::complex<double>(0, 1), l);
@@ -165,7 +165,7 @@ class Augmentation_operator
         int nqlm = nbf * (nbf + 1) / 2;
 
         /* flatten the indices */
-        idx_ = sddk::mdarray<int, 2>(3, nqlm);
+        idx_ = mdarray<int, 2>({3, nqlm});
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             int lm2    = atom_type_.indexb(xi2).lm;
             int idxrf2 = atom_type_.indexb(xi2).idxrf;
@@ -185,8 +185,8 @@ class Augmentation_operator
             }
         }
 
-        ri_values_    = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
-        ri_dq_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local());
+        ri_values_    = mdarray<double, 3>({nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local()});
+        ri_dq_values_ = mdarray<double, 3>({nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local()});
         #pragma omp parallel for
         for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
             auto ri = ri__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
@@ -199,7 +199,7 @@ class Augmentation_operator
             }
         }
 
-        sym_weight_ = sddk::mdarray<double, 1>(nqlm);
+        sym_weight_ = mdarray<double, 1>({nqlm});
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
@@ -208,22 +208,22 @@ class Augmentation_operator
             }
         }
 
-        if (atom_type_.parameters().processing_unit() == sddk::device_t::GPU) {
-            auto& mpd = sddk::get_memory_pool(sddk::memory_t::device);
-            sym_weight_.allocate(mpd).copy_to(sddk::memory_t::device);
+        if (atom_type_.parameters().processing_unit() == device_t::GPU) {
+            auto& mpd = get_memory_pool(memory_t::device);
+            sym_weight_.allocate(mpd).copy_to(memory_t::device);
         }
 
         /* allocate array of plane-wave coefficients */
-        auto mt = (atom_type_.parameters().processing_unit() == sddk::device_t::CPU) ? sddk::memory_t::host :
-            sddk::memory_t::host_pinned;
-        q_pw_ = sddk::mdarray<double, 2>(nqlm, 2 * gvec_.count(), sddk::get_memory_pool(mt), "q_pw_");
+        auto mt = (atom_type_.parameters().processing_unit() == device_t::CPU) ? memory_t::host :
+            memory_t::host_pinned;
+        q_pw_ = mdarray<double, 2>({nqlm, 2 * gvec_.count()}, get_memory_pool(mt), mdarray_label("q_pw_"));
 
     }
 
 // TODO: not used at the moment, evaluate the possibility to remove in the future
 //    /// Generate chunk of plane-wave coefficients on the GPU.
 //    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, double const* gvec_rlm__, int ld__,
-//            sddk::mdarray<double, 2>& qpw__) const
+//            mdarray<double, 2>& qpw__) const
 //    {
 //#if defined(SIRIUS_GPU)
 //        double fourpi_omega = fourpi / gvec_.omega();
@@ -236,12 +236,12 @@ class Augmentation_operator
 //        /* only half of Q_{xi,xi'}(G) matrix is stored */
 //        int nqlm = nbf * (nbf + 1) / 2;
 //        /* generate Q(G) */
-//        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(sddk::memory_t::device, g_begin__), idx_.at(sddk::memory_t::device),
-//            nqlm, zilm_.at(sddk::memory_t::device), l_by_lm_.at(sddk::memory_t::device), lmmax,
-//            gaunt_coefs_.at(sddk::memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
+//        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(memory_t::device, g_begin__), idx_.at(memory_t::device),
+//            nqlm, zilm_.at(memory_t::device), l_by_lm_.at(memory_t::device), lmmax,
+//            gaunt_coefs_.at(memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
 //            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__, ld__,
-//            ri_values_.at(sddk::memory_t::device), static_cast<int>(ri_values_.size(0)),
-//            static_cast<int>(ri_values_.size(1)), qpw__.at(sddk::memory_t::device), static_cast<int>(qpw__.size(0)),
+//            ri_values_.at(memory_t::device), static_cast<int>(ri_values_.size(0)),
+//            static_cast<int>(ri_values_.size(1)), qpw__.at(memory_t::device), static_cast<int>(qpw__.size(0)),
 //            fourpi_omega);
 //#endif
 //    }

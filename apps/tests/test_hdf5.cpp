@@ -7,7 +7,7 @@ test1()
 {
     sirius::HDF5_tree f("f1.h5", sirius::hdf5_access_t::truncate);
 
-    sddk::mdarray<double, 2> dat(2, 4);
+    mdarray<double, 2> dat({2, 4});
     dat.zero();
 
     dat(0, 0) = 1.1;
@@ -34,17 +34,17 @@ test2()
     sirius::HDF5_tree f("f2.h5", sirius::hdf5_access_t::truncate);
     f.create_node("node1");
 
-    sddk::mdarray<double, 2> md1(2, 4);
+    mdarray<double, 2> md1({2, 4});
     md1.zero();
     f["node1"].write("md1", md1);
     f["node1"].write(0, md1);
 
-    sddk::mdarray<std::complex<double>, 2> md2(2, 4);
+    mdarray<std::complex<double>, 2> md2({2, 4});
     md2.zero();
     f["node1"].write("md2", md2);
     f["node1"].write(1, md2);
 
-    sddk::mdarray<int, 2> md3(2, 4);
+    mdarray<int, 2> md3({2, 4});
     md3.zero();
     f["node1"].write("md3", md3);
     f["node1"].write(2, md3);
@@ -55,16 +55,16 @@ test3()
 {
     sirius::HDF5_tree f("f2.h5", sirius::hdf5_access_t::read_only);
 
-    sddk::mdarray<double, 2> md1(2, 4);
+    mdarray<double, 2> md1({2, 4});
     f["node1"].read("md1", md1);
     f["node1"].read(0, md1);
 
-    sddk::mdarray<std::complex<double>, 2> md2(2, 4);
+    mdarray<std::complex<double>, 2> md2({2, 4});
     md2.zero();
     f["node1"].read("md2", md2);
     f["node1"].read(1, md2);
 
-    sddk::mdarray<int, 2> md3(2, 4);
+    mdarray<int, 2> md3({2, 4});
     md3.zero();
     f["node1"].read("md3", md3);
     f["node1"].read(2, md3);
@@ -76,10 +76,10 @@ test4()
     using namespace std::string_literals;
     sirius::HDF5_tree f("qe.h5", sirius::hdf5_access_t::truncate);
 
-    sddk::mdarray<int, 2> miller(2, 3); // Dataset
+    mdarray<int, 2> miller({2, 3}); // Dataset
     miller.zero();
 
-    sddk::mdarray<double, 2> evc(3, 4); // Dataset
+    mdarray<double, 2> evc({3, 4}); // Dataset
     evc.zero();
 
     std::vector<double> xk = {0.00, 0.13, 0.10}; // Group '/' attribute

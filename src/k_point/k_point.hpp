@@ -72,7 +72,7 @@ class K_point
     mutable std::unique_ptr<fft::spfft_transform_type<T>> spfft_transform_;
 
     /// First-variational eigen values
-    sddk::mdarray<double, 1> fv_eigen_values_;
+    mdarray<double, 1> fv_eigen_values_;
 
     /// First-variational eigen vectors, distributed over 2D BLACS grid.
     la::dmatrix<std::complex<T>> fv_eigen_vectors_;
@@ -90,7 +90,7 @@ class K_point
     std::array<la::dmatrix<std::complex<T>>, 2> sv_eigen_vectors_;
 
     /// Full-diagonalization eigen vectors.
-    sddk::mdarray<std::complex<T>, 2> fd_eigen_vectors_;
+    mdarray<std::complex<T>, 2> fd_eigen_vectors_;
 
     /// First-variational states.
     std::unique_ptr<wf::Wave_functions<T>> fv_states_{nullptr};
@@ -111,10 +111,10 @@ class K_point
     std::unique_ptr<wf::Wave_functions<T>> hubbard_wave_functions_S_{nullptr};
 
     /// Band occupation numbers.
-    sddk::mdarray<double, 2> band_occupancies_;
+    mdarray<double, 2> band_occupancies_;
 
     /// Band energies.
-    sddk::mdarray<double, 2> band_energies_;
+    mdarray<double, 2> band_energies_;
 
     /// LAPW matching coefficients for the row G+k vectors.
     /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
@@ -200,11 +200,9 @@ class K_point
 
     void init0()
     {
-        band_occupancies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
-                                                     sddk::memory_t::host, "band_occupancies");
+        band_occupancies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
         band_occupancies_.zero();
-        band_energies_ = sddk::mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors(),
-                                                  sddk::memory_t::host, "band_energies");
+        band_energies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_energies"));
         band_energies_.zero();
 
         if (ctx_.num_mag_dims() == 1) {
@@ -339,10 +337,10 @@ class K_point
     //== void load_wave_functions(int id);
 
     /// Collect distributed first-variational vectors into a global array.
-    void get_fv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& fv_evec__) const;
+    void get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const;
 
     /// Collect distributed second-variational vectors into a global array.
-    void get_sv_eigen_vectors(sddk::mdarray<std::complex<T>, 2>& sv_evec__) const
+    void get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
     {
         RTE_ASSERT((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
         RTE_ASSERT((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
@@ -369,7 +367,7 @@ class K_point
             }
         }
 
-        comm().allreduce(sv_evec__.at(sddk::memory_t::host), (int)sv_evec__.size());
+        comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
     }
 
     inline auto const& gkvec() const

@@ -10,7 +10,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
 {
     auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
     la::dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
-    sddk::copy(A_ref, A);
+    copy(A_ref, A);
 
     la::dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
 
@@ -19,20 +19,20 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     if (test_gen__) {
         B_ref = random_positive_definite<T>(N__, bs__, &blacs_grid__);
         B = la::dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
-        sddk::copy(B_ref, B);
+        copy(B_ref, B);
     }
 
     std::vector<double> eval(nev__);
 
     if (acc::num_devices() > 0) {
-        A.allocate(sddk::memory_t::device);
-        A.copy_to(sddk::memory_t::device);
+        A.allocate(memory_t::device);
+        A.copy_to(memory_t::device);
 
         if (test_gen__) {
-            B.allocate(sddk::memory_t::device);
-            B.copy_to(sddk::memory_t::device);
+            B.allocate(memory_t::device);
+            B.copy_to(memory_t::device);
         }
-        Z.allocate(sddk::memory_t::device);
+        Z.allocate(memory_t::device);
     }
 
     if (blacs_grid__.comm().rank() == 0) {
@@ -98,7 +98,7 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
         la::wrap(la::lib_t::blas).gemm('N', 'N', n__, nev__, n__, &la::constant<T>::one(),
                 &B_ref(0, 0), B_ref.ld(), &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
 #endif
-        sddk::copy(B, A);
+        copy(B, A);
     }
 
     /* A * Z - lambda * B * Z */
@@ -138,7 +138,7 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
 {
     auto solver = la::Eigensolver_factory(name__);
 
-    sddk::matrix<std::complex<double>> full_mtrx;
+    matrix<std::complex<double>> full_mtrx;
     int n;
     if (blacs_grid__.comm().rank() == 0) {
         sirius::HDF5_tree h5(fname__, sirius::hdf5_access_t::read_only);
@@ -148,14 +148,14 @@ void test_diag2(la::BLACS_grid const& blacs_grid__,
         if (n != m) {
             RTE_THROW("not a square matrix");
         }
-        full_mtrx = sddk::matrix<std::complex<double>>(n, n);
+        full_mtrx = matrix<std::complex<double>>({n, n});
         h5.read("/mtrx", full_mtrx);
         blacs_grid__.comm().bcast(&n, 1, 0);
-        blacs_grid__.comm().bcast(full_mtrx.at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()), 0);
+        blacs_grid__.comm().bcast(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     } else {
         blacs_grid__.comm().bcast(&n, 1, 0);
-        full_mtrx = sddk::matrix<std::complex<double>>(n, n);
-        blacs_grid__.comm().bcast(full_mtrx.at(sddk::memory_t::host), static_cast<int>(full_mtrx.size()), 0);
+        full_mtrx = matrix<std::complex<double>>({n, n});
+        blacs_grid__.comm().bcast(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     }
     if (blacs_grid__.comm().rank() == 0) {
         printf("matrix size: %i\n", n);

@@ -34,15 +34,15 @@ template <typename T, typename F>
 void check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
         wf::band_range br__, double* eval__)
 {
-    wf::Wave_functions<T> hpsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), sddk::memory_t::host);
-    wf::Wave_functions<T> spsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), sddk::memory_t::host);
+    wf::Wave_functions<T> hpsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), memory_t::host);
+    wf::Wave_functions<T> spsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), memory_t::host);
 
     la::dmatrix<F> ovlp(br__.size(), br__.size());
 
     /* apply Hamiltonian and S operators to the wave-functions */
     Hk__.template apply_h_s<F>(sr__, br__, psi__, &hpsi, &spsi);
 
-    wf::inner(Hk__.H0().ctx().spla_context(), sddk::memory_t::host, sr__, psi__, br__, spsi, br__, ovlp, 0, 0);
+    wf::inner(Hk__.H0().ctx().spla_context(), memory_t::host, sr__, psi__, br__, spsi, br__, ovlp, 0, 0);
 
     auto diff = check_identity(ovlp, br__.size());
     if (diff > 1e-12) {

@@ -27,7 +27,6 @@
 
 #include <memory>
 #include <complex>
-#include "SDDK/memory.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
@@ -92,7 +91,7 @@ class Hamiltonian0
     /// Q operator (non-local part of S-operator).
     std::unique_ptr<Q_operator<T>> q_op_;
 
-    std::vector<sddk::mdarray<std::complex<T>, 2>> hmt_;
+    std::vector<mdarray<std::complex<T>, 2>> hmt_;
 
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0<T> const& src) = delete;
@@ -151,12 +150,12 @@ class Hamiltonian0
      *  \f]
      */
     template <spin_block_t sblock>
-    void apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<std::complex<T>, 2>& alm__,
-                          sddk::mdarray<std::complex<T>, 2>& halm__) const;
+    void apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
+                          mdarray<std::complex<T>, 2>& halm__) const;
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
     void add_o1mt_to_apw(Atom const& atom__, int num_gkvec__,
-                         sddk::mdarray<std::complex<T>, 2>& alm__) const; // TODO: documentation
+                         mdarray<std::complex<T>, 2>& alm__) const; // TODO: documentation
 
     /// Apply muffin-tin part of magnetic filed to the wave-functions.
     void apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
@@ -200,10 +199,10 @@ class Hamiltonian_k
     }
 
     template <typename F, int what>
-    std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_pw() const;
+    std::pair<mdarray<T, 2>, mdarray<T, 2>> get_h_o_diag_pw() const;
 
     template <int what>
-    std::pair<sddk::mdarray<T, 2>, sddk::mdarray<T, 2>> get_h_o_diag_lapw() const;
+    std::pair<mdarray<T, 2>, mdarray<T, 2>> get_h_o_diag_lapw() const;
 
     auto U() const -> U_operator<T> const&
     {
@@ -419,9 +418,9 @@ class Hamiltonian_k
     void set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup apw-lo and lo-apw blocks of LAPW Hamiltonian and overlap matrices.
-    void set_fv_h_o_apw_lo(Atom const& atom, int ia, sddk::mdarray<std::complex<T>, 2>& alm_row,
-                           sddk::mdarray<std::complex<T>, 2>& alm_col, sddk::mdarray<std::complex<T>, 2>& h,
-                           sddk::mdarray<std::complex<T>, 2>& o) const;
+    void set_fv_h_o_apw_lo(Atom const& atom, int ia, mdarray<std::complex<T>, 2>& alm_row,
+                           mdarray<std::complex<T>, 2>& alm_col, mdarray<std::complex<T>, 2>& h,
+                           mdarray<std::complex<T>, 2>& o) const;
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
     /** \tparam F    Type of the subspace matrix.

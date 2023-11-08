@@ -6,7 +6,6 @@ using namespace sirius;
 
 void test_wf_fft()
 {
-    //sddk::MPI_grid mpi_grid({2, 3}, sddk::Communicator::world());
     mpi::Grid mpi_grid({2, 2}, mpi::Communicator::world());
 
     /* creation of simple G+k vector set */
@@ -21,8 +20,8 @@ void test_wf_fft()
     //std::vector<int> num_mt_coeffs({10, 20, 30, 10, 20});
     std::vector<int> num_mt_coeffs({1});
 
-    wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
-    wf::Wave_functions<double> wf_ref(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), sddk::memory_t::host);
+    wf::Wave_functions<double> wf(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), memory_t::host);
+    wf::Wave_functions<double> wf_ref(gkvec, num_mt_coeffs, wf::num_mag_dims(1), wf::num_bands(10), memory_t::host);
 
     for (int ispn = 0; ispn < 2; ispn++) {
         for (int i = 0; i < 10; i++) {
@@ -33,11 +32,11 @@ void test_wf_fft()
             }
         }
     }
-    //auto mg = wf.memory_guard(sddk::memory_t::device, wf::copy_to::device);
+    //auto mg = wf.memory_guard(memory_t::device, wf::copy_to::device);
 
-    auto pu = sddk::device_t::CPU;
+    auto pu = device_t::CPU;
 
-    auto spfft_pu = pu == sddk::device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+    auto spfft_pu = pu == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     auto spl_z = fft::split_z_dimension(fft_grid[2], gkvec_fft->comm_fft());
 
     /* create spfft buffer for coarse transform */
@@ -51,7 +50,7 @@ void test_wf_fft()
     auto spfft_transform = std::make_unique<spfft::Transform>(spfft_grid->create_transform(
         spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
         spl_z.local_size(), gkvec_fft->count(), SPFFT_INDEX_TRIPLETS,
-        gkvec_fft->gvec_array().at(sddk::memory_t::host)));
+        gkvec_fft->gvec_array().at(memory_t::host)));
 
     std::array<wf::Wave_functions_fft<double>, 2> wf1;
     for (int ispn = 0; ispn < 2; ispn++) {
@@ -65,8 +64,8 @@ void test_wf_fft()
                 wf::shuffle_to::wf_layout);
 
         for (int i = 0; i < wf_fft.num_wf_local(); i++) {
-            spfft_transform->backward(wf1[ispn].pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), spfft_pu);
-            spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs_spfft(sddk::memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
+            spfft_transform->backward(wf1[ispn].pw_coeffs_spfft(memory_t::host, wf::band_index(i)), spfft_pu);
+            spfft_transform->forward(spfft_pu, wf_fft.pw_coeffs_spfft(memory_t::host, wf::band_index(i)), SPFFT_FULL_SCALING);
         }
     }
 

@@ -29,7 +29,7 @@
 #include "core/sf/specfunc.hpp"
 #include "core/cmd_args.hpp"
 #include "core/json.hpp"
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "dft/smearing.hpp"
 #include "context/config.hpp"
 
@@ -76,7 +76,7 @@ class Simulation_parameters
 
   protected:
     /// Type of the processing unit.
-    sddk::device_t processing_unit_{sddk::device_t::CPU};
+    device_t processing_unit_{device_t::CPU};
 
     /// Type of relativity for valence states.
     relativity_t valence_relativity_{relativity_t::zora};
@@ -375,7 +375,7 @@ class Simulation_parameters
         return cfg().parameters().gamma_point();
     }
 
-    sddk::device_t processing_unit() const
+    auto processing_unit() const
     {
         return processing_unit_;
     }

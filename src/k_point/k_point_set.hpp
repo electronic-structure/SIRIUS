@@ -184,7 +184,7 @@ class K_point_set
     }
 
     /// Add multiple k-points to the set.
-    void add_kpoints(sddk::mdarray<double, 2> const& kpoints__, double const* weights__)
+    void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
     {
         for (int ik = 0; ik < (int)kpoints__.size(1); ik++) {
             add_kpoint(&kpoints__(0, ik), weights__[ik]);

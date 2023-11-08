@@ -49,25 +49,25 @@ class Atom
     r3::vector<double> vector_field_;
 
     /// Muffin-tin potential.
-    sddk::mdarray<double, 2> veff_;
+    mdarray<double, 2> veff_;
 
     /// Radial integrals of the Hamiltonian.
-    sddk::mdarray<double, 3> h_radial_integrals_;
+    mdarray<double, 3> h_radial_integrals_;
 
     /// Muffin-tin magnetic field.
-    sddk::mdarray<double, 2> beff_[3];
+    mdarray<double, 2> beff_[3];
 
     /// Radial integrals of the effective magnetic field.
-    sddk::mdarray<double, 4> b_radial_integrals_;
+    mdarray<double, 4> b_radial_integrals_;
 
     /// Maximum l for potential and magnetic field.
     int lmax_pot_{-1};
 
     /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
-    sddk::mdarray<std::complex<double>, 4> occupation_matrix_;
+    mdarray<std::complex<double>, 4> occupation_matrix_;
 
     /// U,J correction matrix of the L(S)DA+U method
-    sddk::mdarray<std::complex<double>, 4> uj_correction_matrix_;
+    mdarray<std::complex<double>, 4> uj_correction_matrix_;
 
     /// True if UJ correction is applied for the current atom.
     bool apply_uj_correction_{false};
@@ -83,7 +83,7 @@ class Atom
      *
      *  The ionic part of the D-operator matrix is added in the D_operator class, when it is initialized.
      */
-    sddk::mdarray<double, 3> d_mtrx_;
+    mdarray<double, 3> d_mtrx_;
 
   public:
     /// Constructor.
@@ -103,23 +103,23 @@ class Atom
             int lmmax = sf::lmmax(lmax_pot_);
             int nrf   = type().indexr().size();
 
-            h_radial_integrals_ = sddk::mdarray<double, 3>(lmmax, nrf, nrf);
+            h_radial_integrals_ = mdarray<double, 3>({lmmax, nrf, nrf});
             h_radial_integrals_.zero();
 
             if (type().parameters().num_mag_dims()) {
-                b_radial_integrals_ = sddk::mdarray<double, 4>(lmmax, nrf, nrf, type().parameters().num_mag_dims());
+                b_radial_integrals_ = mdarray<double, 4>({lmmax, nrf, nrf, type().parameters().num_mag_dims()});
                 b_radial_integrals_.zero();
             }
 
-            occupation_matrix_ = sddk::mdarray<std::complex<double>, 4>(16, 16, 2, 2);
+            occupation_matrix_ = mdarray<std::complex<double>, 4>({16, 16, 2, 2});
 
-            uj_correction_matrix_ = sddk::mdarray<std::complex<double>, 4>(16, 16, 2, 2);
+            uj_correction_matrix_ = mdarray<std::complex<double>, 4>({16, 16, 2, 2});
         }
 
         if (!type().parameters().full_potential()) {
             int nbf = type().mt_basis_size();
-            d_mtrx_ = sddk::mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1, sddk::memory_t::host,
-                                               "Atom::d_mtrx_");
+            d_mtrx_ = mdarray<double, 3>({nbf, nbf, type().parameters().num_mag_dims() + 1},
+                                               mdarray_label("Atom::d_mtrx_"));
             d_mtrx_.zero();
         }
     }
@@ -138,7 +138,7 @@ class Atom
      *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
      *  \f]
      */
-    inline void generate_radial_integrals(sddk::device_t pu__, mpi::Communicator const& comm__)
+    inline void generate_radial_integrals(device_t pu__, mpi::Communicator const& comm__)
     {
         PROFILE("sirius::Atom::generate_radial_integrals");
 
@@ -192,9 +192,9 @@ class Atom
 
         auto& idx_ri = type().idx_radial_integrals();
 
-        sddk::mdarray<double, 1> result(idx_ri.size(1));
+        mdarray<double, 1> result({idx_ri.size(1)});
 
-        if (pu__ == sddk::device_t::GPU) {
+        if (pu__ == device_t::GPU) {
 #ifdef SIRIUS_GPU
             auto& rgrid    = type().radial_grid();
             auto& rf_coef  = type().rf_coef();
@@ -206,9 +206,9 @@ class Atom
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
-                    std::copy(rf_spline[i].coeffs().at(sddk::memory_t::host),
-                              rf_spline[i].coeffs().at(sddk::memory_t::host) + nmtp * 4,
-                              rf_coef.at(sddk::memory_t::host, 0, 0, i));
+                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
+                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
+                              rf_coef.at(memory_t::host, 0, 0, i));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -217,7 +217,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.copy_to(sddk::memory_t::device, acc::stream_id(-1));
+            rf_coef.copy_to(memory_t::device, acc::stream_id(-1));
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -225,32 +225,32 @@ class Atom
                     for (int j = 0; j < num_mag_dims + 1; j++) {
                         int idx         = lm + lmmax * i + lmmax * nrf * j;
                         vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-                        std::memcpy(vrf_coef.at(sddk::memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(sddk::memory_t::host),
+                        std::memcpy(vrf_coef.at(memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
                                     nmtp * 4 * sizeof(double));
                         // cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4
                         // *sizeof(double), tid);
                     }
                 }
             }
-            vrf_coef.copy_to(sddk::memory_t::device);
+            vrf_coef.copy_to(memory_t::device);
             PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
-            result.allocate(sddk::memory_t::device);
-            spline_inner_product_gpu_v3(idx_ri.at(sddk::memory_t::device), (int)idx_ri.size(1), nmtp,
-                                        rgrid.x().at(sddk::memory_t::device), rgrid.dx().at(sddk::memory_t::device),
-                                        rf_coef.at(sddk::memory_t::device), vrf_coef.at(sddk::memory_t::device),
-                                        result.at(sddk::memory_t::device));
+            result.allocate(memory_t::device);
+            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
+                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
+                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
+                                        result.at(memory_t::device));
             acc::sync();
             //if (type().parameters().control().print_performance_) {
             //    double tval = t2.stop();
             //    DUMP("spline GPU integration performance: %12.6f GFlops",
             //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             //}
-            result.copy_to(sddk::memory_t::host);
-            result.deallocate(sddk::memory_t::device);
+            result.copy_to(memory_t::host);
+            result.deallocate(memory_t::device);
 #endif
         }
-        if (pu__ == sddk::device_t::CPU) {
+        if (pu__ == device_t::CPU) {
             PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
@@ -374,23 +374,23 @@ class Atom
     /// Set muffin-tin potential and magnetic field.
     inline void set_nonspherical_potential(double* veff__, double* beff__[3])
     {
-        veff_ = sddk::mdarray<double, 2>(veff__, sf::lmmax(lmax_pot_), type().num_mt_points());
+        veff_ = mdarray<double, 2>({sf::lmmax(lmax_pot_), type().num_mt_points()}, veff__);
         for (int j = 0; j < 3; j++) {
-            beff_[j] = sddk::mdarray<double, 2>(beff__[j], sf::lmmax(lmax_pot_), type().num_mt_points());
+            beff_[j] = mdarray<double, 2>({sf::lmmax(lmax_pot_), type().num_mt_points()}, beff__[j]);
         }
     }
 
     inline void sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
     {
-        comm__.bcast(h_radial_integrals_.at(sddk::memory_t::host), (int)h_radial_integrals_.size(), rank__);
+        comm__.bcast(h_radial_integrals_.at(memory_t::host), (int)h_radial_integrals_.size(), rank__);
         if (type().parameters().num_mag_dims()) {
-            comm__.bcast(b_radial_integrals_.at(sddk::memory_t::host), (int)b_radial_integrals_.size(), rank__);
+            comm__.bcast(b_radial_integrals_.at(memory_t::host), (int)b_radial_integrals_.size(), rank__);
         }
     }
 
     inline void sync_occupation_matrix(mpi::Communicator const& comm__, int const rank__)
     {
-        comm__.bcast(occupation_matrix_.at(sddk::memory_t::host), (int)occupation_matrix_.size(), rank__);
+        comm__.bcast(occupation_matrix_.at(memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
     inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
@@ -499,19 +499,19 @@ class Atom
 
     inline void set_occupation_matrix(const std::complex<double>* source)
     {
-        std::memcpy(occupation_matrix_.at(sddk::memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
+        std::memcpy(occupation_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
         apply_uj_correction_ = false;
     }
 
     inline void get_occupation_matrix(std::complex<double>* destination)
     {
-        std::memcpy(destination, occupation_matrix_.at(sddk::memory_t::host), 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
+        std::memcpy(destination, occupation_matrix_.at(memory_t::host), 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
     }
 
     inline void set_uj_correction_matrix(const int l, const std::complex<double>* source)
     {
         uj_correction_l_ = l;
-        std::memcpy(uj_correction_matrix_.at(sddk::memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
+        std::memcpy(uj_correction_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
         apply_uj_correction_ = true;
     }
 

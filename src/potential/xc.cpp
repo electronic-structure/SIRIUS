@@ -126,8 +126,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         vsigma_[0]->zero();
     }
 
-    sddk::mdarray<double, 1> exc(num_points, sddk::memory_t::host, "exc_tmp");
-    sddk::mdarray<double, 1> vxc(num_points, sddk::memory_t::host, "vxc_tmp");
+    mdarray<double, 1> exc({num_points}, mdarray_label("exc_tmp"));
+    mdarray<double, 1> vxc({num_points}, mdarray_label("vxc_tmp"));
 
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
@@ -137,8 +137,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 /* Van der Walls correction */
-                ixc.get_vdw(&rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(sddk::memory_t::host), &vsigma.value(0),
-                             exc.at(sddk::memory_t::host));
+                ixc.get_vdw(&rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(memory_t::host), &vsigma.value(0),
+                             exc.at(memory_t::host));
             } else {
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
             }
@@ -154,16 +154,16 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 /* if this is an LDA functional */
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho.value(spl_t.global_offset()),
-                                vxc.at(sddk::memory_t::host, spl_t.global_offset()),
-                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
+                                vxc.at(memory_t::host, spl_t.global_offset()),
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
                 if (ixc.is_gga()) {
                     ixc.get_gga(spl_t.local_size(), &rho.value(spl_t.global_offset()),
                                 &grad_rho_grad_rho.value(spl_t.global_offset()),
-                                vxc.at(sddk::memory_t::host, spl_t.global_offset()),
+                                vxc.at(memory_t::host, spl_t.global_offset()),
                                 &vsigma.value(spl_t.global_offset()),
-                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
                         ///* this is the same expression between gga and vdw corrections.
@@ -318,9 +318,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
         }
     }
 
-    sddk::mdarray<double, 1> exc(num_points, sddk::memory_t::host, "exc_tmp");
-    sddk::mdarray<double, 1> vxc_up(num_points, sddk::memory_t::host, "vxc_up_tmp");
-    sddk::mdarray<double, 1> vxc_dn(num_points, sddk::memory_t::host, "vxc_dn_dmp");
+    mdarray<double, 1> exc({num_points}, mdarray_label("exc_tmp"));
+    mdarray<double, 1> vxc_up({num_points}, mdarray_label("vxc_up_tmp"));
+    mdarray<double, 1> vxc_dn({num_points}, mdarray_label("vxc_dn_dmp"));
 
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
@@ -330,8 +330,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 ixc.get_vdw(&rho_up.value(0), &rho_dn.value(0), &grad_rho_up_grad_rho_up.value(0),
-                             &grad_rho_dn_grad_rho_dn.value(0), vxc_up.at(sddk::memory_t::host), vxc_dn.at(sddk::memory_t::host),
-                             &vsigma_uu.value(0), &vsigma_dd.value(0), exc.at(sddk::memory_t::host));
+                             &grad_rho_dn_grad_rho_dn.value(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
+                             &vsigma_uu.value(0), &vsigma_dd.value(0), exc.at(memory_t::host));
             } else {
                 ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
@@ -348,9 +348,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 if (ixc.is_lda()) {
                     ixc.get_lda(spl_t.local_size(), &rho_up.value(spl_t.global_offset()),
                                 &rho_dn.value(spl_t.global_offset()),
-                                vxc_up.at(sddk::memory_t::host, spl_t.global_offset()),
-                                vxc_dn.at(sddk::memory_t::host, spl_t.global_offset()),
-                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
+                                vxc_up.at(memory_t::host, spl_t.global_offset()),
+                                vxc_dn.at(memory_t::host, spl_t.global_offset()),
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
                 /* if this is a GGA functional */
                 if (ixc.is_gga()) {
@@ -359,12 +359,12 @@ void Potential::xc_rg_magnetic(Density const& density__)
                                 &grad_rho_up_grad_rho_up.value(spl_t.global_offset()),
                                 &grad_rho_up_grad_rho_dn.value(spl_t.global_offset()),
                                 &grad_rho_dn_grad_rho_dn.value(spl_t.global_offset()),
-                                vxc_up.at(sddk::memory_t::host, spl_t.global_offset()),
-                                vxc_dn.at(sddk::memory_t::host, spl_t.global_offset()),
+                                vxc_up.at(memory_t::host, spl_t.global_offset()),
+                                vxc_dn.at(memory_t::host, spl_t.global_offset()),
                                 &vsigma_uu.value(spl_t.global_offset()),
                                 &vsigma_ud.value(spl_t.global_offset()),
                                 &vsigma_dd.value(spl_t.global_offset()),
-                                exc.at(sddk::memory_t::host, spl_t.global_offset()));
+                                exc.at(memory_t::host, spl_t.global_offset()));
                 }
             } // omp parallel region
             } // num_points != 0

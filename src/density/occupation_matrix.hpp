@@ -25,7 +25,6 @@
 #ifndef __OCCUPATION_MATRIX_HPP__
 #define __OCCUPATION_MATRIX_HPP__
 
-#include "SDDK/memory.hpp"
 #include "k_point/k_point.hpp"
 #include "hubbard/hubbard_matrix.hpp"
 
@@ -35,7 +34,7 @@ class Occupation_matrix : public Hubbard_matrix
 {
   private:
     /// K-point contribution to density matrices weighted with e^{ikT} phase factors.
-    std::map<r3::vector<int>, sddk::mdarray<std::complex<double>, 3>> occ_mtrx_T_;
+    std::map<r3::vector<int>, mdarray<std::complex<double>, 3>> occ_mtrx_T_;
 
   public:
     Occupation_matrix(Simulation_context& ctx__);
@@ -59,14 +58,14 @@ class Occupation_matrix : public Hubbard_matrix
             const int ia     = atomic_orbitals_[at_lvl].first;
             auto const& atom = ctx_.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-                ctx_.comm_k().allreduce(this->local(at_lvl).at(sddk::memory_t::host),
-                                        static_cast<int>(this->local(at_lvl).size()));
+                ctx_.comm_k().allreduce(this->local(at_lvl).at(memory_t::host),
+                                      static_cast<int>(this->local(at_lvl).size()));
             }
         }
 
         /* reduce occ_mtrx_T_ (not nonlocal - it is computed during symmetrization from occ_mtrx_T_) */
         for (auto& e : this->occ_mtrx_T_) {
-            ctx_.comm_k().allreduce(e.second.at(sddk::memory_t::host), static_cast<int>(e.second.size()));
+            ctx_.comm_k().allreduce(e.second.at(memory_t::host), static_cast<int>(e.second.size()));
         }
     }
 
@@ -132,15 +131,15 @@ inline void
 copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
 {
     for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
-        sddk::copy(src__.local(at_lvl), dest__.local(at_lvl));
+        copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
 
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
-        sddk::copy(src__.nonlocal(i), dest__.nonlocal(i));
+        copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
 
     for (auto& e : src__.occ_mtrx_T()) {
-        sddk::copy(e.second, dest__.occ_mtrx_T_.at(e.first));
+        copy(e.second, dest__.occ_mtrx_T_.at(e.first));
     }
 
     for (int i = 0; i < static_cast<int>(src__.local_constraints().size()); i++) {

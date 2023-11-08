@@ -175,24 +175,24 @@ Atom_type::init()
                 }
             }
         }
-        idx_radial_integrals_ = sddk::mdarray<int, 2>(2, non_zero_elements.size());
+        idx_radial_integrals_ = mdarray<int, 2>({2, non_zero_elements.size()});
         for (int j = 0; j < (int)non_zero_elements.size(); j++) {
             idx_radial_integrals_(0, j) = non_zero_elements[j].first;
             idx_radial_integrals_(1, j) = non_zero_elements[j].second;
         }
     }
 
-    if (parameters_.processing_unit() == sddk::device_t::GPU && parameters_.full_potential()) {
-        idx_radial_integrals_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-        rf_coef_ =
-            sddk::mdarray<double, 3>(num_mt_points(), 4, indexr().size(), sddk::memory_t::host_pinned, "Atom_type::rf_coef_");
-        vrf_coef_ =
-            sddk::mdarray<double, 3>(num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1),
-                               sddk::memory_t::host_pinned, "Atom_type::vrf_coef_");
-        rf_coef_.allocate(sddk::memory_t::device);
-        vrf_coef_.allocate(sddk::memory_t::device);
+    if (parameters_.processing_unit() == device_t::GPU && parameters_.full_potential()) {
+        idx_radial_integrals_.allocate(memory_t::device).copy_to(memory_t::device);
+        rf_coef_ = mdarray<double, 3>({num_mt_points(), 4, indexr().size()}, memory_t::host_pinned,
+                mdarray_label("Atom_type::rf_coef_"));
+        vrf_coef_ = mdarray<double, 3>(
+                {num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1)},
+                memory_t::host_pinned, mdarray_label("Atom_type::vrf_coef_"));
+        rf_coef_.allocate(memory_t::device);
+        vrf_coef_.allocate(memory_t::device);
     }
-    if (parameters_.processing_unit() == sddk::device_t::GPU) {
+    if (parameters_.processing_unit() == device_t::GPU) {
         radial_grid_.copy_to_device();
     }
 
@@ -207,9 +207,9 @@ Atom_type::init()
         if (num_beta_radial_functions() != num_ae_paw_wf()) {
             RTE_THROW("wrong number of all-electron wave-functions for PAW");
         }
-        ae_paw_wfs_array_ = sddk::mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
+        ae_paw_wfs_array_ = mdarray<double, 2>({num_mt_points(), num_beta_radial_functions()});
         ae_paw_wfs_array_.zero();
-        ps_paw_wfs_array_ = sddk::mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
+        ps_paw_wfs_array_ = mdarray<double, 2>({num_mt_points(), num_beta_radial_functions()});
         ps_paw_wfs_array_.zero();
 
         for (int i = 0; i < num_beta_radial_functions(); i++) {
@@ -569,7 +569,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         }
      }
 
-    sddk::mdarray<double, 2> d_mtrx(nbf, nbf);
+    mdarray<double, 2> d_mtrx({nbf, nbf});
     d_mtrx.zero();
     auto v = parser["pseudo_potential"]["D_ion"].get<std::vector<double>>();
 
@@ -761,7 +761,7 @@ Atom_type::generate_f_coefficients()
 
     // number of beta projectors
     int nbf         = this->mt_basis_size();
-    f_coefficients_ = sddk::mdarray<std::complex<double>, 4>(nbf, nbf, 2, 2);
+    f_coefficients_ = mdarray<std::complex<double>, 4>({nbf, nbf, 2, 2});
     f_coefficients_.zero();
 
     for (int xi2 = 0; xi2 < nbf; xi2++) {

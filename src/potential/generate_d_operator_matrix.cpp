@@ -47,24 +47,24 @@ void Potential::generate_D_operator_matrix()
     int gvec_count = ctx_.gvec().count();
     auto spl_ngv_loc = split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
-    auto& mph = get_memory_pool(sddk::memory_t::host);
-    sddk::memory_pool* mpd{nullptr};
+    auto& mph = get_memory_pool(memory_t::host);
+    memory_pool* mpd{nullptr};
 
     int n_mag_comp{1};
 
-    sddk::mdarray<std::complex<double>, 2> veff;
+    mdarray<std::complex<double>, 2> veff;
     switch (ctx_.processing_unit()) {
-        case sddk::device_t::CPU: {
+        case device_t::CPU: {
             break;
         }
-        case sddk::device_t::GPU: {
-            mpd = &get_memory_pool(sddk::memory_t::device);
+        case device_t::GPU: {
+            mpd = &get_memory_pool(memory_t::device);
             n_mag_comp = ctx_.num_mag_dims() + 1;
-            veff = sddk::mdarray<std::complex<double>, 2>(gvec_count, n_mag_comp, mph);
+            veff = mdarray<std::complex<double>, 2>({gvec_count, n_mag_comp}, mph);
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 std::copy(&component(j).rg().f_pw_local(0), &component(j).rg().f_pw_local(0) + gvec_count, &veff(0, j));
             }
-            veff.allocate(*mpd).copy_to(sddk::memory_t::device);
+            veff.allocate(*mpd).copy_to(memory_t::device);
             break;
         }
     }
@@ -94,19 +94,19 @@ void Potential::generate_D_operator_matrix()
             continue;
         }
 
-        sddk::mdarray<double, 3> d_tmp(nqlm, atom_type.num_atoms(), ctx_.num_mag_dims() + 1, mph);
-        sddk::mdarray<double, 3> veff_a(spl_ngv_loc[0] * 2, atom_type.num_atoms(), n_mag_comp, mph);
-        sddk::mdarray<double, 2> qpw;
+        mdarray<double, 3> d_tmp({nqlm, atom_type.num_atoms(), ctx_.num_mag_dims() + 1}, mph);
+        mdarray<double, 3> veff_a({spl_ngv_loc[0] * 2, atom_type.num_atoms(), n_mag_comp}, mph);
+        mdarray<double, 2> qpw;
 
         switch (ctx_.processing_unit()) {
-            case sddk::device_t::CPU: {
+            case device_t::CPU: {
                 d_tmp.zero();
                 break;
             }
-            case sddk::device_t::GPU: {
-                d_tmp.allocate(*mpd).zero(sddk::memory_t::device);
+            case device_t::GPU: {
+                d_tmp.allocate(*mpd).zero(memory_t::device);
                 veff_a.allocate(*mpd);
-                qpw = sddk::mdarray<double, 2>(nqlm, 2 * spl_ngv_loc[0], *mpd, "qpw");
+                qpw = mdarray<double, 2>({nqlm, 2 * spl_ngv_loc[0]}, *mpd, mdarray_label("qpw"));
                 break;
             }
         }
@@ -118,7 +118,7 @@ void Potential::generate_D_operator_matrix()
         for (auto ng : spl_ngv_loc) {
             /* work on the block of the local G-vectors */
             switch (ctx_.processing_unit()) {
-                case sddk::device_t::CPU: {
+                case device_t::CPU: {
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         /* multiply Veff(G) with the phase factors */
                         #pragma omp parallel for
@@ -135,32 +135,32 @@ void Potential::generate_D_operator_matrix()
                         }
                         la::wrap(la::lib_t::blas).gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng,
                                   &la::constant<double>::one(),
-                                  ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin),
+                                  ctx_.augmentation_op(iat).q_pw().at(memory_t::host, 0, 2 * g_begin),
                                   ctx_.augmentation_op(iat).q_pw().ld(),
-                                  veff_a.at(sddk::memory_t::host), veff_a.ld(),
+                                  veff_a.at(memory_t::host), veff_a.ld(),
                                   &la::constant<double>::one(),
-                                  d_tmp.at(sddk::memory_t::host, 0, 0, iv), d_tmp.ld());
+                                  d_tmp.at(memory_t::host, 0, 0, iv), d_tmp.ld());
                     } // iv
                     break;
                 }
-                case sddk::device_t::GPU: {
-                    acc::copyin(qpw.at(sddk::memory_t::device),
-                            ctx_.augmentation_op(iat).q_pw().at(sddk::memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
+                case device_t::GPU: {
+                    acc::copyin(qpw.at(memory_t::device),
+                            ctx_.augmentation_op(iat).q_pw().at(memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
 #if defined(SIRIUS_GPU)
-                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(sddk::memory_t::device, 0, iv),
-                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 0),
-                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 1),
-                            ctx_.gvec_coord().at(sddk::memory_t::device, g_begin, 2),
-                            ctx_.unit_cell().atom_coord(iat).at(sddk::memory_t::device),
-                            veff_a.at(sddk::memory_t::device, 0, 0, iv), ng, 1 + iv);
+                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(memory_t::device, 0, iv),
+                            ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
+                            ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
+                            ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
+                            ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
+                            veff_a.at(memory_t::device, 0, 0, iv), ng, 1 + iv);
 
                         la::wrap(la::lib_t::gpublas).gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng,
                                   &la::constant<double>::one(),
-                                  qpw.at(sddk::memory_t::device), qpw.ld(),
-                                  veff_a.at(sddk::memory_t::device, 0, 0, iv), veff_a.ld(),
+                                  qpw.at(memory_t::device), qpw.ld(),
+                                  veff_a.at(memory_t::device, 0, 0, iv), veff_a.ld(),
                                   &la::constant<double>::one(),
-                                  d_tmp.at(sddk::memory_t::device, 0, 0, iv), d_tmp.ld(),
+                                  d_tmp.at(memory_t::device, 0, 0, iv), d_tmp.ld(),
                                   acc::stream_id(1 + iv));
 #endif
                     } // iv
@@ -174,13 +174,13 @@ void Potential::generate_D_operator_matrix()
             g_begin += ng;
         }
 
-        if (ctx_.processing_unit() == sddk::device_t::GPU) {
-            d_tmp.copy_to(sddk::memory_t::host);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            d_tmp.copy_to(memory_t::host);
         }
 
         //if (ctx_.cfg().control().print_checksum()) {
-        //    if (ctx_.processing_unit() == sddk::device_t::GPU) {
-        //        veff_a.copy_to(sddk::memory_t::host);
+        //    if (ctx_.processing_unit() == device_t::GPU) {
+        //        veff_a.copy_to(memory_t::host);
         //    }
         //    auto cs = veff_a.checksum();
         //    std::stringstream s;
@@ -207,13 +207,13 @@ void Potential::generate_D_operator_matrix()
             }
 
             /* sum from all ranks */
-            comm_.allreduce(d_tmp.at(sddk::memory_t::host, 0, 0, iv), nqlm * atom_type.num_atoms());
+            comm_.allreduce(d_tmp.at(memory_t::host, 0, 0, iv), nqlm * atom_type.num_atoms());
 
             //if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
             //    for (int i = 0; i < atom_type.num_atoms(); i++) {
             //        std::stringstream s;
             //        s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
-            //        auto cs = sddk::mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
+            //        auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
             //        utils::print_checksum(s.str(), cs, ctx_.out());
             //    }
             //}

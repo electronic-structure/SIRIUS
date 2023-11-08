@@ -7,9 +7,9 @@
 #ifndef __CUSOLVER_HPP__
 #define __CUSOLVER_HPP__
 
-#include "acc.hpp"
-#include "SDDK/memory.hpp"
 #include <cusolverDn.h>
+#include "acc.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 
@@ -113,17 +113,17 @@ int potrf(int n__, T* A__, int lda__)
     CALL_CUSOLVER(cusolverDnXpotrf_bufferSize,
         (cusolver_handle(), NULL, uplo, n, type_wrapper<T>::type, A__, lda, type_wrapper<T>::type, &d_lwork, &h_lwork));
 
-    auto d_work = get_memory_pool(sddk::memory_t::device).get_unique_ptr<T>(d_lwork);
-    sddk::mdarray<int, 1> info(1);
-    info.allocate(get_memory_pool(sddk::memory_t::device));
+    auto d_work = get_memory_pool(memory_t::device).get_unique_ptr<T>(d_lwork);
+    mdarray<int, 1> info({1});
+    info.allocate(get_memory_pool(memory_t::device));
 
     void* hwork{nullptr};
 
     CALL_CUSOLVER(cusolverDnXpotrf,
         (cusolver_handle(), NULL, uplo, n, type_wrapper<T>::type, A__, lda, type_wrapper<T>::type, d_work.get(),
-         d_lwork, hwork, h_lwork, info.at(sddk::memory_t::device)));
+         d_lwork, hwork, h_lwork, info.at(memory_t::device)));
 
-    info.copy_to(sddk::memory_t::host);
+    info.copy_to(memory_t::host);
     return info[0];
 }
 
@@ -139,15 +139,15 @@ int trtri(int n__, T* A__, int lda__)
         (cusolver_handle(), CUBLAS_FILL_MODE_UPPER, CUBLAS_DIAG_NON_UNIT, n, type_wrapper<T>::type, A__, lda,
          &d_lwork, &h_lwork));
 
-    auto h_work = get_memory_pool(sddk::memory_t::host).get_unique_ptr<char>(h_lwork + 1);
-    auto d_work = get_memory_pool(sddk::memory_t::device).get_unique_ptr<char>(d_lwork);
-    sddk::mdarray<int, 1> info(1);
-    info.allocate(get_memory_pool(sddk::memory_t::device));
+    auto h_work = get_memory_pool(memory_t::host).get_unique_ptr<char>(h_lwork + 1);
+    auto d_work = get_memory_pool(memory_t::device).get_unique_ptr<char>(d_lwork);
+    mdarray<int, 1> info({1});
+    info.allocate(get_memory_pool(memory_t::device));
 
     CALL_CUSOLVER(cusolverDnXtrtri,
         (cusolver_handle(), CUBLAS_FILL_MODE_UPPER, CUBLAS_DIAG_NON_UNIT, n, type_wrapper<T>::type,
-         A__, lda, d_work.get(), d_lwork, h_work.get(), h_lwork, info.at(sddk::memory_t::device)));
-    info.copy_to(sddk::memory_t::host);
+         A__, lda, d_work.get(), d_lwork, h_work.get(), h_lwork, info.at(memory_t::device)));
+    info.copy_to(memory_t::host);
     return info[0];
 }
 

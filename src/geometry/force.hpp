@@ -51,32 +51,32 @@ class Force
 
     K_point_set& kset_;
 
-    sddk::mdarray<double, 2> forces_vloc_;
+    mdarray<double, 2> forces_vloc_;
 
-    sddk::mdarray<double, 2> forces_us_;
+    mdarray<double, 2> forces_us_;
 
-    sddk::mdarray<double, 2> forces_nonloc_;
+    mdarray<double, 2> forces_nonloc_;
 
-    sddk::mdarray<double, 2> forces_usnl_;
+    mdarray<double, 2> forces_usnl_;
 
-    sddk::mdarray<double, 2> forces_core_;
+    mdarray<double, 2> forces_core_;
 
-    sddk::mdarray<double, 2> forces_ewald_;
+    mdarray<double, 2> forces_ewald_;
 
-    sddk::mdarray<double, 2> forces_scf_corr_;
+    mdarray<double, 2> forces_scf_corr_;
 
-    sddk::mdarray<double, 2> forces_hubbard_;
+    mdarray<double, 2> forces_hubbard_;
 
-    sddk::mdarray<double, 2> forces_hf_;
+    mdarray<double, 2> forces_hf_;
 
-    sddk::mdarray<double, 2> forces_rho_;
+    mdarray<double, 2> forces_rho_;
 
-    sddk::mdarray<double, 2> forces_ibs_;
+    mdarray<double, 2> forces_ibs_;
 
-    sddk::mdarray<double, 2> forces_total_;
+    mdarray<double, 2> forces_total_;
 
     template <typename T, typename F>
-    void add_k_point_contribution(K_point<T>& kp__, sddk::mdarray<double, 2>& forces__) const;
+    void add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) const;
 
     /** In the second-variational approach we need to compute the following expression for the k-dependent
      *  contribution to the forces:
@@ -97,16 +97,16 @@ class Force
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__, sddk::mdarray<double, 2>& forceh_);
+    void hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
+    void add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
 
   public:
     Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__);
 
-    sddk::mdarray<double, 2> const& calc_forces_vloc();
+    mdarray<double, 2> const& calc_forces_vloc();
 
-    inline sddk::mdarray<double, 2> const& forces_vloc() const
+    inline auto const& forces_vloc() const
     {
         return forces_vloc_;
     }
@@ -114,76 +114,76 @@ class Force
     template <typename T>
     void calc_forces_nonloc_aux();
 
-    sddk::mdarray<double, 2> const& calc_forces_nonloc();
+    mdarray<double, 2> const& calc_forces_nonloc();
 
-    inline sddk::mdarray<double, 2> const& forces_nonloc() const
+    inline auto const& forces_nonloc() const
     {
         return forces_nonloc_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_core();
+    mdarray<double, 2> const& calc_forces_core();
 
-    inline sddk::mdarray<double, 2> const& forces_core() const
+    inline auto const& forces_core() const
     {
         return forces_core_;
     }
 
     /// Calculate SCF correction to the forces.
     /** Based on the following paper: PhysRevB.47.4771 */
-    sddk::mdarray<double, 2> const& calc_forces_scf_corr();
+    mdarray<double, 2> const& calc_forces_scf_corr();
 
-    inline sddk::mdarray<double, 2> const& forces_scf_corr() const
+    inline auto const& forces_scf_corr() const
     {
         return forces_scf_corr_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_us();
+    mdarray<double, 2> const& calc_forces_us();
 
-    inline sddk::mdarray<double, 2> const& forces_us() const
+    inline auto const& forces_us() const
     {
         return forces_us_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_ewald();
+    mdarray<double, 2> const& calc_forces_ewald();
 
-    sddk::mdarray<double, 2> const& forces_ewald() const
+    inline auto const& forces_ewald() const
     {
         return forces_ewald_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_hubbard();
+    mdarray<double, 2> const& calc_forces_hubbard();
 
-    inline sddk::mdarray<double, 2> const& forces_hubbard() const
+    inline auto const& forces_hubbard() const
     {
         return forces_hubbard_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_usnl();
+    mdarray<double, 2> const& calc_forces_usnl();
 
-    sddk::mdarray<double, 2> const& calc_forces_hf();
+    mdarray<double, 2> const& calc_forces_hf();
 
-    inline sddk::mdarray<double, 2> const& forces_hf() const
+    inline auto const& forces_hf() const
     {
         return forces_hf_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_rho();
+    mdarray<double, 2> const& calc_forces_rho();
 
-    inline sddk::mdarray<double, 2> const& forces_rho() const
+    inline auto const& forces_rho() const
     {
         return forces_rho_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_ibs();
+    mdarray<double, 2> const& calc_forces_ibs();
 
-    inline sddk::mdarray<double, 2> const& forces_ibs() const
+    inline auto const& forces_ibs() const
     {
         return forces_ibs_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_total();
+    mdarray<double, 2> const& calc_forces_total();
 
-    inline sddk::mdarray<double, 2> const& forces_total() const
+    inline auto const& forces_total() const
     {
         return forces_total_;
     }

@@ -67,8 +67,8 @@ inverse_sqrt(la::dmatrix<T>& A__, int N__)
 
     if (A__.comm().size() == 1) {
         la::wrap(la::lib_t::blas).gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(),
-            &A__(0, 0), A__.ld(), Z->at(sddk::memory_t::host), Z->ld(), &la::constant<T>::zero(),
-            B->at(sddk::memory_t::host), B->ld());
+            &A__(0, 0), A__.ld(), Z->at(memory_t::host), Z->ld(), &la::constant<T>::zero(),
+            B->at(memory_t::host), B->ld());
     } else {
         la::wrap(la::lib_t::scalapack).gemm('N', 'C', N__, N__, N__, &la::constant<T>::one(),
             A__, 0, 0, *Z, 0, 0, &la::constant<T>::zero(), *B, 0, 0);

@@ -35,7 +35,6 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/memory.hpp"
 #include "mixer/mixer.hpp"
 #include "core/la/linalg.hpp"
 
@@ -66,14 +65,14 @@ class Anderson_stable : public Mixer<FUNCS...>
 {
   private:
     double beta_;
-    sddk::mdarray<double, 2> R_;
+    mdarray<double, 2> R_;
     std::size_t history_size_;
 
   public:
     Anderson_stable(std::size_t max_history, double beta)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
-        , R_(max_history - 1, max_history - 1),
+        , R_({max_history - 1, max_history - 1}),
         history_size_(0)
     {
         this->R_.zero();
@@ -146,14 +145,14 @@ class Anderson_stable : public Mixer<FUNCS...>
                 // Now do the Anderson iteration bit
 
                 // Compute h = Q' * f_n
-                sddk::mdarray<double, 1> h(history_size);
+                mdarray<double, 1> h({history_size});
                 for (int i = 1; i <= history_size; ++i) {
                     auto j = this->idx_hist(this->step_ - i);
                     h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j], this->residual_history_[idx_step]);
                 }
 
                 // next compute k = R⁻¹ * h... just do that by hand for now, can dispatch to blas later.
-                sddk::mdarray<double, 1> k(history_size);
+                mdarray<double, 1> k({history_size});
                 for (int i = 0; i < history_size; ++i) {
                     k[i] = h[i];
                 }

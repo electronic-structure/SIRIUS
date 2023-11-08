@@ -31,7 +31,7 @@ extern "C" {
 #include <spglib.h>
 }
 
-#include "SDDK/memory.hpp"
+#include "core/memory.hpp"
 #include "core/r3/r3.hpp"
 #include "core/profiler.hpp"
 
@@ -86,7 +86,7 @@ struct magnetic_group_symmetry_descriptor
     /// Inverse of proper spin rotation matrix in Cartesian coordinates.
     r3::matrix<double> spin_rotation_inv;
 
-    sddk::mdarray<std::complex<double>, 2> spin_rotation_su2;
+    mdarray<std::complex<double>, 2> spin_rotation_su2;
 };
 
 /// Representation of the crystal symmetry.
@@ -111,10 +111,10 @@ class Crystal_symmetry
     std::vector<int> types_;
 
     /// Atomic positions.
-    sddk::mdarray<double, 2> positions_;
+    mdarray<double, 2> positions_;
 
     /// Magnetic moments of atoms.
-    sddk::mdarray<double, 2> magnetization_;
+    mdarray<double, 2> magnetization_;
 
     double tolerance_;
 
@@ -142,8 +142,8 @@ class Crystal_symmetry
   public:
 
     Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
-        std::vector<int> const& types__, sddk::mdarray<double, 2> const& positions__,
-        sddk::mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
+        std::vector<int> const& types__, mdarray<double, 2> const& positions__,
+        mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
 
     ~Crystal_symmetry()
     {

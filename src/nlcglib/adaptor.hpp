@@ -231,7 +231,7 @@ make_matrix_view(nlcglib::buffer_protocol<numeric_t, 2>& buf)
     int ncols = buf.size[1];
 
     if (buf.stride[0] != 1 || buf.stride[1] != nrows) {
-        RTE_THROW("strides not compatible with sddk::mdarray");
+        RTE_THROW("strides not compatible with mdarray");
     }
 
     numeric_t *device_ptr{nullptr}, *host_ptr{nullptr};
@@ -250,7 +250,7 @@ make_matrix_view(nlcglib::buffer_protocol<numeric_t, 2>& buf)
             break;
     }
 
-    return sddk::matrix<numeric_t>(host_ptr, device_ptr, nrows, ncols);
+    return matrix<numeric_t>({nrows, ncols}, host_ptr, device_ptr);
 }
 
 } // namespace sirius

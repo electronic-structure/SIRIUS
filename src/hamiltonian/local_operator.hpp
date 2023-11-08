@@ -25,7 +25,6 @@
 #ifndef __LOCAL_OPERATOR_HPP__
 #define __LOCAL_OPERATOR_HPP__
 
-#include "SDDK/memory.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
 #include "core/rte/rte.hpp"
@@ -217,9 +216,9 @@ class Local_operator
     std::shared_ptr<fft::Gvec_fft> gvec_coarse_p_;
 
     /// Kinetic energy of G+k plane-waves.
-    sddk::mdarray<T, 1> pw_ekin_;
+    mdarray<T, 1> pw_ekin_;
 
-    sddk::mdarray<T, 2> gkvec_cart_;
+    mdarray<T, 2> gkvec_cart_;
 
     // Names for indices.
     struct v_local_index_t
@@ -244,11 +243,11 @@ class Local_operator
     std::array<std::unique_ptr<Smooth_periodic_function<T>>, 6> veff_vec_;
 
     /// Temporary array to store [V*phi](G)
-    sddk::mdarray<std::complex<T>, 1> vphi_;
+    mdarray<std::complex<T>, 1> vphi_;
 
     /// Temporary array to store psi_{up}(r).
     /** The size of the array is equal to the size of FFT buffer. */
-    sddk::mdarray<std::complex<T>, 1> buf_rg_;
+    mdarray<std::complex<T>, 1> buf_rg_;
 
     /// V(G=0) matrix elements.
     T v0_[2];

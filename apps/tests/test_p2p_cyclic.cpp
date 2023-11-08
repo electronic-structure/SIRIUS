@@ -1,13 +1,12 @@
 #include <sirius.hpp>
 
 using namespace sirius;
-using namespace sddk;
 
 int test1(int size)
 {
     double t = -wtime();
-    sddk::mdarray<char, 1> buf(size);
-    sddk::mdarray<char, 1> buf1(size);
+    mdarray<char, 1> buf({size});
+    mdarray<char, 1> buf1({size});
     buf.zero();
 
     for (int r = 0; r < mpi::Communicator::world().size(); r++) {
