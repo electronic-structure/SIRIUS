@@ -31,7 +31,7 @@ test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memo
     if (!is_host_memory(memA__)) {
         a.allocate(memory_t::host);
     }
-    a = [](int64_t i, int64_t j) {  return random<gemm_type>(); };
+    a = [](int64_t i, int64_t j) { return random<gemm_type>(); };
     if (!is_host_memory(memA__)) {
         a.copy_to(memory_t::device);
     }
@@ -39,7 +39,7 @@ test_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memo
     if (!is_host_memory(memB__)) {
         b.allocate(memory_t::host);
     }
-    b = [](int64_t i, int64_t j) {  return random<gemm_type>(); };
+    b = [](int64_t i, int64_t j) { return random<gemm_type>(); };
     if (!is_host_memory(memB__)) {
         b.copy_to(memory_t::device);
     }
