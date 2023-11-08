@@ -5875,7 +5875,7 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
             elem["atom_index"] = *atom_id__;
             elem["n"]          = *n__;
             elem["l"]          = *l__;
-            const sddk::mdarray<double, 3> occ_((double* const)occ__, 2 * *lmax_at__ + 1, 2 * *lmax_at__ + 1, 2);
+            const mdarray<double, 3> occ_({2 * *lmax_at__ + 1, 2 * *lmax_at__ + 1, 2}, (double* const)occ__);
             std::vector<std::vector<std::vector<double>>> elem_occ_(2);
 
             // const int lda_ = 2 * *lmax_at__ + 1;

@@ -143,11 +143,11 @@ copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
     }
 
     for (int i = 0; i < static_cast<int>(src__.local_constraints().size()); i++) {
-        sddk::copy(src__.local_constraints(i), dest__.local_constraints(i));
+        copy(src__.local_constraints(i), dest__.local_constraints(i));
     }
 
     for (int i = 0; i < static_cast<int>(src__.multipliers_constraints().size()); i++) {
-        sddk::copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
+        copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
     }
 
     for (int i = 0; i < static_cast<int>(src__.apply_constraints().size()); i++) {

@@ -51,8 +51,8 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
         if (ctx_.cfg().hubbard().constrained_hubbard_calculation() && ctx_.cfg().hubbard().local_constraint().size()) {
             apply_constraints_.clear();
             apply_constraints_.resize(num_atomic_level);
-            local_constraints_       = std::vector<sddk::mdarray<std::complex<double>, 3>>(num_atomic_level);
-            multipliers_constraints_ = std::vector<sddk::mdarray<std::complex<double>, 3>>(num_atomic_level);
+            local_constraints_       = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_level);
+            multipliers_constraints_ = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_level);
         }
         /* the offsets here match the offsets of the hubbard wave functions but
          * are more fine grained. The offsets of the hubbard wave functions are
@@ -77,10 +77,10 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             local_[at_lvl].zero();
 
             if (ctx_.cfg().hubbard().constrained_hubbard_calculation()) {
-                local_constraints_[at_lvl] = sddk::mdarray<std::complex<double>, 3>(mmax, mmax, 4, sddk::memory_t::host,
-                                                                                    "local_hubbard_constraint");
-                multipliers_constraints_[at_lvl] = sddk::mdarray<std::complex<double>, 3>(
-                    mmax, mmax, 4, sddk::memory_t::host, "lagrange_multiplier_constraint");
+                local_constraints_[at_lvl] = mdarray<std::complex<double>, 3>({mmax, mmax, 4},
+                                                                                    mdarray_label("local_hubbard_constraint"));
+                multipliers_constraints_[at_lvl] = mdarray<std::complex<double>, 3>(
+				{mmax, mmax, 4}, mdarray_label("lagrange_multiplier_constraint"));
                 multipliers_constraints_[at_lvl].zero();
                 local_constraints_[at_lvl].zero();
 

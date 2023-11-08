@@ -322,7 +322,7 @@ FunctionProperties<Hubbard_matrix> hubbard_matrix_function_property()
 
         if (x.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
           for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            sddk::copy(x.multipliers_constraints(at_lvl), y.multipliers_constraints(at_lvl));
+            copy(x.multipliers_constraints(at_lvl), y.multipliers_constraints(at_lvl));
           }
         }
     };
