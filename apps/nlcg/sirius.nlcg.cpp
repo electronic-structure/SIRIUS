@@ -165,8 +165,8 @@ ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int wri
         dict["counters"]["band_evp_work_count"]        = ctx.evp_work_count();
 
         if (ctx.comm().rank() == 0) {
-            std::string output_file =
-                args.value<std::string>("output", std::string("output_") + ctx.start_time_tag() + std::string(".json"));
+            std::string output_file = args.value<std::string>("output", std::string("output_") + ctx.start_time_tag() +
+                                                                                std::string(".json"));
             std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }

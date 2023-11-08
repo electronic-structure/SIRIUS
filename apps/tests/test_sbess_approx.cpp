@@ -2,13 +2,14 @@
 
 using namespace sirius;
 
-void test_sbess_approx()
+void
+test_sbess_approx()
 {
-    int lmax = 6;
-    double R = 2.0;
+    int lmax    = 6;
+    double R    = 2.0;
     double qmin = 0.1;
     double qmax = 15;
-    double eps = 1e-12;
+    double eps  = 1e-12;
 
     Spherical_Bessel_approximant sba(lmax, R, qmin, qmax, eps);
 
@@ -17,12 +18,10 @@ void test_sbess_approx()
     mdarray<Spherical_Bessel_functions, 2> jnu(lmax + 1, sba.nqnu_max());
 
     printf("qmin, qmax: %f %f\n", qmin, qmax);
-    for (int l = 0; l <= lmax; l++)
-    {
+    for (int l = 0; l <= lmax; l++) {
         printf("nqnu[l=%i] = %i\n", l, sba.nqnu(l));
 
-        for (int iq = 0; iq < sba.nqnu(l); iq++)
-        {
+        for (int iq = 0; iq < sba.nqnu(l); iq++) {
             jnu(l, iq) = Spherical_Bessel_functions(lmax, rgrid, sba.qnu(iq, l));
         }
     }
@@ -32,33 +31,28 @@ void test_sbess_approx()
 
     FILE* out = fopen("sba.dat", "w");
 
-    for (int l = 0; l < lmax; l++)
-    {
+    for (int l = 0; l < lmax; l++) {
         auto c = sba.approximate(l, nu);
 
-        for (int ir = 0; ir < rgrid.num_points(); ir++)
-        {
+        for (int ir = 0; ir < rgrid.num_points(); ir++) {
             fprintf(out, "%f %f\n", rgrid[ir], sbf(l)[ir]);
         }
-        fprintf(out,"\n");
-        for (int ir = 0; ir < rgrid.num_points(); ir++)
-        {
+        fprintf(out, "\n");
+        for (int ir = 0; ir < rgrid.num_points(); ir++) {
             double v = 0;
-            for (int iq = 0; iq < sba.nqnu(l); iq++)
-            {
+            for (int iq = 0; iq < sba.nqnu(l); iq++) {
                 v += c[iq] * jnu(l, iq)(l)[ir];
             }
             fprintf(out, "%f %f\n", rgrid[ir], v);
         }
-        fprintf(out,"\n");
+        fprintf(out, "\n");
     }
     fclose(out);
-    
 
-    //for (int inu = 0; inu < 100; inu++)
+    // for (int inu = 0; inu < 100; inu++)
     //{
-    //    double nu = qmin + (qmax - qmin) * inu / (100 - 1);
-    //    Spherical_Bessel_functions sbf(lmax, rgrid, nu);
+    //     double nu = qmin + (qmax - qmin) * inu / (100 - 1);
+    //     Spherical_Bessel_functions sbf(lmax, rgrid, nu);
 
     //    printf("nu: %f\n", nu);
 
@@ -92,10 +86,11 @@ void test_sbess_approx()
     //}
 }
 
-void test_sbess_approx2()
+void
+test_sbess_approx2()
 {
-    int lmax = 6;
-    double R = 100.0;
+    int lmax    = 6;
+    double R    = 100.0;
     double qmin = 0.1;
     double qmax = 25;
 
@@ -105,12 +100,9 @@ void test_sbess_approx2()
 
     mdarray<Spherical_Bessel_functions, 1> jnu(sba.nqnu());
 
-
-
     printf("nqnu: %i\n", sba.nqnu());
 
-    for (int iq = 0; iq < sba.nqnu(); iq++)
-    {
+    for (int iq = 0; iq < sba.nqnu(); iq++) {
         jnu(iq) = Spherical_Bessel_functions(lmax, rgrid, sba.qnu(iq));
     }
 
@@ -119,33 +111,28 @@ void test_sbess_approx2()
 
     FILE* out = fopen("sba.dat", "w");
 
-    for (int l = 0; l < lmax; l++)
-    {
+    for (int l = 0; l < lmax; l++) {
         auto c = sba.approximate(l, nu);
 
-        for (int ir = 0; ir < rgrid.num_points(); ir++)
-        {
+        for (int ir = 0; ir < rgrid.num_points(); ir++) {
             fprintf(out, "%f %f\n", rgrid[ir], sbf(l)[ir]);
         }
-        fprintf(out,"\n");
-        for (int ir = 0; ir < rgrid.num_points(); ir++)
-        {
+        fprintf(out, "\n");
+        for (int ir = 0; ir < rgrid.num_points(); ir++) {
             double v = 0;
-            for (int iq = 0; iq < sba.nqnu(); iq++)
-            {
+            for (int iq = 0; iq < sba.nqnu(); iq++) {
                 v += c[iq] * jnu(iq)(l)[ir];
             }
             fprintf(out, "%f %f\n", rgrid[ir], v);
         }
-        fprintf(out,"\n");
+        fprintf(out, "\n");
     }
     fclose(out);
-    
 
-    //for (int inu = 0; inu < 100; inu++)
+    // for (int inu = 0; inu < 100; inu++)
     //{
-    //    double nu = qmin + (qmax - qmin) * inu / (100 - 1);
-    //    Spherical_Bessel_functions sbf(lmax, rgrid, nu);
+    //     double nu = qmin + (qmax - qmin) * inu / (100 - 1);
+    //     Spherical_Bessel_functions sbf(lmax, rgrid, nu);
 
     //    printf("nu: %f\n", nu);
 
@@ -179,13 +166,13 @@ void test_sbess_approx2()
     //}
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;

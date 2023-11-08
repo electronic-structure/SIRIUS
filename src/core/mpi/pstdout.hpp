@@ -49,7 +49,8 @@ class pstdout : public std::stringstream
     {
     }
 
-    std::string flush(int root__)
+    std::string
+    flush(int root__)
     {
         std::stringstream s;
 
@@ -81,7 +82,7 @@ class pstdout : public std::stringstream
     }
 };
 
-}
+} // namespace mpi
 
 } // namespace sirius
 

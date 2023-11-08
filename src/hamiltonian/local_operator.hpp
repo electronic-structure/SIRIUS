@@ -40,11 +40,11 @@ template <typename T>
 class Wave_functions;
 class band_range;
 class spin_range;
-}
+} // namespace wf
 namespace fft {
 class Gvec_fft;
 }
-}
+} // namespace sirius
 namespace spfft {
 class Transform;
 }
@@ -53,12 +53,12 @@ class Transform;
 extern "C" {
 
 void
-add_to_hphi_pw_gpu_float(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
-    void const* vphi__, void* hphi__);
+add_to_hphi_pw_gpu_float(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__, void const* vphi__,
+                         void* hphi__);
 
 void
-add_to_hphi_pw_gpu_double(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__,
-    void const* vphi__, void* hphi__);
+add_to_hphi_pw_gpu_double(int num_gvec__, int add_ekin__, void const* pw_ekin__, void const* phi__, void const* vphi__,
+                          void* hphi__);
 
 void
 add_to_hphi_lapw_gpu_float(int num_gvec__, void const* p__, void const* gkvec_cart__, void* hphi__);
@@ -85,12 +85,12 @@ void
 mul_by_veff_complex_real_gpu_double(int nr__, void const* in__, void const* veff__, void* out__);
 
 void
-mul_by_veff_complex_complex_gpu_float(int nr__, void const* in__, float pref__,
-    void const* vx__, void const* vy__, void* out__);
+mul_by_veff_complex_complex_gpu_float(int nr__, void const* in__, float pref__, void const* vx__, void const* vy__,
+                                      void* out__);
 
 void
-mul_by_veff_complex_complex_gpu_double(int nr__, void const* in__, double pref__,
-    void const* vx__, void const* vy__, void* out__);
+mul_by_veff_complex_complex_gpu_double(int nr__, void const* in__, double pref__, void const* vx__, void const* vy__,
+                                       void* out__);
 
 } // extern C
 #endif
@@ -130,7 +130,7 @@ mul_by_veff_complex_real_gpu(int nr__, std::complex<T> const* in__, T const* vef
 template <typename T>
 inline void
 mul_by_veff_complex_complex_gpu(int nr__, std::complex<T> const* in__, T pref__, T const* vx__, T const* vy__,
-        std::complex<T>* out__)
+                                std::complex<T>* out__)
 {
 #ifdef SIRIUS_GPU
     if (std::is_same<T, float>::value) {
@@ -147,7 +147,7 @@ mul_by_veff_complex_complex_gpu(int nr__, std::complex<T> const* in__, T pref__,
 template <typename T>
 inline void
 add_to_hphi_pw_gpu(int num_gvec__, int add_ekin__, T const* pw_ekin__, std::complex<T> const* phi__,
-    std::complex<T> const* vphi__, std::complex<T>* hphi__)
+                   std::complex<T> const* vphi__, std::complex<T>* hphi__)
 {
 #ifdef SIRIUS_GPU
     if (std::is_same<T, float>::value) {
@@ -223,11 +223,11 @@ class Local_operator
     // Names for indices.
     struct v_local_index_t
     {
-        static const int v0 = 0;
-        static const int v1 = 1;
-        static const int vx = 2;
-        static const int vy = 3;
-        static const int theta = 4;
+        static const int v0     = 0;
+        static const int v1     = 1;
+        static const int vx     = 2;
+        static const int vy     = 3;
+        static const int theta  = 4;
         static const int rm_inv = 5;
     };
 
@@ -270,7 +270,8 @@ class Local_operator
 
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
-    void prepare_k(fft::Gvec_fft const& gkvec_p__);
+    void
+    prepare_k(fft::Gvec_fft const& gkvec_p__);
 
     /// Apply local part of Hamiltonian to pseudopotential wave-functions.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -288,9 +289,9 @@ class Local_operator
      *
      *  Local Hamiltonian includes kinetic term and local part of potential.
      */
-    void apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_ptr<fft::Gvec_fft> gkvec_fft__,
-            wf::spin_range spins__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__,
-            wf::band_range br__);
+    void
+    apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_ptr<fft::Gvec_fft> gkvec_fft__, wf::spin_range spins__,
+            wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& hphi__, wf::band_range br__);
 
     /// Apply local part of LAPW Hamiltonian and overlap operators.
     /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
@@ -303,24 +304,26 @@ class Local_operator
      *
      *  Only plane-wave part of output wave-functions is changed.
      */
-    void apply_fplapw(fft::spfft_transform_type<T>& spfftik__, std::shared_ptr<fft::Gvec_fft> gkvec_fft__,
-            wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
-            wf::Wave_functions<T>* ophi__, wf::Wave_functions<T>* bzphi__, wf::Wave_functions<T>* bxyphi__);
+    void
+    apply_fplapw(fft::spfft_transform_type<T>& spfftik__, std::shared_ptr<fft::Gvec_fft> gkvec_fft__,
+                 wf::band_range b__, wf::Wave_functions<T>& phi__, wf::Wave_functions<T>* hphi__,
+                 wf::Wave_functions<T>* ophi__, wf::Wave_functions<T>* bzphi__, wf::Wave_functions<T>* bxyphi__);
 
     /// Apply magnetic field to the full-potential wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
      *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
-     *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. 
+     *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>.
      *
      *  \param [in]  spfftk   SpFFT transform object for G+k vectors.
      *  \param [in]  phi      Input wave-functions.
      *  \param [out] bphi     Output vector of magentic field components, applied to the wave-functions.
      *  \param [in]  br       Range of bands to which B is applied.
      */
-    //void apply_b(spfft_transform_type<T>& spfftk__, wf::Wave_functions<T> const& phi__,
-    //             std::vector<wf::Wave_functions<T>>& bphi__, wf::band_range br__);
+    // void apply_b(spfft_transform_type<T>& spfftk__, wf::Wave_functions<T> const& phi__,
+    //              std::vector<wf::Wave_functions<T>>& bphi__, wf::band_range br__);
 
-    inline T v0(int ispn__) const
+    inline T
+    v0(int ispn__) const
     {
         return v0_[ispn__];
     }

@@ -48,8 +48,10 @@ class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
   public:
     UltrasoftPrecond(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op);
 
-    virtual void apply(const key_t& key, buffer_t& out, buffer_t& in) const override;
-    virtual std::vector<std::pair<int, int>> get_keys() const override;
+    virtual void
+    apply(const key_t& key, buffer_t& out, buffer_t& in) const override;
+    virtual std::vector<std::pair<int, int>>
+    get_keys() const override;
 
   private:
     std::map<key_t, std::shared_ptr<op_t>> data_;
@@ -70,10 +72,10 @@ inline UltrasoftPrecond::UltrasoftPrecond(K_point_set const& kset, Simulation_co
 inline void
 UltrasoftPrecond::apply(const key_t& key, buffer_t& out, buffer_t& in) const
 {
-    auto& op          = data_.at(key);
-    auto array_out    = make_matrix_view(out);
-    auto array_in     = make_matrix_view(in);
-    memory_t pm = out.memtype == nlcglib::memory_type::host ? memory_t::host : memory_t::device;
+    auto& op       = data_.at(key);
+    auto array_out = make_matrix_view(out);
+    auto array_in  = make_matrix_view(in);
+    memory_t pm    = out.memtype == nlcglib::memory_type::host ? memory_t::host : memory_t::device;
     op->apply(array_out, array_in, pm);
 }
 

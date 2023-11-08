@@ -150,8 +150,7 @@ DFT_ground_state::check_scf_density()
 
     auto gs1 = energy_dict(ctx_, kset_, rho, pot, ewald_energy_);
 
-    auto calc_rms = [&](Field4D& a, Field4D& b) -> double
-    {
+    auto calc_rms = [&](Field4D& a, Field4D& b) -> double {
         double rms{0};
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
             for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
@@ -162,7 +161,7 @@ DFT_ground_state::check_scf_density()
         return std::sqrt(rms / ctx_.gvec().num_gvec());
     };
 
-    double rms = calc_rms(density_, rho);
+    double rms      = calc_rms(density_, rho);
     double rms_veff = calc_rms(potential_, pot);
 
     json dict;
@@ -178,11 +177,12 @@ DFT_ground_state::check_scf_density()
                             << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;
 
         std::vector<std::string> labels({"total", "vha", "vxc", "exc", "bxc", "veff", "eval_sum", "kin", "ewald",
-                "vloc", "scf_correction", "entropy_sum"});
+                                         "vloc", "scf_correction", "entropy_sum"});
 
-        for (auto e: labels) {
-            RTE_OUT(ctx_.out()) << "energy component: " << e << ", diff: " <<
-                std::abs(gs0["energy"][e].get<double>() - gs1["energy"][e].get<double>()) << std::endl;
+        for (auto e : labels) {
+            RTE_OUT(ctx_.out()) << "energy component: " << e << ", diff: "
+                                << std::abs(gs0["energy"][e].get<double>() - gs1["energy"][e].get<double>())
+                                << std::endl;
         }
     }
 
@@ -220,7 +220,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         std::stringstream s;
         s << std::endl;
         s << "+------------------------------+" << std::endl
-          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter__ << '|' << std::endl
+          << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter__ << '|'
+          << std::endl
           << "+------------------------------+" << std::endl;
         ctx_.message(2, __func__, s);
 
@@ -263,7 +264,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         /* estimate new tolerance of the iterative solver */
         double tol = rms;
         if (ctx_.cfg().mixer().use_hartree()) {
-            //tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+            // tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
             tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
         }
         tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol,
@@ -281,7 +282,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             /* if the final precision is not equal to the current precision */
             if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
                 /* if we reached the mimimum tolerance for fp32 */
-                if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 && iter_solver_tol__ <= ctx_.cfg().settings().itsol_tol_min()) ||
+                if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 &&
+                     iter_solver_tol__ <= ctx_.cfg().settings().itsol_tol_min()) ||
                     (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
                     std::cout << "switching to FP64" << std::endl;
                     ctx_.cfg().unlock();
@@ -293,16 +295,17 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                     for (auto it : kset_.spl_num_kpoints()) {
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             wf::copy(memory_t::host, kset_.get<float>(it.i)->spinor_wave_functions(),
-                                    wf::spin_index(ispn), wf::band_range(0, ctx_.num_bands()),
-                                    kset_.get<double>(it.i)->spinor_wave_functions(), wf::spin_index(ispn),
-                                    wf::band_range(0, ctx_.num_bands()));
+                                     wf::spin_index(ispn), wf::band_range(0, ctx_.num_bands()),
+                                     kset_.get<double>(it.i)->spinor_wave_functions(), wf::spin_index(ispn),
+                                     wf::band_range(0, ctx_.num_bands()));
                         }
                     }
                     for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
                         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                             for (int j = 0; j < ctx_.num_bands(); j++) {
                                 kset_.get<double>(ik)->band_energy(j, ispn, kset_.get<float>(ik)->band_energy(j, ispn));
-                                kset_.get<double>(ik)->band_occupancy(j, ispn, kset_.get<float>(ik)->band_occupancy(j, ispn));
+                                kset_.get<double>(ik)->band_occupancy(j, ispn,
+                                                                      kset_.get<float>(ik)->band_occupancy(j, ispn));
                             }
                         }
                     }
@@ -326,7 +329,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         }
 
         if (ctx_.cfg().parameters().use_scf_correction()) {
-            double e2 = energy_potential(rho1, potential_);
+            double e2                    = energy_potential(rho1, potential_);
             this->scf_correction_energy_ = e2 - e1;
         }
 
@@ -350,8 +353,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                 << "bands are converged : " << boolstr(result.converged);
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
-            out << std::endl
-                << "iterative solver converged : " << boolstr(iter_solver_converged);
+            out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged);
         }
 
         ctx_.message(2, __func__, out);
@@ -457,19 +459,17 @@ DFT_ground_state::print_info(std::ostream& out__) const
     density_.print_info(out__);
 
     out__ << std::endl;
-    out__ << "Energy" << std::endl
-          << hbar(80, '-') << std::endl;
+    out__ << "Energy" << std::endl << hbar(80, '-') << std::endl;
 
     auto write_energy = [&](std::string label__, double value__) {
         out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)
               << std::fixed << value__ << std::endl;
     };
 
-    auto write_energy2 = [&](std::string label__, double value__)
-    {
-        out__ << std::left << std::setw(30) << label__ << " : " << std::right
-              << std::setw(16) << std::setprecision(8) << std::fixed << value__ << " (Ha), "
-              << std::setw(16) << std::setprecision(8) << std::fixed << value__ * 2 << " (Ry)" << std::endl;
+    auto write_energy2 = [&](std::string label__, double value__) {
+        out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)
+              << std::fixed << value__ << " (Ha), " << std::setw(16) << std::setprecision(8) << std::fixed
+              << value__ * 2 << " (Ry)" << std::endl;
     };
 
     write_energy("valence_eval_sum", evalsum1);

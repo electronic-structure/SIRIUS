@@ -29,16 +29,18 @@ namespace sirius {
 
 /// Check if file exists.
 /** \param[in] file_name Full path to the file being checked.
- *  \return True if file exists, false otherwise. 
+ *  \return True if file exists, false otherwise.
  */
-inline bool file_exists(std::string file_name)
+inline bool
+file_exists(std::string file_name)
 {
     std::ifstream ifs(file_name.c_str());
     return ifs.is_open();
 }
 
 /// Get host name.
-inline auto hostname()
+inline auto
+hostname()
 {
     const int len{1024};
     char nm[len];
@@ -47,22 +49,26 @@ inline auto hostname()
     return std::string(nm);
 }
 
-inline long get_page_size()
+inline long
+get_page_size()
 {
     return sysconf(_SC_PAGESIZE);
 }
 
-inline long get_num_pages()
+inline long
+get_num_pages()
 {
     return sysconf(_SC_PHYS_PAGES);
 }
 
-inline long get_total_memory()
+inline long
+get_total_memory()
 {
     return get_page_size() * get_num_pages();
 }
 
-inline auto get_proc_status()
+inline auto
+get_proc_status()
 {
     /* virtul memory high water mark */
     size_t VmHWM{0};
@@ -102,7 +108,8 @@ inline auto get_proc_status()
             }
         }
     }
-    struct {
+    struct
+    {
         size_t VmHWM;
         size_t VmRSS;
     } res{VmHWM, VmRSS};
@@ -110,7 +117,8 @@ inline auto get_proc_status()
     return res;
 }
 
-inline int get_proc_threads()
+inline int
+get_proc_threads()
 {
     int num_threads{-1};
 

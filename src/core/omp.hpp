@@ -30,26 +30,31 @@
 #include <omp.h>
 
 #else
-inline int omp_get_max_threads()
+inline int
+omp_get_max_threads()
 {
     return 1;
 }
 
-inline int omp_get_thread_num()
+inline int
+omp_get_thread_num()
 {
     return 0;
 }
 
-inline void omp_set_nested(int i)
+inline void
+omp_set_nested(int i)
 {
 }
 
-inline int omp_get_num_threads()
+inline int
+omp_get_num_threads()
 {
     return 1;
 }
 
-inline double omp_get_wtime()
+inline double
+omp_get_wtime()
 {
     return 0;
 }

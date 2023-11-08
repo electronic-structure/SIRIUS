@@ -2,11 +2,12 @@
 
 using namespace sirius;
 
-void test_gvec_distr(double cutoff__)
+void
+test_gvec_distr(double cutoff__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    //FFT3D_grid fft_box(2.01 * cutoff__, M);
-    //FFT3D_grid fft_box(cutoff__, M);
+    // FFT3D_grid fft_box(2.01 * cutoff__, M);
+    // FFT3D_grid fft_box(cutoff__, M);
 
     Gvec gvec;
 
@@ -17,7 +18,7 @@ void test_gvec_distr(double cutoff__)
     runtime::pstdout pout(mpi_comm_world());
     pout.printf("rank: %i\n", mpi_comm_world().rank());
     pout.printf("-----------------------\n");
-    //pout.printf("FFT box size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
+    // pout.printf("FFT box size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
     pout.printf("num_gvec            : %i\n", gvec.num_gvec());
     pout.printf("num_gvec_loc        : %i\n", gvec.gvec_count(mpi_comm_world().rank()));
     pout.printf("num_zcols           : %i\n", gvec.num_zcol());
@@ -32,7 +33,7 @@ void test_gvec_distr(double cutoff__)
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         nv[gvec.shell(ig)]++;
     }
-    
+
     if (mpi_comm_world().rank() == 0) {
         FILE* fout = fopen("gshells.dat", "w+");
         for (int i = 0; i < gvec.num_shells(); i++) {
@@ -47,7 +48,7 @@ void test_gvec_distr(double cutoff__)
     /* get number of G=vectors in the new distribution */
     std::vector<int> ngv_new(mpi_comm_world().size(), 0);
     for (int igloc = 0; igloc < gvec.count(); igloc++) {
-        int ig = gvec.offset() + igloc;
+        int ig   = gvec.offset() + igloc;
         int igsh = gvec.shell(ig);
         ngv_new[spl_num_gsh.local_rank(igsh)]++;
     }
@@ -65,8 +66,8 @@ void test_gvec_distr(double cutoff__)
         if (mpi_comm_world().rank() == rank) {
             printf("rank: %i\n", rank);
             for (int igloc = 0; igloc < gvec.count(); igloc++) {
-                int ig = gvec.offset() + igloc;
-                int igsh = gvec.shell(ig);
+                int ig        = gvec.offset() + igloc;
+                int igsh      = gvec.shell(ig);
                 auto location = spl_num_gsh.location(igsh);
                 printf("ig: %i, shell: %i -> rank: %i\n", ig, igsh, location.rank);
             }
@@ -75,12 +76,12 @@ void test_gvec_distr(double cutoff__)
             }
         }
     }
-    
+
     block_data_descriptor a2a_from_gvec(mpi_comm_world().size());
     block_data_descriptor a2a_to_gsh(mpi_comm_world().size());
 
     for (int igloc = 0; igloc < gvec.count(); igloc++) {
-        int ig = gvec.offset() + igloc;
+        int ig   = gvec.offset() + igloc;
         int igsh = gvec.shell(ig);
         a2a_from_gvec.counts[spl_num_gsh.local_rank(igsh)]++;
     }
@@ -94,16 +95,16 @@ void test_gvec_distr(double cutoff__)
     std::vector<double> tmp_buf(gvec.count());
     std::fill(a2a_from_gvec.counts.begin(), a2a_from_gvec.counts.end(), 0);
     for (int igloc = 0; igloc < gvec.count(); igloc++) {
-        int ig = gvec.offset() + igloc;
-        int igsh = gvec.shell(ig);
-        int r = spl_num_gsh.local_rank(igsh);
+        int ig                                                      = gvec.offset() + igloc;
+        int igsh                                                    = gvec.shell(ig);
+        int r                                                       = spl_num_gsh.local_rank(igsh);
         tmp_buf[a2a_from_gvec.offsets[r] + a2a_from_gvec.counts[r]] = test_data[ig];
         a2a_from_gvec.counts[r]++;
     }
 
     for (int r = 0; r < mpi_comm_world().size(); r++) {
         for (int igloc = 0; igloc < gvec.gvec_count(r); igloc++) {
-            int ig = gvec.gvec_offset(r) + igloc;
+            int ig   = gvec.gvec_offset(r) + igloc;
             int igsh = gvec.shell(ig);
             if (spl_num_gsh.local_rank(igsh) == mpi_comm_world().rank()) {
                 a2a_to_gsh.counts[r]++;
@@ -118,17 +119,16 @@ void test_gvec_distr(double cutoff__)
     mpi_comm_world().alltoall(tmp_buf.data(), a2a_from_gvec.counts.data(), a2a_from_gvec.offsets.data(),
                               recv_buf.data(), a2a_to_gsh.counts.data(), a2a_to_gsh.offsets.data());
 
-    mpi_comm_world().alltoall(recv_buf.data(), a2a_to_gsh.counts.data(), a2a_to_gsh.offsets.data(),
-                              tmp_buf.data(), a2a_from_gvec.counts.data(), a2a_from_gvec.offsets.data());
-    
-    std::vector<double> test_data1(gvec.num_gvec(), 0);
+    mpi_comm_world().alltoall(recv_buf.data(), a2a_to_gsh.counts.data(), a2a_to_gsh.offsets.data(), tmp_buf.data(),
+                              a2a_from_gvec.counts.data(), a2a_from_gvec.offsets.data());
 
+    std::vector<double> test_data1(gvec.num_gvec(), 0);
 
     std::fill(a2a_from_gvec.counts.begin(), a2a_from_gvec.counts.end(), 0);
     for (int igloc = 0; igloc < gvec.count(); igloc++) {
-        int ig = gvec.offset() + igloc;
-        int igsh = gvec.shell(ig);
-        int r = spl_num_gsh.local_rank(igsh);
+        int ig         = gvec.offset() + igloc;
+        int igsh       = gvec.shell(ig);
+        int r          = spl_num_gsh.local_rank(igsh);
         test_data1[ig] = tmp_buf[a2a_from_gvec.offsets[r] + a2a_from_gvec.counts[r]];
         a2a_from_gvec.counts[r]++;
     }
@@ -140,44 +140,39 @@ void test_gvec_distr(double cutoff__)
             RTE_THROW("wrong data was collected");
         }
     }
-        
 
-    
+    // auto& gvp = gvec.partition();
 
-    
-
-    //auto& gvp = gvec.partition();
-
-    //for (int i = 0; i < gvp.num_zcol(); i++) {
-    //    for (size_t j = 0; j < gvp.zcol(i).z.size(); j++) {
-    //        printf("icol: %i idx: %li z: %i\n", i, j, gvp.zcol(i).z[j]);
-    //    }
-    //}
+    // for (int i = 0; i < gvp.num_zcol(); i++) {
+    //     for (size_t j = 0; j < gvp.zcol(i).z.size(); j++) {
+    //         printf("icol: %i idx: %li z: %i\n", i, j, gvp.zcol(i).z[j]);
+    //     }
+    // }
 }
 
-void test_gvec(double cutoff__, bool reduce__)
+void
+test_gvec(double cutoff__, bool reduce__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    //FFT3D_grid fft_box(2.01 * cutoff__, M);
-    //FFT3D_grid fft_box(cutoff__, M);
+    // FFT3D_grid fft_box(2.01 * cutoff__, M);
+    // FFT3D_grid fft_box(cutoff__, M);
 
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, mpi_comm_world(), mpi_comm_world(), reduce__);
 
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto G = gvec.gvec(ig);
-        //printf("ig: %i, G: %i %i %i\n", ig, G[0], G[1], G[2]);
+        // printf("ig: %i, G: %i %i %i\n", ig, G[0], G[1], G[2]);
         auto idx = gvec.index_by_gvec(G);
         if (idx != ig) {
             std::stringstream s;
-            s << "wrong reverce index" << std::endl
-              << "direct index: " << ig << std::endl
-              << "reverce index: " << idx;
+            s << "wrong reverce index" << std::endl << "direct index: " << ig << std::endl << "reverce index: " << idx;
             RTE_THROW(s);
         }
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

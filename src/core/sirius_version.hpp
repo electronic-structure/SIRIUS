@@ -29,18 +29,24 @@
 
 namespace sirius {
 
-int major_version();
+int
+major_version();
 
-int minor_version();
+int
+minor_version();
 
-int revision();
+int
+revision();
 
-std::string git_hash();
+std::string
+git_hash();
 
-std::string git_branchname();
+std::string
+git_branchname();
 
-std::string build_date();
+std::string
+build_date();
 
-}
+} // namespace sirius
 
 #endif

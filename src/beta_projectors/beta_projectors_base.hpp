@@ -35,12 +35,13 @@ namespace sirius {
 #if defined(SIRIUS_GPU)
 extern "C" {
 
-void create_beta_gk_gpu_float(int num_atoms, int num_gkvec, int const* beta_desc, std::complex<float> const* beta_gk_t,
-                              double const* gkvec, double const* atom_pos, std::complex<float>* beta_gk);
+void
+create_beta_gk_gpu_float(int num_atoms, int num_gkvec, int const* beta_desc, std::complex<float> const* beta_gk_t,
+                         double const* gkvec, double const* atom_pos, std::complex<float>* beta_gk);
 
-void create_beta_gk_gpu_double(int num_atoms, int num_gkvec, int const* beta_desc,
-                               std::complex<double> const* beta_gk_t, double const* gkvec, double const* atom_pos,
-                               std::complex<double>* beta_gk);
+void
+create_beta_gk_gpu_double(int num_atoms, int num_gkvec, int const* beta_desc, std::complex<double> const* beta_gk_t,
+                          double const* gkvec, double const* atom_pos, std::complex<double>* beta_gk);
 }
 #endif
 
@@ -90,7 +91,8 @@ struct beta_chunk_t
     }
 
     /// Copy assignment operator.
-    beta_chunk_t& operator=(beta_chunk_t const& rhs__)
+    beta_chunk_t&
+    operator=(beta_chunk_t const& rhs__)
     {
         num_beta_  = rhs__.num_beta_;
         num_atoms_ = rhs__.num_atoms_;
@@ -124,28 +126,33 @@ struct beta_projectors_coeffs_t
     matrix<complex_t> pw_coeffs_a_buffer_;
 
     /// Beta-projectors are treated as non-magnetic.
-    auto actual_spin_index(wf::spin_index s__) const -> wf::spin_index
+    auto
+    actual_spin_index(wf::spin_index s__) const -> wf::spin_index
     {
         return wf::spin_index(0);
     }
 
     /// Leading dimension.
-    auto ld() const
+    auto
+    ld() const
     {
         return static_cast<int>(pw_coeffs_a_.ld());
     }
 
-    auto num_md() const
+    auto
+    num_md() const
     {
         return wf::num_mag_dims(0);
     }
 
-    auto comm() const -> const mpi::Communicator&
+    auto
+    comm() const -> const mpi::Communicator&
     {
         return comm_;
     }
 
-    auto const* at(memory_t mem__, int i__, wf::spin_index s__, wf::band_index b__) const
+    auto const*
+    at(memory_t mem__, int i__, wf::spin_index s__, wf::band_index b__) const
     {
         return pw_coeffs_a_.at(mem__, i__, b__.get());
     }
@@ -154,16 +161,18 @@ struct beta_projectors_coeffs_t
 namespace local {
 
 template <class T>
-void beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a,
-        mdarray<std::complex<T>, 3> const& pw_coeffs_t, int ichunk__, int j__,
-        beta_chunk_t const& beta_chunk, Simulation_context const& ctx, fft::Gvec const& gkvec);
+void
+beta_projectors_generate_cpu(matrix<std::complex<T>>& pw_coeffs_a, mdarray<std::complex<T>, 3> const& pw_coeffs_t,
+                             int ichunk__, int j__, beta_chunk_t const& beta_chunk, Simulation_context const& ctx,
+                             fft::Gvec const& gkvec);
 
 template <class T>
-void beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
-        mdarray<std::complex<double>, 3> const& pw_coeffs_t_device,
-        mdarray<std::complex<double>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
-        fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord_, beta_chunk_t const& beta_chunk,
-        std::vector<int> const& igk__, int j__);
+void
+beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
+                             mdarray<std::complex<double>, 3> const& pw_coeffs_t_device,
+                             mdarray<std::complex<double>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
+                             fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord_,
+                             beta_chunk_t const& beta_chunk, std::vector<int> const& igk__, int j__);
 
 } // namespace local
 
@@ -182,26 +191,33 @@ class Beta_projector_generator
                              std::vector<beta_chunk_t> const& beta_chunks, fft::Gvec const& gkvec,
                              mdarray<double, 2> const& gkvec_coord, int num_gkvec_loc);
 
-    void generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk, int j) const;
-    void generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk) const;
+    void
+    generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk, int j) const;
+    void
+    generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk) const;
 
-    beta_projectors_coeffs_t<T> prepare() const;
+    beta_projectors_coeffs_t<T>
+    prepare() const;
 
-    Simulation_context& ctx()
+    Simulation_context&
+    ctx()
     {
         return ctx_;
     }
-    int num_chunks() const
+    int
+    num_chunks() const
     {
         return beta_chunks_.size();
     }
 
-    const auto& chunks() const
+    const auto&
+    chunks() const
     {
         return beta_chunks_;
     }
 
-    auto device_t() const -> device_t
+    auto
+    device_t() const -> device_t
     {
         return processing_unit_;
     }
@@ -234,8 +250,8 @@ Beta_projector_generator<T>::Beta_projector_generator(Simulation_context& ctx, c
                                                       matrix<std::complex<T>> const& beta_pw_all,
                                                       sirius::device_t processing_unit,
                                                       std::vector<beta_chunk_t> const& beta_chunks,
-                                                      fft::Gvec const& gkvec,
-                                                      mdarray<double, 2> const& gkvec_coord, int num_gkvec_loc)
+                                                      fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord,
+                                                      int num_gkvec_loc)
     : ctx_(ctx)
     , pw_coeffs_t_host_(pw_coeffs_t_host)
     , beta_pw_all_atoms_(beta_pw_all)
@@ -268,7 +284,7 @@ Beta_projector_generator<T>::prepare() const
 
     if (processing_unit_ == device_t::GPU) {
         beta_storage.pw_coeffs_a_buffer_ =
-            matrix<std::complex<T>>({num_gkvec_loc_, max_num_beta_}, get_memory_pool(memory_t::device));
+                matrix<std::complex<T>>({num_gkvec_loc_, max_num_beta_}, get_memory_pool(memory_t::device));
     }
 
     return beta_storage;
@@ -314,23 +330,27 @@ class Beta_projectors_base
     int num_beta_t_;
 
     /// Split beta-projectors into chunks.
-    void split_in_chunks();
+    void
+    split_in_chunks();
 
   public:
     Beta_projectors_base(Simulation_context& ctx__, fft::Gvec const& gkvec__, int N__);
 
-    Beta_projector_generator<T> make_generator() const
+    Beta_projector_generator<T>
+    make_generator() const
     {
         return make_generator(ctx_.processing_unit());
     }
 
-    Beta_projector_generator<T> make_generator(device_t pu) const
+    Beta_projector_generator<T>
+    make_generator(device_t pu) const
     {
         return Beta_projector_generator<T>{ctx_,         pw_coeffs_t_, beta_pw_all_atoms_, pu,
                                            beta_chunks_, gkvec_,       gkvec_coord_,       num_gkvec_loc()};
     }
 
-    Beta_projector_generator<T> make_generator(memory_t mem) const
+    Beta_projector_generator<T>
+    make_generator(memory_t mem) const
     {
         device_t pu{device_t::CPU};
         if (is_device_memory(mem)) {
@@ -339,67 +359,80 @@ class Beta_projectors_base
         return make_generator(pu);
     }
 
-    auto const& ctx() const
+    auto const&
+    ctx() const
     {
         return ctx_;
     }
 
-    inline auto num_gkvec_loc() const
+    inline auto
+    num_gkvec_loc() const
     {
         return gkvec_.count();
     }
 
-    int num_total_beta() const
+    int
+    num_total_beta() const
     {
         return num_total_beta_;
     }
 
-    inline int num_comp() const
+    inline int
+    num_comp() const
     {
         return N_;
     }
 
-    inline auto const& unit_cell() const
+    inline auto const&
+    unit_cell() const
     {
         return ctx_.unit_cell();
     }
 
-    auto& pw_coeffs_t(int ig__, int n__, int j__)
+    auto&
+    pw_coeffs_t(int ig__, int n__, int j__)
     {
         return pw_coeffs_t_(ig__, n__, j__);
     }
 
-    auto pw_coeffs_t(int j__)
+    auto
+    pw_coeffs_t(int j__)
     {
         return matrix<std::complex<T>>({num_gkvec_loc(), num_beta_t()}, &pw_coeffs_t_(0, 0, j__));
     }
 
-    auto const& pw_coeffs_a() const
+    auto const&
+    pw_coeffs_a() const
     {
         return pw_coeffs_a_;
     }
 
-    inline int num_beta_t() const
+    inline int
+    num_beta_t() const
     {
         return num_beta_t_;
     }
 
-    inline int num_chunks() const
+    inline int
+    num_chunks() const
     {
         return static_cast<int>(beta_chunks_.size());
     }
 
-    inline int max_num_beta() const
+    inline int
+    max_num_beta() const
     {
         return max_num_beta_;
     }
 
-    int nrows() const
+    int
+    nrows() const
     {
         return gkvec_.num_gvec();
     }
 
-    const mpi::Communicator& comm() const
+    const mpi::Communicator&
+    comm() const
     {
         return gkvec_.comm();
     }
@@ -477,7 +510,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
             const complex_t* B = bcoeffs_col.pw_coeffs_a_.at(mem_t);
             complex_t* C       = out.at(mem_t, dest_row, dest_col);
             la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B,
-                    bcoeffs_col.pw_coeffs_a_.ld(), &zero, C, out.ld());
+                              bcoeffs_col.pw_coeffs_a_.ld(), &zero, C, out.ld());
         }
     }
 
@@ -530,7 +563,8 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
 
             const complex_t* B2 = G.at(mem_t);
             complex_t* C        = out.at(mem_t, dest_row, dest_col);
-            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B2, G.ld(), &zero, C, out.ld());
+            la::wrap(la).gemm('C', 'N', m, n, k, &one, A, bcoeffs_row.pw_coeffs_a_.ld(), B2, G.ld(), &zero, C,
+                              out.ld());
         }
     }
     if (beta.comm().size() > 1) {

@@ -56,7 +56,8 @@ get_spla_operation(char c)
     return SPLA_OP_NONE; // make compiler happy
 }
 
-std::shared_ptr<::spla::Context>& get_handle_ptr();
+std::shared_ptr<::spla::Context>&
+get_handle_ptr();
 
 inline void
 set_handle_ptr(std::shared_ptr<::spla::Context> ptr)

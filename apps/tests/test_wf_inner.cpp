@@ -2,8 +2,8 @@
 
 using namespace sirius;
 
-void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__,
-                   memory_t mem__)
+void
+test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
@@ -11,7 +11,8 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
         blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     } else {
-        blacs_grid = std::make_unique<la::BLACS_grid>(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
+        blacs_grid =
+                std::make_unique<la::BLACS_grid>(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
     }
 
     /* create G-vectors */
@@ -31,11 +32,9 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     for (auto s = sr.begin(); s != sr.end(); s++) {
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
-                int ig = igloc + gvec->offset();
-                phi1.pw_coeffs(igloc, s, wf::band_index(i)) =
-                    static_cast<double>(i + 1) / (ig + 1);
-                phi2.pw_coeffs(igloc, s, wf::band_index(i)) =
-                    static_cast<double>(ig + 1) / (i + 1) / gvec->num_gvec();
+                int ig                                      = igloc + gvec->offset();
+                phi1.pw_coeffs(igloc, s, wf::band_index(i)) = static_cast<double>(i + 1) / (ig + 1);
+                phi2.pw_coeffs(igloc, s, wf::band_index(i)) = static_cast<double>(ig + 1) / (i + 1) / gvec->num_gvec();
             }
         }
     }
@@ -46,15 +45,17 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     la::dmatrix<std::complex<double>> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
 
     /* warmup call */
-    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0,
+              0);
     mpi::Communicator::world().barrier();
 
     double t = -wtime();
-    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0, 0);
+    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0,
+              0);
     mpi::Communicator::world().barrier();
     t += wtime();
 
-    double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ *  gvec->num_gvec() / t;
+    double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / t;
     if (mpi::Communicator::world().rank() == 0) {
         printf("execution time (sec) : %12.6f\n", t);
         printf("performance (GFlops) : %12.6f\n", perf);
@@ -67,43 +68,49 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
             auto irow = ovlp.irow(i);
             /* 2 is accumulated from two spins */
             std::complex<double> z = ovlp(i, j) - 2 * static_cast<double>(irow + 1) / (jcol + 1);
-            max_diff = std::max(max_diff, std::abs(z));
+            max_diff               = std::max(max_diff, std::abs(z));
         }
     }
     mpi::Communicator::world().reduce<double, mpi::op_t::max>(&max_diff, 1, 0);
     if (mpi::Communicator::world().rank() == 0) {
         printf("maximum difference: %18.12f\n", max_diff);
         if (max_diff > 1e-10) {
-            printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+            printf("\x1b[31m"
+                   "Fail\n"
+                   "\x1b[0m"
+                   "\n");
         } else {
-            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+            printf("\x1b[32m"
+                   "OK\n"
+                   "\x1b[0m"
+                   "\n");
         }
     }
 
-
-    //for (auto s = sr.begin(); s != sr.end(); s++) {
-    //    for (int i = 0; i < num_bands__; i++) {
-    //        for (int igloc = 0; igloc < gvec->count(); igloc++) {
-    //            phi1.pw_coeffs(memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
-    //        }
-    //    }
-    //}
-    //orthogonalize(spla_ctx, memory_t::host, sr, wf::band_range(0, 0),
-    //        wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
-    //wf::inner(spla_ctx, memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0, num_bands__), ovlp, 0, 0);
-    //max_diff = sddk::check_identity(ovlp, num_bands__);
-    //if (mpi::Communicator::world().rank() == 0) {
-    //    printf("checking identity\n");
-    //    printf("maximum difference: %18.12f\n", max_diff);
-    //    if (max_diff > 1e-10) {
-    //        printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
-    //    } else {
-    //        printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
-    //    }
-    //}
+    // for (auto s = sr.begin(); s != sr.end(); s++) {
+    //     for (int i = 0; i < num_bands__; i++) {
+    //         for (int igloc = 0; igloc < gvec->count(); igloc++) {
+    //             phi1.pw_coeffs(memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
+    //         }
+    //     }
+    // }
+    // orthogonalize(spla_ctx, memory_t::host, sr, wf::band_range(0, 0),
+    //         wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
+    // wf::inner(spla_ctx, memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0,
+    // num_bands__), ovlp, 0, 0); max_diff = sddk::check_identity(ovlp, num_bands__); if
+    // (mpi::Communicator::world().rank() == 0) {
+    //     printf("checking identity\n");
+    //     printf("maximum difference: %18.12f\n", max_diff);
+    //     if (max_diff > 1e-10) {
+    //         printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+    //     } else {
+    //         printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+    //     }
+    // }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
@@ -118,10 +125,10 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
-    auto cutoff = args.value<double>("cutoff", 8.0);
-    auto bs = args.value<int>("bs", 32);
-    auto num_bands = args.value<int>("num_bands", 100);
+    auto mpi_grid_dims       = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
+    auto cutoff              = args.value<double>("cutoff", 8.0);
+    auto bs                  = args.value<int>("bs", 32);
+    auto num_bands           = args.value<int>("num_bands", 100);
     std::string memory_t_str = args.value<std::string>("memory_t", "host");
 
     sirius::initialize(1);
@@ -133,10 +140,10 @@ int main(int argn, char** argv)
 
     sirius::finalize(1);
 
-    if (my_rank == 0)  {
+    if (my_rank == 0) {
         const auto timing_result = global_rtgraph_timer.process();
         std::cout << timing_result.print();
-        //std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        //ofs << timing_result.json();
+        // std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        // ofs << timing_result.json();
     }
 }

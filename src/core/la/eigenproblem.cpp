@@ -15,7 +15,8 @@ namespace la {
 #if defined(SIRIUS_ELPA)
 
 template <typename M>
-void setup_handler(elpa_t& handle__, int stage__, M const& m__, int na__, int nev__)
+void
+setup_handler(elpa_t& handle__, int stage__, M const& m__, int na__, int nev__)
 {
     int error;
     int nt = omp_get_max_threads();
@@ -50,22 +51,25 @@ Eigensolver_elpa::Eigensolver_elpa(int stage__)
     }
 }
 
-void Eigensolver_elpa::initialize()
+void
+Eigensolver_elpa::initialize()
 {
     if (elpa_init(20170403) != ELPA_OK) {
         RTE_THROW("ELPA API version not supported");
     }
 }
 
-void Eigensolver_elpa::finalize()
+void
+Eigensolver_elpa::finalize()
 {
     int ierr;
     elpa_uninit(&ierr);
 }
 
 /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double>& A__, la::dmatrix<double>& B__,
-          double* eval__, la::dmatrix<double>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double>& A__, la::dmatrix<double>& B__,
+                        double* eval__, la::dmatrix<double>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_gen");
 
@@ -92,8 +96,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
 
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_generalized_eigenvectors_d(handle, A__.at(memory_t::host), B__.at(memory_t::host),
-        w.get(), Z__.at(memory_t::host), 0, &error);
+    elpa_generalized_eigenvectors_d(handle, A__.at(memory_t::host), B__.at(memory_t::host), w.get(),
+                                    Z__.at(memory_t::host), 0, &error);
 
     if (error != ELPA_OK) {
         elpa_deallocate(handle, &error);
@@ -108,27 +112,28 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
         std::stringstream s;
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
-          << "  new number of threads : " <<  omp_get_max_threads();
+          << "  new number of threads : " << omp_get_max_threads();
         RTE_THROW(s);
     }
 
     return 0;
 
-    //to_std(matrix_size__, A__, B__, Z__);
+    // to_std(matrix_size__, A__, B__, Z__);
 
     ///* solve a standard problem */
-    //int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-    //if (result) {
-    //    return result;
-    //}
+    // int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
+    // if (result) {
+    //     return result;
+    // }
 
-    //bt(matrix_size__, nev__, A__, B__, Z__);
-    //return 0;
+    // bt(matrix_size__, nev__, A__, B__, Z__);
+    // return 0;
 }
 
 /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::complex<double>>& A__, la::dmatrix<std::complex<double>>& B__,
-          double* eval__, la::dmatrix<std::complex<double>>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::complex<double>>& A__,
+                        la::dmatrix<std::complex<double>>& B__, double* eval__, la::dmatrix<std::complex<double>>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_gen");
 
@@ -155,8 +160,8 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
 
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_generalized_eigenvectors_dc(handle, A__.at(memory_t::host), B__.at(memory_t::host),
-        w.get(), Z__.at(memory_t::host), 0, &error);
+    elpa_generalized_eigenvectors_dc(handle, A__.at(memory_t::host), B__.at(memory_t::host), w.get(),
+                                     Z__.at(memory_t::host), 0, &error);
 
     if (error != ELPA_OK) {
         elpa_deallocate(handle, &error);
@@ -171,38 +176,43 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
         std::stringstream s;
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
-          << "  new number of threads : " <<  omp_get_max_threads();
+          << "  new number of threads : " << omp_get_max_threads();
         RTE_THROW(s);
     }
 
     return 0;
-    //to_std(matrix_size__, A__, B__, Z__);
+    // to_std(matrix_size__, A__, B__, Z__);
 
     ///* solve a standard problem */
-    //int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-    //if (result) {
-    //    return result;
-    //}
+    // int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
+    // if (result) {
+    //     return result;
+    // }
 
-    //bt(matrix_size__, nev__, A__, B__, Z__);
-    //return 0;
+    // bt(matrix_size__, nev__, A__, B__, Z__);
+    // return 0;
 }
 
 /// Solve a generalized eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, la::dmatrix<double>& B__, double* eval__, la::dmatrix<double>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, la::dmatrix<double>& B__, double* eval__,
+                        la::dmatrix<double>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
 }
 
 /// Solve a generalized eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__, la::dmatrix<std::complex<double>>& B__, double* eval__,
-          la::dmatrix<std::complex<double>>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__,
+                        la::dmatrix<std::complex<double>>& B__, double* eval__, la::dmatrix<std::complex<double>>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
 }
 
 /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double>& A__, double* eval__, la::dmatrix<double>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double>& A__, double* eval__,
+                        la::dmatrix<double>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_std");
 
@@ -226,7 +236,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
     auto& mph = get_memory_pool(memory_t::host);
-    auto w = mph.get_unique_ptr<double>(matrix_size__);
+    auto w    = mph.get_unique_ptr<double>(matrix_size__);
 
     elpa_eigenvectors_a_h_a_d(handle, A__.at(memory_t::host), w.get(), Z__.at(memory_t::host), &error);
 
@@ -237,15 +247,16 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<do
         std::stringstream s;
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
-          << "  new number of threads : " <<  omp_get_max_threads();
+          << "  new number of threads : " << omp_get_max_threads();
         RTE_THROW(s);
     }
     return 0;
 }
 
 /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::complex<double>>& A__, double* eval__,
-          la::dmatrix<std::complex<double>>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::complex<double>>& A__, double* eval__,
+                        la::dmatrix<std::complex<double>>& Z__)
 {
     PROFILE("Eigensolver_elpa|solve_std");
 
@@ -269,7 +280,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
     PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
     auto& mph = get_memory_pool(memory_t::host);
-    auto w = mph.get_unique_ptr<double>(matrix_size__);
+    auto w    = mph.get_unique_ptr<double>(matrix_size__);
 
     auto A_ptr = A__.size_local() ? A__.at(memory_t::host) : nullptr;
     auto Z_ptr = Z__.size_local() ? Z__.at(memory_t::host) : nullptr;
@@ -283,7 +294,7 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
         std::stringstream s;
         s << "number of OMP threads was changed by elpa" << std::endl
           << "  initial number of threads : " << nt << std::endl
-          << "  new number of threads : " <<  omp_get_max_threads();
+          << "  new number of threads : " << omp_get_max_threads();
         RTE_THROW(s);
     }
 
@@ -291,13 +302,16 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<st
 }
 
 /// Solve a standard eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, double* eval__, la::dmatrix<double>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<double>& A__, double* eval__, la::dmatrix<double>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
 }
 
 /// Solve a standard eigen-value problem for all eigen-pairs.
-int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__, double* eval__, la::dmatrix<std::complex<double>>& Z__)
+int
+Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>& A__, double* eval__,
+                        la::dmatrix<std::complex<double>>& Z__)
 {
     return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
 }
@@ -306,20 +320,22 @@ int Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<doub
 
 #if defined(SIRIUS_DLAF)
 
-void Eigensolver_dlaf::initialize()
+void
+Eigensolver_dlaf::initialize()
 {
     const char* pika_argv[] = {"sirius", "--pika:print-bind"};
     const char* dlaf_argv[] = {"sirius"};
     dlaf_initialize(2, pika_argv, 1, dlaf_argv);
 }
 
-void Eigensolver_dlaf::finalize()
+void
+Eigensolver_dlaf::finalize()
 {
     dlaf_finalize();
 }
 
 #endif
 
-}
+} // namespace la
 
-}
+} // namespace sirius

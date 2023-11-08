@@ -47,29 +47,30 @@ void
 update_density_rg_1_real_gpu_double(int size__, double const* psi_rg__, double wt__, double* density_rg__);
 
 void
-update_density_rg_1_complex_gpu_float(int size__, std::complex<float> const* psi_rg__, float wt__,
-                                           float* density_rg__);
+update_density_rg_1_complex_gpu_float(int size__, std::complex<float> const* psi_rg__, float wt__, float* density_rg__);
 
 void
-update_density_rg_1_complex_gpu_double(int size__, std::complex<double> const* psi_rg__, double wt__, double* density_rg__);
+update_density_rg_1_complex_gpu_double(int size__, std::complex<double> const* psi_rg__, double wt__,
+                                       double* density_rg__);
 
 void
-update_density_rg_2_gpu_float(int size__, std::complex<float> const* psi_rg_up__, std::complex<float> const* psi_rg_dn__,
-                                   float wt__, float* density_x_rg__, float* density_y_rg__);
+update_density_rg_2_gpu_float(int size__, std::complex<float> const* psi_rg_up__,
+                              std::complex<float> const* psi_rg_dn__, float wt__, float* density_x_rg__,
+                              float* density_y_rg__);
 
 void
-update_density_rg_2_gpu_double(int size__, std::complex<double> const* psi_rg_up__, std::complex<double> const* psi_rg_dn__,
-                                    double wt__, double* density_x_rg__, double* density_y_rg__);
+update_density_rg_2_gpu_double(int size__, std::complex<double> const* psi_rg_up__,
+                               std::complex<double> const* psi_rg_dn__, double wt__, double* density_x_rg__,
+                               double* density_y_rg__);
 
 void
-generate_dm_pw_gpu(int num_atoms__, int num_gvec_loc__, int num_beta__, double const* atom_pos__,
-                        int const* gvx__, int const* gvy__, int const* gvz__, double* phase_factors__,
-                        double const* dm__, double* dm_pw__, int stream_id__);
+generate_dm_pw_gpu(int num_atoms__, int num_gvec_loc__, int num_beta__, double const* atom_pos__, int const* gvx__,
+                   int const* gvy__, int const* gvz__, double* phase_factors__, double const* dm__, double* dm_pw__,
+                   int stream_id__);
 
 void
 sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, int ldq__, double const* dm_pw__, int ldd__,
-                        double const* sym_weight__, std::complex<double>* rho_pw__, int stream_id__);
-
+                   double const* sym_weight__, std::complex<double>* rho_pw__, int stream_id__);
 }
 #endif
 
@@ -103,28 +104,31 @@ template <typename T>
 class PAW_density : public PAW_field4D<T>
 {
   public:
-
     PAW_density(Unit_cell const& uc__)
         : PAW_field4D<T>("PAW density", uc__, false)
     {
     }
 
-    auto& ae_density(int i__, int ja__)
+    auto&
+    ae_density(int i__, int ja__)
     {
         return this->ae_component(i__)[ja__];
     }
 
-    auto const& ae_density(int i__, int ja__) const
+    auto const&
+    ae_density(int i__, int ja__) const
     {
         return this->ae_component(i__)[ja__];
     }
 
-    auto& ps_density(int i__, int ja__)
+    auto&
+    ps_density(int i__, int ja__)
     {
         return this->ps_component(i__)[ja__];
     }
 
-    auto const& ps_density(int i__, int ja__) const
+    auto const&
+    ps_density(int i__, int ja__) const
     {
         return this->ps_component(i__)[ja__];
     }
@@ -248,14 +252,16 @@ class Density : public Field4D
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, density_matrix_t,
-                                 PAW_density<double>, Hubbard_matrix>> mixer_;
+                                 Periodic_function<double>, density_matrix_t, PAW_density<double>, Hubbard_matrix>>
+            mixer_;
 
     /// Generate atomic densities in the case of PAW.
-    void generate_paw_density(paw_atom_index_t::local iapaw__);
+    void
+    generate_paw_density(paw_atom_index_t::local iapaw__);
 
     /// Initialize PAW density matrix.
-    void init_density_matrix_for_paw();
+    void
+    init_density_matrix_for_paw();
 
     /// Reduce complex density matrix over magnetic quantum numbers
     /** The following operation is performed:
@@ -266,8 +272,9 @@ class Density : public Field4D
         \f]
      */
     template <int num_mag_dims>
-    void reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::complex<double>, 3> const& zdens__,
-                               mdarray<double, 3>& mt_density_matrix__);
+    void
+    reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::complex<double>, 3> const& zdens__,
+                          mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
     /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -298,17 +305,21 @@ class Density : public Field4D
         \tparam F  Type of the wave-functions inner product (used in pp-pw).
      */
     template <typename T, typename F>
-    void add_k_point_contribution_dm(K_point<T>& kp__, mdarray<std::complex<double>, 4>& density_matrix__);
+    void
+    add_k_point_contribution_dm(K_point<T>& kp__, mdarray<std::complex<double>, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
-    void add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
+    void
+    add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
 
     /// Generate valence density in the muffin-tins
-    void generate_valence_mt();
+    void
+    generate_valence_mt();
 
     /// Generate charge density of core states
-    void generate_core_charge_density()
+    void
+    generate_core_charge_density()
     {
         PROFILE("sirius::Density::generate_core_charge_density");
 
@@ -324,7 +335,8 @@ class Density : public Field4D
         }
     }
 
-    void generate_pseudo_core_charge_density()
+    void
+    generate_pseudo_core_charge_density()
     {
         PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
@@ -333,8 +345,8 @@ class Density : public Field4D
         /* get form-factors for all G shells */
         auto const ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
         /* make rho_core(G) */
-        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
-                ctx_.phase_factors_t(), ff);
+        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
+                                                               ff);
 
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
@@ -345,22 +357,29 @@ class Density : public Field4D
     Density(Simulation_context& ctx__);
 
     /// Update internal parameters after a change of lattice vectors or atomic coordinates.
-    void update();
+    void
+    update();
 
     /// Find the total leakage of the core states out of the muffin-tins
-    double core_leakage() const;
+    double
+    core_leakage() const;
 
     /// Generate initial charge density and magnetization
-    void initial_density();
+    void
+    initial_density();
 
-    void initial_density_pseudo();
+    void
+    initial_density_pseudo();
 
-    void initial_density_full_pot();
+    void
+    initial_density_full_pot();
 
-    void normalize();
+    void
+    normalize();
 
     /// Check total density for the correct number of electrons.
-    bool check_num_electrons() const;
+    bool
+    check_num_electrons() const;
 
     /// Generate full charge density (valence + core) and magnetization from the wave functions.
     /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
@@ -368,7 +387,8 @@ class Density : public Field4D
         plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins.
      */
     template <typename T>
-    void generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
+    void
+    generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
 
     /// Generate valence charge density and magnetization from the wave functions.
     /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
@@ -376,7 +396,8 @@ class Density : public Field4D
         real-space domain and checked for the number of electrons.
      */
     template <typename T>
-    void generate_valence(K_point_set const& ks__);
+    void
+    generate_valence(K_point_set const& ks__);
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.
@@ -401,60 +422,72 @@ class Density : public Field4D
             d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}}
         \f]
      */
-    void augment();
+    void
+    augment();
 
     /// Generate augmentation charge density.
-    mdarray<std::complex<double>, 2> generate_rho_aug() const;
+    mdarray<std::complex<double>, 2>
+    generate_rho_aug() const;
 
     /// Return core leakage for a specific atom symmetry class
-    inline double core_leakage(int ic) const
+    inline double
+    core_leakage(int ic) const
     {
         return unit_cell_.atom_symmetry_class(ic).core_leakage();
     }
 
     /// Return const reference to charge density (scalar functions).
-    inline auto const& rho() const
+    inline auto const&
+    rho() const
     {
         return this->scalar();
     }
 
     /// Return charge density (scalar functions).
-    inline auto& rho()
+    inline auto&
+    rho()
     {
         return const_cast<Periodic_function<double>&>(static_cast<Density const&>(*this).rho());
     }
 
-    inline auto& mag(int i)
+    inline auto&
+    mag(int i)
     {
         return this->vector(i);
     }
 
-    inline auto const& mag(int i) const
+    inline auto const&
+    mag(int i) const
     {
         return this->vector(i);
     }
 
-    inline auto& rho_pseudo_core()
+    inline auto&
+    rho_pseudo_core()
     {
         return *rho_pseudo_core_;
     }
 
-    inline auto const& rho_pseudo_core() const
+    inline auto const&
+    rho_pseudo_core() const
     {
         return *rho_pseudo_core_;
     }
 
-    inline auto const& density_mt(atom_index_t::local ialoc__) const
+    inline auto const&
+    density_mt(atom_index_t::local ialoc__) const
     {
         auto ia = ctx_.unit_cell().spl_num_atoms().global_index(ialoc__);
         return rho().mt()[ia];
     }
 
     /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
-    void generate_paw_density();
+    void
+    generate_paw_density();
 
     /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
-    inline auto paw_ae_density(int ia__) const
+    inline auto
+    paw_ae_density(int ia__) const
     {
         std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -464,7 +497,8 @@ class Density : public Field4D
     }
 
     /// Return list of pointers to pseudo PAW density function for a given local index of atom with PAW potential.
-    inline auto paw_ps_density(int ia__) const
+    inline auto
+    paw_ps_density(int ia__) const
     {
         std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -473,22 +507,28 @@ class Density : public Field4D
         return result;
     }
 
-    void mixer_input();
+    void
+    mixer_input();
 
-    void mixer_output();
+    void
+    mixer_output();
 
     /// Initialize density mixer.
-    void mixer_init(config_t::mixer_t const& mixer_cfg__);
+    void
+    mixer_init(config_t::mixer_t const& mixer_cfg__);
 
     /// Mix new density.
-    double mix();
+    double
+    mix();
 
-    inline auto const& density_matrix(int ia__) const
+    inline auto const&
+    density_matrix(int ia__) const
     {
         return (*density_matrix_)[ia__];
     }
 
-    inline auto& density_matrix(int ia__)
+    inline auto&
+    density_matrix(int ia__)
     {
         return (*density_matrix_)[ia__];
     }
@@ -511,61 +551,68 @@ class Density : public Field4D
     std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
     get_magnetisation() const;
 
-    void print_info(std::ostream& out__) const;
+    void
+    print_info(std::ostream& out__) const;
 
-    Occupation_matrix const& occupation_matrix() const
+    Occupation_matrix const&
+    occupation_matrix() const
     {
         return *occupation_matrix_;
     }
 
-    Occupation_matrix& occupation_matrix()
+    Occupation_matrix&
+    occupation_matrix()
     {
         return *occupation_matrix_;
     }
 
-    auto const& paw_density() const
+    auto const&
+    paw_density() const
     {
         return *paw_density_;
     }
 
     /// Check density at MT boundary
-    void check_density_continuity_at_mt()
+    void
+    check_density_continuity_at_mt()
     {
-//    // generate plane-wave coefficients of the potential in the interstitial region
-//    ctx_.fft().input(&rho_->f_it<global>(0));
-//    ctx_.fft().transform(-1);
-//    ctx_.fft().output(ctx_.num_gvec(), ctx_.fft_index(), &rho_->f_pw(0));
-//
-//    SHT sht(ctx_.lmax_rho());
-//
-//    double diff = 0.0;
-//    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-//    {
-//        for (int itp = 0; itp < sht.num_points(); itp++)
-//        {
-//            double vc[3];
-//            for (int x = 0; x < 3; x++) vc[x] = sht.coord(x, itp) * ctx_.atom(ia)->mt_radius();
-//
-//            double val_it = 0.0;
-//            for (int ig = 0; ig < ctx_.num_gvec(); ig++)
-//            {
-//                double vgc[3];
-//                ctx_.get_coordinates<cartesian, reciprocal>(ctx_.gvec(ig), vgc);
-//                val_it += real(rho_->f_pw(ig) * exp(std::complex<double>(0.0, Utils::scalar_product(vc, vgc))));
-//            }
-//
-//            double val_mt = 0.0;
-//            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
-//                val_mt += rho_->f_rlm(lm, ctx_.atom(ia)->num_mt_points() - 1, ia) * sht.rlm_backward(lm, itp);
-//
-//            diff += fabs(val_it - val_mt);
-//        }
-//    }
-//    std::printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / ctx_.num_atoms() / sht.num_points());
-
+        //    // generate plane-wave coefficients of the potential in the interstitial region
+        //    ctx_.fft().input(&rho_->f_it<global>(0));
+        //    ctx_.fft().transform(-1);
+        //    ctx_.fft().output(ctx_.num_gvec(), ctx_.fft_index(), &rho_->f_pw(0));
+        //
+        //    SHT sht(ctx_.lmax_rho());
+        //
+        //    double diff = 0.0;
+        //    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
+        //    {
+        //        for (int itp = 0; itp < sht.num_points(); itp++)
+        //        {
+        //            double vc[3];
+        //            for (int x = 0; x < 3; x++) vc[x] = sht.coord(x, itp) * ctx_.atom(ia)->mt_radius();
+        //
+        //            double val_it = 0.0;
+        //            for (int ig = 0; ig < ctx_.num_gvec(); ig++)
+        //            {
+        //                double vgc[3];
+        //                ctx_.get_coordinates<cartesian, reciprocal>(ctx_.gvec(ig), vgc);
+        //                val_it += real(rho_->f_pw(ig) * exp(std::complex<double>(0.0, Utils::scalar_product(vc,
+        //                vgc))));
+        //            }
+        //
+        //            double val_mt = 0.0;
+        //            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
+        //                val_mt += rho_->f_rlm(lm, ctx_.atom(ia)->num_mt_points() - 1, ia) * sht.rlm_backward(lm, itp);
+        //
+        //            diff += fabs(val_it - val_mt);
+        //        }
+        //    }
+        //    std::printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff /
+        //    ctx_.num_atoms() / sht.num_points());
     }
 
-    void save(std::string name__) const
+    void
+    save(std::string name__) const
     {
         rho().hdf5_write(name__, "density");
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
@@ -576,7 +623,8 @@ class Density : public Field4D
         ctx_.comm().barrier();
     }
 
-    void load(std::string name__)
+    void
+    load(std::string name__)
     {
         HDF5_tree fin(name__, hdf5_access_t::read_only);
 
@@ -596,7 +644,8 @@ class Density : public Field4D
         }
     }
 
-    void save_to_xsf()
+    void
+    save_to_xsf()
     {
         //== FILE* fout = fopen("unit_cell.xsf", "w");
         //== fprintf(fout, "CRYSTAL\n");
@@ -621,7 +670,8 @@ class Density : public Field4D
         //== fclose(fout);
     }
 
-    void save_to_ted()
+    void
+    save_to_ted()
     {
 
         //== void write_periodic_function()
@@ -635,7 +685,8 @@ class Density : public Field4D
 
         //==     //== FILE* fout = fopen("potential.ted", "w");
         //==     //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
-        //==     //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+        //==     //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha,
+        //p.beta, p.gamma);
         //==     //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
         //==     //== for (int i0 = 0; i0 <= nx; i0++)
         //==     //== {
@@ -651,7 +702,8 @@ class Density : public Field4D
         //== }
     }
 
-    void save_to_xdmf()
+    void
+    save_to_xdmf()
     {
         //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
         //== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
@@ -696,7 +748,8 @@ class Density : public Field4D
         //== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
         //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
         //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
-        //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+        //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
+        //Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
         //== //==               "      </Geometry>\n"
         //== //==               "      <Attribute\n"
         //== //==               "           AttributeType=\"Scalar\"\n"
@@ -712,7 +765,8 @@ class Density : public Field4D
         //== //==               "        </Attribute>\n"
         //== //==               "    </Grid>\n"
         //== //==               "  </Domain>\n"
-        //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+        //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
+        //fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
         //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
         //==               "<Xdmf>\n"
@@ -720,7 +774,8 @@ class Density : public Field4D
         //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
         //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
         //==               "      <Geometry GeometryType=\"XYZ\">\n"
-        //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+        //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
+        //Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
         //==               "      </Geometry>\n"
         //==               "      <Attribute\n"
         //==               "           AttributeType=\"Vector\"\n"
@@ -736,10 +791,10 @@ class Density : public Field4D
         //==               "        </Attribute>\n"
         //==               "    </Grid>\n"
         //==               "  </Domain>\n"
-        //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+        //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
+        //fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fclose(fout);
     }
-
 };
 
 inline void
@@ -765,7 +820,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
 {
     PROFILE("sirius::get_rho_up_dn");
 
-    auto& ctx = const_cast<Simulation_context&>(density__.ctx());
+    auto& ctx      = const_cast<Simulation_context&>(density__.ctx());
     int num_points = ctx.spfft<double>().local_slice_size();
 
     auto rho_up = std::make_unique<Smooth_periodic_function<double>>(ctx.spfft<double>(), ctx.gvec_fft_sptr());
@@ -785,7 +840,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
             rho += density__.rho_pseudo_core().value(ir);
         }
         rho *= (1 + add_delta_rho_xc__);
-        rhomin = std::min(rhomin, rho);
+        rhomin   = std::min(rhomin, rho);
         auto rud = get_rho_up_dn(ctx.num_mag_dims(), rho, m);
 
         rho_up->value(ir) = rud.first;
@@ -793,10 +848,9 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
     }
 
     mpi::Communicator(ctx.spfft<double>().communicator()).allreduce<double, mpi::op_t::min>(&rhomin, 1);
-    if (rhomin< 0.0 && ctx.comm().rank() == 0) {
+    if (rhomin < 0.0 && ctx.comm().rank() == 0) {
         std::stringstream s;
-        s << "Interstitial charge density has negative values" << std::endl
-          << "most negatve value : " << rhomin;
+        s << "Interstitial charge density has negative values" << std::endl << "most negatve value : " << rhomin;
         RTE_WARNING(s);
     }
     std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> result;

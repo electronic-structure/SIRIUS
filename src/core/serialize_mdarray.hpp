@@ -39,11 +39,11 @@ serialize(mdarray<T, N> const& a__)
     std::array<index_range::index_type, N> end;
     for (int i = 0; i < N; i++) {
         begin[i] = a__.dim(i).begin();
-        end[i] = a__.dim(i).end();
+        end[i]   = a__.dim(i).end();
     }
     dict["begin"] = begin;
-    dict["end"] = end;
-    dict["data"] = std::vector<T>(a__.size());
+    dict["end"]   = end;
+    dict["data"]  = std::vector<T>(a__.size());
     for (size_t i = 0; i < a__.size(); i++) {
         dict["data"][i] = a__[i];
     }
@@ -59,13 +59,13 @@ serialize(mdarray<std::complex<T>, N> const& a__)
     std::array<index_range::index_type, N> end;
     for (int i = 0; i < N; i++) {
         begin[i] = a__.dim(i).begin();
-        end[i] = a__.dim(i).end();
+        end[i]   = a__.dim(i).end();
     }
     dict["begin"] = begin;
-    dict["end"] = end;
-    dict["data"] = std::vector<T>(2 * a__.size());
+    dict["end"]   = end;
+    dict["data"]  = std::vector<T>(2 * a__.size());
     for (size_t i = 0; i < a__.size(); i++) {
-        dict["data"][2 * i] = a__[i].real();
+        dict["data"][2 * i]     = a__[i].real();
         dict["data"][2 * i + 1] = a__[i].imag();
     }
     return dict;
@@ -79,14 +79,13 @@ write_to_json_file(mdarray<T, N> const& a__, std::string const& fname__)
         auto dict = serialize(a__);
         std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);
-    } catch(...) {
+    } catch (...) {
         std::stringstream s;
         s << "Error writing mdarray to file " << fname__;
         printf("%s\n", s.str().c_str());
     }
 }
 
-}
+} // namespace sirius
 
 #endif
-

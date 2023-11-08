@@ -161,10 +161,10 @@ ks_energy(Simulation_context const& ctx, const std::map<std::string, double>& en
         }
 
         case electronic_structure_method_t::pseudopotential: {
-            tot_en =
-                energies.at("valence_eval_sum") - energies.at("vxc") - energies.at("bxc") - energies.at("PAW_one_elec");
-            tot_en +=
-                -0.5 * energies.at("vha") + energies.at("exc") + energies.at("PAW_total_energy") + energies.at("ewald");
+            tot_en = energies.at("valence_eval_sum") - energies.at("vxc") - energies.at("bxc") -
+                     energies.at("PAW_one_elec");
+            tot_en += -0.5 * energies.at("vha") + energies.at("exc") + energies.at("PAW_total_energy") +
+                      energies.at("ewald");
             if (ctx.hubbard_correction()) {
                 tot_en += energies.at("hubbard_energy") - energies.at("hubbard_one_el_contribution");
             }

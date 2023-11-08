@@ -2,14 +2,15 @@
 
 using namespace sirius;
 
-void test1()
+void
+test1()
 {
     int N = 30000000;
     std::vector<r3::vector<double>> a(N);
 
     for (int i = 0; i < N; i++) {
         double r = random<double>();
-        a[i] = {r, r, r};
+        a[i]     = {r, r, r};
     }
     std::vector<std::complex<double>> phase(N, 0);
     double t1{0};
@@ -32,10 +33,10 @@ void test1()
     }
     printf("(default schedule) speed: %f million phase-factors / sec.\n", N * 10 / t1 / 1000000);
     printf("(static schedule) speed: %f million phase-factors / sec.\n", N * 10 / t2 / 1000000);
-
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args(argn, argv, {{}});
 

@@ -48,7 +48,8 @@ class cmd_args
     std::map<std::string, std::string> keys_;
 
     template <typename T>
-    std::vector<T> get_vector(std::string const key__) const
+    std::vector<T>
+    get_vector(std::string const key__) const
     {
         auto s = keys_.at(key__);
         std::replace(s.begin(), s.end(), ':', ' ');
@@ -63,7 +64,8 @@ class cmd_args
     }
 
     template <typename T, std::size_t N>
-    std::array<T, N> get_array(std::string const key__) const
+    std::array<T, N>
+    get_array(std::string const key__) const
     {
         auto v = this->get_vector<T>(key__);
         if (v.size() != N) {
@@ -79,7 +81,8 @@ class cmd_args
         }
     }
 
-    void check_for_key(std::string const key__) const;
+    void
+    check_for_key(std::string const key__) const;
 
   public:
     /// Constructor.
@@ -97,20 +100,25 @@ class cmd_args
      */
     cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<std::string, std::string>> keys__);
 
-    void register_key(std::string const key__, std::string const description__);
+    void
+    register_key(std::string const key__, std::string const description__);
 
-    void parse_args(int argn__, char** argv__);
+    void
+    parse_args(int argn__, char** argv__);
 
-    void print_help();
+    void
+    print_help();
 
-    inline bool exist(const std::string key__) const
+    inline bool
+    exist(const std::string key__) const
     {
         return keys_.count(key__);
     }
 
     /// Get a value or terminate if key is not found.
     template <typename T>
-    inline T value(std::string const key__) const
+    inline T
+    value(std::string const key__) const
     {
         check_for_key(key__);
         T v;
@@ -119,24 +127,24 @@ class cmd_args
     }
 
     ///// Get a vector of values or terminate if key is not found.
-    //template <typename T>
-    //inline std::vector<T> value(std::string const key__) const
+    // template <typename T>
+    // inline std::vector<T> value(std::string const key__) const
     //{
-    //    check_for_key(key__);
-    //    return get_vector<T>(key__);
-    //}
+    //     check_for_key(key__);
+    //     return get_vector<T>(key__);
+    // }
 
-    //template <typename T, std::size_t N>
-    //inline std::array<T, N> value(std::string const key__) const
+    // template <typename T, std::size_t N>
+    // inline std::array<T, N> value(std::string const key__) const
     //{
-    //    check_for_key(key__);
-    //    return get_array<T, N>(key__);
-    //}
-
+    //     check_for_key(key__);
+    //     return get_array<T, N>(key__);
+    // }
 
     /// Get a value if key exists or return a default value.
     template <typename T>
-    inline T value(std::string const key__, T default_val__) const
+    inline T
+    value(std::string const key__, T default_val__) const
     {
         if (!exist(key__)) {
             return default_val__;
@@ -147,7 +155,8 @@ class cmd_args
     }
 
     template <typename T>
-    inline std::vector<T> value(std::string const key__, std::vector<T> default_val__) const
+    inline std::vector<T>
+    value(std::string const key__, std::vector<T> default_val__) const
     {
         if (!exist(key__)) {
             return default_val__;
@@ -156,7 +165,8 @@ class cmd_args
     }
 
     template <typename T, std::size_t N>
-    inline std::array<T, N> value(std::string const key__, std::array<T, N> default_val__) const
+    inline std::array<T, N>
+    value(std::string const key__, std::array<T, N> default_val__) const
     {
         if (!exist(key__)) {
             return default_val__;
@@ -164,25 +174,29 @@ class cmd_args
         return get_array<T, N>(key__);
     }
 
-    std::string operator[](const std::string key__) const
+    std::string
+    operator[](const std::string key__) const
     {
         return keys_.at(key__);
     }
 
-    std::map<std::string, std::string> keys() const
+    std::map<std::string, std::string>
+    keys() const
     {
         return keys_;
     }
 };
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__) const
+inline std::string
+cmd_args::value<std::string>(const std::string key__) const
 {
     return keys_.at(key__);
 }
 
 template <>
-inline std::string cmd_args::value<std::string>(const std::string key__, const std::string default_val__) const
+inline std::string
+cmd_args::value<std::string>(const std::string key__, const std::string default_val__) const
 {
     if (!exist(key__)) {
         return default_val__;
@@ -191,14 +205,16 @@ inline std::string cmd_args::value<std::string>(const std::string key__, const s
 }
 
 template <>
-inline std::vector<double> cmd_args::value<std::vector<double>>(const std::string key__) const
+inline std::vector<double>
+cmd_args::value<std::vector<double>>(const std::string key__) const
 {
     check_for_key(key__);
     return get_vector<double>(key__);
 }
 
 template <>
-inline std::vector<int> cmd_args::value<std::vector<int>>(const std::string key__) const
+inline std::vector<int>
+cmd_args::value<std::vector<int>>(const std::string key__) const
 {
     check_for_key(key__);
     return get_vector<int>(key__);

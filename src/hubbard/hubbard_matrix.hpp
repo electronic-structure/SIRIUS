@@ -60,71 +60,87 @@ class Hubbard_matrix
      * \param [inout] occ  Pointer to external occupancy tensor.
      * \param [in]    ld   Leading dimension of the outside tensor.
      * \return return the occupancy matrix if the first parameter is set to "get". */
-    void access(std::string const& what__, std::complex<double>* ptr__, int ld__);
+    void
+    access(std::string const& what__, std::complex<double>* ptr__, int ld__);
 
-    void print_local(int ia__, std::ostream& out__) const;
+    void
+    print_local(int ia__, std::ostream& out__) const;
 
-    void print_nonlocal(int idx__, std::ostream& out__) const;
+    void
+    print_nonlocal(int idx__, std::ostream& out__) const;
 
-    void zero();
+    void
+    zero();
 
     /// Return a vector containing the occupation numbers for each atomic orbital.
-    auto& local() const
+    auto&
+    local() const
     {
         return local_;
     }
 
-    auto& local(int ia__)
+    auto&
+    local(int ia__)
     {
         return local_[ia__];
     }
 
-    auto const& local(int ia__) const
+    auto const&
+    local(int ia__) const
     {
         return local_[ia__];
     }
 
-    auto& nonlocal() const
+    auto&
+    nonlocal() const
     {
         return nonlocal_;
     }
 
-    auto& nonlocal(int idx__)
+    auto&
+    nonlocal(int idx__)
     {
         return nonlocal_[idx__];
     }
 
-    auto const& nonlocal(int idx__) const
+    auto const&
+    nonlocal(int idx__) const
     {
         return nonlocal_[idx__];
     }
 
-    const auto& atomic_orbitals() const
+    const auto&
+    atomic_orbitals() const
     {
         return atomic_orbitals_;
     }
 
-    const auto& atomic_orbitals(const int idx__) const
+    const auto&
+    atomic_orbitals(const int idx__) const
     {
         return atomic_orbitals_[idx__];
     }
 
-    int offset(const int idx__) const
+    int
+    offset(const int idx__) const
     {
         return offset_[idx__];
     }
 
-    const auto& offset() const
+    const auto&
+    offset() const
     {
         return offset_;
     }
 
-    auto const& ctx() const
+    auto const&
+    ctx() const
     {
         return ctx_;
     }
 
-    int find_orbital_index(const int ia__, const int n__, const int l__) const
+    int
+    find_orbital_index(const int ia__, const int n__, const int l__) const
     {
         int at_lvl = 0;
         for (at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {

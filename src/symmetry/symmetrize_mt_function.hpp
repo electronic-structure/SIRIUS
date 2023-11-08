@@ -33,7 +33,7 @@ namespace sirius {
 template <typename Index_t>
 inline void
 symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& comm__, int num_mag_dims__,
-        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
+                       std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
     PROFILE("sirius::symmetrize_mt_function");
 
@@ -54,8 +54,8 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     mdarray<double, 2> rotm({lmmax, lmmax});
 
     /* symmetry-transformed functions */
-    mdarray<double, 4> fsym_loc({lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1,
-            spl_atoms.local_size()});
+    mdarray<double, 4> fsym_loc(
+            {lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1, spl_atoms.local_size()});
     fsym_loc.zero();
 
     mdarray<double, 3> ftmp({lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1});
@@ -71,16 +71,16 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
 
         for (auto it : spl_atoms) {
             /* get global index of the atom */
-            int ia = frlm.atoms()[it.i];
+            int ia       = frlm.atoms()[it.i];
             int lmmax_ia = frlm[ia].angular_domain_size();
             int nrmax_ia = frlm.unit_cell().atom(ia).num_mt_points();
-            int ja = sym__[i].spg_op.inv_sym_atom[ia];
+            int ja       = sym__[i].spg_op.inv_sym_atom[ia];
             /* apply {R|t} part of symmetry operation to all components */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
-                la::wrap(la::lib_t::blas).gemm('N', 'N', lmmax_ia, nrmax_ia, lmmax_ia, &alpha,
-                    rotm.at(memory_t::host), rotm.ld(), (*frlm__[j])[ja].at(memory_t::host),
-                    (*frlm__[j])[ja].ld(), &la::constant<double>::zero(),
-                    ftmp.at(memory_t::host, 0, 0, j), ftmp.ld());
+                la::wrap(la::lib_t::blas)
+                        .gemm('N', 'N', lmmax_ia, nrmax_ia, lmmax_ia, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                              (*frlm__[j])[ja].at(memory_t::host), (*frlm__[j])[ja].ld(), &la::constant<double>::zero(),
+                              ftmp.at(memory_t::host, 0, 0, j), ftmp.ld());
             }
             /* always symmetrize the scalar component */
             for (int ir = 0; ir < nrmax_ia; ir++) {
@@ -113,13 +113,12 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
 
     /* gather full function */
     double* sbuf = spl_atoms.local_size() ? fsym_loc.at(memory_t::host) : nullptr;
-    auto ld = static_cast<int>(fsym_loc.size(0) * fsym_loc.size(1) * fsym_loc.size(2));
+    auto ld      = static_cast<int>(fsym_loc.size(0) * fsym_loc.size(1) * fsym_loc.size(2));
 
-    mdarray<double, 4> fsym_glob({lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1,
-            frlm.atoms().size()});
+    mdarray<double, 4> fsym_glob(
+            {lmmax, frlm.unit_cell().max_num_mt_points(), num_mag_dims__ + 1, frlm.atoms().size()});
 
-    comm__.allgather(sbuf, fsym_glob.at(memory_t::host), ld * spl_atoms.local_size(),
-            ld * spl_atoms.global_offset());
+    comm__.allgather(sbuf, fsym_glob.at(memory_t::host), ld * spl_atoms.local_size(), ld * spl_atoms.global_offset());
 
     /* copy back the result */
     for (int i = 0; i < static_cast<int>(frlm.atoms().size()); i++) {
@@ -134,7 +133,6 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
     }
 }
 
-}
+} // namespace sirius
 
 #endif
-

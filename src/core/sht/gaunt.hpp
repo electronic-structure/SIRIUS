@@ -37,7 +37,7 @@ struct gaunt_L3
 {
     int lm3;
     int l3;
-    T   coef;
+    T coef;
 };
 
 /// Used in the {lm1, lm2, coefficient} : {lm3} way of grouping non-zero Gaunt coefficients
@@ -46,12 +46,12 @@ struct gaunt_L1_L2
 {
     int lm1;
     int lm2;
-    T   coef;
+    T coef;
 };
 
 /// Compact storage of non-zero Gaunt coefficients \f$ \langle \ell_1 m_1 | \ell_3 m_3 | \ell_2 m_2 \rangle \f$.
-/** Very important! The following notation is adopted and used everywhere: lm1 and lm2 represent 'bra' and 'ket' 
- *  spherical harmonics of the Gaunt integral and lm3 represent the inner spherical harmonic. 
+/** Very important! The following notation is adopted and used everywhere: lm1 and lm2 represent 'bra' and 'ket'
+ *  spherical harmonics of the Gaunt integral and lm3 represent the inner spherical harmonic.
  */
 template <typename T>
 class Gaunt_coefficients
@@ -123,7 +123,8 @@ class Gaunt_coefficients
     }
 
     /// Return number of non-zero Gaunt coefficients for a given lm3.
-    inline int num_gaunt(int lm3) const
+    inline int
+    num_gaunt(int lm3) const
     {
         assert(lm3 >= 0 && lm3 < lmmax3_);
         return static_cast<int>(gaunt_packed_L1_L2_[lm3].size());
@@ -144,7 +145,8 @@ class Gaunt_coefficients
      *  }
      *  \endcode
      */
-    inline gaunt_L1_L2<T> const& gaunt(int lm3, int idx) const
+    inline gaunt_L1_L2<T> const&
+    gaunt(int lm3, int idx) const
     {
         assert(lm3 >= 0 && lm3 < lmmax3_);
         assert(idx >= 0 && idx < (int)gaunt_packed_L1_L2_[lm3].size());
@@ -152,13 +154,15 @@ class Gaunt_coefficients
     }
 
     /// Return number of non-zero Gaunt coefficients for a combination of lm1 and lm2.
-    inline int num_gaunt(int lm1, int lm2) const
+    inline int
+    num_gaunt(int lm1, int lm2) const
     {
         return static_cast<int>(gaunt_packed_L3_(lm1, lm2).size());
     }
 
     /// Return a structure containing {lm3, coef} for a given lm1, lm2 and index
-    inline gaunt_L3<T> const& gaunt(int lm1, int lm2, int idx) const
+    inline gaunt_L3<T> const&
+    gaunt(int lm1, int lm2, int idx) const
     {
         return gaunt_packed_L3_(lm1, lm2)[idx];
     }
@@ -170,7 +174,8 @@ class Gaunt_coefficients
      *  \f]
      *  Result is assumed to be complex.
      */
-    inline auto sum_L3_gaunt(int lm1, int lm2, std::complex<double> const* v) const
+    inline auto
+    sum_L3_gaunt(int lm1, int lm2, std::complex<double> const* v) const
     {
         std::complex<double> zsum(0, 0);
         for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++) {
@@ -186,7 +191,8 @@ class Gaunt_coefficients
      *  \f]
      *  Result is assumed to be of the same type as Gaunt coefficients.
      */
-    inline T sum_L3_gaunt(int lm1, int lm2, double const* v) const
+    inline T
+    sum_L3_gaunt(int lm1, int lm2, double const* v) const
     {
         T sum = 0;
         for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++) {
@@ -196,20 +202,22 @@ class Gaunt_coefficients
     }
 
     /// Return vector of non-zero Gaunt coefficients for a given combination of lm1 and lm2
-    inline std::vector<gaunt_L3<T>> const& gaunt_vector(int lm1, int lm2) const
+    inline std::vector<gaunt_L3<T>> const&
+    gaunt_vector(int lm1, int lm2) const
     {
         return gaunt_packed_L3_(lm1, lm2);
     }
 
     /// Return the full tensor of Gaunt coefficients <R_{L1}|R_{L3}|R_{L2}> with a (L3, L1, L2) order of indices.
-    inline auto get_full_set_L3() const
+    inline auto
+    get_full_set_L3() const
     {
         mdarray<T, 3> gc(lmmax3_, lmmax1_, lmmax2_);
         gc.zero();
         for (int lm2 = 0; lm2 < lmmax2_; lm2++) {
             for (int lm1 = 0; lm1 < lmmax1_; lm1++) {
                 for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++) {
-                    int lm3 = gaunt_packed_L3_(lm1, lm2)[k].lm3;
+                    int lm3           = gaunt_packed_L3_(lm1, lm2)[k].lm3;
                     gc(lm3, lm1, lm2) = gaunt_packed_L3_(lm1, lm2)[k].coef;
                 }
             }

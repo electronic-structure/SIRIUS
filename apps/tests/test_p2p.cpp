@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_p2p()
+void
+test_p2p()
 {
     Communicator comm(MPI_COMM_WORLD);
 
@@ -11,12 +12,9 @@ void test_p2p()
 
     comm.barrier();
     Timer t1("comm:p2p");
-    if (comm.rank() == 0)
-    {
+    if (comm.rank() == 0) {
         comm.isend(&a[0], N, 1, 13);
-    }
-    else
-    {
+    } else {
         comm.recv(&a[0], N, 0, 13);
     }
     comm.barrier();
@@ -25,10 +23,10 @@ void test_p2p()
     double sz = N * sizeof(double) / double(1 << 20);
 
     printf("size: %.4f MB, time: %.4f (us), transfer speed: %.4f MB/sec\n", sz, tval * 1e6, sz / tval);
-
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     Platform::initialize(1);
     test_p2p();

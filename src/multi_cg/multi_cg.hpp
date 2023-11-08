@@ -43,36 +43,37 @@ namespace cg {
 
 template <class T>
 void
-repack(std::vector<T> &data, std::vector<int> const&ids)
+repack(std::vector<T>& data, std::vector<int> const& ids)
 {
     for (size_t i = 0; i < ids.size(); ++i) {
         data[i] = data[ids[i]];
     }
 }
 
-template<typename Matrix, typename Prec, typename StateVec>
+template <typename Matrix, typename Prec, typename StateVec>
 auto
-multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
-    int maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false) {
+multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
+         bool initial_guess_is_zero = false)
+{
 
     PROFILE("sirius::multi_cg");
-  
+
     auto n = X.cols();
 
     U.zero();
 
     // Use R for residual, we modify the right-hand side B in-place.
-    auto &R = B;
+    auto& R = B;
 
     // Use B effectively as the residual block-vector
     // R = B - A * X -- don't multiply when initial guess is zero.
     if (!initial_guess_is_zero)
         A.multiply(-1.0, X, 1.0, R, n);
 
-    auto rhos = std::vector<typename StateVec::value_type>(n);
+    auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
-    auto sigmas = rhos;
-    auto alphas = rhos;
+    auto sigmas   = rhos;
+    auto alphas   = rhos;
 
     // When vectors converge we move them to the front, but we can't really do
     // that with X, so we have to keep track of where is what.
@@ -170,87 +171,104 @@ multi_cg(Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C,
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
     }
-    struct {
+    struct
+    {
         std::vector<std::vector<typename StateVec::value_type>> residual_history;
-        int niter; } result{residual_history, niter};
+        int niter;
+    } result{residual_history, niter};
     return result;
 }
-}
+} // namespace cg
 
 /// Linear respone functions and objects.
 namespace lr {
 
-struct Wave_functions_wrap {
-    wf::Wave_functions<double> *x;
+struct Wave_functions_wrap
+{
+    wf::Wave_functions<double>* x;
     memory_t mem;
 
     typedef std::complex<double> value_type;
 
-    void zero()
+    void
+    zero()
     {
         x->zero(mem);
     }
 
-    int cols() const
+    int
+    cols() const
     {
         return x->num_wf().get();
     }
 
-    void block_dot(Wave_functions_wrap const& y__, std::vector<value_type>& rhos__, size_t N__)
+    void
+    block_dot(Wave_functions_wrap const& y__, std::vector<value_type>& rhos__, size_t N__)
     {
-        rhos__ = wf::inner_diag<double, value_type>(mem, *x, *y__.x, wf::spin_range(0),
-                wf::num_bands(N__));
+        rhos__ = wf::inner_diag<double, value_type>(mem, *x, *y__.x, wf::spin_range(0), wf::num_bands(N__));
     }
 
-    void repack(std::vector<int> const& ids__)
+    void
+    repack(std::vector<int> const& ids__)
     {
         PROFILE("sirius::Wave_functions_wrap::repack");
         int j{0};
         for (auto i : ids__) {
             if (j != i) {
-                wf::copy(mem, *x, wf::spin_index(0), wf::band_range(i, i + 1),
-                        *x, wf::spin_index(0), wf::band_range(j, j + 1));
+                wf::copy(mem, *x, wf::spin_index(0), wf::band_range(i, i + 1), *x, wf::spin_index(0),
+                         wf::band_range(j, j + 1));
             }
             ++j;
         }
     }
 
-    void copy(Wave_functions_wrap const &y__, size_t N__)
+    void
+    copy(Wave_functions_wrap const& y__, size_t N__)
     {
-        wf::copy(mem, *y__.x, wf::spin_index(0), wf::band_range(0, N__),
-                    *x, wf::spin_index(0), wf::band_range(0, N__));
+        wf::copy(mem, *y__.x, wf::spin_index(0), wf::band_range(0, N__), *x, wf::spin_index(0), wf::band_range(0, N__));
     }
 
-    void block_xpby(Wave_functions_wrap const &y__, std::vector<value_type> const &alphas, int N__) {
+    void
+    block_xpby(Wave_functions_wrap const& y__, std::vector<value_type> const& alphas, int N__)
+    {
         std::vector<value_type> ones(N__, 1.0);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), ones.data(), y__.x, alphas.data(), x);
     }
 
-    void block_axpy_scatter(std::vector<value_type> const& alphas__, Wave_functions_wrap const &y__,
-            std::vector<int> const &idx__, int n__)
+    void
+    block_axpy_scatter(std::vector<value_type> const& alphas__, Wave_functions_wrap const& y__,
+                       std::vector<int> const& idx__, int n__)
     {
         wf::axpy_scatter<double, value_type, int>(mem, wf::spin_range(0), alphas__.data(), y__.x, idx__.data(), x, n__);
     }
 
-    void block_axpy(std::vector<value_type> const &alphas__, Wave_functions_wrap const &y__, int N__) {
+    void
+    block_axpy(std::vector<value_type> const& alphas__, Wave_functions_wrap const& y__, int N__)
+    {
         std::vector<value_type> ones(N__, 1.0);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), alphas__.data(), y__.x, ones.data(), x);
     }
 };
 
-struct Identity_preconditioner {
+struct Identity_preconditioner
+{
     size_t num_active;
 
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+    void
+    apply(Wave_functions_wrap& x, Wave_functions_wrap const& y)
+    {
         x.copy(y, num_active);
     }
 
-    void repack(std::vector<int> const &ids) {
+    void
+    repack(std::vector<int> const& ids)
+    {
         num_active = ids.size();
     }
 };
 
-struct Smoothed_diagonal_preconditioner {
+struct Smoothed_diagonal_preconditioner
+{
     mdarray<double, 2> H_diag;
     mdarray<double, 2> S_diag;
     mdarray<double, 1> eigvals;
@@ -258,20 +276,17 @@ struct Smoothed_diagonal_preconditioner {
     memory_t mem;
     wf::spin_range sr;
 
-    void apply(Wave_functions_wrap &x, Wave_functions_wrap const &y) {
+    void
+    apply(Wave_functions_wrap& x, Wave_functions_wrap const& y)
+    {
         // Could avoid a copy here, but apply_precondition is in-place.
         x.copy(y, num_active);
-        sirius::apply_preconditioner(
-            mem,
-            sr,
-            wf::num_bands(num_active),
-            *x.x,
-            H_diag,
-            S_diag,
-            eigvals);
+        sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
     }
 
-    void repack(std::vector<int> const &ids) {
+    void
+    repack(std::vector<int> const& ids)
+    {
         num_active = ids.size();
         for (size_t i = 0; i < ids.size(); ++i) {
             eigvals[i] = eigvals[ids[i]];
@@ -279,34 +294,38 @@ struct Smoothed_diagonal_preconditioner {
     }
 };
 
-struct Linear_response_operator {
-    sirius::Simulation_context &ctx;
-    sirius::Hamiltonian_k<double> &Hk;
+struct Linear_response_operator
+{
+    sirius::Simulation_context& ctx;
+    sirius::Hamiltonian_k<double>& Hk;
     std::vector<double> min_eigenvals;
-    wf::Wave_functions<double> * Hphi;
-    wf::Wave_functions<double> * Sphi;
-    wf::Wave_functions<double> * evq;
-    wf::Wave_functions<double> * tmp;
+    wf::Wave_functions<double>* Hphi;
+    wf::Wave_functions<double>* Sphi;
+    wf::Wave_functions<double>* evq;
+    wf::Wave_functions<double>* tmp;
     double alpha_pv;
     wf::band_range br;
     wf::spin_range sr;
     memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
 
-    Linear_response_operator(
-        sirius::Simulation_context &ctx,
-        sirius::Hamiltonian_k<double> & Hk,
-        std::vector<double> const &eigvals,
-        wf::Wave_functions<double> * Hphi,
-        wf::Wave_functions<double> * Sphi,
-        wf::Wave_functions<double> * evq,
-        wf::Wave_functions<double> * tmp,
-        double alpha_pv,
-        wf::band_range br,
-        wf::spin_range sr,
-        memory_t mem)
-    : ctx(ctx), Hk(Hk), min_eigenvals(eigvals), Hphi(Hphi), Sphi(Sphi), evq(evq), tmp(tmp),
-      alpha_pv(alpha_pv), br(br), sr(sr), mem(mem), overlap(br.size(), br.size())
+    Linear_response_operator(sirius::Simulation_context& ctx, sirius::Hamiltonian_k<double>& Hk,
+                             std::vector<double> const& eigvals, wf::Wave_functions<double>* Hphi,
+                             wf::Wave_functions<double>* Sphi, wf::Wave_functions<double>* evq,
+                             wf::Wave_functions<double>* tmp, double alpha_pv, wf::band_range br, wf::spin_range sr,
+                             memory_t mem)
+        : ctx(ctx)
+        , Hk(Hk)
+        , min_eigenvals(eigvals)
+        , Hphi(Hphi)
+        , Sphi(Sphi)
+        , evq(evq)
+        , tmp(tmp)
+        , alpha_pv(alpha_pv)
+        , br(br)
+        , sr(sr)
+        , mem(mem)
+        , overlap(br.size(), br.size())
     {
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
@@ -315,12 +334,14 @@ struct Linear_response_operator {
         // there.;
 
         // flip the sign of the eigenvals so that the axpby works
-        for (auto &e : min_eigenvals) {
+        for (auto& e : min_eigenvals) {
             e *= -1;
         }
     }
 
-    void repack(std::vector<int> const &ids) {
+    void
+    repack(std::vector<int> const& ids)
+    {
         for (size_t i = 0; i < ids.size(); ++i) {
             min_eigenvals[i] = min_eigenvals[ids[i]];
         }
@@ -328,54 +349,43 @@ struct Linear_response_operator {
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
     // where SQ is S * eigenvectors.
-    void multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active) {
+    void
+    multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active)
+    {
         PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
-        Hk.apply_h_s<std::complex<double>>(
-            sr,
-            wf::band_range(0, num_active),
-            *x.x,
-            Hphi,
-            Sphi
-        );
+        Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, num_active), *x.x, Hphi, Sphi);
 
         std::vector<double> ones(num_active, 1.0);
 
         // effectively tmp := (H - e * S) * x, as an axpy, modifying Hphi.
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active),
-                min_eigenvals.data(), Sphi, ones.data(), Hphi);
-        wf::copy(mem, *Hphi, wf::spin_index(0), wf::band_range(0, num_active), *tmp,
-                wf::spin_index(0), wf::band_range(0, num_active));
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), min_eigenvals.data(), Sphi, ones.data(), Hphi);
+        wf::copy(mem, *Hphi, wf::spin_index(0), wf::band_range(0, num_active), *tmp, wf::spin_index(0),
+                 wf::band_range(0, num_active));
 
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
         // overlap := evq' * (S * x)
-        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active),
-                overlap, 0, 0);
+        wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active), overlap,
+                  0, 0);
 
         // Hphi := evq * overlap
-        wf::transform(
-            ctx.spla_context(),
-            mem,
-            overlap, 0, 0,
-            1.0, *evq, wf::spin_index(0), br,
-            0.0, *Hphi, wf::spin_index(0), wf::band_range(0, num_active));
+        wf::transform(ctx.spla_context(), mem, overlap, 0, 0, 1.0, *evq, wf::spin_index(0), br, 0.0, *Hphi,
+                      wf::spin_index(0), wf::band_range(0, num_active));
 
         Hk.apply_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_active), *Hphi, *Sphi);
 
         // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
         std::vector<double> alpha_pvs(num_active, alpha_pv);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active),
-                alpha_pvs.data(), Sphi, ones.data(), tmp);
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi, ones.data(), tmp);
         // y[:, i] <- alpha * tmp + beta * y[:, i]
         std::vector<double> alphas(num_active, alpha);
         std::vector<double> betas(num_active, beta);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active),
-                alphas.data(), tmp, betas.data(), y.x);
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), tmp, betas.data(), y.x);
     }
 };
 
-}
+} // namespace lr
 
-}
+} // namespace sirius
 #endif

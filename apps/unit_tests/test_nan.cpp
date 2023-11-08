@@ -5,7 +5,8 @@
 
 using namespace sirius;
 
-int run_test(cmd_args& args)
+int
+run_test(cmd_args& args)
 {
     double val = std::nan("");
     if (val != val) {
@@ -15,7 +16,8 @@ int run_test(cmd_args& args)
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -29,9 +31,15 @@ int main(int argn, char** argv)
     printf("running %-30s : ", argv[0]);
     int result = run_test(args);
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
 
     return result;

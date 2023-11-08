@@ -31,7 +31,8 @@
 
 namespace sirius {
 
-struct diagonalize_result_t {
+struct diagonalize_result_t
+{
     davidson_result_t davidson_result;
     double avg_num_iter{0};
     bool converged;
@@ -48,7 +49,7 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
     PROFILE("sirius::diagonalize");
 
     auto& ctx = H0__.ctx();
-    print_memory_usage(ctx.out(),FILE_LINE);
+    print_memory_usage(ctx.out(), FILE_LINE);
 
     diagonalize_result_t result;
 
@@ -93,7 +94,7 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
     kset__.comm().allreduce<bool, mpi::op_t::land>(&converged, 1);
     ctx.num_itsol_steps(num_dav_iter);
     result.avg_num_iter = static_cast<double>(num_dav_iter) / kset__.num_kpoints();
-    result.converged = converged;
+    result.converged    = converged;
     if (!ctx.full_potential()) {
         RTE_OUT(ctx.out(2)) << "average number of iterations: " << result.avg_num_iter << std::endl;
     }
@@ -125,6 +126,6 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
     return result;
 }
 
-}
+} // namespace sirius
 
 #endif

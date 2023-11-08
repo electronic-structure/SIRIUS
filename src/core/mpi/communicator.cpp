@@ -29,7 +29,8 @@ namespace sirius {
 
 namespace mpi {
 
-int num_ranks_per_node()
+int
+num_ranks_per_node()
 {
     static int num_ranks{-1};
     if (num_ranks == -1) {
@@ -63,7 +64,8 @@ int num_ranks_per_node()
     return num_ranks;
 }
 
-int get_device_id(int num_devices__)
+int
+get_device_id(int num_devices__)
 {
     static int id{-1};
     if (num_devices__ == 0) {

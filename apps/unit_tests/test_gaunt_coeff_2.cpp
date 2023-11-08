@@ -3,7 +3,8 @@
 
 using namespace sirius;
 
-int test1()
+int
+test1()
 {
     int lmax{20};
 
@@ -42,7 +43,8 @@ int test1()
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     int err{0};
     err += call_test("<Ylm|Ylm|Ylm> numerical", test1);

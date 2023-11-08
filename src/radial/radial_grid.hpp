@@ -61,7 +61,8 @@ class Radial_grid
     std::string name_;
 
     /// Initialize the grid.
-    void init()
+    void
+    init()
     {
         x_inv_ = mdarray<T, 1>({num_points()}, "Radial_grid::x_inv");
         dx_    = mdarray<T, 1>({num_points() - 1}, "Radial_grid::dx");
@@ -80,7 +81,8 @@ class Radial_grid
     /* forbid copy constructor */
     Radial_grid(Radial_grid<T> const& src__) = delete;
     /* forbid assignment operator */
-    Radial_grid& operator=(Radial_grid<T> const& src__) = delete;
+    Radial_grid&
+    operator=(Radial_grid<T> const& src__) = delete;
 
   public:
     /// Constructor of the empty object.
@@ -96,9 +98,11 @@ class Radial_grid
 
     Radial_grid(Radial_grid<T>&& src__) = default;
 
-    Radial_grid<T>& operator=(Radial_grid<T>&& src__) = default;
+    Radial_grid<T>&
+    operator=(Radial_grid<T>&& src__) = default;
 
-    int index_of(T x__) const
+    int
+    index_of(T x__) const
     {
         if (x__ < first() || x__ > last()) {
             return -1;
@@ -118,70 +122,82 @@ class Radial_grid
     }
 
     /// Number of grid points.
-    inline int num_points() const
+    inline int
+    num_points() const
     {
         return static_cast<int>(x_.size());
     }
 
     /// First point of the grid.
-    inline T first() const
+    inline T
+    first() const
     {
         return x_(0);
     }
 
     /// Last point of the grid.
-    inline T last() const
+    inline T
+    last() const
     {
         return x_(num_points() - 1);
     }
 
     /// Return \f$ x_{i} \f$.
-    inline T operator[](const int i) const
+    inline T
+    operator[](const int i) const
     {
         assert(i < (int)x_.size());
         return x_(i);
     }
 
     /// Return \f$ x_{i} \f$.
-    inline T x(const int i) const
+    inline T
+    x(const int i) const
     {
         return x_(i);
     }
 
     /// Return \f$ dx_{i} \f$.
-    inline T dx(const int i) const
+    inline T
+    dx(const int i) const
     {
         return dx_(i);
     }
 
     /// Return \f$ x_{i}^{-1} \f$.
-    inline T x_inv(const int i) const
+    inline T
+    x_inv(const int i) const
     {
         return x_inv_(i);
     }
 
-    inline std::string const& name() const
+    inline std::string const&
+    name() const
     {
         return name_;
     }
 
-    void copy_to_device()
+    void
+    copy_to_device()
     {
         x_.allocate(memory_t::device).copy_to(memory_t::device);
         dx_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
-    mdarray<T, 1> const& x() const
+    mdarray<T, 1> const&
+    x() const
     {
         return x_;
     }
 
-    mdarray<T, 1> const& dx() const
+    mdarray<T, 1> const&
+    dx() const
     {
         return dx_;
     }
 
-    Radial_grid<T> segment(int num_points__) const
+    Radial_grid<T>
+    segment(int num_points__) const
     {
         assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
         Radial_grid<T> r;
@@ -197,7 +213,8 @@ class Radial_grid
         return r;
     }
 
-    std::vector<real_type<T>> values() const
+    std::vector<real_type<T>>
+    values() const
     {
         std::vector<real_type<T>> v(num_points());
         for (int i = 0; i < num_points(); i++) {
@@ -206,7 +223,8 @@ class Radial_grid
         return v;
     }
 
-    uint64_t hash() const
+    uint64_t
+    hash() const
     {
         return 0;
     }
@@ -286,7 +304,7 @@ class Radial_grid_lin_exp : public Radial_grid<T>
         for (int i = 0; i < this->num_points(); i++) {
             T t = static_cast<T>(i) / (this->num_points() - 1);
             this->x_[i] =
-                rmin__ + (rmax__ - rmin__) * (beta * t + std::exp(std::pow(t, alpha)) - static_cast<T>(1)) * A;
+                    rmin__ + (rmax__ - rmin__) * (beta * t + std::exp(std::pow(t, alpha)) - static_cast<T>(1)) * A;
         }
         // T beta = std::log((rmax__ - rmin__ * (num_points__ - 1)) / rmin__);
         // for (int i = 0; i < this->num_points(); i++) {
@@ -318,7 +336,8 @@ class Radial_grid_ext : public Radial_grid<T>
 };
 
 template <typename T>
-Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__, int num_points__, T rmin__, T rmax__, double p__)
+Radial_grid<T>
+Radial_grid_factory(radial_grid_t grid_type__, int num_points__, T rmin__, T rmax__, double p__)
 {
     Radial_grid<T> rgrid;
 
@@ -346,7 +365,8 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__, int num_points__, 
     return rgrid;
 };
 
-inline std::pair<radial_grid_t, double> get_radial_grid_t(std::string str__)
+inline std::pair<radial_grid_t, double>
+get_radial_grid_t(std::string str__)
 {
     auto pos = str__.find(",");
     if (pos == std::string::npos) {

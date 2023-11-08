@@ -36,16 +36,18 @@ namespace acc {
 /// Interface to accelerated lapack functions.
 namespace lapack {
 
-inline int getrf(int m, int n, acc_complex_double_t* A, int* devIpiv, int lda)
+inline int
+getrf(int m, int n, acc_complex_double_t* A, int* devIpiv, int lda)
 {
-#if defined (SIRIUS_CUDA)
+#if defined(SIRIUS_CUDA)
     auto& handle = cusolver::cusolver_handle();
     int* devInfo = acc::allocate<int>(1);
 
     int lwork;
-    CALL_CUSOLVER(cusolverDnZgetrf_bufferSize, (handle,  m, n, A, lda, &lwork));
+    CALL_CUSOLVER(cusolverDnZgetrf_bufferSize, (handle, m, n, A, lda, &lwork));
     auto workspace = acc::allocate<cuDoubleComplex>(lwork);
-    CALL_CUSOLVER(cusolverDnZgetrf, (handle, m, n, reinterpret_cast<cuDoubleComplex *>(A), lda, workspace, devIpiv, devInfo));
+    CALL_CUSOLVER(cusolverDnZgetrf,
+                  (handle, m, n, reinterpret_cast<cuDoubleComplex*>(A), lda, workspace, devIpiv, devInfo));
     acc::deallocate(workspace);
 
     int cpuInfo;
@@ -65,7 +67,9 @@ inline int getrf(int m, int n, acc_complex_double_t* A, int* devIpiv, int lda)
 #endif
 }
 
-inline int getrs(char trans, int n, int nrhs, const acc_complex_double_t* A, int lda, const int* devIpiv, acc_complex_double_t* B, int ldb)
+inline int
+getrs(char trans, int n, int nrhs, const acc_complex_double_t* A, int lda, const int* devIpiv, acc_complex_double_t* B,
+      int ldb)
 {
 #if defined(SIRIUS_CUDA)
     auto& handle = cusolver::cusolver_handle();

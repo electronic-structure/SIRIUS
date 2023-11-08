@@ -45,6 +45,6 @@ generate_sbessel_mt(Simulation_context const& ctx__, int lmax__)
     return sbessel_mt;
 }
 
-}
+} // namespace sirius
 
 #endif

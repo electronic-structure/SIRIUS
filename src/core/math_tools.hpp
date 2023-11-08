@@ -27,7 +27,8 @@
 
 namespace sirius {
 
-inline auto confined_polynomial(double r, double R, int p1, int p2, int dm)
+inline auto
+confined_polynomial(double r, double R, int p1, int p2, int dm)
 {
     double t = 1.0 - std::pow(r / R, 2);
     switch (dm) {
@@ -49,14 +50,16 @@ inline auto confined_polynomial(double r, double R, int p1, int p2, int dm)
 
 /// Sign of the variable.
 template <typename T>
-inline int sign(T val)
+inline int
+sign(T val)
 {
     return (T(0) < val) - (val < T(0));
 }
 
 /// Checks if number is integer with a given tolerance.
 template <typename T>
-inline bool is_int(T val__, T eps__)
+inline bool
+is_int(T val__, T eps__)
 {
     if (std::abs(std::round(val__) - val__) > eps__) {
         return false;
@@ -67,7 +70,8 @@ inline bool is_int(T val__, T eps__)
 
 /// Compute a factorial.
 template <typename T>
-inline T factorial(int n)
+inline T
+factorial(int n)
 {
     RTE_ASSERT(n >= 0);
 
@@ -78,21 +82,24 @@ inline T factorial(int n)
     return result;
 }
 
-inline auto round(double a__, int n__)
+inline auto
+round(double a__, int n__)
 {
     double a0 = std::floor(a__);
     double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
     return a0 + b;
 }
 
-inline auto round(std::complex<double> a__, int n__)
+inline auto
+round(std::complex<double> a__, int n__)
 {
     return std::complex<double>(round(a__.real(), n__), round(a__.imag(), n__));
 }
 
 /// Simple hash function.
 /** Example: std::printf("hash: %16llX\n", hash()); */
-inline auto hash(void const* buff, size_t size, uint64_t h = 5381)
+inline auto
+hash(void const* buff, size_t size, uint64_t h = 5381)
 {
     unsigned char const* p = static_cast<unsigned char const*>(buff);
     for (size_t i = 0; i < size; i++) {
@@ -102,7 +109,8 @@ inline auto hash(void const* buff, size_t size, uint64_t h = 5381)
 }
 
 /// Simple random number generator.
-inline uint32_t random_uint32(bool reset = false)
+inline uint32_t
+random_uint32(bool reset = false)
 {
     static uint32_t a = 123456;
     if (reset) {
@@ -117,76 +125,87 @@ inline uint32_t random_uint32(bool reset = false)
 }
 
 template <typename T>
-inline T random();
+inline T
+random();
 
 template <>
-inline int random<int>()
+inline int
+random<int>()
 {
     return static_cast<int>(random_uint32());
 }
 
 template <>
-inline double random<double>()
+inline double
+random<double>()
 {
     return static_cast<double>(random_uint32()) / std::numeric_limits<uint32_t>::max();
 }
 
 template <>
-inline std::complex<double> random<std::complex<double>>()
+inline std::complex<double>
+random<std::complex<double>>()
 {
     return std::complex<double>(random<double>(), random<double>());
 }
 
 template <>
-inline float random<float>()
+inline float
+random<float>()
 {
     return static_cast<float>(random<double>());
 }
 
 template <>
-inline std::complex<float> random<std::complex<float>>()
+inline std::complex<float>
+random<std::complex<float>>()
 {
     return std::complex<float>(random<float>(), random<float>());
 }
 
 template <typename T>
-auto abs_diff(T a, T b)
+auto
+abs_diff(T a, T b)
 {
     return std::abs(a - b);
 }
 
 template <typename T>
-auto rel_diff(T a, T b)
+auto
+rel_diff(T a, T b)
 {
     return std::abs(a - b) / (std::abs(a) + std::abs(b) + 1e-13);
 }
 
 /// Return complex conjugate of a number. For a real value this is the number itself.
-inline auto conj(double x__)
+inline auto
+conj(double x__)
 {
     /* std::conj() will return complex for a double value input; this is not what we want */
     return x__;
 }
 
 /// Return complex conjugate of a number.
-inline auto conj(std::complex<double> x__)
+inline auto
+conj(std::complex<double> x__)
 {
     return std::conj(x__);
 }
 
 template <typename T>
-inline T zero_if_not_complex(T x__)
+inline T
+zero_if_not_complex(T x__)
 {
     return x__;
 };
 
 template <typename T>
-inline T zero_if_not_complex(std::complex<T> x__)
+inline T
+zero_if_not_complex(std::complex<T> x__)
 {
     return 0;
 };
 
-}
+} // namespace sirius
 
 #endif
-

@@ -29,7 +29,8 @@ namespace sirius {
 
 namespace acc {
 
-int num_devices()
+int
+num_devices()
 {
 #if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     static std::atomic<int> count(-1);
@@ -47,7 +48,8 @@ int num_devices()
 #endif
 }
 
-std::vector<acc_stream_t>& streams()
+std::vector<acc_stream_t>&
+streams()
 {
     static std::vector<acc_stream_t> streams_;
     return streams_;

@@ -2,12 +2,13 @@
 
 using namespace sirius;
 
-void test(std::vector<int> sizes, memory_t M__)
+void
+test(std::vector<int> sizes, memory_t M__)
 {
     std::vector<char*> ptrs;
-    for (auto sm: sizes) {
-        auto s = sm * (size_t(1) << 20);
-        auto t0 = wtime();
+    for (auto sm : sizes) {
+        auto s   = sm * (size_t(1) << 20);
+        auto t0  = wtime();
         auto ptr = allocate<char>(s, M__);
         ptrs.push_back(ptr);
         if (is_host_memory(M__)) {
@@ -26,18 +27,19 @@ void test(std::vector<int> sizes, memory_t M__)
 #endif
         }
         auto t2 = wtime();
-        //sddk::deallocate(ptr, M__);
-        //auto t3 = wtime();
+        // sddk::deallocate(ptr, M__);
+        // auto t3 = wtime();
 
         std::cout << "block size (Mb) : " << sm << ", alloc time : " << (t1 - t0) - (t2 - t1) << "\n";
         print_memory_usage(std::cout, FILE_LINE);
     }
-    for (auto p: ptrs) {
+    for (auto p : ptrs) {
         deallocate(p, M__);
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--memory_t=", "{string} type of the memory");

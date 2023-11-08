@@ -30,11 +30,10 @@
 namespace sirius {
 
 inline void
-apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__,
-        basis_functions_index const& indexb__, const int num_mag_comp__,
-        std::vector<mdarray<double, 2>> const& rotm__,
-        mdarray<std::complex<double>, 2> const& spin_rot_su2__,
-        mdarray<std::complex<double>, 3>& dm_ja__)
+apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__, basis_functions_index const& indexb__,
+                                 const int num_mag_comp__, std::vector<mdarray<double, 2>> const& rotm__,
+                                 mdarray<std::complex<double>, 2> const& spin_rot_su2__,
+                                 mdarray<std::complex<double>, 3>& dm_ja__)
 {
     auto& indexr = indexb__.indexr();
 
@@ -68,7 +67,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
                         dm_ja__(offset1 + m1, offset2 + m2, 0) += dm_rot_spatial[0];
                     } else { /* magnetic symmetrization */
                         std::complex<double> spin_dm[2][2] = {{dm_rot_spatial[0], dm_rot_spatial[2]},
-                                                        {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
+                                                              {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
 
                         /* spin blocks of density matrix are: uu, dd, ud
                            the mapping from linear index (0, 1, 2) of density matrix components is:
@@ -79,8 +78,8 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
                             for (int is = 0; is < 2; is++) {
                                 for (int js = 0; js < 2; js++) {
                                     dm_ja__(offset1 + m1, offset2 + m2, k) +=
-                                        spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
-                                        std::conj(spin_rot_su2__(std::min(k, 1), js));
+                                            spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
+                                            std::conj(spin_rot_su2__(std::min(k, 1), js));
                                 }
                             }
                         }
@@ -119,9 +118,9 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  There might be several localized orbitals per atom. We wish to compute the symmetrized occupation matrix:
  *  \f[
  *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
- *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle = 
- *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ} 
- *       \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat{\bf P} \Psi_{j{\bf k}}^{\sigma} \rangle 
+ *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle =
+ *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ}
+ *       \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat{\bf P} \Psi_{j{\bf k}}^{\sigma} \rangle
  *       w_{\bf k} n_{j{\bf k}}
  *       \langle \hat{\bf P} \Psi_{j{\bf k}}^{\sigma'} | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle
  *  \f]
@@ -137,7 +136,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  applied to the KS states.
  *  \f[
  *   \int \big( \hat {\bf P}\Psi_{j {\bf k}}^{\sigma *}({\bf r}) \big)
- *        \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r} = 
+ *        \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) d{\bf r} =
  *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
  *     \big( \hat {\bf P}^{-1} \phi_{\ell m}({\bf r} - {\bf r}_{\alpha} - {\bf T}) \big) d{\bf r}
  *  \f]
@@ -145,7 +144,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  Let's first derive how the inverse symmetry operation acts on the localized orbital centered on the
  *  atom inside a unit cell (no <b>T</b>):
  *  \f[
- *   \hat {\bf P}^{-1} \phi\big( {\bf r} -  {\bf r}_{\alpha} \big) = 
+ *   \hat {\bf P}^{-1} \phi\big( {\bf r} -  {\bf r}_{\alpha} \big) =
  *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} \big) = \\
  *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} - {\bf t})) \big) =
  *     \tilde \phi \big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} - {\bf t}) \big)
@@ -163,8 +162,8 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \image html sym_orbital1.png width=400px
  *
  *  Under this symmetry operation the atom coordinate will transform into [1/2, 3/2] (red dot), but
- *  this is not(!) how the orbital is transformed. The origin of the atom will transform according to 
- *  the inverse of \f$ \hat {\bf P} \f$ into \f$ {\bf r}_{\beta} = [-1/2, -1/2] \f$ (blue dot) such that 
+ *  this is not(!) how the orbital is transformed. The origin of the atom will transform according to
+ *  the inverse of \f$ \hat {\bf P} \f$ into \f$ {\bf r}_{\beta} = [-1/2, -1/2] \f$ (blue dot) such that
  *  \f$ \hat {\bf P} {\bf r}_{\beta} = {\bf r}_{\alpha} \f$:
  *
  *  \image html sym_orbital2.png width=400px
@@ -178,10 +177,10 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  Now let's derive how the inverse symmetry operation acts on the localized orbital \f$ \phi({\bf r}) \f$
  *  centered on atom in the arbitrary unit cell:
  *  \f[
- *   \hat {\bf P}^{-1} \phi\big( {\bf r} - {\bf r}_{\alpha} - {\bf T} \big) = 
+ *   \hat {\bf P}^{-1} \phi\big( {\bf r} - {\bf r}_{\alpha} - {\bf T} \big) =
  *     \phi\big( {\bf R} {\bf r} + {\bf t} - {\bf r}_{\alpha} - {\bf T} \big) = \\
- *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t})) \big) = 
- *     \tilde \phi\big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t}) \big) = 
+ *     \phi\big( {\bf R}({\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t})) \big) =
+ *     \tilde \phi\big( {\bf r} - {\bf R}^{-1}({\bf r}_{\alpha} + {\bf T} - {\bf t}) \big) =
  *     \tilde \phi\big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
  *  \f]
  *
@@ -200,7 +199,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \f]
  *  so
  *  \f[
- *    \tilde \phi_{\ell m}({\bf r}) =\hat {\bf P}^{-1} \phi_{\ell}(r) Y_{\ell m}(\theta, \phi) = 
+ *    \tilde \phi_{\ell m}({\bf r}) =\hat {\bf P}^{-1} \phi_{\ell}(r) Y_{\ell m}(\theta, \phi) =
  *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) \phi_{\ell}(r) Y_{\ell m'}(\theta, \phi)
  *  \f]
  *
@@ -208,13 +207,13 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \f[
  *   \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
  *    \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} - {\bf T}_{P\alpha\beta} - {\bf R}^{-1}{\bf T} \big)
- *    d{\bf r} = 
+ *    d{\bf r} =
  *    e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})} \int \Psi_{j {\bf k}}^{\sigma *}({\bf r})
  *     \tilde \phi_{\ell m} \big( {\bf r} - {\bf r}_{\beta} \big) d{\bf r}
  *  \f]
  *  (the "-" in the phase factor appears because KS wave-functions are complex conjugate) and now we can write
  *  \f[
- *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} = 
+ *    A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma} =
  *      e^{-i{\bf k}({\bf T}_{P\alpha\beta} + {\bf R}^{-1}{\bf T})}
  *      \sum_{m'} D_{mm'}^{\ell}({\bf P}) A_{\ell m' j{\bf k}}^{\beta \sigma}
  *  \f]
@@ -222,7 +221,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  The final expression for the symmetrized matrix is then
  *  \f[
  *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
- *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ} 
+ *       \sum_{\bf P} \sum_{j} \sum_{{\bf k}}^{IBZ}
  *        A_{\ell m j\hat {\bf P}{\bf k}}^{\alpha {\bf T} \sigma *}
  *       w_{\bf k} n_{j{\bf k}}
  *        A_{\ell' m' j\hat {\bf P}{\bf k}}^{\alpha' {\bf T'} \sigma'} = \\ = \sum_{\bf P} \sum_{j}
@@ -247,7 +246,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \f]
  *
  *
- *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
+ *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert
  *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:
  *  \f[
  *    \langle  \phi_{\ell m}^{\alpha} | \Psi_{j{\bf k}}^{\sigma} \rangle = \sum_{\bf G}
@@ -255,7 +254,8 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \f]
  *
  */
-inline void symmetrize_density_matrix(Unit_cell const& uc__, density_matrix_t& dm__, int num_mag_comp__)
+inline void
+symmetrize_density_matrix(Unit_cell const& uc__, density_matrix_t& dm__, int num_mag_comp__)
 {
     PROFILE("sirius::symmetrize_density_matrix");
 
@@ -268,19 +268,19 @@ inline void symmetrize_density_matrix(Unit_cell const& uc__, density_matrix_t& d
 
     density_matrix_t dm_sym(uc__, num_mag_comp__);
 
-    int lmax  = uc__.lmax();
+    int lmax = uc__.lmax();
 
     for (int i = 0; i < sym.size(); i++) {
-        int pr    = sym[i].spg_op.proper;
-        auto eang = sym[i].spg_op.euler_angles;
-        auto rotm = sht::rotation_matrix<double>(lmax, eang, pr);
+        int pr             = sym[i].spg_op.proper;
+        auto eang          = sym[i].spg_op.euler_angles;
+        auto rotm          = sht::rotation_matrix<double>(lmax, eang, pr);
         auto& spin_rot_su2 = sym[i].spin_rotation_su2;
 
         for (int ia = 0; ia < uc__.num_atoms(); ia++) {
             int ja = sym[i].spg_op.sym_atom[ia];
 
-            sirius::apply_symmetry_to_density_matrix(dm__[ia], uc__.atom(ia).type().indexb(),
-                    num_mag_comp__, rotm, spin_rot_su2, dm_sym[ja]);
+            sirius::apply_symmetry_to_density_matrix(dm__[ia], uc__.atom(ia).type().indexb(), num_mag_comp__, rotm,
+                                                     spin_rot_su2, dm_sym[ja]);
         }
     }
 
@@ -293,7 +293,6 @@ inline void symmetrize_density_matrix(Unit_cell const& uc__, density_matrix_t& d
     }
 }
 
-}
+} // namespace sirius
 
 #endif
-

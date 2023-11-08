@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_radial_solver()
+void
+test_radial_solver()
 {
     Radial_grid_lin_exp<double> rgrid(1500, 1e-7, 2.0);
     int zn{38};
@@ -29,13 +30,13 @@ void test_radial_solver()
     fclose(fout);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
