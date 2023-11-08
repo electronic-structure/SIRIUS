@@ -20,6 +20,7 @@ BraceWrapping: {
 IndentCaseLabels: 'true'
 AccessModifierOffset: -2
 IndentWidth: 4
+ContinuationIndentWidth: 8
 ColumnLimit: 120
 UseTab: Never
 AllowShortFunctionsOnASingleLine: 'None'
@@ -36,14 +37,13 @@ BinPackParameters: 'true'
 BinPackArguments: 'true'
 MaxEmptyLinesToKeep: 1
 BreakConstructorInitializersBeforeComma: 'true'
-#BreakConstructorInitializersStyle: 'BeforeComma'
 ConstructorInitializerIndentWidth: 4
 Cpp11BracedListStyle: 'true'
 
-#AlwaysBreakAfterReturnType: None
-AlwaysBreakAfterReturnType: 'TopLevelDefinitions'
+AlwaysBreakAfterReturnType: All
+#AlwaysBreakAfterReturnType: 'TopLevelDefinitions'
 
 #AllowShortLambdasOnASingleLine: None
-#AlignAfterOpenBracket: Align
+#AlignAfterOpenBracket: DontAlign
 
 ...
