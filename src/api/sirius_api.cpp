@@ -1,4 +1,3 @@
-// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -735,6 +734,10 @@ sirius_set_parameters:
       type: bool
       attr: in, optional
       doc: Use all atomic orbitals found in all ps potentials to compute the orthogonalization operator.
+    hubbard_constrained_calculation:
+      type: bool
+      attr: in, optional
+      doc: Use the constrained hubbard method to intiate the scf loop
     hubbard_orbitals:
       type: string
       attr: in, optional
@@ -755,30 +758,6 @@ sirius_set_parameters:
       type: double
       attr: in, optional
       doc: Smearing width
-    hubbard_constrained_calculation__
-      type: bool
-      attr: in, optional
-      doc: Use the constrained hubbard method to intiate the scf loop
-    hubbard_conv_thr:
-      type: double
-      attr: in, optional
-      doc: convergence threhold when the hubbard occupation is constrained
-    hubbard_mixing_beta:
-      type: double
-      attr:in, optional
-      doc: mixing parameter for the hubbard constraints
-    hubbard_strength:
-      type: double
-      attr: in, optional
-      doc: energy penalty when the effective occupation numbers deviate from the reference numbers
-    hubbard_maxstep:
-      type: int
-      attr: in, optional
-      doc: maximum number of constrained iterations
-    hubbard_constraint_type:
-      type: int
-      attr: in. optional
-      doc: type of constrain, 'energy' or 'occupation'
     spglib_tol:
       type: double
       attr: in, optional
@@ -801,12 +780,9 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       bool const* so_correction__, char const* valence_rel__, char const* core_rel__,
                       double const* iter_solver_tol_empty__, char const* iter_solver_type__, int const* verbosity__,
                       bool const* hubbard_correction__, int const* hubbard_correction_kind__,
-                      bool const* hubbard_full_orthogonalization__, int const* hub_max_iter__,
-                      double const* hub_cons_error__, char const* hubbard_orbitals__, int const* sht_coverage__,
-                      double const* min_occupancy__, char const* smearing__, double const* smearing_width__,
-                      bool const* hubbard_constrained_calculation__, double const* hubbard_conv_thr__,
-                      double const* hubbard_mixing_beta__, double const* hubbard_strength__,
-                      int const* hubbard_maxstep__, char const* hubbard_constraint_type__, double const* spglib_tol__,
+                      bool const* hubbard_full_orthogonalization__, bool const* hubbard_constrained_calculation__,
+                      char const* hubbard_orbitals__, int const* sht_coverage__, double const* min_occupancy__,
+                      char const* smearing__, double const* smearing_width__, double const* spglib_tol__,
                       char const* electronic_structure_method__, int* error_code__)
 {
     call_sirius(
@@ -879,26 +855,6 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
 
             if (hubbard_constrained_calculation__ != nullptr) {
                 sim_ctx.cfg().hubbard().constrained_hubbard_calculation(*hubbard_constrained_calculation__);
-            }
-
-            if (hubbard_conv_thr__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_error(*hubbard_conv_thr__);
-            }
-
-            if (hubbard_mixing_beta__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_beta_mixing(*hubbard_mixing_beta__);
-            }
-
-            if (hubbard_strength__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_strength(*hubbard_strength__);
-            }
-
-            if (hubbard_maxstep__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_max_iteration(*hubbard_maxstep__);
-            }
-
-            if (hubbard_constraint_type__ != nullptr) {
-                sim_ctx.cfg().hubbard().constraint_method(hubbard_constraint_type__);
             }
 
             if (hubbard_orbitals__ != nullptr) {
@@ -1834,7 +1790,11 @@ sirius_find_ground_state:
       type: double
       attr: out, optional
       doc: Minimum value of density on the real-space grid. If negative, total energy can't be trusted. Valid only if
-SCF calculation is converged. error_code: type: int attr: out, optional doc: Error code.
+           SCF calculation is converged.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void
@@ -2524,7 +2484,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
                 std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
-                #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
                 for (int i = 0; i < *ngv__; i++) {
                     r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
                     // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
@@ -3401,8 +3361,10 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                     if (ks.comm().rank() == src_rank) {
                         auto kp   = ks.get<double>(jk);
                         int count = kp->spinor_wave_functions().ld();
-                        req       = ks.comm().isend(kp->spinor_wave_functions().at(memory_t::host, 0,
-                                        sirius::wf::spin_index(0), sirius::wf::band_index(0)), count * sim_ctx.num_bands(), dest_rank, tag);
+                        req =
+                            ks.comm().isend(kp->spinor_wave_functions().at(memory_t::host, 0, sirius::wf::spin_index(0),
+                                                                           sirius::wf::band_index(0)),
+                                            count * sim_ctx.num_bands(), dest_rank, tag);
                     }
                     /* receive wave-functions */
                     if (ks.comm().rank() == dest_rank) {
@@ -3862,8 +3824,9 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 auto d2 = sim_ctx.fft_grid().limits(2);
 
                 mdarray<int, 3> index_by_gvec({index_range(d0.first, d0.second + 1),
-                            index_range(d1.first, d1.second + 1),
-                            index_range(d2.first, d2.second + 1)}, index_by_gvec__);
+                                               index_range(d1.first, d1.second + 1),
+                                               index_range(d2.first, d2.second + 1)},
+                                              index_by_gvec__);
                 std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(),
                           -1);
 
@@ -5723,11 +5686,13 @@ sirius_nlcg_params(void* const* handler__, void* const* ks_handler__, double con
             nlcglib::nlcg_info info;
             switch (processing_unit) {
                 case device_t::CPU: {
-                    info = nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+                    info = nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter,
+                                                restart);
                     break;
                 }
                 case device_t::GPU: {
-                    info = nlcglib::nlcg_us_device(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+                    info = nlcglib::nlcg_us_device(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter,
+                                                   restart);
                     break;
                 }
             }
@@ -5802,9 +5767,7 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 
             bool test{false};
 
-            auto v = conf_dict.nonlocal();
-
-            for (int idx = 0; idx < v.size(); idx++) {
+            for (int idx = 0; idx < conf_dict.nonlocal().size(); idx++) {
                 auto v     = conf_dict.nonlocal(idx);
                 auto at_pr = v.atom_pair();
                 /* search if the pair is already present */
@@ -5834,8 +5797,73 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 
 /*
 @api begin
+sirius_set_hubbard_contrained_parameters:
+   doc: Set the parameters controlling hubbard constrained calculation
+   arguments:
+     handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+     hubbard_conv_thr:
+      type: double
+      attr: in, optional
+      doc: convergence threhold when the hubbard occupation is constrained
+     hubbard_mixing_beta:
+      type: double
+      attr: in, optional
+      doc: mixing parameter for the hubbard constraints
+     hubbard_strength:
+      type: double
+      attr: in, optional
+      doc: energy penalty when the effective occupation numbers deviate from the reference numbers
+     hubbard_maxstep:
+      type: int
+      attr: in, optional
+      doc: maximum number of constrained iterations
+      type: string
+      attr: in, optional
+      doc: type of constrain, energy or occupation
+     error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+  @api end
+*/
+void
+sirius_set_hubbard_contrained_parameters(void* const* handler__, double const* hubbard_conv_thr__,
+                                         double const* hubbard_mixing_beta__, double const* hubbard_strength__,
+                                         int const* hubbard_maxstep__, char const* hubbard_constraint_type__,
+                                         int* const error_code__)
+{
+    call_sirius(
+        [&]() {
+            auto& sim_ctx = get_sim_ctx(handler__);
+            if (hubbard_conv_thr__ != nullptr) {
+                sim_ctx.cfg().hubbard().constrained_hubbard_error(*hubbard_conv_thr__);
+            }
+
+            if (hubbard_mixing_beta__ != nullptr) {
+                sim_ctx.cfg().hubbard().constrained_hubbard_beta_mixing(*hubbard_mixing_beta__);
+            }
+
+            if (hubbard_strength__ != nullptr) {
+                sim_ctx.cfg().hubbard().constrained_hubbard_strength(*hubbard_strength__);
+            }
+
+            if (hubbard_maxstep__ != nullptr) {
+                sim_ctx.cfg().hubbard().constrained_hubbard_max_iteration(*hubbard_maxstep__);
+            }
+
+            if (hubbard_constraint_type__ != nullptr) {
+                sim_ctx.cfg().hubbard().constraint_method(hubbard_constraint_type__);
+            }
+        },
+        error_code__);
+}
+/*
+@api begin
 sirius_add_hubbard_atom_constraint:
-  doc: Add a non-local Hubbard interaction V for a pair of atoms.
+  doc: Information about the constrained atomic level
   arguments:
     handler:
       type: ctx_handler
@@ -5853,7 +5881,11 @@ sirius_add_hubbard_atom_constraint:
       type: int
       attr: in, required
       doc: angular momentum of the atomic level
-     occ:
+    lmax_at:
+      type: int
+      attr: in, required
+      doc: maximum angular momentum
+    occ:
       type: double
       attr: in, required, dimension(2 * lmax_at + 1, 2 * lmax_at + 1, 2)
       doc: value of the occupation matrix for this level
@@ -5869,10 +5901,9 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
 {
     call_sirius(
         [&]() {
-            auto& sim_ctx  = get_sim_ctx(handler__);
-            auto conf_dict = sim_ctx.cfg().hubbard().local_constraint();
+            auto& sim_ctx = get_sim_ctx(handler__);
             json elem;
-            elem["atom_index"] = *atom_id__;
+            elem["atom_index"] = *atom_id__ - 1;
             elem["n"]          = *n__;
             elem["l"]          = *l__;
             const mdarray<double, 3> occ_({2 * *lmax_at__ + 1, 2 * *lmax_at__ + 1, 2}, (double* const)occ__);
@@ -5880,8 +5911,10 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
 
             // const int lda_ = 2 * *lmax_at__ + 1;
             for (int s = 0; s < 2; s++) {
+                elem_occ_[s].clear();
                 elem_occ_[s].resize(2 * *l__ + 1);
                 for (int m = 0; m < 2 * *l__ + 1; m++) {
+                    elem_occ_[s][m].clear();
                     elem_occ_[s][m].resize(2 * *l__ + 1);
                     for (int mp = 0; mp < 2 * *l__ + 1; mp++) {
                         elem_occ_[s][m][mp] = occ_(m, mp, s);
@@ -5889,7 +5922,7 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                 }
             }
             elem["constrained_occupancy"] = elem_occ_;
-            conf_dict.append(elem);
+            sim_ctx.cfg().hubbard().local_constraint().append(elem);
         },
         error_code__);
 }
@@ -6112,9 +6145,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
             /* set up the diagonal preconditioner */
             auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
             mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
-            eigvals_mdarray = [&](int i) {
-                return eigvals_vec[i];
-            };
+            eigvals_mdarray = [&](int i) { return eigvals_vec[i]; };
             /* allocate and copy eigvals_mdarray to GPU if running on GPU */
             if (is_device_memory(mem)) {
                 eigvals_mdarray.allocate(mem).copy_to(mem);
@@ -6270,8 +6301,8 @@ sirius_set_density_matrix(void** handler__, int const* ia__, std::complex<double
         [&]() {
             auto& gs = get_gs(handler__);
             mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
-            int ia = *ia__ - 1;
-            auto& atom = gs.ctx().unit_cell().atom(ia);
+            int ia       = *ia__ - 1;
+            auto& atom   = gs.ctx().unit_cell().atom(ia);
             auto idx_map = atomic_orbital_index_map_QE(atom.type());
             int nbf      = atom.mt_basis_size();
             RTE_ASSERT(nbf <= *ld__);

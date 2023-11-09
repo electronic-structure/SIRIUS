@@ -900,7 +900,7 @@
                         "energy",
                         "occupation"
                     ],
-                    "title": "criterion used during the constraint process"
+                    "title": "criteria used during the constraining process"
                 },
                 "local_constraint": {
                     "type": "array",
@@ -908,13 +908,18 @@
                         "type": "object",
                         "properties": {
                             "atom_index": {
-                                "type": "integer"
+                                "type": "integer",
+                                "default": -1
                             },
                             "n": {
-                                "type": "integer"
+                                "type": "integer",
+                                "default": -1,
+                                "title": "principal quantum number"
                             },
                             "l": {
-                                "type": "integer"
+                                "type": "integer",
+                                "default": -1,
+                                "title": "angular momentum"
                             },
                             "constrained_occupancy": {
                                 "type": "array",
@@ -926,10 +931,13 @@
                                             "type": "number"
                                         }
                                     }
-                                }
+                                },
+                                "default": []
                             }
                         }
-                    }
+                    },
+                    "default": [],
+                    "title": "set of matrices containing the occupation numbers a given atomic level"
                 },
                 "local": {
                     "type": "array",

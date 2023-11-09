@@ -99,7 +99,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                   wf::band_range(0, nwfu), dm, 0, 0);
 
         la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
                 dm1(j, m) = dm(j, m) * static_cast<T>(kp__.band_occupancy(j, 0));
@@ -117,7 +117,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             occ_mtrx.copy_to(memory_t::host);
         }
 
-        #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
             const int ia     = atomic_orbitals_[at_lvl].first;
             auto const& atom = ctx_.unit_cell().atom(ia);
@@ -163,7 +163,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                       wf::band_range(0, nwfu), dm, 0, 0);
 
             la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
-            #pragma omp parallel for
+#pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
                     dm1(j, m) = dm(j, m) * static_cast<T>(kp__.band_occupancy(j, ispn));
@@ -185,7 +185,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 occ_mtrx.copy_to(memory_t::host);
             }
 
-            #pragma omp parallel for
+#pragma omp parallel for
             for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
                 const int ia     = atomic_orbitals_[at_lvl].first;
                 auto const& atom = ctx_.unit_cell().atom(ia);
@@ -231,128 +231,106 @@ Occupation_matrix::init()
     }
 
     this->zero();
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
-        const int ia     = atomic_orbitals_[at_lvl].first;
-        auto const& atom = ctx_.unit_cell().atom(ia);
+        const int ia      = atomic_orbitals_[at_lvl].first;
+        auto const& atom  = ctx_.unit_cell().atom(ia);
+        const int il      = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
+        const int lmax_at = 2 * il + 1;
 
         if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-            const int il      = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
-            const int in      = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).n();
-            const int lmax_at = 2 * il + 1;
-
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).initial_occupancy().size()) {
-
-                /////////////////////////////////////////////////////////
-                // if we constrain the hubbard occupations, we need to //
-                //   - initialize the local constraint to their values //
-                //   - initialize the local_ with the imposed values   //
-                /////////////////////////////////////////////////////////
-
-                if (ctx_.cfg().hubbard().constrained_hubbard_calculation() &&
-                    ctx_.cfg().hubbard().local_constraint().size()) {
-                    // fill the constrained occupation numbers. I need to go through the full for each orbital
-                    const auto& cts_ = ctx_.cfg().hubbard().local_constraint();
-                    for (int cts_index = 0; cts_index < cts_.size(); cts_index++) {
-                        const auto& constraint_ = ctx_.cfg().hubbard().local_constraint(cts_index);
-                        if ((constraint_.atom_index() == ia) && (constraint_.l() == il) &&
-                            ((in == constraint_.n()) || (in < 0))) {
-                            const auto& occ_matrix__ = constraint_.constrained_occupancy();
-                            for (unsigned int sp = 0; sp < occ_matrix__.size();
-                                 sp++) { // spin blocks up-up, up-down, down-down
-                                for (int m1 = 0; m1 < lmax_at; m1++) {
-                                    for (int m2 = 0; m2 < lmax_at; m2++) {
-                                        local_constraints_[at_lvl](m1, m2, sp) = occ_matrix__[sp][m1][m2];
-                                        local_[at_lvl](m1, m2, sp)             = occ_matrix__[sp][m1][m2];
-                                    }
-                                }
-                            }
-                            apply_constraints_[at_lvl] = true;
-                        }
+                /* if we specify the occcupancy in the input file */
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    for (int m = 0; m < lmax_at; m++) {
+                        this->local_[at_lvl](m, m, ispn) = atom.type()
+                                                               .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)
+                                                               .initial_occupancy()[m + ispn * lmax_at];
+                    }
+                }
+            } else {
+                // compute the total charge for the hubbard orbitals
+                double charge = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).occupancy();
+                bool nm       = true; // true if the atom is non magnetic
+                int majs, mins;
+                if (ctx_.num_spins() != 1) {
+                    if (atom.vector_field()[2] > 0.0) {
+                        nm   = false;
+                        majs = 0;
+                        mins = 1;
+                    } else if (atom.vector_field()[2] < 0.0) {
+                        nm   = false;
+                        majs = 1;
+                        mins = 0;
                     }
                 }
 
-                if (!apply_constraints_[at_lvl]) {
-                    /* if we specify the occcupancy in the input file */
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        for (int m = 0; m < lmax_at; m++) {
-                            this->local_[at_lvl](m, m, ispn) = atom.type()
-                                                                   .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)
-                                                                   .initial_occupancy()[m + ispn * lmax_at];
-                        }
-                    }
-                } else {
-                    // compute the total charge for the hubbard orbitals
-                    double charge = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).occupancy();
-                    bool nm       = true; // true if the atom is non magnetic
-                    int majs, mins;
-                    if (ctx_.num_spins() != 1) {
-                        if (atom.vector_field()[2] > 0.0) {
-                            nm   = false;
-                            majs = 0;
-                            mins = 1;
-                        } else if (atom.vector_field()[2] < 0.0) {
-                            nm   = false;
-                            majs = 1;
-                            mins = 0;
-                        }
-                    }
-
-                    if (!nm) {
-                        if (ctx_.num_mag_dims() != 3) {
-                            // collinear case
-                            if (charge > (lmax_at)) {
-                                for (int m = 0; m < lmax_at; m++) {
-                                    this->local_[at_lvl](m, m, majs) = 1.0;
-                                    this->local_[at_lvl](m, m, mins) =
-                                        (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
-                                }
-                            } else {
-                                for (int m = 0; m < lmax_at; m++) {
-                                    this->local_[at_lvl](m, m, majs) = charge / static_cast<double>(lmax_at);
-                                }
+                if (!nm) {
+                    if (ctx_.num_mag_dims() != 3) {
+                        // collinear case
+                        if (charge > (lmax_at)) {
+                            for (int m = 0; m < lmax_at; m++) {
+                                this->local_[at_lvl](m, m, majs) = 1.0;
+                                this->local_[at_lvl](m, m, mins) =
+                                    (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
                             }
                         } else {
-                            // double c1, s1;
-                            // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                            double c1 = atom.vector_field()[2];
-                            std::complex<double> cs =
-                                std::complex<double>(atom.vector_field()[0], atom.vector_field()[1]) /
-                                sqrt(1.0 - c1 * c1);
-                            std::complex<double> ns[4];
-
-                            if (charge > (lmax_at)) {
-                                ns[majs] = 1.0;
-                                ns[mins] = (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
-                            } else {
-                                ns[majs] = charge / static_cast<double>(lmax_at);
-                                ns[mins] = 0.0;
-                            }
-
-                            // charge and moment
-                            double nc  = ns[majs].real() + ns[mins].real();
-                            double mag = ns[majs].real() - ns[mins].real();
-
-                            // rotate the occ matrix
-                            ns[0] = (nc + mag * c1) * 0.5;
-                            ns[1] = (nc - mag * c1) * 0.5;
-                            ns[2] = mag * std::conj(cs) * 0.5;
-                            ns[3] = mag * cs * 0.5;
-
                             for (int m = 0; m < lmax_at; m++) {
-                                this->local_[at_lvl](m, m, 0) = ns[0];
-                                this->local_[at_lvl](m, m, 1) = ns[1];
-                                this->local_[at_lvl](m, m, 2) = ns[2];
-                                this->local_[at_lvl](m, m, 3) = ns[3];
+                                this->local_[at_lvl](m, m, majs) = charge / static_cast<double>(lmax_at);
                             }
                         }
                     } else {
-                        for (int s = 0; s < ctx_.num_spins(); s++) {
-                            for (int m = 0; m < lmax_at; m++) {
-                                this->local_[at_lvl](m, m, s) = charge * 0.5 / static_cast<double>(lmax_at);
-                            }
+                        // double c1, s1;
+                        // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
+                        double c1 = atom.vector_field()[2];
+                        std::complex<double> cs =
+                            std::complex<double>(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
+                        std::complex<double> ns[4];
+
+                        if (charge > (lmax_at)) {
+                            ns[majs] = 1.0;
+                            ns[mins] = (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
+                        } else {
+                            ns[majs] = charge / static_cast<double>(lmax_at);
+                            ns[mins] = 0.0;
+                        }
+
+                        // charge and moment
+                        double nc  = ns[majs].real() + ns[mins].real();
+                        double mag = ns[majs].real() - ns[mins].real();
+
+                        // rotate the occ matrix
+                        ns[0] = (nc + mag * c1) * 0.5;
+                        ns[1] = (nc - mag * c1) * 0.5;
+                        ns[2] = mag * std::conj(cs) * 0.5;
+                        ns[3] = mag * cs * 0.5;
+
+                        for (int m = 0; m < lmax_at; m++) {
+                            this->local_[at_lvl](m, m, 0) = ns[0];
+                            this->local_[at_lvl](m, m, 1) = ns[1];
+                            this->local_[at_lvl](m, m, 2) = ns[2];
+                            this->local_[at_lvl](m, m, 3) = ns[3];
                         }
                     }
+                } else {
+                    for (int s = 0; s < ctx_.num_spins(); s++) {
+                        for (int m = 0; m < lmax_at; m++) {
+                            this->local_[at_lvl](m, m, s) = charge * 0.5 / static_cast<double>(lmax_at);
+                        }
+                    }
+                }
+            }
+
+            /////////////////////////////////////////////////////////
+            // if we constrain the hubbard occupations, we need to //
+            //   - initialize the local constraint to their values //
+            //   - initialize the local_ with the imposed values   //
+            /////////////////////////////////////////////////////////
+
+            if (ctx_.cfg().hubbard().constrained_hubbard_calculation() &&
+                ctx_.cfg().hubbard().local_constraint().size()) {
+                if (apply_constraints_[at_lvl]) {
+                    copy(local_constraints_[at_lvl], local_[at_lvl]);
                 }
             }
         }
@@ -365,8 +343,6 @@ Occupation_matrix::calculate_constraints_and_error()
 {
     if (apply_hubbard_constraint()) {
         double error_ = 0.0;
-        int num_elem_ = 0;
-        //#pragma omp parallel for schedule(static) reduction(+ : error_, num_elem_)
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
             if (apply_constraints_[at_lvl]) {
                 const int ia      = atomic_orbitals_[at_lvl].first;
@@ -380,14 +356,13 @@ Occupation_matrix::calculate_constraints_and_error()
                                 this->local_[at_lvl](m2, m1, is) - this->local_constraints_[at_lvl](m2, m1, is);
                             multipliers_constraints_[at_lvl](m2, m1, is) +=
                                 tmp * ctx_.cfg().hubbard().constrained_hubbard_beta_mixing();
-                            error_ += std::abs(tmp);
-                            num_elem_++;
+                            error_ = std::max(error_, std::abs(tmp));
                         }
                     }
                 }
             }
         }
-        this->constraint_error_ = error_ / static_cast<double>(num_elem_);
+        this->constraint_error_ = error_;
         this->num_steps_++;
     }
 }

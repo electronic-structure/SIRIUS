@@ -1680,7 +1680,7 @@ class config_t
             }
             dict_["/hubbard/constrained_hubbard_strength"_json_pointer] = constrained_hubbard_strength__;
         }
-        /// criterion used during the constraint process
+        /// criteria used during the constraining process
         inline auto constraint_method() const
         {
             return dict_.at("/hubbard/constraint_method"_json_pointer).get<std::string>();
@@ -1692,6 +1692,7 @@ class config_t
             }
             dict_["/hubbard/constraint_method"_json_pointer] = constraint_method__;
         }
+        /// set of matrices containing the occupation numbers a given atomic level
         class local_constraint_t
         {
           private:
