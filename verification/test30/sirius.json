@@ -5,10 +5,10 @@
     },
     "hubbard": {
         "full_orthogonalization": true,
-        "constrained_hubbard_calculation": true,
-        "constrained_hubbard_strength": 1.0,
-        "constrained_hubbard_max_iteration": 15,
-        "constrained_hubbard_beta_mixing": 0.4,
+        "constrained_calculation": true,
+        "constraint_strength": 1.0,
+        "constraint_max_iteration": 15,
+        "constraint_beta_mixing": 0.4,
         "local": [
             {
                 "atom_type": "Ni",
@@ -23,7 +23,7 @@
                 "atom_index": 0,
                 "n": 3,
                 "l": 2,
-                "constrained_occupancy": [
+                "occupancy": [
                     [
                         [
                             0.9844772394506213,

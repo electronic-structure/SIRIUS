@@ -59,7 +59,7 @@ class Occupation_matrix : public Hubbard_matrix
             auto const& atom = ctx_.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
                 ctx_.comm_k().allreduce(this->local(at_lvl).at(memory_t::host),
-                                      static_cast<int>(this->local(at_lvl).size()));
+                                        static_cast<int>(this->local(at_lvl).size()));
             }
         }
 
@@ -154,8 +154,8 @@ copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
         dest__.apply_constraints()[i] = src__.apply_constraints(i);
     }
 
-    dest__.constraint_error()                         = src__.constraint_error();
-    dest__.constraint_hubbard_number_of_itterations() = src__.constraint_hubbard_number_of_itterations();
+    dest__.constraint_error()                = src__.constraint_error();
+    dest__.constraint_number_of_iterations() = src__.constraint_number_of_iterations();
 }
 
 } // namespace sirius

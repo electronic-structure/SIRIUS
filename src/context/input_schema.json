@@ -868,27 +868,27 @@
                     "default": false,
                     "title": "If true, simplified version of Hubbard correction is used."
                 },
-                "constrained_hubbard_calculation": {
+                "constrained_calculation": {
                     "type": "boolean",
                     "default": false,
                     "title": "Use constrained hubbard occupations number. Occupation matrices should be given"
                 },
-                "constrained_hubbard_error": {
+                "constraint_error": {
                     "type": "number",
                     "default": 0.000001,
                     "title": "Error between the actual and requested occupation numbers"
                 },
-                "constrained_hubbard_max_iteration": {
+                "constraint_max_iteration": {
                     "type": "integer",
                     "default": 10,
                     "title": "Maximum number of constrained iterations before returning to the normal Hubbard scheme"
                 },
-                "constrained_hubbard_beta_mixing": {
+                "constraint_beta_mixing": {
                     "type": "number",
                     "default": 0.4,
                     "title": "Mixing parameters for the constrained hubbard"
                 },
-                "constrained_hubbard_strength": {
+                "constraint_strength": {
                     "type": "number",
                     "default": 0.0,
                     "title": "Amplitude of the constrained potential"
@@ -921,7 +921,7 @@
                                 "default": -1,
                                 "title": "angular momentum"
                             },
-                            "constrained_occupancy": {
+                            "occupancy": {
                                 "type": "array",
                                 "items": {
                                     "type": "array",

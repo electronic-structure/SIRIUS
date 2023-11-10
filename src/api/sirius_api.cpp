@@ -854,7 +854,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
             }
 
             if (hubbard_constrained_calculation__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_calculation(*hubbard_constrained_calculation__);
+                sim_ctx.cfg().hubbard().constrained_calculation(*hubbard_constrained_calculation__);
             }
 
             if (hubbard_orbitals__ != nullptr) {
@@ -2484,7 +2484,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                 mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
                 std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < *ngv__; i++) {
                     r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
                     // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
@@ -5839,19 +5839,19 @@ sirius_set_hubbard_contrained_parameters(void* const* handler__, double const* h
         [&]() {
             auto& sim_ctx = get_sim_ctx(handler__);
             if (hubbard_conv_thr__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_error(*hubbard_conv_thr__);
+                sim_ctx.cfg().hubbard().constraint_error(*hubbard_conv_thr__);
             }
 
             if (hubbard_mixing_beta__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_beta_mixing(*hubbard_mixing_beta__);
+                sim_ctx.cfg().hubbard().constraint_beta_mixing(*hubbard_mixing_beta__);
             }
 
             if (hubbard_strength__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_strength(*hubbard_strength__);
+                sim_ctx.cfg().hubbard().constraint_strength(*hubbard_strength__);
             }
 
             if (hubbard_maxstep__ != nullptr) {
-                sim_ctx.cfg().hubbard().constrained_hubbard_max_iteration(*hubbard_maxstep__);
+                sim_ctx.cfg().hubbard().constraint_max_iteration(*hubbard_maxstep__);
             }
 
             if (hubbard_constraint_type__ != nullptr) {

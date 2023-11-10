@@ -367,7 +367,7 @@ class Simulation_parameters
 
     bool hubbard_constrained_calculation() const
     {
-      return cfg().hubbard().constrained_hubbard_calculation();
+        return cfg().hubbard().constrained_calculation();
     }
 
     bool gamma_point() const
@@ -510,7 +510,6 @@ class Simulation_parameters
         cfg_.settings().sht_coverage(sht_coverage__);
         return cfg_.settings().sht_coverage();
     }
-
 };
 
 }; // namespace sirius

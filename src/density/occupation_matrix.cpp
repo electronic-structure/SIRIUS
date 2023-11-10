@@ -99,7 +99,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                   wf::band_range(0, nwfu), dm, 0, 0);
 
         la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(), nwfu, get_memory_pool(mem_host), "dm1");
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
                 dm1(j, m) = dm(j, m) * static_cast<T>(kp__.band_occupancy(j, 0));
@@ -117,7 +117,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
             occ_mtrx.copy_to(memory_t::host);
         }
 
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
             const int ia     = atomic_orbitals_[at_lvl].first;
             auto const& atom = ctx_.unit_cell().atom(ia);
@@ -163,7 +163,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                       wf::band_range(0, nwfu), dm, 0, 0);
 
             la::dmatrix<std::complex<T>> dm1(kp__.num_occupied_bands(ispn), nwfu, get_memory_pool(mem_host), "dm1");
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
                     dm1(j, m) = dm(j, m) * static_cast<T>(kp__.band_occupancy(j, ispn));
@@ -185,7 +185,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 occ_mtrx.copy_to(memory_t::host);
             }
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
                 const int ia     = atomic_orbitals_[at_lvl].first;
                 auto const& atom = ctx_.unit_cell().atom(ia);
@@ -231,7 +231,7 @@ Occupation_matrix::init()
     }
 
     this->zero();
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
         const int ia      = atomic_orbitals_[at_lvl].first;
         auto const& atom  = ctx_.unit_cell().atom(ia);
@@ -327,8 +327,7 @@ Occupation_matrix::init()
             //   - initialize the local_ with the imposed values   //
             /////////////////////////////////////////////////////////
 
-            if (ctx_.cfg().hubbard().constrained_hubbard_calculation() &&
-                ctx_.cfg().hubbard().local_constraint().size()) {
+            if (ctx_.cfg().hubbard().constrained_calculation() && ctx_.cfg().hubbard().local_constraint().size()) {
                 if (apply_constraints_[at_lvl]) {
                     copy(local_constraints_[at_lvl], local_[at_lvl]);
                 }
@@ -341,7 +340,7 @@ Occupation_matrix::init()
 void
 Occupation_matrix::calculate_constraints_and_error()
 {
-    if (apply_hubbard_constraint()) {
+    if (apply_constraint()) {
         double error_ = 0.0;
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
             if (apply_constraints_[at_lvl]) {
@@ -355,7 +354,7 @@ Occupation_matrix::calculate_constraints_and_error()
                             std::complex<double> tmp =
                                 this->local_[at_lvl](m2, m1, is) - this->local_constraints_[at_lvl](m2, m1, is);
                             multipliers_constraints_[at_lvl](m2, m1, is) +=
-                                tmp * ctx_.cfg().hubbard().constrained_hubbard_beta_mixing();
+                                tmp * ctx_.cfg().hubbard().constraint_beta_mixing();
                             error_ = std::max(error_, std::abs(tmp));
                         }
                     }

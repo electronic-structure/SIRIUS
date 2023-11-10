@@ -126,11 +126,11 @@ class Hubbard_matrix
         return constraint_error_;
     }
 
-    int constraint_hubbard_number_of_itterations() const
+    int constraint_number_of_iterations() const
     {
         return num_steps_;
     }
-    auto& constraint_hubbard_number_of_itterations()
+    auto& constraint_number_of_iterations()
     {
         return num_steps_;
     }
@@ -190,11 +190,11 @@ class Hubbard_matrix
         return multipliers_constraints_[idx__];
     }
 
-    bool apply_hubbard_constraint() const
+    bool apply_constraint() const
     {
-        return (this->constraint_error_ > ctx_.cfg().hubbard().constrained_hubbard_error()) &&
-               (this->num_steps_ < ctx_.cfg().hubbard().constrained_hubbard_max_iteration()) &&
-               ctx_.cfg().hubbard().constrained_hubbard_calculation();
+        return (this->constraint_error_ > ctx_.cfg().hubbard().constraint_error()) &&
+               (this->num_steps_ < ctx_.cfg().hubbard().constraint_max_iteration()) &&
+               ctx_.cfg().hubbard().constrained_calculation();
     }
 
     auto const& ctx() const
@@ -233,7 +233,7 @@ copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
         copy(src__.nonlocal(i), dest__.nonlocal(i));
 
-        if (src__.ctx().cfg().hubbard().constrained_hubbard_calculation()) {
+        if (src__.ctx().cfg().hubbard().constrained_calculation()) {
             for (int i = 0; i < static_cast<int>(src__.atomic_orbitals().size()); i++) {
                 if (src__.apply_constraints(i)) {
                     copy(src__.local_constraints(i), dest__.local_constraints(i));
