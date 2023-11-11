@@ -78,9 +78,9 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 
             if (ctx_.cfg().hubbard().constrained_calculation()) {
                 local_constraints_[at_lvl] =
-                    mdarray<std::complex<double>, 3>({mmax, mmax, 4}, mdarray_label("local_hubbard_constraint"));
-                multipliers_constraints_[at_lvl] =
-                    mdarray<std::complex<double>, 3>({mmax, mmax, 4}, mdarray_label("lagrange_multiplier_constraint"));
+                        mdarray<std::complex<double>, 3>({mmax, mmax, 4}, mdarray_label("local_hubbard_constraint"));
+                multipliers_constraints_[at_lvl] = mdarray<std::complex<double>, 3>(
+                        {mmax, mmax, 4}, mdarray_label("lagrange_multiplier_constraint"));
                 multipliers_constraints_[at_lvl].zero();
                 local_constraints_[at_lvl].zero();
 
@@ -141,7 +141,7 @@ Hubbard_matrix::access(std::string const& what__, std::complex<double>* occ__, i
         occ_mtrx = mdarray<std::complex<double>, 4>({ld__, ld__, 4, ctx_.unit_cell().num_atoms()}, occ__);
     } else {
         occ_mtrx =
-            mdarray<std::complex<double>, 4>({ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms()}, occ__);
+                mdarray<std::complex<double>, 4>({ld__, ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms()}, occ__);
     }
     if (what__ == "get") {
         occ_mtrx.zero();

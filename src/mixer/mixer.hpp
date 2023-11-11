@@ -53,15 +53,13 @@ struct FunctionProperties
     ///
     /**
      *  \param [in]  size_         Function, which returns a measure of size of the (global) function.
-     *  \param [in]  inner_        Function, which computes the (global) inner product. This determines the contribution to mixing parameters rmse.
-     *  \param [in]  scal_         Function, which scales the input (x = alpha * x).
-     *  \param [in]  copy_         Function, which copies from one object to the other (y = x).
-     *  \param [in]  axpy_         Function, which scales and adds one object to the other (y = alpha * x + y).
+     *  \param [in]  inner_        Function, which computes the (global) inner product. This determines the contribution
+     * to mixing parameters rmse. \param [in]  scal_         Function, which scales the input (x = alpha * x). \param
+     * [in]  copy_         Function, which copies from one object to the other (y = x). \param [in]  axpy_ Function,
+     * which scales and adds one object to the other (y = alpha * x + y).
      */
-    FunctionProperties(std::function<double(const FUNC&)> size_,
-                       std::function<double(const FUNC&, const FUNC&)> inner_,
-                       std::function<void(double, FUNC&)> scal_,
-                       std::function<void(const FUNC&, FUNC&)> copy_,
+    FunctionProperties(std::function<double(const FUNC&)> size_, std::function<double(const FUNC&, const FUNC&)> inner_,
+                       std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_,
                        std::function<void(double, double, FUNC&, FUNC&)> rotate_)
         : size(size_)
@@ -110,14 +108,15 @@ namespace mixer_impl {
 template <std::size_t FUNC_REVERSE_INDEX, bool normalize, typename... FUNCS>
 struct InnerProduct
 {
-    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
-                        const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static double
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, const std::tuple<std::unique_ptr<FUNCS>...>& x,
+          const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         double result = 0.0;
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
             /* compute inner product */
             auto v = std::get<FUNC_REVERSE_INDEX>(function_prop)
-                          .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+                             .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
             /* normalize if necessary */
             if (normalize) {
                 auto sx = std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(x));
@@ -141,8 +140,9 @@ struct InnerProduct
 template <bool normalize, typename... FUNCS>
 struct InnerProduct<0, normalize, FUNCS...>
 {
-    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
-                        const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static double
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, const std::tuple<std::unique_ptr<FUNCS>...>& x,
+          const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<0>(x) && std::get<0>(y)) {
             auto v = std::get<0>(function_prop).inner(*std::get<0>(x), *std::get<0>(y));
@@ -168,8 +168,9 @@ struct InnerProduct<0, normalize, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Scaling
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
-                      std::tuple<std::unique_ptr<FUNCS>...>& x)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
+          std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x)) {
             std::get<FUNC_REVERSE_INDEX>(function_prop).scal(alpha, *std::get<FUNC_REVERSE_INDEX>(x));
@@ -181,8 +182,9 @@ struct Scaling
 template <typename... FUNCS>
 struct Scaling<0, FUNCS...>
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
-                      std::tuple<std::unique_ptr<FUNCS>...>& x)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
+          std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         if (std::get<0>(x)) {
             std::get<0>(function_prop).scal(alpha, *std::get<0>(x));
@@ -193,12 +195,13 @@ struct Scaling<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Copy
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
-                      const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, const std::tuple<std::unique_ptr<FUNCS>...>& x,
+          std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
             std::get<FUNC_REVERSE_INDEX>(function_prop)
-                .copy(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+                    .copy(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
         }
         Copy<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, x, y);
     }
@@ -207,8 +210,9 @@ struct Copy
 template <typename... FUNCS>
 struct Copy<0, FUNCS...>
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
-                      const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, const std::tuple<std::unique_ptr<FUNCS>...>& x,
+          std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<0>(x) && std::get<0>(y)) {
             std::get<0>(function_prop).copy(*std::get<0>(x), *std::get<0>(y));
@@ -219,12 +223,13 @@ struct Copy<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Axpy
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
-                      const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
+          const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
             std::get<FUNC_REVERSE_INDEX>(function_prop)
-                .axpy(alpha, *std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+                    .axpy(alpha, *std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
         }
         Axpy<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, alpha, x, y);
     }
@@ -233,8 +238,9 @@ struct Axpy
 template <typename... FUNCS>
 struct Axpy<0, FUNCS...>
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
-                      const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
+          const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<0>(x) && std::get<0>(y)) {
             std::get<0>(function_prop).axpy(alpha, *std::get<0>(x), *std::get<0>(y));
@@ -245,12 +251,13 @@ struct Axpy<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Rotate
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double c, double s,
-                      std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double c, double s,
+          std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
             std::get<FUNC_REVERSE_INDEX>(function_prop)
-                .rotate(c, s, *std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+                    .rotate(c, s, *std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
         }
         Rotate<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, c, s, x, y);
     }
@@ -259,8 +266,9 @@ struct Rotate
 template <typename... FUNCS>
 struct Rotate<0, FUNCS...>
 {
-    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double c, double s,
-                      std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    static void
+    apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double c, double s,
+          std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<0>(x) && std::get<0>(y)) {
             std::get<0>(function_prop).rotate(c, s, *std::get<0>(x), *std::get<0>(y));
@@ -304,9 +312,11 @@ class Mixer
      *  \param [in]  args            Arguments, which are passed to the constructor of function placeholder objects.
      */
     template <std::size_t FUNC_INDEX, typename... ARGS>
-    void initialize_function(
-        const FunctionProperties<typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type>& function_prop,
-        const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& init_value, ARGS&&... args)
+    void
+    initialize_function(const FunctionProperties<typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type>&
+                                function_prop,
+                        const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& init_value,
+                        ARGS&&... args)
     {
         if (step_ > 0) {
             throw std::runtime_error("Initializing function_prop after mixing not allowed!");
@@ -319,13 +329,13 @@ class Mixer
 
         // create function object placeholders with arguments provided
         std::get<FUNC_INDEX>(input_).reset(
-            new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
+                new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
 
         for (std::size_t i = 0; i < max_history_; ++i) {
             std::get<FUNC_INDEX>(output_history_[i])
-                .reset(new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
+                    .reset(new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
             std::get<FUNC_INDEX>(residual_history_[i])
-                .reset(new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
+                    .reset(new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
         }
 
         // initialize output and input with given initial value
@@ -337,7 +347,8 @@ class Mixer
     /** \param [in]  input   Input functions, for which a copy operation is invoked.
      */
     template <std::size_t FUNC_INDEX>
-    void set_input(const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& input)
+    void
+    set_input(const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& input)
     {
         if (std::get<FUNC_INDEX>(input_)) {
             std::get<FUNC_INDEX>(functions_).copy(input, *std::get<FUNC_INDEX>(input_));
@@ -350,7 +361,8 @@ class Mixer
     /** \param [out]  output  Output function, into which the mixer output is copied.
      */
     template <std::size_t FUNC_INDEX>
-    void get_output(typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& output)
+    void
+    get_output(typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& output)
     {
         const auto idx = idx_hist(step_);
         if (!std::get<FUNC_INDEX>(output_history_[idx])) {
@@ -363,7 +375,8 @@ class Mixer
     /** \param [in]  rms_min  Minimum root mean square error. Mixing is only performed, if current RMS is above this
      *                        threshold.
      */
-    double mix(double rms_min__)
+    double
+    mix(double rms_min__)
     {
         this->update_residual();
         this->update_rms();
@@ -381,17 +394,20 @@ class Mixer
 
   protected:
     // Mixing implementation
-    virtual void mix_impl() = 0;
+    virtual void
+    mix_impl() = 0;
 
     // update residual history for current step
-    void update_residual()
+    void
+    update_residual()
     {
         this->copy(input_, residual_history_[idx_hist(step_)]);
         this->axpy(-1.0, output_history_[idx_hist(step_)], residual_history_[idx_hist(step_)]);
     }
 
     // update rmse histroy for current step. Residuals must have been updated before.
-    void update_rms()
+    void
+    update_rms()
     {
         const auto idx = idx_hist(step_);
 
@@ -402,34 +418,39 @@ class Mixer
     }
 
     // Storage index of given step
-    std::size_t idx_hist(std::size_t step) const
+    std::size_t
+    idx_hist(std::size_t step) const
     {
         return step % max_history_;
     }
 
     template <bool normalize>
-    double inner_product(const std::tuple<std::unique_ptr<FUNCS>...>& x,
-                         const std::tuple<std::unique_ptr<FUNCS>...>& y)
+    double
+    inner_product(const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         return mixer_impl::InnerProduct<sizeof...(FUNCS) - 1, normalize, FUNCS...>::apply(functions_, x, y);
     }
 
-    void scale(double alpha, std::tuple<std::unique_ptr<FUNCS>...>& x)
+    void
+    scale(double alpha, std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         mixer_impl::Scaling<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, alpha, x);
     }
 
-    void copy(const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    void
+    copy(const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         mixer_impl::Copy<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, x, y);
     }
 
-    void axpy(double alpha, const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    void
+    axpy(double alpha, const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         mixer_impl::Axpy<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, alpha, x, y);
     }
 
-    void rotate(double c, double s, std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    void
+    rotate(double c, double s, std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         mixer_impl::Rotate<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, c, s, x, y);
     }

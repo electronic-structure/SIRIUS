@@ -40,10 +40,13 @@
 
 namespace sirius {
 
-void generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__);
+void
+generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__);
 
-double energy(Hubbard_matrix const& om__);
-double one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm__);
+double
+energy(Hubbard_matrix const& om__);
+double
+one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm__);
 
 /// Apply Hubbard correction in the collinear case
 class Hubbard
@@ -59,7 +62,8 @@ class Hubbard
     /// Hubbard with multi channels apply to both LDA+U+V case
     bool multi_channels_{false};
 
-    void calculate_wavefunction_with_U_offset();
+    void
+    calculate_wavefunction_with_U_offset();
 
   public:
     /// Constructor.
@@ -73,7 +77,7 @@ class Hubbard
      *  \f]
      *  Let's first derive the case of non-orthogonalized Hubbard atomic orbitals. In this case
      *  \f[
-     *    \frac{\partial}{\partial {\bf r}_{\alpha}} \langle \phi_{i}^{Hub} | S | \psi_{j{\bf k}} \rangle = 
+     *    \frac{\partial}{\partial {\bf r}_{\alpha}} \langle \phi_{i}^{Hub} | S | \psi_{j{\bf k}} \rangle =
      *      \langle \frac{\partial}{\partial {\bf r}_{\alpha}} \phi_{i}^{Hub} | S | \psi_{j{\bf k}} \rangle +
      *      \langle \phi_{i}^{Hub} | \frac{\partial}{\partial {\bf r}_{\alpha}} S | \psi_{j{\bf k}} \rangle
      *  \f]
@@ -161,26 +165,32 @@ class Hubbard
      *    - SVD the overlap matrix \f$ {\bf O} \f$
      *    - compute the derivative of \f$ {\bf O} \f$ for each atom displacement
      *    - compute \f$ \tilde {\bf O'} = {\bf U}^{H} {\bf O}' {\bf U} \f$
-     *    - compute \f$ \tilde X_{ij} = \frac{\Lambda_{i}^{-1/2} \tilde O_{ij}' \Lambda_{j}^{-1/2}} {\Lambda_{i}^{1/2} + \Lambda_{j}^{1/2}} \f$
-     *    - compute \f$ \frac{\partial}{\partial {\bf r}_{\alpha}} {\bf O}^{-1/2} = -{\bf U}\tilde {\bf X}{\bf U}^{H} \f$
+     *    - compute \f$ \tilde X_{ij} = \frac{\Lambda_{i}^{-1/2} \tilde O_{ij}' \Lambda_{j}^{-1/2}} {\Lambda_{i}^{1/2} +
+     * \Lambda_{j}^{1/2}} \f$
+     *    - compute \f$ \frac{\partial}{\partial {\bf r}_{\alpha}} {\bf O}^{-1/2} = -{\bf U}\tilde {\bf X}{\bf U}^{H}
+     * \f$
      */
-    void compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                         mdarray<std::complex<double>, 5>& dn__);
+    void
+    compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
+                                    mdarray<std::complex<double>, 5>& dn__);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
      *  \param [in]  q_op Overlap operator.
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
-    void compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
-                                                mdarray<std::complex<double>, 4>& dn__);
+    void
+    compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operator<double>& q_op__,
+                                           mdarray<std::complex<double>, 4>& dn__);
 
-    void set_hubbard_U_plus_V()
+    void
+    set_hubbard_U_plus_V()
     {
         hubbard_U_plus_V_ = true;
     }
 
-    inline int num_hubbard_wf() const
+    inline int
+    num_hubbard_wf() const
     {
         return ctx_.unit_cell().num_hubbard_wf().first;
     }

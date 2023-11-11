@@ -324,7 +324,7 @@ hubbard_matrix_function_property()
             for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
                 for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
                     y.multipliers_constraints(at_lvl)[i] =
-                        alpha * x.multipliers_constraints(at_lvl)[i] + y.multipliers_constraints(at_lvl)[i];
+                            alpha * x.multipliers_constraints(at_lvl)[i] + y.multipliers_constraints(at_lvl)[i];
                 }
             }
         }

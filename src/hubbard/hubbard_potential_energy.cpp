@@ -337,8 +337,8 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
         }
 
         hubbard_energy_dc_contribution +=
-            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
-                   hub_wf.J() * magnetization * 0.5);
+                0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
+                       hub_wf.J() * magnetization * 0.5);
 
         /* now hubbard contribution */
 
@@ -351,11 +351,12 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
                         for (int m4 = 0; m4 < lmax_at; m4++) {
 
                             hubbard_energy_u +=
-                                0.5 * ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
-                                           om__(m1, m3, is) * om__(m2, m4, is) +
-                                       hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) *
-                                           om__(m2, m4, (ctx__.num_mag_dims() == 1) ? ((is + 1) % 2) : (0)))
-                                          .real();
+                                    0.5 *
+                                    ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
+                                             om__(m1, m3, is) * om__(m2, m4, is) +
+                                     hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) *
+                                             om__(m2, m4, (ctx__.num_mag_dims() == 1) ? ((is + 1) % 2) : (0)))
+                                            .real();
                         }
                     }
                 }
@@ -429,7 +430,7 @@ generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_typ
                     for (int m3 = 0; m3 < lmax_at; ++m3) {
                         for (int m4 = 0; m4 < lmax_at; ++m4) {
                             um__(m1, m2, is) +=
-                                hub_wf.hubbard_matrix(m1, m3, m2, m4) * (om__(m3, m4, 0) + om__(m3, m4, 1));
+                                    hub_wf.hubbard_matrix(m1, m3, m2, m4) * (om__(m3, m4, 0) + om__(m3, m4, 1));
                         }
                     }
                 }
@@ -505,8 +506,8 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
     double magnetization = mz * mz + mx * mx + my * my;
 
     hubbard_energy_dc_contribution +=
-        0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
-               0.5 * hub_wf.J() * magnetization);
+            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
+                   0.5 * hub_wf.J() * magnetization);
 
     for (int is = 0; is < 4; is++) {
 
@@ -536,11 +537,12 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
                             //            = 1 if is = 0
 
                             hubbard_energy_noflip +=
-                                0.5 *
-                                ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
-                                     om__(m1, m3, is) * om__(m2, m4, is) +
-                                 hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) * om__(m2, m4, (is + 1) % 2))
-                                    .real();
+                                    0.5 *
+                                    ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
+                                             om__(m1, m3, is) * om__(m2, m4, is) +
+                                     hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) *
+                                             om__(m2, m4, (is + 1) % 2))
+                                            .real();
                         }
                     }
                 }
@@ -552,8 +554,8 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
                     for (int m3 = 0; m3 < lmax_at; ++m3) {
                         for (int m4 = 0; m4 < lmax_at; ++m4) {
                             hubbard_energy_flip -=
-                                0.5 *
-                                (hub_wf.hubbard_matrix(m1, m2, m4, m3) * om__(m1, m3, is) * om__(m2, m4, is1)).real();
+                                    0.5 * (hub_wf.hubbard_matrix(m1, m2, m4, m3) * om__(m1, m3, is) * om__(m2, m4, is1))
+                                                  .real();
                         }
                     }
                 }

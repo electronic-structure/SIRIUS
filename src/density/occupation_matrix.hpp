@@ -40,14 +40,17 @@ class Occupation_matrix : public Hubbard_matrix
     Occupation_matrix(Simulation_context& ctx__);
 
     template <typename T>
-    void add_k_point_contribution(K_point<T>& kp__);
+    void
+    add_k_point_contribution(K_point<T>& kp__);
 
     /** The initial occupancy is calculated following Hund rules. We first
      *  fill the d (f) states according to the hund's rules and with majority
      *  spin first and the remaining electrons distributed among the minority states. */
-    void init();
+    void
+    init();
 
-    void reduce()
+    void
+    reduce()
     {
         if (!ctx_.hubbard_correction()) {
             return;
@@ -69,7 +72,8 @@ class Occupation_matrix : public Hubbard_matrix
         }
     }
 
-    void update_nonlocal()
+    void
+    update_nonlocal()
     {
         if (ctx_.num_mag_dims() == 3) {
             RTE_THROW("only collinear case is supported");
@@ -96,14 +100,15 @@ class Occupation_matrix : public Hubbard_matrix
                 for (int m1 = 0; m1 < ib; m1++) {
                     for (int m2 = 0; m2 < jb; m2++) {
                         this->nonlocal(i)(m1, m2, ispn) =
-                            occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
+                                occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
                     }
                 }
             }
         }
     }
 
-    void zero()
+    void
+    zero()
     {
         Hubbard_matrix::zero();
         for (auto& e : occ_mtrx_T_) {
@@ -111,20 +116,25 @@ class Occupation_matrix : public Hubbard_matrix
         }
     }
 
-    void calculate_constraints_and_error();
-    void print_occupancies(int verbosity__) const;
+    void
+    calculate_constraints_and_error();
+    void
+    print_occupancies(int verbosity__) const;
 
-    inline auto const& occ_mtrx_T(r3::vector<int> T__) const
+    inline auto const&
+    occ_mtrx_T(r3::vector<int> T__) const
     {
         return occ_mtrx_T_.at(T__);
     }
 
-    inline auto const& occ_mtrx_T() const
+    inline auto const&
+    occ_mtrx_T() const
     {
         return occ_mtrx_T_;
     }
 
-    friend void copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
+    friend void
+    copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
 };
 
 inline void

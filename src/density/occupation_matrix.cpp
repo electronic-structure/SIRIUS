@@ -136,8 +136,8 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                         for (int mp = 0; mp < lmmax_at; mp++) {
                             for (int m = 0; m < lmmax_at; m++) {
-                                local_[at_lvl](m, mp, s_idx[s1][s2]) +=
-                                    occ_mtrx(r.first * s1 + offset_[at_lvl] + m, r.first * s2 + offset_[at_lvl] + mp);
+                                local_[at_lvl](m, mp, s_idx[s1][s2]) += occ_mtrx(r.first * s1 + offset_[at_lvl] + m,
+                                                                                 r.first * s2 + offset_[at_lvl] + mp);
                             }
                         }
                     }
@@ -210,7 +210,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
                 for (int i = 0; i < nwfu; i++) {
                     for (int j = 0; j < nwfu; j++) {
                         e.second(i, j, ispn) +=
-                            static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
+                                static_cast<std::complex<T>>(occ_mtrx(i, j)) * static_cast<std::complex<T>>(z1);
                     }
                 }
             }
@@ -218,9 +218,11 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
     }
 }
 
-template void Occupation_matrix::add_k_point_contribution<double>(K_point<double>& kp__);
+template void
+Occupation_matrix::add_k_point_contribution<double>(K_point<double>& kp__);
 #ifdef SIRIUS_USE_FP32
-template void Occupation_matrix::add_k_point_contribution<float>(K_point<float>& kp__);
+template void
+Occupation_matrix::add_k_point_contribution<float>(K_point<float>& kp__);
 #endif
 
 void
@@ -244,8 +246,8 @@ Occupation_matrix::init()
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
                         this->local_[at_lvl](m, m, ispn) = atom.type()
-                                                               .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)
-                                                               .initial_occupancy()[m + ispn * lmax_at];
+                                                                   .lo_descriptor_hub(atomic_orbitals_[at_lvl].second)
+                                                                   .initial_occupancy()[m + ispn * lmax_at];
                     }
                 }
             } else {
@@ -272,7 +274,7 @@ Occupation_matrix::init()
                             for (int m = 0; m < lmax_at; m++) {
                                 this->local_[at_lvl](m, m, majs) = 1.0;
                                 this->local_[at_lvl](m, m, mins) =
-                                    (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
+                                        (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
                             }
                         } else {
                             for (int m = 0; m < lmax_at; m++) {
@@ -282,9 +284,9 @@ Occupation_matrix::init()
                     } else {
                         // double c1, s1;
                         // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                        double c1 = atom.vector_field()[2];
-                        std::complex<double> cs =
-                            std::complex<double>(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
+                        double c1               = atom.vector_field()[2];
+                        std::complex<double> cs = std::complex<double>(atom.vector_field()[0], atom.vector_field()[1]) /
+                                                  sqrt(1.0 - c1 * c1);
                         std::complex<double> ns[4];
 
                         if (charge > (lmax_at)) {
@@ -352,9 +354,9 @@ Occupation_matrix::calculate_constraints_and_error()
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
                             std::complex<double> tmp =
-                                this->local_[at_lvl](m2, m1, is) - this->local_constraints_[at_lvl](m2, m1, is);
+                                    this->local_[at_lvl](m2, m1, is) - this->local_constraints_[at_lvl](m2, m1, is);
                             multipliers_constraints_[at_lvl](m2, m1, is) +=
-                                tmp * ctx_.cfg().hubbard().constraint_beta_mixing();
+                                    tmp * ctx_.cfg().hubbard().constraint_beta_mixing();
                             error_ = std::max(error_, std::abs(tmp));
                         }
                     }

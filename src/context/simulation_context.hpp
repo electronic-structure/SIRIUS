@@ -42,8 +42,9 @@
 #include "lapw/step_function.hpp"
 
 #ifdef SIRIUS_GPU
-extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
-                                           double const* atom_pos__, std::complex<double>* phase_factors__);
+extern "C" void
+generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__, double const* atom_pos__,
+                           std::complex<double>* phase_factors__);
 #endif
 
 namespace sirius {
@@ -71,7 +72,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     out__ << std::endl;
 
     std::vector<std::string> labels = {"host"};
-    std::vector<memory_pool*> mp = {&get_memory_pool(memory_t::host)};
+    std::vector<memory_pool*> mp    = {&get_memory_pool(memory_t::host)};
 
     int np{1};
     if (acc::num_devices() > 0) {
@@ -85,7 +86,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
     for (int i = 0; i < np; i++) {
         out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
               << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
-              << "num.blocks: " <<  mp[i]->num_blocks() << std::endl;
+              << "num.blocks: " << mp[i]->num_blocks() << std::endl;
     }
 }
 
@@ -304,16 +305,20 @@ class Simulation_context : public Simulation_parameters
     bool initialized_{false};
 
     /// Initialize FFT coarse and fine grids.
-    void init_fft_grid();
+    void
+    init_fft_grid();
 
     /// Initialize communicators.
-    void init_comm();
+    void
+    init_comm();
 
     /// Find a list of real-space grid points around each atom.
-    void init_atoms_to_grid_idx(double R__);
+    void
+    init_atoms_to_grid_idx(double R__);
 
     /// Common init function called by all constructors.
-    void init_common()
+    void
+    init_common()
     {
         gettimeofday(&start_time_, NULL);
         start_time_tag_ = timestamp("%Y%m%d_%H%M%S");
@@ -334,7 +339,8 @@ class Simulation_context : public Simulation_parameters
         init_common();
     }
 
-    Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__, mpi::Communicator const& comm_band__)
+    Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__,
+                       mpi::Communicator const& comm_band__)
         : comm_(comm__)
         , comm_k_(comm_k__)
         , comm_band_(comm_band__)
@@ -377,87 +383,104 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Initialize the similation (can only be called once).
-    void initialize();
+    void
+    initialize();
 
-    void print_info(std::ostream& out__) const;
+    void
+    print_info(std::ostream& out__) const;
 
     /// Update context after setting new lattice vectors or atomic coordinates.
-    void update();
+    void
+    update();
 
-    auto const& atoms_to_grid_idx_map(int ia__) const
+    auto const&
+    atoms_to_grid_idx_map(int ia__) const
     {
         return atoms_to_grid_idx_[ia__];
     };
 
-    auto& unit_cell()
+    auto&
+    unit_cell()
     {
         return *unit_cell_;
     }
 
     /// Return const reference to unit cell object.
-    auto const& unit_cell() const
+    auto const&
+    unit_cell() const
     {
         return *unit_cell_;
     }
 
     /// Return const reference to Gvec object.
-    auto const& gvec() const
+    auto const&
+    gvec() const
     {
         return *gvec_;
     }
 
     /// Return shared pointer to Gvec object.
-    auto gvec_sptr() const
+    auto
+    gvec_sptr() const
     {
         return gvec_;
     }
 
     /// Return const reference to Gvec_fft object.
-    auto const& gvec_fft() const
+    auto const&
+    gvec_fft() const
     {
         return *gvec_fft_;
     }
 
     /// Return shared pointer to Gvec_fft object.
-    auto gvec_fft_sptr() const
+    auto
+    gvec_fft_sptr() const
     {
         return gvec_fft_;
     }
 
-    auto const& gvec_coarse() const
+    auto const&
+    gvec_coarse() const
     {
         return *gvec_coarse_;
     }
 
-    auto const& gvec_coarse_sptr() const
+    auto const&
+    gvec_coarse_sptr() const
     {
         return gvec_coarse_;
     }
 
-    auto const& gvec_coarse_fft_sptr() const
+    auto const&
+    gvec_coarse_fft_sptr() const
     {
         return gvec_coarse_fft_;
     }
 
-    auto const& remap_gvec() const
+    auto const&
+    remap_gvec() const
     {
         return *remap_gvec_;
     }
 
-    auto const& blacs_grid() const
+    auto const&
+    blacs_grid() const
     {
         return *blacs_grid_;
     }
 
     /// Total communicator of the simulation.
-    mpi::Communicator const& comm() const
+    mpi::Communicator const&
+    comm() const
     {
         return comm_;
     }
 
     /// Communicator between k-points.
     /** This communicator is used to split k-points */
-    auto const& comm_k() const
+    auto const&
+    comm_k() const
     {
         return comm_k_;
     }
@@ -465,27 +488,31 @@ class Simulation_context : public Simulation_parameters
     /// Band parallelization communicator.
     /** This communicator is used to parallelize the band problem. However it is not necessarily used
         to create the BLACS grid. Diagonalization might be sequential. */
-    auto const& comm_band() const
+    auto const&
+    comm_band() const
     {
         return comm_band_;
     }
 
     /// Communicator of the dense FFT grid.
     /** This communicator is passed to the spfft::Transform constructor. */
-    auto const& comm_fft() const
+    auto const&
+    comm_fft() const
     {
         /* use entire communicator of the simulation */
         return comm();
     }
 
-    auto const& comm_ortho_fft() const
+    auto const&
+    comm_ortho_fft() const
     {
         return mpi::Communicator::self();
     }
 
     /// Communicator of the coarse FFT grid.
     /** This communicator is passed to the spfft::Transform constructor. */
-    auto const& comm_fft_coarse() const
+    auto const&
+    comm_fft_coarse() const
     {
         if (cfg().control().fft_mode() == "serial") {
             return mpi::Communicator::self();
@@ -497,7 +524,8 @@ class Simulation_context : public Simulation_parameters
     /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
     /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
         used to parallelize application of local Hamiltonian over bands. */
-    auto const& comm_band_ortho_fft_coarse() const
+    auto const&
+    comm_band_ortho_fft_coarse() const
     {
         if (cfg().control().fft_mode() == "serial") {
             return comm_band();
@@ -506,67 +534,80 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    auto const& comm_ortho_fft_coarse() const
+    auto const&
+    comm_ortho_fft_coarse() const
     {
         return comm_ortho_fft_coarse_;
     }
 
-    void create_storage_file(std::string name__) const;
+    void
+    create_storage_file(std::string name__) const;
 
-    inline std::string const& start_time_tag() const
+    inline std::string const&
+    start_time_tag() const
     {
         return start_time_tag_;
     }
 
-    inline auto& std_evp_solver()
+    inline auto&
+    std_evp_solver()
     {
         return *std_evp_solver_;
     }
 
-    inline auto const& std_evp_solver() const
+    inline auto const&
+    std_evp_solver() const
     {
         return *std_evp_solver_;
     }
 
-    inline auto& gen_evp_solver()
+    inline auto&
+    gen_evp_solver()
     {
         return *gen_evp_solver_;
     }
 
-    inline auto const& gen_evp_solver() const
+    inline auto const&
+    gen_evp_solver() const
     {
         return *gen_evp_solver_;
     }
 
-    inline auto phase_factors_t(int igloc__, int iat__) const
+    inline auto
+    phase_factors_t(int igloc__, int iat__) const
     {
         return phase_factors_t_(igloc__, iat__);
     }
 
-    inline auto const& phase_factors_t() const
+    inline auto const&
+    phase_factors_t() const
     {
         return phase_factors_t_;
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-    inline auto gvec_phase_factor(r3::vector<int> G__, int ia__) const
+    inline auto
+    gvec_phase_factor(r3::vector<int> G__, int ia__) const
     {
         return phase_factors_(0, G__[0], ia__) * phase_factors_(1, G__[1], ia__) * phase_factors_(2, G__[2], ia__);
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
-    inline auto gvec_phase_factor(int ig__, int ia__) const
+    inline auto
+    gvec_phase_factor(int ig__, int ia__) const
     {
         return gvec_phase_factor(gvec().gvec<index_domain_t::global>(ig__), ia__);
     }
 
-    inline auto const& gvec_coord() const
+    inline auto const&
+    gvec_coord() const
     {
         return gvec_coord_;
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
-    void generate_phase_factors(int iat__, mdarray<std::complex<double>, 2>& phase_factors__) const;
+    void
+    generate_phase_factors(int iat__, mdarray<std::complex<double>, 2>& phase_factors__) const;
 
     /// Find the lambda parameter used in the Ewald summation.
     /** Lambda parameter scales the erfc function argument:
@@ -574,38 +615,45 @@ class Simulation_context : public Simulation_parameters
      *    {\rm erf}(\sqrt{\lambda}x)
      *  \f]
      */
-    double ewald_lambda() const;
+    double
+    ewald_lambda() const;
 
-    auto const& sym_phase_factors() const
+    auto const&
+    sym_phase_factors() const
     {
         return sym_phase_factors_;
     }
 
-    inline bool initialized() const
+    inline bool
+    initialized() const
     {
         return initialized_;
     }
 
     /// Return plane-wave coefficient of the step function.
-    inline auto const& theta_pw(int ig__) const
+    inline auto const&
+    theta_pw(int ig__) const
     {
         return theta_.pw[ig__];
     }
 
     /// Return the value of the step function for the grid point ir.
-    inline double theta(int ir__) const
+    inline double
+    theta(int ir__) const
     {
         return theta_.rg[ir__];
     }
 
     /// Returns a constant pointer to the augmentation operator of a given atom type.
-    inline auto const& augmentation_op(int iat__) const
+    inline auto const&
+    augmentation_op(int iat__) const
     {
         RTE_ASSERT(augmentation_op_[iat__] != nullptr);
         return *augmentation_op_[iat__];
     }
 
-    inline auto& augmentation_op(int iat__)
+    inline auto&
+    augmentation_op(int iat__)
     {
         RTE_ASSERT(augmentation_op_[iat__] != nullptr);
         return *augmentation_op_[iat__];
@@ -613,116 +661,138 @@ class Simulation_context : public Simulation_parameters
 
     /// Type of the host memory for arrays used in linear algebra operations.
     /** For CPU execution this is normal host memory, for GPU execution this is pinned memory. */
-    inline auto host_memory_t() const
+    inline auto
+    host_memory_t() const
     {
         return host_memory_t_;
     }
 
     /// Return the memory type for processing unit.
-    inline auto processing_unit_memory_t() const
+    inline auto
+    processing_unit_memory_t() const
     {
         return (this->processing_unit() == device_t::CPU) ? memory_t::host : memory_t::device;
     }
 
     /// Set the size of the fine-grained FFT grid.
-    void fft_grid_size(std::array<int, 3> fft_grid_size__)
+    void
+    fft_grid_size(std::array<int, 3> fft_grid_size__)
     {
         cfg().settings().fft_grid_size(fft_grid_size__);
     }
 
     template <typename T>
-    fft::spfft_grid_type<T>& spfft_grid_coarse();
+    fft::spfft_grid_type<T>&
+    spfft_grid_coarse();
 
     template <typename T>
-    fft::spfft_transform_type<T>& spfft();
+    fft::spfft_transform_type<T>&
+    spfft();
 
     template <typename T>
-    fft::spfft_transform_type<T> const& spfft() const;
+    fft::spfft_transform_type<T> const&
+    spfft() const;
 
     template <typename T>
-    fft::spfft_transform_type<T>& spfft_coarse();
+    fft::spfft_transform_type<T>&
+    spfft_coarse();
 
     template <typename T>
-    fft::spfft_transform_type<T> const& spfft_coarse() const;
+    fft::spfft_transform_type<T> const&
+    spfft_coarse() const;
 
-    auto const& fft_grid() const
+    auto const&
+    fft_grid() const
     {
         return fft_grid_;
     }
 
-    auto const& fft_coarse_grid() const
+    auto const&
+    fft_coarse_grid() const
     {
         return fft_coarse_grid_;
     }
 
-    auto const& spla_context() const
+    auto const&
+    spla_context() const
     {
         return *spla_ctx_;
     }
 
-    auto& spla_context()
+    auto&
+    spla_context()
     {
         return *spla_ctx_;
     }
 
-    inline double evp_work_count(double w__ = 0) const
+    inline double
+    evp_work_count(double w__ = 0) const
     {
         evp_work_count_ += w__;
         return evp_work_count_;
     }
 
     /// Keep track of the total number of wave-functions to which the local operator was applied.
-    inline int num_loc_op_applied(int n = 0) const
+    inline int
+    num_loc_op_applied(int n = 0) const
     {
         num_loc_op_applied_ += n;
         return num_loc_op_applied_;
     }
 
-    inline int num_itsol_steps(int n = 0) const
+    inline int
+    num_itsol_steps(int n = 0) const
     {
         num_itsol_steps_ += n;
         return num_itsol_steps_;
     }
 
-    inline auto& cb()
+    inline auto&
+    cb()
     {
         return cb_;
     }
 
-    inline auto const& cb() const
+    inline auto const&
+    cb() const
     {
         return cb_;
     }
 
-    inline auto& ri()
+    inline auto&
+    ri()
     {
         return ri_;
     }
 
-    inline auto const& ri() const
+    inline auto const&
+    ri() const
     {
         return ri_;
     }
 
-    inline std::function<void(void)> band_occ_callback() const
+    inline std::function<void(void)>
+    band_occ_callback() const
     {
         return cb_.band_occ_;
     }
 
-    inline std::function<void(void)> veff_callback() const
+    inline std::function<void(void)>
+    veff_callback() const
     {
         return cb_.veff_;
     }
 
     /// Export parameters of simulation context as a JSON dictionary.
-    nlohmann::json serialize()
+    nlohmann::json
+    serialize()
     {
         nlohmann::json dict;
         dict["config"] = cfg().dict();
         bool const cart_pos{false};
         dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
         auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
-                        spfft_transform_coarse_->dim_z()};
+                                       spfft_transform_coarse_->dim_z()};
         dict["fft_coarse_grid"]     = fftgrid;
         dict["mpi_grid"]            = mpi_grid_dims();
         dict["omega"]               = unit_cell().omega();
@@ -732,14 +802,16 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Return output stream.
-    inline std::ostream& out() const
+    inline std::ostream&
+    out() const
     {
         RTE_ASSERT(output_stream_ != nullptr);
         return *output_stream_;
     }
 
     /// Return output stream based on the verbosity level.
-    inline std::ostream& out(int level__) const
+    inline std::ostream&
+    out(int level__) const
     {
         if (this->verbosity() >= level__) {
             return this->out();
@@ -748,7 +820,8 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    inline rte::ostream out(int level__, const char* label__) const
+    inline rte::ostream
+    out(int level__, const char* label__) const
     {
         if (this->verbosity() >= level__) {
             return rte::ostream(this->out(), label__);
@@ -758,7 +831,8 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Print message from the stringstream.
-    inline void message(int level__, char const* label__, std::stringstream const& s) const
+    inline void
+    message(int level__, char const* label__, std::stringstream const& s) const
     {
         if (this->verbosity() >= level__) {
             auto strings = split(s.str(), '\n');
@@ -768,12 +842,14 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    inline void set_periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
+    inline void
+    set_periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
     {
         pf_ext_ptr[label__] = ptr__;
     }
 
-    inline auto periodic_function_ptr(std::string label__) const
+    inline auto
+    periodic_function_ptr(std::string label__) const
     {
         periodic_function_ptr_t<double> const* ptr{nullptr};
         if (pf_ext_ptr.count(label__)) {
