@@ -3,6 +3,15 @@ import subprocess
 import os
 from subprocess import Popen, PIPE
 import difflib
+import argparse
+
+#
+# check formatting of the files with clang-format >= 17.0
+#
+
+parser = argparse.ArgumentParser(description='Check file formatting with clang-format')
+parser.add_argument('-f', '--fmt', action='store_true', help='Apply formatting to the file(s)')
+args = parser.parse_args()
 
 env_copy = os.environ.copy()
 
@@ -26,12 +35,18 @@ for name in files:
     p3 = subprocess.Popen(["sed", r"s/\/\/ *#pragma omp/#pragma omp/g"],     shell=enable_shell, stdin=p2.stdout, stdout=subprocess.PIPE)
     formatted = p3.communicate()[0].decode('utf-8')
     p3.wait()
-    if (original == formatted):
-        print("%s: OK"%name)
+    # save formatted file
+    if args.fmt:
+        with open(name, 'w') as f:
+            f.write(formatted)
+    # report diff
     else:
-        print("%s: non-zero diff found"%name)
-        for line in difflib.unified_diff(original.splitlines(), formatted.splitlines(), fromfile='original', tofile='formatted'):
-            print(line)
-        status += 1
+        if original == formatted:
+            print(f'{name}: OK')
+        else:
+            print(f'{name}: non-zero diff found')
+            for line in difflib.unified_diff(original.splitlines(), formatted.splitlines(), fromfile='original', tofile='formatted'):
+                print(line)
+            status += 1
 
 sys.exit(status)
