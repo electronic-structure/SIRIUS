@@ -585,11 +585,19 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
                                                              um__.local(at_lvl));
         }
 
-        if (ctx.cfg().hubbard().constrained_calculation() && ctx.cfg().hubbard().constraint_method() == "energy") {
+        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "energy") {
             if (om__.apply_constraints(at_lvl)) {
                 ::sirius::generate_constraint_potential(ctx, atype, lo_ind, at_lvl, om__.local(at_lvl),
                                                         om__.local_constraints(at_lvl),
                                                         om__.multipliers_constraints(at_lvl), um__.local(at_lvl));
+            }
+        }
+
+        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "occupantion") {
+            if (om__.apply_constraints(at_lvl)) {
+                ::sirius::generate_constraint_potential(ctx, atype, lo_ind, at_lvl, om__.local(at_lvl),
+                                                        om__.local_constraints(at_lvl), om__.local_constraints(at_lvl),
+                                                        um__.local(at_lvl));
             }
         }
     }
@@ -617,7 +625,7 @@ energy(Hubbard_matrix const& om__)
             energy += ::sirius::calculate_energy_non_collinear_local(ctx, atype, lo_ind, om__.local(at_lvl));
         }
 
-        if (ctx.cfg().hubbard().constrained_calculation() && ctx.cfg().hubbard().constraint_method() == "energy") {
+        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "energy") {
             if (om__.apply_constraints(at_lvl)) {
                 double tmp_ = ::sirius::calculate_energy_constraint_contribution(ctx, atype, lo_ind, om__.local(at_lvl),
                                                                                  om__.local_constraints(at_lvl),

@@ -5823,32 +5823,33 @@ sirius_set_hubbard_contrained_parameters:
    doc: Set the parameters controlling hubbard constrained calculation
    arguments:
      handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
+       type: ctx_handler
+       attr: in, required
+       doc: Simulation context handler.
      hubbard_conv_thr:
-      type: double
-      attr: in, optional
-      doc: convergence threhold when the hubbard occupation is constrained
+       type: double
+       attr: in, optional
+       doc: convergence threhold when the hubbard occupation is constrained
      hubbard_mixing_beta:
-      type: double
-      attr: in, optional
-      doc: mixing parameter for the hubbard constraints
+       type: double
+       attr: in, optional
+       doc: mixing parameter for the hubbard constraints
      hubbard_strength:
-      type: double
-      attr: in, optional
-      doc: energy penalty when the effective occupation numbers deviate from the reference numbers
+       type: double
+       attr: in, optional
+       doc: energy penalty when the effective occupation numbers deviate from the reference numbers
      hubbard_maxstep:
-      type: int
-      attr: in, optional
-      doc: maximum number of constrained iterations
-      type: string
-      attr: in, optional
-      doc: type of constrain, energy or occupation
+       type: int
+       attr: in, optional
+       doc: maximum number of constrained iterations
+     hubbard_constraint_type:
+       type: string
+       attr: in, optional
+       doc: type of constrain, energy or occupation
      error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
+       type: int
+       attr: out, optional
+       doc: Error code.
   @api end
 */
 void
@@ -5911,6 +5912,10 @@ sirius_add_hubbard_atom_constraint:
       type: double
       attr: in, required, dimension(2 * lmax_at + 1, 2 * lmax_at + 1, 2)
       doc: value of the occupation matrix for this level
+    orbital_order:
+      type: int
+      attr: in, optional, dimension(2 * l + 1)
+      doc: order or the Ylm by default it is SIRIUS order for Ylm
     error_code:
       type: int
       attr: out, optional
@@ -5919,7 +5924,8 @@ sirius_add_hubbard_atom_constraint:
 */
 void
 sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__, int* const n__, int* const l__,
-                                   int* const lmax_at__, const double* const occ__, int* const error_code__)
+                                   int* const lmax_at__, const double* const occ__, int* const orbital_order__,
+                                   int* const error_code__)
 {
     call_sirius(
             [&]() {
@@ -5930,7 +5936,6 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                 elem["l"]          = *l__;
                 const mdarray<double, 3> occ_({2 * *lmax_at__ + 1, 2 * *lmax_at__ + 1, 2}, (double* const)occ__);
                 std::vector<std::vector<std::vector<double>>> elem_occ_(2);
-
                 // const int lda_ = 2 * *lmax_at__ + 1;
                 for (int s = 0; s < 2; s++) {
                     elem_occ_[s].clear();
@@ -5939,12 +5944,19 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                         elem_occ_[s][m].clear();
                         elem_occ_[s][m].resize(2 * *l__ + 1);
                         for (int mp = 0; mp < 2 * *l__ + 1; mp++) {
-                            elem_occ_[s][m][mp] = occ_(m, mp, s);
+                            elem_occ_[s][m][mp] = occ_(mp, m, s);
                         }
                     }
                 }
-                elem["constrained_occupancy"] = elem_occ_;
+                elem["occupancy"] = elem_occ_;
+
+                if (orbital_order__ != nullptr) {
+                    std::vector<int> lm_order_(2 * *lmax_at__ + 1, 0);
+                    std::memcpy(lm_order_.data(), orbital_order__, sizeof(int) * (2 * *lmax_at__ + 1));
+                    elem["lm_order"] = lm_order_;
+                }
                 sim_ctx.cfg().hubbard().local_constraint().append(elem);
+
             },
             error_code__);
 }

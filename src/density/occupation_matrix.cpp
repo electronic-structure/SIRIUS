@@ -322,14 +322,8 @@ Occupation_matrix::init()
                     }
                 }
             }
-
-            /////////////////////////////////////////////////////////
-            // if we constrain the hubbard occupations, we need to //
-            //   - initialize the local constraint to their values //
-            //   - initialize the local_ with the imposed values   //
-            /////////////////////////////////////////////////////////
-
-            if (ctx_.cfg().hubbard().constrained_calculation() && ctx_.cfg().hubbard().local_constraint().size()) {
+            // initialize the occupancy matrices to their user provided values.
+            if (ctx_.cfg().hubbard().constrained_calculation() && apply_constraints_.size()) {
                 if (apply_constraints_[at_lvl]) {
                     copy(local_constraints_[at_lvl], local_[at_lvl]);
                 }

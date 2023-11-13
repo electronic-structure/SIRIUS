@@ -5834,15 +5834,17 @@ endif
 end subroutine sirius_set_hubbard_contrained_parameters
 
 !
-!> @brief Add a non-local Hubbard interaction V for a pair of atoms.
+!> @brief Information about the constrained atomic level
 !> @param [in] handler Simulation context handler.
 !> @param [in] atom_id atom iindex
 !> @param [in] n principal quantum number of the atomic level for the constrained hubbard correction
 !> @param [in] l angular momentum of the atomic level
 !> @param [in] lmax_at maximum angular momentum
 !> @param [in] occ value of the occupation matrix for this level
+!> @param [in] orbital_order order or the Ylm by default it is SIRIUS order for Ylm
 !> @param [out] error_code Error code.
-subroutine sirius_add_hubbard_atom_constraint(handler,atom_id,n,l,lmax_at,occ,error_code)
+subroutine sirius_add_hubbard_atom_constraint(handler,atom_id,n,l,lmax_at,occ,orbital_order,&
+&error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -5851,6 +5853,7 @@ integer, target, intent(in) :: n
 integer, target, intent(in) :: l
 integer, target, intent(in) :: lmax_at
 real(8), target, intent(in) :: occ(2 * lmax_at + 1, 2 * lmax_at + 1, 2)
+integer, optional, target, intent(in) :: orbital_order(2 * l + 1)
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5859,11 +5862,12 @@ type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: lmax_at_ptr
 type(C_PTR) :: occ_ptr
+type(C_PTR) :: orbital_order_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_add_hubbard_atom_constraint_aux(handler,atom_id,n,l,lmax_at,occ,&
-&error_code)&
+&orbital_order,error_code)&
 &bind(C, name="sirius_add_hubbard_atom_constraint")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -5872,6 +5876,7 @@ type(C_PTR), value :: n
 type(C_PTR), value :: l
 type(C_PTR), value :: lmax_at
 type(C_PTR), value :: occ
+type(C_PTR), value :: orbital_order
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -5888,12 +5893,16 @@ lmax_at_ptr = C_NULL_PTR
 lmax_at_ptr = C_LOC(lmax_at)
 occ_ptr = C_NULL_PTR
 occ_ptr = C_LOC(occ)
+orbital_order_ptr = C_NULL_PTR
+if (present(orbital_order)) then
+orbital_order_ptr = C_LOC(orbital_order)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_add_hubbard_atom_constraint_aux(handler_ptr,atom_id_ptr,n_ptr,l_ptr,&
-&lmax_at_ptr,occ_ptr,error_code_ptr)
+&lmax_at_ptr,occ_ptr,orbital_order_ptr,error_code_ptr)
 end subroutine sirius_add_hubbard_atom_constraint
 
 !

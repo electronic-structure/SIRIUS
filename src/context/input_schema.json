@@ -890,12 +890,12 @@
                 },
                 "constraint_strength": {
                     "type": "number",
-                    "default": 0.0,
+                    "default": 1.0,
                     "title": "Amplitude of the constrained potential"
                 },
                 "constraint_method": {
                     "type": "string",
-                    "default": "occupation",
+                    "default": "energy",
                     "enum": [
                         "energy",
                         "occupation"
@@ -920,6 +920,14 @@
                                 "type": "integer",
                                 "default": -1,
                                 "title": "angular momentum"
+                            },
+                            "lm_order" : {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "title": "Ordering of the Ylm (0,-1,1,-2,2). By default it will consider the (-1,0,1) order (example l = 1)"
                             },
                             "occupancy": {
                                 "type": "array",

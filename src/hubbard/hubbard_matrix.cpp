@@ -50,7 +50,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
 
         if (ctx_.cfg().hubbard().constrained_calculation() && ctx_.cfg().hubbard().local_constraint().size()) {
             apply_constraints_.clear();
-            apply_constraints_.resize(num_atomic_level);
+            apply_constraints_.resize(num_atomic_level, false);
             local_constraints_       = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_level);
             multipliers_constraints_ = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_level);
         }
@@ -88,20 +88,32 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
                 for (int cts_index = 0; cts_index < ctx_.cfg().hubbard().local_constraint().size(); cts_index++) {
                     const auto& constraint_    = ctx_.cfg().hubbard().local_constraint(cts_index);
                     apply_constraints_[at_lvl] = (constraint_.atom_index() == ia) && (constraint_.l() == l) &&
-                                                 ((constraint_.n() == n) || (n < 0));
+                                                 ((constraint_.n() == n) || (n < 0) || (constraint_.n() < 0));
                     if (apply_constraints_[at_lvl]) {
                         // fill the constrained occupation numbers. I need to go through the full for each orbital
                         const auto& cts_ = ctx_.cfg().hubbard().local_constraint();
                         for (int cts_index = 0; cts_index < cts_.size(); cts_index++) {
                             const auto& constraint_ = ctx_.cfg().hubbard().local_constraint(cts_index);
                             if ((constraint_.atom_index() == ia) && (constraint_.l() == l) &&
-                                ((n == constraint_.n()) || (n < 0))) {
+                                (((n == constraint_.n()) || (n < 0)) || (constraint_.n() < 0))) {
                                 const auto& occ_matrix__ = constraint_.occupancy();
-                                for (unsigned int sp = 0; sp < occ_matrix__.size();
-                                     sp++) { // spin blocks up-up, up-down, down-down
-                                    for (int m1 = 0; m1 < mmax; m1++) {
-                                        for (int m2 = 0; m2 < mmax; m2++) {
-                                            local_constraints_[at_lvl](m1, m2, sp) = occ_matrix__[sp][m1][m2];
+                                if (constraint_.contains("lm_order")) {
+                                    const auto &lm_order_ = constraint_.lm_order();
+                                    for (unsigned int sp = 0; sp < occ_matrix__.size();
+                                         sp++) { // spin blocks up-up, up-down, down-down
+                                        for (int m1 = 0; m1 < mmax; m1++) {
+                                            for (int m2 = 0; m2 < mmax; m2++) {
+                                                local_constraints_[at_lvl](m2, m1, sp) = occ_matrix__[sp][l + lm_order_[m1]][l + lm_order_[m2]];
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    for (unsigned int sp = 0; sp < occ_matrix__.size();
+                                         sp++) { // spin blocks up-up, up-down, down-down
+                                        for (int m1 = 0; m1 < mmax; m1++) {
+                                            for (int m2 = 0; m2 < mmax; m2++) {
+                                                local_constraints_[at_lvl](m2, m1, sp) = occ_matrix__[sp][m1][m2];
+                                            }
                                         }
                                     }
                                 }
@@ -235,7 +247,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
         out__ << hbar(2 * width * mmax + 3, '-') << std::endl;
     }
 
-    if (ctx_.cfg().hubbard().constrained_calculation()) {
+    if (apply_constraint()) {
         out__ << "Hubbard constraint error (l2-norm): " << constraint_error_ << std::endl;
     }
 }

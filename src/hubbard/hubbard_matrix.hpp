@@ -40,10 +40,13 @@ class Hubbard_matrix
     /// table indicating if we should apply constraints on the hubbard occupation
     /// to given atomic orbital group
     std::vector<bool> apply_constraints_;
+    /// occupancy matrix for each atomic level (n,l)
     std::vector<mdarray<std::complex<double>, 3>> local_;
     /// Non-local part of Hubbard matrix.
     std::vector<mdarray<std::complex<double>, 3>> nonlocal_;
+    /// occupancy matrix for each atomic orbital (n,l) contributing to the hubbard correction
     std::vector<mdarray<std::complex<double>, 3>> local_constraints_;
+    /// "lagrange" multipliers
     std::vector<mdarray<std::complex<double>, 3>> multipliers_constraints_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     std::vector<int> offset_;
@@ -126,6 +129,18 @@ class Hubbard_matrix
     atomic_orbitals(const int idx__) const
     {
         return atomic_orbitals_[idx__];
+    }
+
+    int
+    num_steps() const
+    {
+        return num_steps_;
+    }
+
+    void
+    num_steps(const int num_steps__)
+    {
+        num_steps_ = num_steps__;
     }
 
     double
@@ -262,16 +277,19 @@ copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 
     for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
         copy(src__.nonlocal(i), dest__.nonlocal(i));
+    }
 
-        if (src__.ctx().cfg().hubbard().constrained_calculation()) {
-            for (int i = 0; i < static_cast<int>(src__.atomic_orbitals().size()); i++) {
-                if (src__.apply_constraints(i)) {
-                    copy(src__.local_constraints(i), dest__.local_constraints(i));
-                    copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
-                    dest__.apply_constraints()[i] = src__.apply_constraints(i);
-                }
+    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
+        for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
+            if (src__.apply_constraints(at_lvl)) {
+                // the two might be redundant as they are initialized when the Hubbard_matrix is created.
+                copy(src__.local_constraints(at_lvl), dest__.local_constraints(at_lvl));
+                dest__.apply_constraints()[at_lvl] = src__.apply_constraints(at_lvl);
+                copy(src__.multipliers_constraints(at_lvl), dest__.multipliers_constraints(at_lvl));
             }
         }
+        dest__.num_steps(src__.num_steps());
+        dest__.constraint_error() = src__.constraint_error();
     }
 }
 } // namespace sirius
