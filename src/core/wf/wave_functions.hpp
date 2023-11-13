@@ -81,11 +81,11 @@ axpby_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1
 
 void
 axpy_scatter_gpu_double_complex_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
-        void const* idx__, void* y__, int ld2__, int ngv_loc__);
+        int const* idx__, void* y__, int ld2__, int ngv_loc__);
 
 void
 axpy_scatter_gpu_double_double(int nwf__, void const* alpha__, void const* x__, int ld1__,
-        void const* idx__, void* y__, int ld2__, int ngv_loc__);
+        int const* idx__, void* y__, int ld2__, int ngv_loc__);
 }
 #endif
 
@@ -1393,9 +1393,9 @@ void axpby(memory_t mem__, wf::spin_range spins__, wf::band_range br__, F const*
     }
 }
 
-template <typename T, typename F, typename G>
+template <typename T, typename F>
 void axpy_scatter(memory_t mem__, wf::spin_range spins__, F const*  alphas__,
-        Wave_functions<T> const* x__, G const* idx__, Wave_functions<T>* y__, int n__)
+        Wave_functions<T> const* x__, int const* idx__, Wave_functions<T>* y__, int n__)
 {
     PROFILE("wf::axpy_scatter");
     if (is_host_memory(mem__)) {
@@ -1426,7 +1426,7 @@ void axpy_scatter(memory_t mem__, wf::spin_range spins__, F const*  alphas__,
             mdarray<F, 1> alpha({n__}, const_cast<F*>(alphas__));
             alpha.allocate(mem__).copy_to(mem__);
 
-            mdarray<G, 1> idx({n__}, const_cast<G*>(idx__));
+            mdarray<int, 1> idx({n__}, const_cast<int*>(idx__));
             idx.allocate(mem__).copy_to(mem__);
 
             if (std::is_same<T, double>::value) {
@@ -1450,7 +1450,7 @@ template <typename T, typename F = T>
 void copy(memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::band_range br_in__,
           Wave_functions<F>& out__, wf::spin_index s_out__, wf::band_range br_out__)
 {
-    PROFILE("wf::copy");
+    //PROFILE("wf::copy");
     RTE_ASSERT(br_in__.size() == br_out__.size());
     if (in__.ld() != out__.ld()) {
         std::stringstream s;

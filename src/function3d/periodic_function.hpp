@@ -287,7 +287,7 @@ class Periodic_function
 template <typename T>
 inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
-    PROFILE("sirius::inner");
+    PROFILE("sirius::inner::pf");
     if (f__.ctx().full_potential()) {
         auto result = sirius::inner_local(f__.rg(), g__.rg(),
                 [&](int ir) { return f__.ctx().theta(ir); });

@@ -529,7 +529,7 @@ template <typename T, typename F>
 inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    PROFILE("sirius::inner");
+    PROFILE("sirius::inner::spf");
 
     T result_rg = inner_local(f__, g__, std::forward<F>(theta__));
     mpi::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
