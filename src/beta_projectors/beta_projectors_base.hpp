@@ -167,22 +167,41 @@ void beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
 
 } // namespace local
 
-/// Generates beta projector PW coefficients and holds GPU memory phase-factor
-/// independent coefficients of |> functions for atom types.
+/** Generates beta projector PW coefficients and holds GPU memory phase-factor
+    independent coefficients of |> functions for atom types.*/
 template <typename T>
 class Beta_projector_generator
 {
-  public:
-    typedef std::complex<T> complex_t;
-    typedef mdarray<complex_t, 3> array_t;
+  private:
+    /// Simulation context.
+    Simulation_context& ctx_;
+    /// Beta-projectors for atom-types.
+    mdarray<std::complex<T>, 3> const& pw_coeffs_t_host_;
+    /// Beta-projectors for atom-types on device.
+    mdarray<std::complex<T>, 3> pw_coeffs_t_device_;
+    /// Precomputed beta coefficients on CPU.
+    matrix<std::complex<T>> const& beta_pw_all_atoms_;
+    /// Processing unit.
+    sirius::device_t processing_unit_;
+    /// Chunk descriptors.
+    std::vector<beta_chunk_t> const& beta_chunks_;
+    /// G+k vectors.
+    fft::Gvec const& gkvec_;
+    /// Coordinates of G+k vectors.
+    mdarray<double, 2> const& gkvec_coord_;
+    /// Local number of G+k vectors.
+    int num_gkvec_loc_;
+    /// Maximum number of beta-projectors.
+    int max_num_beta_;
 
   public:
-    Beta_projector_generator(Simulation_context& ctx, array_t const& pw_coeffs_t_host,
+    Beta_projector_generator(Simulation_context& ctx, mdarray<std::complex<T>, 3> const& pw_coeffs_t_host,
                              matrix<std::complex<T>> const& beta_pw_all, device_t processing_unit,
                              std::vector<beta_chunk_t> const& beta_chunks, fft::Gvec const& gkvec,
                              mdarray<double, 2> const& gkvec_coord, int num_gkvec_loc);
 
     void generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk, int j) const;
+
     void generate(beta_projectors_coeffs_t<T>& coeffs, int ichunk) const;
 
     beta_projectors_coeffs_t<T> prepare() const;
@@ -205,32 +224,10 @@ class Beta_projector_generator
     {
         return processing_unit_;
     }
-
-  private:
-    /// Simulation context.
-    Simulation_context& ctx_;
-    /// Beta-projectors for atom-types.
-    array_t const& pw_coeffs_t_host_;
-    /// Beta-projectors for atom-types on device.
-    array_t pw_coeffs_t_device_;
-    /// Precomputed beta coefficients on CPU.
-    matrix<complex_t> const& beta_pw_all_atoms_;
-    /// Processing unit.
-    sirius::device_t processing_unit_;
-    /// Chunk descriptors.
-    std::vector<beta_chunk_t> const& beta_chunks_;
-    /// G+k vectors.
-    fft::Gvec const& gkvec_;
-    /// Coordinates of G+k vectors.
-    mdarray<double, 2> const& gkvec_coord_;
-    /// Local number of G+k vectors.
-    int num_gkvec_loc_;
-    /// Maximum number of beta-projectors.
-    int max_num_beta_;
 };
 
 template <typename T>
-Beta_projector_generator<T>::Beta_projector_generator(Simulation_context& ctx, const array_t& pw_coeffs_t_host,
+Beta_projector_generator<T>::Beta_projector_generator(Simulation_context& ctx, mdarray<std::complex<T>, 3> const& pw_coeffs_t_host,
                                                       matrix<std::complex<T>> const& beta_pw_all,
                                                       sirius::device_t processing_unit,
                                                       std::vector<beta_chunk_t> const& beta_chunks,
@@ -246,7 +243,7 @@ Beta_projector_generator<T>::Beta_projector_generator(Simulation_context& ctx, c
     , num_gkvec_loc_(num_gkvec_loc)
 {
     if (processing_unit == device_t::GPU) {
-        pw_coeffs_t_device_ = array_t({pw_coeffs_t_host.size(0), pw_coeffs_t_host.size(1), pw_coeffs_t_host.size(2)},
+        pw_coeffs_t_device_ = mdarray<std::complex<T>, 3>({pw_coeffs_t_host.size(0), pw_coeffs_t_host.size(1), pw_coeffs_t_host.size(2)},
                                       get_memory_pool(memory_t::device));
         // copy to device
         acc::copyin(pw_coeffs_t_device_.device_data(), pw_coeffs_t_host.host_data(), pw_coeffs_t_host.size());
