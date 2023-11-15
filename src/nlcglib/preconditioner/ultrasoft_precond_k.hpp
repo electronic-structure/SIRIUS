@@ -258,7 +258,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors
         auto G         = P.apply(beta_coeffs.pw_coeffs_a_, pm);
-        int row_offset = beta_coeffs.beta_chunk_.offset_;
+        int row_offset = beta_coeffs.beta_chunk_->offset_;
 
         la::wrap(la).gemm('C', 'N', G.size(1), nbnd, G.size(0), &la::constant<numeric_t>::one(), G.at(pm), G.ld(),
                           X.at(pm), X.ld(), &la::constant<numeric_t>::zero(), bphi.at(pm, row_offset, 0), bphi.ld());
@@ -289,7 +289,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
             case device_t::CPU: {
                 la::wrap(la::lib_t::blas)
                     .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(memory_t::host), G.ld(),
-                          R.at(memory_t::host, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          R.at(memory_t::host, beta_coeffs.beta_chunk_->offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(memory_t::host), Y.ld());
                 break;
             }
