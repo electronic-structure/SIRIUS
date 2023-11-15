@@ -134,7 +134,7 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::
 
     auto& beta_gk     = beta_coeffs__.pw_coeffs_a_;
     int num_gkvec_loc = beta_gk.size(0);
-    int nbeta         = beta_coeffs__.beta_chunk_.num_beta_;
+    int nbeta         = beta_coeffs__.beta_chunk_->num_beta_;
 
     /* setup linear algebra parameters */
     la::lib_t la{la::lib_t::blas};
@@ -157,11 +157,11 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::
         acc::set_device_id(mpi::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
         #pragma omp for
-        for (int i = 0; i < beta_coeffs__.beta_chunk_.num_atoms_; i++) {
+        for (int i = 0; i < beta_coeffs__.beta_chunk_->num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::nbf, i);
-            int offs = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, i);
-            int ia   = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, i);
+            int nbf  = beta_coeffs__.beta_chunk_->desc_(beta_desc_idx::nbf, i);
+            int offs = beta_coeffs__.beta_chunk_->desc_(beta_desc_idx::offset, i);
+            int ia   = beta_coeffs__.beta_chunk_->desc_(beta_desc_idx::ia, i);
 
             if (nbf) {
                 la::wrap(la).gemm('N', 'N', nbf, br__.size(), nbf, &la::constant<F>::one(),
@@ -218,9 +218,9 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, atom_index_t::local ia
     auto& beta_gk     = beta_coeffs__.pw_coeffs_a_;
     int num_gkvec_loc = beta_gk.size(0);
 
-    int nbf  = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::nbf, ia__);
-    int offs = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::offset, ia__);
-    int ia   = beta_coeffs__.beta_chunk_.desc_(beta_desc_idx::ia, ia__);
+    int nbf  = beta_coeffs__.beta_chunk_->desc_(beta_desc_idx::nbf, ia__);
+    int offs = beta_coeffs__.beta_chunk_->desc_(beta_desc_idx::offset, ia__);
+    int ia   = beta_coeffs__.beta_chunk_->desc_(beta_desc_idx::ia, ia__);
 
     if (nbf == 0) {
         return;

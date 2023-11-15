@@ -98,7 +98,7 @@ is_device_memory(memory_t mem__)
 }
 
 /// Get a memory type from a string.
-inline memory_t
+inline auto
 get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -128,7 +128,7 @@ enum class device_t
 };
 
 /// Get type of device by memory type.
-inline device_t
+inline auto
 get_device_t(memory_t mem__)
 {
     switch (mem__) {

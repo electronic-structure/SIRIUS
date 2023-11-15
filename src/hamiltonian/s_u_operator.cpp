@@ -198,7 +198,7 @@ apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generat
                               wf::Wave_functions<double>& ds_phi__)
 {
     if (is_device_memory(mem__)) {
-        RTE_ASSERT((bp__.device_t() == device_t::GPU));
+        RTE_ASSERT((bp__.pu() == device_t::GPU));
     }
     // NOTE: Beta_projectors_generator knows the target memory!
     using complex_t = std::complex<double>;

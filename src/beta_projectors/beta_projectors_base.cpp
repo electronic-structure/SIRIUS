@@ -95,7 +95,7 @@ template void
 beta_projectors_generate_cpu<double>(matrix<std::complex<double>>&,
         mdarray<std::complex<double>, 3> const&, int, int, beta_chunk_t const&, Simulation_context const&,
         fft::Gvec const&);
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 // explicit instantiation
 template void
 beta_projectors_generate_cpu<float>(matrix<std::complex<float>>&, mdarray<std::complex<float>, 3> const&,
@@ -106,7 +106,7 @@ template <class T>
 void
 beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
         mdarray<std::complex<T>, 3> const& pw_coeffs_t_device,
-        mdarray<std::complex<T>, 3> const& pw_coeffs_t_host, Simulation_context const& ctx,
+        Simulation_context const& ctx,
                              fft::Gvec const& gkvec, mdarray<double, 2> const& gkvec_coord_,
                              beta_chunk_t const& beta_chunk, int j__)
 {
@@ -122,13 +122,13 @@ beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
 
 // explicit instantiation
 template void
-beta_projectors_generate_gpu<double>(beta_projectors_coeffs_t<double>&, mdarray<std::complex<double>, 3> const&,
+beta_projectors_generate_gpu<double>(beta_projectors_coeffs_t<double>&,
         mdarray<std::complex<double>, 3> const&, Simulation_context const&, fft::Gvec const&,
         mdarray<double, 2> const&, beta_chunk_t const&, int);
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 // explicit instantiation
 template void
-beta_projectors_generate_gpu<float>(beta_projectors_coeffs_t<float>&, mdarray<std::complex<float>, 3> const&,
+beta_projectors_generate_gpu<float>(beta_projectors_coeffs_t<float>&,
         mdarray<std::complex<float>, 3> const&, Simulation_context const&, fft::Gvec const&,
         mdarray<double, 2> const&, beta_chunk_t const&, int);
 #endif
@@ -153,7 +153,7 @@ Beta_projectors_base<T>::split_in_chunks()
         /* no beta projectors at all */
         beta_chunks_  = std::vector<beta_chunk_t>(0);
         num_beta_t_   = 0;
-        max_num_beta_ = 0;
+        //max_num_beta_ = 0;
         return;
     }
 
@@ -205,12 +205,12 @@ Beta_projectors_base<T>::split_in_chunks()
             beta_chunks_[ib].atom_pos_.allocate(memory_t::device).copy_to(memory_t::device);
         }
     }
-    num_total_beta_ = offset_in_beta_gk;
+    num_beta_ = offset_in_beta_gk;
 
-    max_num_beta_ = 0;
-    for (auto& e : beta_chunks_) {
-        max_num_beta_ = std::max(max_num_beta_, e.num_beta_);
-    }
+    //max_num_beta_ = 0;
+    //for (auto& e : beta_chunks_) {
+    //    max_num_beta_ = std::max(max_num_beta_, e.num_beta_);
+    //}
 
     num_beta_t_ = 0;
     for (int iat = 0; iat < uc.num_atom_types(); iat++) {
@@ -249,62 +249,39 @@ Beta_projectors_base<T>::Beta_projectors_base(Simulation_context& ctx__, fft::Gv
 
 template <class T>
 void
-Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichunk__) const
+Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out__, int ichunk__, int j__) const
 {
-    PROFILE("sirius::Beta_projector_generator");
+    PROFILE("sirius::Beta_projector_generator::generate");
     using numeric_t = std::complex<T>;
 
-    int j{0};
-    out.beta_chunk_ = beta_chunks_.at(ichunk__);
+    out__.beta_chunk_ = &beta_chunks_[ichunk__];
 
-    auto num_beta = out.beta_chunk_.num_beta_;
+    auto num_beta = beta_chunks_[ichunk__].num_beta_;
     auto gk_size  = gkvec_.count();
 
-    switch (processing_unit_) {
+    switch (pu_) {
         case device_t::CPU: {
-            out.pw_coeffs_a_ =
-                matrix<numeric_t>({gk_size, beta_chunks_[ichunk__].num_beta_},
-                        const_cast<numeric_t*>(&beta_pw_all_atoms_(0, beta_chunks_[ichunk__].offset_)));
+            if (pw_coeffs_all_atoms_.size()) {
+                /* wrap existin buffer */
+                out__.pw_coeffs_a_ =
+                    matrix<numeric_t>({gk_size, num_beta},
+                            const_cast<numeric_t*>(pw_coeffs_all_atoms_.at(memory_t::host, 0, beta_chunks_[ichunk__].offset_, j__)));
+            } else {
+                local::beta_projectors_generate_cpu(out__.pw_coeffs_a_, pw_coeffs_t_, ichunk__, j__,
+                                                    beta_chunks_[ichunk__], ctx_, gkvec_);
+            }
             break;
         }
         case device_t::GPU: {
-            out.pw_coeffs_a_ = matrix<numeric_t>({gk_size, num_beta}, nullptr, 
-                    out.pw_coeffs_a_buffer_.device_data());
-            local::beta_projectors_generate_gpu(out, pw_coeffs_t_device_, pw_coeffs_t_host_, ctx_, gkvec_, gkvec_coord_,
-                                                beta_chunks_[ichunk__], j);
-            break;
-        }
-    }
-}
-
-template <class T>
-void
-Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichunk__, int j__) const
-{
-    PROFILE("sirius::Beta_projector_generator");
-    using numeric_t = std::complex<T>;
-
-    out.beta_chunk_ = beta_chunks_.at(ichunk__);
-
-    auto num_beta = out.beta_chunk_.num_beta_;
-    auto gk_size  = gkvec_.count();
-
-    switch (processing_unit_) {
-        case device_t::CPU: {
-            // allocate pw_coeffs_a
-            out.pw_coeffs_a_ = matrix<numeric_t>({gk_size, num_beta}, get_memory_pool(memory_t::host));
-            local::beta_projectors_generate_cpu(out.pw_coeffs_a_, pw_coeffs_t_host_, ichunk__, j__,
-                                                beta_chunks_[ichunk__], ctx_, gkvec_);
-            break;
-        }
-        case device_t::GPU: {
-            // view of internal buffer with correct number of cols (= num_beta)
-            out.pw_coeffs_a_ =
-                matrix<numeric_t>({gk_size, num_beta}, nullptr, out.pw_coeffs_a_buffer_.device_data());
-            // g0 coefficients reside in host memory
-
-            local::beta_projectors_generate_gpu(out, pw_coeffs_t_device_, pw_coeffs_t_host_, ctx_, gkvec_, gkvec_coord_,
+            if (pw_coeffs_all_atoms_.size() && pw_coeffs_all_atoms_.on_device()) {
+                /* wrap existing GPU pointer */
+                out__.pw_coeffs_a_ =
+                    matrix<numeric_t>({gk_size, num_beta}, nullptr,
+                            const_cast<numeric_t*>(pw_coeffs_all_atoms_.at(memory_t::device, 0, beta_chunks_[ichunk__].offset_, j__)));
+            } else {
+                local::beta_projectors_generate_gpu(out__, pw_coeffs_t_, ctx_, gkvec_, gkvec_coord_,
                                                 beta_chunks_[ichunk__], j__);
+            }
             break;
         }
     }
@@ -312,7 +289,7 @@ Beta_projector_generator<T>::generate(beta_projectors_coeffs_t<T>& out, int ichu
 
 template class Beta_projector_generator<double>;
 template class Beta_projectors_base<double>;
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template class Beta_projector_generator<float>;
 template class Beta_projectors_base<float>;
 #endif

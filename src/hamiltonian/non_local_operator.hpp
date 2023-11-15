@@ -128,7 +128,7 @@ apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__,
                     Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
 {
     if (is_device_memory(mem__)) {
-        RTE_ASSERT(beta__.device_t() == device_t::GPU);
+        RTE_ASSERT(beta__.pu() == device_t::GPU);
     }
 
     auto& ctx = beta__.ctx();
@@ -139,7 +139,6 @@ apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__,
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
             auto sp = phi__.actual_spin_index(s);
-            // auto beta_phi = beta__.template inner<F>(mem__, i, phi__, sp, br__);
             auto beta_phi = inner_prod_beta<F>(ctx.spla_context(), mem__, ctx.host_memory_t(),
                                                is_device_memory(mem__), /* copy result back to gpu if true */
                                                beta_coeffs__, phi__, sp, br__);
