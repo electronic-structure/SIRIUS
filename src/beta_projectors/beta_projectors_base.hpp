@@ -284,9 +284,8 @@ class Beta_projectors_base
 
     auto make_generator(device_t pu__) const
     {
-        Beta_projector_generator<T> gen(ctx_, pu__, pw_coeffs_t_, pw_coeffs_all_atoms_,
+        return Beta_projector_generator<T>(ctx_, pu__, pw_coeffs_t_, pw_coeffs_all_atoms_,
                                            beta_chunks_, gkvec_, gkvec_coord_);
-        return gen;
     }
 
     auto make_generator() const
@@ -418,11 +417,11 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
 
         for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
             generator.generate(bcoeffs_col, jchunk);
-            int m              = bcoeffs_row.beta_chunk_.num_beta_;
-            int n              = bcoeffs_col.beta_chunk_.num_beta_;
+            int m              = bcoeffs_row.beta_chunk_->num_beta_;
+            int n              = bcoeffs_col.beta_chunk_->num_beta_;
             int k              = bcoeffs_col.pw_coeffs_a_.size(0);
-            int dest_row       = bcoeffs_row.beta_chunk_.offset_;
-            int dest_col       = bcoeffs_col.beta_chunk_.offset_;
+            int dest_row       = bcoeffs_row.beta_chunk_->offset_;
+            int dest_col       = bcoeffs_col.beta_chunk_->offset_;
             const complex_t* A = bcoeffs_row.pw_coeffs_a_.at(mem_t);
             const complex_t* B = bcoeffs_col.pw_coeffs_a_.at(mem_t);
             complex_t* C       = out.at(mem_t, dest_row, dest_col);
@@ -456,7 +455,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
         la = la::lib_t::gpublas;
     }
 
-    int size{beta.num_total_beta()};
+    int size{beta.num_beta()};
 
     matrix<complex_t> out({size, size}, mem_t);
 
@@ -469,11 +468,11 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
         for (int jchunk = 0; jchunk < num_beta_chunks; ++jchunk) {
             generator.generate(bcoeffs_col, jchunk);
 
-            int m              = bcoeffs_row.beta_chunk_.num_beta_; // TODO: take chunks from Beta_projectors_base<T>& beta
-            int n              = bcoeffs_col.beta_chunk_.num_beta_;
+            int m              = bcoeffs_row.beta_chunk_->num_beta_; // TODO: take chunks from Beta_projectors_base<T>& beta
+            int n              = bcoeffs_col.beta_chunk_->num_beta_;
             int k              = bcoeffs_col.pw_coeffs_a_.size(0);
-            int dest_row       = bcoeffs_row.beta_chunk_.offset_;
-            int dest_col       = bcoeffs_col.beta_chunk_.offset_;
+            int dest_row       = bcoeffs_row.beta_chunk_->offset_;
+            int dest_col       = bcoeffs_col.beta_chunk_->offset_;
             const complex_t* A = bcoeffs_row.pw_coeffs_a_.at(mem_t);
             // apply Op on |b>  (in-place operation)
             auto G = op(bcoeffs_col.pw_coeffs_a_);
