@@ -213,7 +213,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
         bp_gen.generate(beta_coeffs, ichunk);
 
         local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
-                     beta_coeffs.beta_chunk_.offset_, 0);
+                     beta_coeffs.beta_chunk_->offset_, 0);
     }
 
     // compute bphi <- (I + B*Q)⁻¹ (B^H X)
@@ -244,7 +244,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
         int k = beta_coeffs.pw_coeffs_a_.size(1);
 
         la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a_.at(pm),
-                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_->offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(pm), Y.ld());
     }
 }
@@ -285,7 +285,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
-                     beta_coeffs.beta_chunk_.offset_, 0);
+                     beta_coeffs.beta_chunk_->offset_, 0);
     }
 
     matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
@@ -308,7 +308,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
         int k = beta_coeffs.pw_coeffs_a_.size(1);
 
         la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a_.at(pm),
-                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_->offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(pm), Y.ld());
     }
 }
