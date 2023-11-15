@@ -205,7 +205,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
     auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
-    int num_beta = bp_.num_total_beta();
+    int num_beta = bp_.num_beta();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
@@ -278,7 +278,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
     int nbnd         = X.size(1);
     auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
-    int num_beta     = bp_.num_total_beta();
+    int num_beta     = bp_.num_beta();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
