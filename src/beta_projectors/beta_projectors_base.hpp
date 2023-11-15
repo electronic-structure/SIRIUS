@@ -406,7 +406,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
         la = la::lib_t::gpublas;
     }
 
-    int size{beta.num_total_beta()};
+    int size{beta.num_beta()};
 
     matrix<complex_t> out({size, size}, get_memory_pool(mem_t));
 

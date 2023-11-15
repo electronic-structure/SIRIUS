@@ -238,7 +238,7 @@ void
 Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
                                            memory_t pm)
 {
-    int num_beta = bp_.num_total_beta();
+    int num_beta = bp_.num_beta();
     int nbnd     = X.size(1);
 
     pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
