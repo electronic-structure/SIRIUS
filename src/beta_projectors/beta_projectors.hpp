@@ -122,7 +122,7 @@ class Beta_projectors : public Beta_projectors_base<T>
                 local::beta_projectors_generate_cpu(tmp, this->pw_coeffs_t_, ichunk, /*j*/ 0,
                                                     this->beta_chunks_[ichunk], ctx__, gkvec__);
             }
-            if (true) { // current implementation: allocate all beta(G+k) on GPUs. TODO: control via switch
+            if (ctx__.cfg().control().beta_on_device()) {
                 if (this->ctx_.processing_unit() == device_t::GPU) {
                     this->pw_coeffs_all_atoms_.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
                 }

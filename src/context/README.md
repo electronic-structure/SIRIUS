@@ -2,7 +2,7 @@
 All input parameters that SIRIUS understands are defined in the `input_schema.json` file. If you need to introduce
 new parameters, edit the schema and then generate a new `config.hpp` by running
 ```
-python3 ../../apps/utils/gen_input_struct.py input_schema.json &> config.hpp
+python3 ../../apps/utils/gen_config.py input_schema.json &> config.hpp
 ```
 
 Input schema is converted into const json dictionary inside SIRIUS with the following cmake command:

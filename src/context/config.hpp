@@ -12,6 +12,9 @@ class config_t
         return dict_;
     }
     /// Parameters of the mixer
+    /**
+        Control type and parameters of the mixer
+    */
     class mixer_t
     {
       public:
@@ -858,6 +861,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/control/beta_chunk_size"_json_pointer] = beta_chunk_size__;
+        }
+        /// True if whole set of beta-projectors can be allocated on device for the entire run.
+        inline auto beta_on_device() const
+        {
+            return dict_.at("/control/beta_on_device"_json_pointer).get<bool>();
+        }
+        inline void beta_on_device(bool beta_on_device__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/beta_on_device"_json_pointer] = beta_on_device__;
         }
         /// Orthogonalize LAPW radial functions.
         inline auto ortho_rf() const
