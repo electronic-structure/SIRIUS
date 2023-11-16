@@ -297,7 +297,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
             case device_t::GPU:
                 la::wrap(la::lib_t::gpublas)
                     .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(memory_t::device), G.ld(),
-                          R.at(memory_t::device, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          R.at(memory_t::device, beta_coeffs.beta_chunk_->offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(memory_t::device), Y.ld());
 
                 break;
