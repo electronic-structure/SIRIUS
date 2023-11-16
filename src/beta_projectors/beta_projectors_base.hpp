@@ -282,18 +282,18 @@ class Beta_projectors_base
   public:
     Beta_projectors_base(Simulation_context& ctx__, fft::Gvec const& gkvec__, int N__);
 
-    auto make_generator(device_t pu__) const
+    auto make_generator(device_t pu__) const -> Beta_projector_generator<T>
     {
         return Beta_projector_generator<T>(ctx_, pu__, pw_coeffs_t_, pw_coeffs_all_atoms_,
                                            beta_chunks_, gkvec_, gkvec_coord_);
     }
 
-    auto make_generator() const
+    auto make_generator() const -> Beta_projector_generator<T>
     {
         return make_generator(ctx_.processing_unit());
     }
 
-    auto make_generator(memory_t mem__) const
+    auto make_generator(memory_t mem__) const -> Beta_projector_generator<T>
     {
         return make_generator(get_device_t(mem__));
     }
