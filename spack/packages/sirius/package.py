@@ -83,7 +83,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("python", default=False, description="Build Python bindings")
     variant("memory_pool", default=True, description="Build with memory pool")
     variant("elpa", default=False, description="Use ELPA")
-    variant("dlaf", default=False, description="Use DLA-Future")
+    variant("dlaf", default=False, when="@develop", description="Use DLA-Future")
     variant("vdwxc", default=False, description="Enable libvdwxc support")
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
@@ -147,13 +147,11 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on("scalapack", when="+scalapack")
 
-    # TODO: Change version when generalised eigensolver C API is relased
-    depends_on("dla-future@master ~cuda ~rocm", when="+dlaf~cuda~rocm")
-    depends_on("dla-future@master +scalapack ~cuda~rocm", when="+dlaf+scalapack~cuda~rocm")
-    depends_on("dla-future@master +cuda", when="+dlaf+cuda")
-    depends_on("dla-future@master +rocm", when="+dlaf+rocm")
-    depends_on("dla-future@master +cuda+scalapack", when="+dlaf+cuda+scalapack")
-    depends_on("dla-future@master +rocm+scalapack", when="+dlaf+rocm+scalapack")
+    with when("+dlaf"):
+        depends_on("dla-future@0.3.0:")
+        depends_on("dla-future +scalapack", when="+scalapack")
+        depends_on("dla-future +cuda", when="+cuda")
+        depends_on("dla-future +rocm", when="+rocm")
 
     depends_on("rocblas", when="+rocm")
     depends_on("rocsolver", when="@7.5.0: +rocm")
@@ -203,15 +201,16 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             self.define_from_variant(cm_label + "USE_VDWXC", "vdwxc"),
             self.define_from_variant(cm_label + "USE_MEMORY_POOL", "memory_pool"),
             self.define_from_variant(cm_label + "USE_SCALAPACK", "scalapack"),
+            self.define_from_variant(cm_label + "USE_DLAF", "dlaf"),
             self.define_from_variant(cm_label + "CREATE_FORTRAN_BINDINGS", "fortran"),
             self.define_from_variant(cm_label + "CREATE_PYTHON_MODULE", "python"),
             self.define_from_variant(cm_label + "USE_CUDA", "cuda"),
             self.define_from_variant(cm_label + "USE_ROCM", "rocm"),
             self.define_from_variant(cm_label + "BUILD_APPS", "apps"),
-            self.define_from_variant(cm_label + "BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant(cm_label + "USE_FP32", "single_precision"),
             self.define_from_variant(cm_label + "USE_PROFILER", "profiler"),
             self.define_from_variant(cm_label + "USE_WANNIER90", "wannier90"),
+            self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant("BUILD_TESTING", "tests"),
         ]
 
