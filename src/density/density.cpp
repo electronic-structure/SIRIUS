@@ -824,6 +824,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
 {
     /* number of beta projectors */
     int nbeta = bp_coeffs__.beta_chunk_->num_beta_;
+    auto mt = ctx__.processing_unit_memory_t();
 
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* total number of occupied bands for this spin */
@@ -837,9 +838,8 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
         splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
 
         int nbnd_loc = spl_nbnd.local_size();
-        if (nbnd_loc) { // TODO: this part can also be moved to GPU
         #pragma omp parallel
-        {
+        if (nbnd_loc) { // TODO: this part can also be moved to GPU
             /* auxiliary arrays */
             mdarray<std::complex<double>, 2> bp1({nbeta, nbnd_loc});
             mdarray<std::complex<double>, 2> bp2({nbeta, nbnd_loc});
@@ -866,7 +866,6 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
                         .gemm('N', 'T', nbf, nbf, nbnd_loc, &la::constant<std::complex<double>>::one(), &bp1(0, 0),
                                   bp1.ld(), &bp2(0, 0), bp2.ld(), &la::constant<std::complex<double>>::one(),
                                   &density_matrix__[ja](0, 0, ispn), density_matrix__[ja].ld());
-               
             }
         }
     } // ispn
