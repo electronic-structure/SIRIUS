@@ -1,0 +1,415 @@
+{
+    "comm_world_size": 1,
+    "context": {
+        "chemical_formula": "NiO",
+        "config": {
+            "control": {
+                "beta_chunk_size": 256,
+                "cyclic_block_size": 16,
+                "fft_mode": "parallel",
+                "gen_evp_solver_name": "lapack",
+                "gvec_chunk_size": 500000,
+                "mpi_grid_dims": [
+                    1,
+                    1
+                ],
+                "num_bands_to_print": 10,
+                "ortho_rf": false,
+                "output": "stdout:",
+                "print_forces": false,
+                "print_neighbors": false,
+                "print_stress": false,
+                "processing_unit": "cpu",
+                "reduce_gvec": true,
+                "rmt_max": 2.2,
+                "spglib_tolerance": 9.999999747378752e-05,
+                "std_evp_solver_name": "lapack",
+                "use_second_variation": true,
+                "verbosity": 2,
+                "verification": 0
+            },
+            "hubbard": {
+                "constrained_calculation": true,
+                "constraint_beta_mixing": 0.4,
+                "constraint_error": 0.1,
+                "constraint_max_iteration": 100,
+                "constraint_method": "energy",
+                "constraint_strength": 1.0,
+                "full_orthogonalization": true,
+                "local": [
+                    {
+                        "U": 6.0,
+                        "atom_type": "Ni",
+                        "l": 2,
+                        "n": 3,
+                        "total_initial_occupancy": 8.0
+                    }
+                ],
+                "local_constraint": [
+                    {
+                        "atom_index": 0,
+                        "l": 2,
+                        "lm_order": [
+                            0,
+                            -1,
+                            1,
+                            -2,
+                            2
+                        ],
+                        "n": 3,
+                        "occupancy": [
+                            [
+                                [
+                                    0.9844772394506213,
+                                    0.0033761974439078446,
+                                    0.001298173410650568,
+                                    -0.11393263837006834,
+                                    -0.047833820722961204
+                                ],
+                                [
+                                    0.0033761974439078446,
+                                    0.9992656777031389,
+                                    -0.0002823524679677068,
+                                    0.024780327005565622,
+                                    0.010403846837904641
+                                ],
+                                [
+                                    0.001298173410650568,
+                                    -0.0002823524679677068,
+                                    0.9998914333440397,
+                                    0.009528222848429843,
+                                    0.004000357668009239
+                                ],
+                                [
+                                    -0.11393263837006834,
+                                    0.024780327005565622,
+                                    0.009528222848429843,
+                                    0.16376690572063435,
+                                    -0.35108661123461593
+                                ],
+                                [
+                                    -0.047833820722961204,
+                                    0.010403846837904641,
+                                    0.004000357668009239,
+                                    -0.35108661123461593,
+                                    0.8525987437815664
+                                ]
+                            ],
+                            [
+                                [
+                                    0.9999999999999999,
+                                    6.573317056229983e-17,
+                                    -2.3198491241167815e-17,
+                                    7.936212068257761e-18,
+                                    -8.293567740407401e-18
+                                ],
+                                [
+                                    6.573317056229983e-17,
+                                    1.0,
+                                    3.99116502031857e-17,
+                                    7.098631440358264e-17,
+                                    -5.4507034965138266e-17
+                                ],
+                                [
+                                    -2.3198491241167815e-17,
+                                    3.99116502031857e-17,
+                                    1.0,
+                                    -4.100637595794376e-17,
+                                    4.111498836651851e-17
+                                ],
+                                [
+                                    7.936212068257761e-18,
+                                    7.098631440358264e-17,
+                                    -4.100637595794376e-17,
+                                    1.0,
+                                    -3.2612355718465296e-18
+                                ],
+                                [
+                                    -8.293567740407401e-18,
+                                    -5.4507034965138266e-17,
+                                    4.111498836651851e-17,
+                                    -3.2612355718465296e-18,
+                                    0.9999999999999999
+                                ]
+                            ]
+                        ]
+                    }
+                ],
+                "nonlocal": [],
+                "normalize": false,
+                "orthogonalize": true,
+                "simplified": true
+            },
+            "iterative_solver": {
+                "converge_by_energy": 1,
+                "early_restart": 0.5,
+                "empty_states_tolerance": 1e-05,
+                "energy_tolerance": 0.01,
+                "extra_ortho": false,
+                "init_eval_old": true,
+                "init_subspace": "lcao",
+                "locking": true,
+                "min_num_res": 0,
+                "num_singular": -1,
+                "num_steps": 20,
+                "relative_tolerance": 0,
+                "residual_tolerance": 1e-06,
+                "subspace_size": 2,
+                "type": "davidson"
+            },
+            "locked": true,
+            "mixer": {
+                "beta": 0.4,
+                "beta0": 0.15,
+                "beta_scaling_factor": 1.0,
+                "linear_mix_rms_tol": 1000000.0,
+                "max_history": 8,
+                "type": "anderson",
+                "use_hartree": true
+            },
+            "nlcg": {
+                "T": 300.0,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "processing_unit": "",
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
+            "parameters": {
+                "auto_rmt": 1,
+                "aw_cutoff": 0.0,
+                "core_relativity": "dirac",
+                "density_tol": 1e-06,
+                "electronic_structure_method": "pseudopotential",
+                "energy_tol": 1e-06,
+                "extra_charge": 0,
+                "gamma_point": false,
+                "gk_cutoff": 7.745966692414834,
+                "hubbard_correction": true,
+                "lmax_apw": -1,
+                "lmax_pot": -1,
+                "lmax_rho": -1,
+                "molecule": false,
+                "ngridk": [
+                    2,
+                    2,
+                    2
+                ],
+                "nn_radius": -1,
+                "num_bands": 16,
+                "num_dft_iter": 100,
+                "num_fv_states": -1,
+                "num_mag_dims": 1,
+                "precision_gs": "auto",
+                "precision_hs": "fp64",
+                "precision_wf": "fp64",
+                "pw_cutoff": 21.908902300206645,
+                "reduce_aux_bf": 0,
+                "shiftk": [
+                    0,
+                    0,
+                    0
+                ],
+                "smearing": "gaussian",
+                "smearing_width": 0.005,
+                "so_correction": false,
+                "use_ibz": true,
+                "use_scf_correction": true,
+                "use_symmetry": true,
+                "valence_relativity": "zora",
+                "vk": [],
+                "xc_dens_tre": -1,
+                "xc_functionals": [
+                    "XC_GGA_X_PBE_SOL",
+                    "XC_GGA_C_PBE_SOL"
+                ]
+            },
+            "settings": {
+                "always_update_wf": true,
+                "auto_enu_tol": 0,
+                "fft_grid_size": [
+                    40,
+                    40,
+                    40
+                ],
+                "fp32_to_fp64_rms": 0,
+                "itsol_tol_min": 1e-13,
+                "itsol_tol_ratio": 0,
+                "itsol_tol_scale": [
+                    0.1,
+                    0.95
+                ],
+                "min_occupancy": 1e-14,
+                "mixer_rms_min": 1e-16,
+                "nprii_aug": 20,
+                "nprii_beta": 20,
+                "nprii_rho_core": 20,
+                "nprii_vloc": 200,
+                "radial_grid": "exponential, 1.0",
+                "sht_coverage": 0
+            },
+            "unit_cell": {
+                "atom_coordinate_units": "lattice",
+                "atom_files": {
+                    "Ni": "Ni.json",
+                    "O": "O.json"
+                },
+                "atom_types": [
+                    "Ni",
+                    "O"
+                ],
+                "atoms": {
+                    "Ni": [
+                        [
+                            0.0,
+                            0.0,
+                            0.0
+                        ]
+                    ],
+                    "O": [
+                        [
+                            0.5000000000000001,
+                            0.5000000000000001,
+                            0.5000000000000001
+                        ]
+                    ]
+                },
+                "lattice_vectors": [
+                    [
+                        0.0,
+                        3.946694144333107,
+                        3.946694144333107
+                    ],
+                    [
+                        3.946694144333107,
+                        0.0,
+                        3.946694144333107
+                    ],
+                    [
+                        3.946694144333107,
+                        3.946694144333107,
+                        0.0
+                    ]
+                ],
+                "lattice_vectors_scale": 1.0
+            },
+            "vcsqnm": {
+                "alpha0": 0.01,
+                "eps_subsp": 0.001,
+                "forces_tol": 0.0001,
+                "initial_step_size": -0.1,
+                "lattice_weight": 2.0,
+                "nhist_max": 10,
+                "num_steps": 300,
+                "stress_tol": 1e-05
+            }
+        },
+        "fft_coarse_grid": [
+            30,
+            30,
+            30
+        ],
+        "mpi_grid": [
+            1,
+            1
+        ],
+        "num_atoms": 2,
+        "omega": 122.9505312592426
+    },
+    "counters": {
+        "band_evp_work_count": 1986.430908203125,
+        "local_operator_num_applied": 6950
+    },
+    "git_hash": "a65000f94e2393e2de179d7f1e4eb6bce9a0ff35",
+    "ground_state": {
+        "band_gap": 0.11203006295945506,
+        "converged": true,
+        "efermi": 0.5549791568495448,
+        "energy": {
+            "bxc": -0.12447705572429485,
+            "entropy_sum": -9.844834615155195e-21,
+            "eval_sum": -13.86374657260652,
+            "ewald": -119.46280741195775,
+            "exc": -21.23338087993594,
+            "kin": 57.35621374832839,
+            "scf_correction": -5.045546487281172e-07,
+            "total": -186.25683765535825,
+            "veff": -71.09548326521062,
+            "vha": 121.7311113560253,
+            "vloc": -166.1834101987942,
+            "vxc": -26.643184422439194
+        },
+        "etot_history": [
+            -182.67608832534268,
+            -184.1048843392013,
+            -187.3315944054374,
+            -187.63283759509335,
+            -187.7037582995705,
+            -187.51106042073934,
+            -187.12809685085557,
+            -187.2041636719016,
+            -187.35592744184783,
+            -187.32690065981808,
+            -187.34040886426237,
+            -186.79514719179906,
+            -185.90475682322074,
+            -186.46141426312036,
+            -187.0145154270773,
+            -186.74056157525547,
+            -186.16728869593447,
+            -186.3002773464611,
+            -186.29336685990557,
+            -186.22741246957054,
+            -186.25438499927145,
+            -186.2551965994622,
+            -186.25770240665815,
+            -186.25703334896863,
+            -186.25681715053372,
+            -186.25684816893084,
+            -186.2568431264663,
+            -186.2568359060681,
+            -186.25683885664824,
+            -186.25683775994833,
+            -186.25683765535825
+        ],
+        "num_scf_iterations": 30,
+        "rho_min": 0.0104700409482558,
+        "rms_history": [
+            5.380742776103609,
+            4.7251384270720145,
+            1.2599789569125501,
+            0.27445462062613274,
+            0.8838445008341516,
+            0.9536910148226954,
+            0.6510362580897728,
+            0.3487866685891929,
+            0.44790626933856403,
+            0.48155373522662404,
+            0.4354340110276377,
+            0.6781177991834277,
+            0.6969266502182917,
+            0.2745446837096553,
+            0.32576927252568894,
+            0.577701486475463,
+            0.6217206749921902,
+            0.07181658239389685,
+            0.03207138682899551,
+            0.029337060856090526,
+            0.005652204371439874,
+            0.001587375105217872,
+            0.0007398503523044155,
+            0.00024274114056605734,
+            0.00012872964994351503,
+            2.2172919006590185e-05,
+            1.0230747503741877e-05,
+            6.196902749245677e-06,
+            1.5249100898375833e-06,
+            4.0991005405545914e-07,
+            1.2389845821912608e-07
+        ],
+        "scf_time": 5.926917684
+    },
+    "task": 0,
+    "threads_per_rank": 4
+}

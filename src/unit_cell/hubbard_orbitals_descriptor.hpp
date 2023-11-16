@@ -39,6 +39,7 @@ class hubbard_orbital_descriptor
     int l_{-1};
     /// Set to true if this orbital is part the Hubbard subspace.
     bool use_for_calculation_{true};
+
     /// Orbital occupancy.
     double occupancy_{-1.0};
 

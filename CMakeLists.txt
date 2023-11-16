@@ -113,6 +113,7 @@ if(isSystemDir STREQUAL "-1")
                             ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
   set(CMAKE_INSTALL_RPATH ${basePoint} ${basePoint}/${relDir})
 endif()
+set(MPI_DETERMINE_LIBRARY_VERSION TRUE)
 
 # build shared libraries by default
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
