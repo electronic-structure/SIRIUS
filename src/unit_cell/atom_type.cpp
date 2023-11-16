@@ -806,6 +806,7 @@ Atom_type::read_hubbard_input()
         return;
     }
 
+
     this->hubbard_correction_ = false;
 
     for (int i = 0; i < parameters_.cfg().hubbard().local().size(); i++) {
@@ -834,7 +835,9 @@ Atom_type::read_hubbard_input()
             for (int s = 0; s < 6; s++) {
                 coeff[s] /= ha2ev;
             }
+
             std::vector<double> initial_occupancy;
+
             if (ho.contains("initial_occupancy")) {
                 initial_occupancy = ho.initial_occupancy();
 

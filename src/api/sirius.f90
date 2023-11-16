@@ -460,6 +460,7 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_correction True if LDA+U correction is enabled.
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
 !> @param [in] hubbard_full_orthogonalization Use all atomic orbitals found in all ps potentials to compute the orthogonalization operator.
+!> @param [in] hubbard_constrained_calculation Use the constrained hubbard method to intiate the scf loop
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 !> @param [in] sht_coverage Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
 !> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
@@ -471,8 +472,8 @@ end subroutine sirius_import_parameters
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
-&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_orbitals,&
-&sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
+&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_constrained_calculation,&
+&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
 &error_code)
 implicit none
 !
@@ -498,6 +499,7 @@ integer, optional, target, intent(in) :: verbosity
 logical, optional, target, intent(in) :: hubbard_correction
 integer, optional, target, intent(in) :: hubbard_correction_kind
 logical, optional, target, intent(in) :: hubbard_full_orthogonalization
+logical, optional, target, intent(in) :: hubbard_constrained_calculation
 character(*), optional, target, intent(in) :: hubbard_orbitals
 integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
@@ -537,6 +539,8 @@ logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_kind_ptr
 type(C_PTR) :: hubbard_full_orthogonalization_ptr
 logical(C_BOOL), target :: hubbard_full_orthogonalization_c_type
+type(C_PTR) :: hubbard_constrained_calculation_ptr
+logical(C_BOOL), target :: hubbard_constrained_calculation_c_type
 type(C_PTR) :: hubbard_orbitals_ptr
 character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: sht_coverage_ptr
@@ -553,8 +557,8 @@ interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
-&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_orbitals,&
-&sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
+&hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_constrained_calculation,&
+&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
 &error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
@@ -580,6 +584,7 @@ type(C_PTR), value :: verbosity
 type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_full_orthogonalization
+type(C_PTR), value :: hubbard_constrained_calculation
 type(C_PTR), value :: hubbard_orbitals
 type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
@@ -688,6 +693,11 @@ if (present(hubbard_full_orthogonalization)) then
 hubbard_full_orthogonalization_c_type = hubbard_full_orthogonalization
 hubbard_full_orthogonalization_ptr = C_LOC(hubbard_full_orthogonalization_c_type)
 endif
+hubbard_constrained_calculation_ptr = C_NULL_PTR
+if (present(hubbard_constrained_calculation)) then
+hubbard_constrained_calculation_c_type = hubbard_constrained_calculation
+hubbard_constrained_calculation_ptr = C_LOC(hubbard_constrained_calculation_c_type)
+endif
 hubbard_orbitals_ptr = C_NULL_PTR
 if (present(hubbard_orbitals)) then
 allocate(hubbard_orbitals_c_type(len(hubbard_orbitals)+1))
@@ -730,9 +740,9 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
 &core_rel_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,&
-&hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,hubbard_orbitals_ptr,&
-&sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,spglib_tol_ptr,&
-&electronic_structure_method_ptr,error_code_ptr)
+&hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,hubbard_constrained_calculation_ptr,&
+&hubbard_orbitals_ptr,sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,&
+&spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -751,6 +761,8 @@ endif
 if (present(hubbard_correction)) then
 endif
 if (present(hubbard_full_orthogonalization)) then
+endif
+if (present(hubbard_constrained_calculation)) then
 endif
 if (present(hubbard_orbitals)) then
 deallocate(hubbard_orbitals_c_type)
@@ -5739,6 +5751,159 @@ endif
 call sirius_add_hubbard_atom_pair_aux(handler_ptr,atom_pair_ptr,translation_ptr,&
 &n_ptr,l_ptr,coupling_ptr,error_code_ptr)
 end subroutine sirius_add_hubbard_atom_pair
+
+!
+!> @brief Set the parameters controlling hubbard constrained calculation
+!> @param [in] handler Simulation context handler.
+!> @param [in] hubbard_conv_thr convergence threhold when the hubbard occupation is constrained
+!> @param [in] hubbard_mixing_beta mixing parameter for the hubbard constraints
+!> @param [in] hubbard_strength energy penalty when the effective occupation numbers deviate from the reference numbers
+!> @param [in] hubbard_maxstep maximum number of constrained iterations
+!> @param [in] hubbard_constraint_type type of constrain, energy or occupation
+!> @param [out] error_code Error code.
+subroutine sirius_set_hubbard_contrained_parameters(handler,hubbard_conv_thr,hubbard_mixing_beta,&
+&hubbard_strength,hubbard_maxstep,hubbard_constraint_type,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+real(8), optional, target, intent(in) :: hubbard_conv_thr
+real(8), optional, target, intent(in) :: hubbard_mixing_beta
+real(8), optional, target, intent(in) :: hubbard_strength
+integer, optional, target, intent(in) :: hubbard_maxstep
+character(*), optional, target, intent(in) :: hubbard_constraint_type
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: hubbard_conv_thr_ptr
+type(C_PTR) :: hubbard_mixing_beta_ptr
+type(C_PTR) :: hubbard_strength_ptr
+type(C_PTR) :: hubbard_maxstep_ptr
+type(C_PTR) :: hubbard_constraint_type_ptr
+character(C_CHAR), target, allocatable :: hubbard_constraint_type_c_type(:)
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_hubbard_contrained_parameters_aux(handler,hubbard_conv_thr,&
+&hubbard_mixing_beta,hubbard_strength,hubbard_maxstep,hubbard_constraint_type,error_code)&
+&bind(C, name="sirius_set_hubbard_contrained_parameters")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: hubbard_conv_thr
+type(C_PTR), value :: hubbard_mixing_beta
+type(C_PTR), value :: hubbard_strength
+type(C_PTR), value :: hubbard_maxstep
+type(C_PTR), value :: hubbard_constraint_type
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+hubbard_conv_thr_ptr = C_NULL_PTR
+if (present(hubbard_conv_thr)) then
+hubbard_conv_thr_ptr = C_LOC(hubbard_conv_thr)
+endif
+hubbard_mixing_beta_ptr = C_NULL_PTR
+if (present(hubbard_mixing_beta)) then
+hubbard_mixing_beta_ptr = C_LOC(hubbard_mixing_beta)
+endif
+hubbard_strength_ptr = C_NULL_PTR
+if (present(hubbard_strength)) then
+hubbard_strength_ptr = C_LOC(hubbard_strength)
+endif
+hubbard_maxstep_ptr = C_NULL_PTR
+if (present(hubbard_maxstep)) then
+hubbard_maxstep_ptr = C_LOC(hubbard_maxstep)
+endif
+hubbard_constraint_type_ptr = C_NULL_PTR
+if (present(hubbard_constraint_type)) then
+allocate(hubbard_constraint_type_c_type(len(hubbard_constraint_type)+1))
+hubbard_constraint_type_c_type = string_f2c(hubbard_constraint_type)
+hubbard_constraint_type_ptr = C_LOC(hubbard_constraint_type_c_type)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_hubbard_contrained_parameters_aux(handler_ptr,hubbard_conv_thr_ptr,&
+&hubbard_mixing_beta_ptr,hubbard_strength_ptr,hubbard_maxstep_ptr,hubbard_constraint_type_ptr,&
+&error_code_ptr)
+if (present(hubbard_constraint_type)) then
+deallocate(hubbard_constraint_type_c_type)
+endif
+end subroutine sirius_set_hubbard_contrained_parameters
+
+!
+!> @brief Information about the constrained atomic level
+!> @param [in] handler Simulation context handler.
+!> @param [in] atom_id atom iindex
+!> @param [in] n principal quantum number of the atomic level for the constrained hubbard correction
+!> @param [in] l angular momentum of the atomic level
+!> @param [in] lmax_at maximum angular momentum
+!> @param [in] occ value of the occupation matrix for this level
+!> @param [in] orbital_order order or the Ylm by default it is SIRIUS order for Ylm
+!> @param [out] error_code Error code.
+subroutine sirius_add_hubbard_atom_constraint(handler,atom_id,n,l,lmax_at,occ,orbital_order,&
+&error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+integer, target, intent(in) :: atom_id
+integer, target, intent(in) :: n
+integer, target, intent(in) :: l
+integer, target, intent(in) :: lmax_at
+real(8), target, intent(in) :: occ(2 * lmax_at + 1, 2 * lmax_at + 1, 2)
+integer, optional, target, intent(in) :: orbital_order(2 * l + 1)
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: atom_id_ptr
+type(C_PTR) :: n_ptr
+type(C_PTR) :: l_ptr
+type(C_PTR) :: lmax_at_ptr
+type(C_PTR) :: occ_ptr
+type(C_PTR) :: orbital_order_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_add_hubbard_atom_constraint_aux(handler,atom_id,n,l,lmax_at,occ,&
+&orbital_order,error_code)&
+&bind(C, name="sirius_add_hubbard_atom_constraint")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: atom_id
+type(C_PTR), value :: n
+type(C_PTR), value :: l
+type(C_PTR), value :: lmax_at
+type(C_PTR), value :: occ
+type(C_PTR), value :: orbital_order
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+atom_id_ptr = C_NULL_PTR
+atom_id_ptr = C_LOC(atom_id)
+n_ptr = C_NULL_PTR
+n_ptr = C_LOC(n)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
+lmax_at_ptr = C_NULL_PTR
+lmax_at_ptr = C_LOC(lmax_at)
+occ_ptr = C_NULL_PTR
+occ_ptr = C_LOC(occ)
+orbital_order_ptr = C_NULL_PTR
+if (present(orbital_order)) then
+orbital_order_ptr = C_LOC(orbital_order)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_add_hubbard_atom_constraint_aux(handler_ptr,atom_id_ptr,n_ptr,l_ptr,&
+&lmax_at_ptr,occ_ptr,orbital_order_ptr,error_code_ptr)
+end subroutine sirius_add_hubbard_atom_constraint
 
 !
 !> @brief Generate H0.
