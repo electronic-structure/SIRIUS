@@ -497,7 +497,7 @@ class Hamiltonian_k
     apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
               wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
-        RTE_THROW("implementat this");
+        RTE_THROW("implement this");
     }
 
     /// apply S operator

@@ -125,11 +125,11 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
         auto& beta_row = bp_coeffs_row.pw_coeffs_a_;
         auto& beta_col = bp_coeffs_col.pw_coeffs_a_;
 
-        for (int i = 0; i < bp_coeffs_row.beta_chunk_.num_atoms_; i++) {
+        for (int i = 0; i < bp_coeffs_row.beta_chunk_->num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = bp_coeffs_row.beta_chunk_.desc_(beta_desc_idx::nbf, i);
-            int offs = bp_coeffs_row.beta_chunk_.desc_(beta_desc_idx::offset, i);
-            int ia   = bp_coeffs_row.beta_chunk_.desc_(beta_desc_idx::ia, i);
+            int nbf  = bp_coeffs_row.beta_chunk_->desc_(beta_desc_idx::nbf, i);
+            int offs = bp_coeffs_row.beta_chunk_->desc_(beta_desc_idx::offset, i);
+            int ia   = bp_coeffs_row.beta_chunk_->desc_(beta_desc_idx::ia, i);
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {

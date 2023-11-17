@@ -292,9 +292,9 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                     ctx_.spla_context(), mt, ctx_.host_memory_t(), copy_back_innerb, bp_grad_coeffs, phi_atomic,
                     wf::spin_index(0), wf::band_range(0, nawf));
 
-            for (int i = 0; i < beta_chunk.num_atoms_; i++) {
+            for (int i = 0; i < beta_chunk->num_atoms_; i++) {
                 /* this is a displacement atom */
-                int ja = beta_chunk.desc_(beta_desc_idx::ia, i);
+                int ja = beta_chunk->desc_(beta_desc_idx::ia, i);
 
                 /* build |phi_atomic_tmp> = | d S / d r_{j} | phi_atomic > */
                 /* it consists of two contributions:

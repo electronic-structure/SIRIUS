@@ -150,7 +150,7 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
         linear_operator,
         preconditioner,
         X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
-        1000, // iters
+        20, // iters
         tol // tol
     );
     mg.clear();
@@ -215,7 +215,8 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
     K_point<T> kp(ctx__, &vk__[0], 1.0);
     kp.initialize();
     if (mpi::Communicator::world().rank() == 0) {
-        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
+        std::cout << "num_gkvec: " << kp.num_gkvec() << "\n";
+        std::cout << "num_bands: " << ctx__.num_bands() << "\n";
     }
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_occupancy(i, 0, 2);

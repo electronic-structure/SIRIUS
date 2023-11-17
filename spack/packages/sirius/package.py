@@ -101,6 +101,9 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
+    variant(
+        "nvtx", default=False, description="Use NVTX profiler"
+    )
 
     depends_on("cmake@3.23:", type="build")
     depends_on("mpi")
@@ -209,6 +212,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             self.define_from_variant(cm_label + "BUILD_APPS", "apps"),
             self.define_from_variant(cm_label + "USE_FP32", "single_precision"),
             self.define_from_variant(cm_label + "USE_PROFILER", "profiler"),
+            self.define_from_variant(cm_label + "USE_NVTX", "nvtx"),
             self.define_from_variant(cm_label + "USE_WANNIER90", "wannier90"),
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant("BUILD_TESTING", "tests"),

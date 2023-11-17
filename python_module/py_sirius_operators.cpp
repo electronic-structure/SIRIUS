@@ -144,8 +144,7 @@ init_operators(py::module& m)
 
     py::class_<Beta_projectors_base<PT>>(m, "Beta_projectors_base")
         .def_property_readonly("num_chunks", &Beta_projectors_base<PT>::num_chunks)
-        .def("make_generator", py::overload_cast<>(&Beta_projectors_base<PT>::make_generator, py::const_),
-             py::keep_alive<1, 0>());
+        .def("make_generator", py::overload_cast<device_t>(&Beta_projectors_base<PT>::make_generator, py::const_), py::keep_alive<1, 0>());
 
     py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>>(m, "Beta_projectors");
 }

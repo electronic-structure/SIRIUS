@@ -5,6 +5,7 @@
         "mixer": {
             "type": "object",
             "title": "Parameters of the mixer",
+            "description": "Control type and parameters of the mixer",
             "properties": {
                 "type": {
                     "type": "string",
@@ -471,6 +472,11 @@
                     "type": "integer",
                     "default": 256,
                     "title": "Number of atoms in a chunk of beta-projectors."
+                },
+                "beta_on_device": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "True if whole set of beta-projectors can be allocated on device for the entire run."
                 },
                 "ortho_rf": {
                     "type": "boolean",
