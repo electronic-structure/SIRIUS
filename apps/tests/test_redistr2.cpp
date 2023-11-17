@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_redistr(std::vector<int> mpi_grid_dims, int M, int N, int bs)
+void
+test_redistr(std::vector<int> mpi_grid_dims, int M, int N, int bs)
 {
     if (mpi_grid_dims.size() != 2) {
         RTE_THROW("2d MPI grid is expected");
@@ -22,7 +23,6 @@ void test_redistr(std::vector<int> mpi_grid_dims, int M, int N, int bs)
 
     mtrx2.remap_from(mtrx, 0);
 
-
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < spl_row.local_size(); j++) {
             int jglob = spl_row[j];
@@ -33,7 +33,8 @@ void test_redistr(std::vector<int> mpi_grid_dims, int M, int N, int bs)
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
@@ -48,10 +49,10 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
-    auto M = args.value<int>("M", 10000);
-    auto N = args.value<int>("N", 1000);
-    auto bs  = args.value<int>("bs", 16);
+    auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
+    auto M             = args.value<int>("M", 10000);
+    auto N             = args.value<int>("N", 1000);
+    auto bs            = args.value<int>("bs", 16);
 
     sirius::initialize(1);
     test_redistr(mpi_grid_dims, M, N, bs);

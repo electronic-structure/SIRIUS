@@ -61,13 +61,15 @@ class Grid
     std::vector<Communicator> communicators_;
 
     /// Return valid directions for the current grid dimensionality.
-    inline int valid_directions(int directions__) const
+    inline int
+    valid_directions(int directions__) const
     {
         return (directions__ & ((1 << dimensions_.size()) - 1));
     }
 
     /// Initialize the grid.
-    void initialize()
+    void
+    initialize()
     {
         if (dimensions_.size() == 0) {
             RTE_THROW("no dimensions provided for the MPI grid");
@@ -91,8 +93,8 @@ class Grid
 
         /* communicator of the entire grid */
         std::vector<int> periods(dimensions_.size(), 0);
-        base_grid_communicator_ = parent_communicator_.cart_create((int)dimensions_.size(), dimensions_.data(),
-                                                                   periods.data());
+        base_grid_communicator_ =
+                parent_communicator_.cart_create((int)dimensions_.size(), dimensions_.data(), periods.data());
 
         /* total number of communicators inside the grid */
         int num_comm = 1 << dimensions_.size();
@@ -101,14 +103,14 @@ class Grid
 
         /* get all possible communicators */
         for (int i = 1; i < num_comm; i++) {
-            //bool is_root  = true;
-            //int comm_size = 1;
+            // bool is_root  = true;
+            // int comm_size = 1;
             std::vector<int> flg(dimensions_.size(), 0);
 
             /* each bit represents a directions */
             for (int j = 0; j < (int)dimensions_.size(); j++) {
                 if (i & (1 << j)) {
-                    flg[j]  = 1;
+                    flg[j] = 1;
                 }
             }
             /* subcommunicators */
@@ -122,7 +124,8 @@ class Grid
     /* forbid copy constructor */
     Grid(Grid const& src) = delete;
     /* forbid assignment operator */
-    Grid& operator=(Grid const& src) = delete;
+    Grid&
+    operator=(Grid const& src) = delete;
 
   public:
     Grid(std::vector<int> dimensions__, Communicator const& parent_communicator__)
@@ -133,12 +136,14 @@ class Grid
     }
 
     /// Actual number of grid dimensions
-    inline int num_dimensions() const
+    inline int
+    num_dimensions() const
     {
         return static_cast<int>(dimensions_.size());
     }
 
-    inline auto const& communicator(int directions__ = 0xFF) const
+    inline auto const&
+    communicator(int directions__ = 0xFF) const
     {
         assert(communicators_.size() != 0);
         return communicators_[valid_directions(directions__)];

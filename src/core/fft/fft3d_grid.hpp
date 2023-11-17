@@ -41,7 +41,8 @@ class Grid : public std::array<int, 3>
     std::array<std::pair<int, int>, 3> grid_limits_;
 
     /// Find smallest optimal grid size starting from n.
-    int find_grid_size(int n)
+    int
+    find_grid_size(int n)
     {
         while (true) {
             int m = n;
@@ -59,7 +60,8 @@ class Grid : public std::array<int, 3>
     }
 
     /// Find grid sizes and limits for all three dimensions.
-    void find_grid_size(std::array<int, 3> initial_dims__)
+    void
+    find_grid_size(std::array<int, 3> initial_dims__)
     {
         for (int i = 0; i < 3; i++) {
             (*this)[i] = find_grid_size(initial_dims__[i]);
@@ -86,7 +88,6 @@ class Grid : public std::array<int, 3>
     }
 
   public:
-
     /// Default constructor.
     Grid()
     {
@@ -99,21 +100,24 @@ class Grid : public std::array<int, 3>
     }
 
     /// Limits of a given dimension.
-    inline const std::pair<int, int>& limits(int idim__) const
+    inline const std::pair<int, int>&
+    limits(int idim__) const
     {
         assert(idim__ >= 0 && idim__ < 3);
         return grid_limits_[idim__];
     }
 
     /// Total size of the FFT grid.
-    inline int num_points() const
+    inline int
+    num_points() const
     {
         return (*this)[0] * (*this)[1] * (*this)[2];
     }
 
     /// Get coordinate in range [0, N_d) by the frequency index.
     template <int d>
-    inline int coord_by_freq(int i__) const
+    inline int
+    coord_by_freq(int i__) const
     {
         if (i__ < 0) {
             i__ += (*this)[d];
@@ -122,14 +126,16 @@ class Grid : public std::array<int, 3>
     }
 
     /// Return {x, y, z} coordinates by frequency indices.
-    inline std::array<int, 3> coord_by_freq(int i0__, int i1__, int i2__) const
+    inline std::array<int, 3>
+    coord_by_freq(int i0__, int i1__, int i2__) const
     {
         return {coord_by_freq<0>(i0__), coord_by_freq<1>(i1__), coord_by_freq<2>(i2__)};
     }
 
     /// Get frequency by coordinate.
     template <int d>
-    inline int freq_by_coord(int x__) const
+    inline int
+    freq_by_coord(int x__) const
     {
         if (x__ > grid_limits_[d].second) {
             x__ -= (*this)[d];
@@ -138,19 +144,22 @@ class Grid : public std::array<int, 3>
     }
 
     /// Return 3d vector of frequencies corresponding to {x, y, z} position in the FFT buffer.
-    inline std::array<int, 3> freq_by_coord(int x__, int y__, int z__) const
+    inline std::array<int, 3>
+    freq_by_coord(int x__, int y__, int z__) const
     {
         return {freq_by_coord<0>(x__), freq_by_coord<1>(y__), freq_by_coord<2>(z__)};
     }
 
     /// Linear index inside FFT buffer by grid coordinates.
-    inline int index_by_coord(int x__, int y__, int z__) const
+    inline int
+    index_by_coord(int x__, int y__, int z__) const
     {
-        return (x__ + (*this)[0] * (y__  + z__ * (*this)[1]));
+        return (x__ + (*this)[0] * (y__ + z__ * (*this)[1]));
     }
 
     /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside FFT buffer.
-    inline int index_by_freq(int i0__, int i1__, int i2__) const
+    inline int
+    index_by_freq(int i0__, int i1__, int i2__) const
     {
         auto coord = coord_by_freq(i0__, i1__, i2__);
         return index_by_coord(coord[0], coord[1], coord[2]);
@@ -158,7 +167,8 @@ class Grid : public std::array<int, 3>
 };
 
 /// Get the minimum grid that circumscribes the cutoff sphere.
-inline auto get_min_grid(double cutoff__, r3::matrix<double> M__)
+inline auto
+get_min_grid(double cutoff__, r3::matrix<double> M__)
 {
     return Grid(r3::find_translations(cutoff__, M__) + r3::vector<int>({2, 2, 2}));
 }

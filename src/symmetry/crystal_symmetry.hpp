@@ -93,7 +93,6 @@ struct magnetic_group_symmetry_descriptor
 class Crystal_symmetry
 {
   private:
-
     /// Matrix of lattice vectors.
     /** Spglib requires this matrix to have a positively defined determinant. */
     r3::matrix<double> lattice_vectors_;
@@ -128,22 +127,23 @@ class Crystal_symmetry
     std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
 
     /// Number of crystal symmetries without magnetic configuration.
-    inline int num_spg_sym() const
+    inline int
+    num_spg_sym() const
     {
         return static_cast<int>(space_group_symmetry_.size());
     }
 
-    inline auto const& space_group_symmetry(int isym__) const
+    inline auto const&
+    space_group_symmetry(int isym__) const
     {
         assert(isym__ >= 0 && isym__ < num_spg_sym());
         return space_group_symmetry_[isym__];
     }
 
   public:
-
     Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, int num_atoms__, int num_atom_types__,
-        std::vector<int> const& types__, mdarray<double, 2> const& positions__,
-        mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
+                     std::vector<int> const& types__, mdarray<double, 2> const& positions__,
+                     mdarray<double, 2> const& spins__, bool spin_orbit__, double tolerance__, bool use_sym__);
 
     ~Crystal_symmetry()
     {
@@ -152,7 +152,8 @@ class Crystal_symmetry
         }
     }
 
-    inline int atom_symmetry_class(int ia__) const
+    inline int
+    atom_symmetry_class(int ia__) const
     {
         if (spg_dataset_) {
             return spg_dataset_->equivalent_atoms[ia__];
@@ -161,7 +162,8 @@ class Crystal_symmetry
         }
     }
 
-    inline int spacegroup_number() const
+    inline int
+    spacegroup_number() const
     {
         if (spg_dataset_) {
             return spg_dataset_->spacegroup_number;
@@ -170,7 +172,8 @@ class Crystal_symmetry
         }
     }
 
-    inline auto international_symbol() const
+    inline auto
+    international_symbol() const
     {
         if (spg_dataset_) {
             return std::string(spg_dataset_->international_symbol);
@@ -179,7 +182,8 @@ class Crystal_symmetry
         }
     }
 
-    inline auto hall_symbol() const
+    inline auto
+    hall_symbol() const
     {
         if (spg_dataset_) {
             return std::string(spg_dataset_->hall_symbol);
@@ -188,7 +192,8 @@ class Crystal_symmetry
         }
     }
 
-    inline auto transformation_matrix() const
+    inline auto
+    transformation_matrix() const
     {
         if (spg_dataset_) {
             return r3::matrix<double>(spg_dataset_->transformation_matrix);
@@ -197,12 +202,12 @@ class Crystal_symmetry
         }
     }
 
-    inline auto origin_shift() const
+    inline auto
+    origin_shift() const
     {
         if (spg_dataset_) {
-            return r3::vector<double>(spg_dataset_->origin_shift[0],
-                                    spg_dataset_->origin_shift[1],
-                                    spg_dataset_->origin_shift[2]);
+            return r3::vector<double>(spg_dataset_->origin_shift[0], spg_dataset_->origin_shift[1],
+                                      spg_dataset_->origin_shift[2]);
         } else {
             return r3::vector<double>(0, 0, 0);
         }
@@ -210,38 +215,45 @@ class Crystal_symmetry
 
     /// Number of symmetries including the magnetic configuration.
     /** This is less or equal to the number of crystal symmetries. */
-    inline int size() const
+    inline int
+    size() const
     {
         return static_cast<int>(magnetic_group_symmetry_.size());
     }
 
-    inline auto const& operator[](int isym__) const
+    inline auto const&
+    operator[](int isym__) const
     {
         assert(isym__ >= 0 && isym__ < this->size());
         return magnetic_group_symmetry_[isym__];
     }
 
-    auto const& lattice_vectors() const
+    auto const&
+    lattice_vectors() const
     {
         return lattice_vectors_;
     }
 
-    auto const& inverse_lattice_vectors() const
+    auto const&
+    inverse_lattice_vectors() const
     {
         return inverse_lattice_vectors_;
     }
 
-    inline auto num_atoms() const
+    inline auto
+    num_atoms() const
     {
         return num_atoms_;
     }
 
-    inline auto num_atom_types() const
+    inline auto
+    num_atom_types() const
     {
         return num_atom_types_;
     }
 
-    inline auto atom_type(int ia__) const
+    inline auto
+    atom_type(int ia__) const
     {
         return types_[ia__];
     }
@@ -254,20 +266,23 @@ class Crystal_symmetry
      *
      *  The error is the maximum value of \f$ |M_{ij} - \tilde M_{ij}| \f$ where \f$ M_{ij} \f$
      *  is the initial metric tensor and \f$ \tilde M_{ij} \f$ is the transformed tensor. */
-    double metric_tensor_error() const;
+    double
+    metric_tensor_error() const;
 
     /// Get error in rotation matrix of the symmetry operation.
     /** Comparte rotation matrix in Cartesian coordinates with its inverse transpose. They should match.
      *
      *  The error is the maximum value of \f$ |R_{ij} - R_{ij}^{-T}| \f$, where \f$ R_{ij} \f$ is the rotation
      *  matrix and \f$  R_{ij}^{-T} \f$ inverse transpose of the rotation matrix. */
-    double sym_op_R_error() const;
+    double
+    sym_op_R_error() const;
 
     /// Print information about the unit cell symmetry.
-    void print_info(std::ostream& out__, int verbosity__) const;
+    void
+    print_info(std::ostream& out__, int verbosity__) const;
 };
 
-} // namespace
+} // namespace sirius
 
 /** \page sym Symmetry
  *  \section section1 Definition of symmetry operation

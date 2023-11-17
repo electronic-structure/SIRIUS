@@ -6,7 +6,8 @@
 using namespace sirius;
 
 template <typename T>
-void init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
+void
+init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
@@ -39,7 +40,7 @@ void init_wf(K_point<T>* kp__, wf::Wave_functions<T>& phi__, int num_bands__, in
     if (num_mag_dims__ == 3) {
         /* make pure spinor up- and dn- wave functions */
         wf::copy(memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
-                wf::band_range(num_bands__, 2 * num_bands__));
+                 wf::band_range(num_bands__, 2 * num_bands__));
     }
 }
 
@@ -63,13 +64,13 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     }
     init_wf(&kp, kp.spinor_wave_functions(), ctx__.num_bands(), 0);
 
-
     const int num_bands = ctx__.num_bands();
     bool locking{true};
 
-    auto result = davidson<T, F, davidson_evp_t::hamiltonian>(Hk, kp, wf::num_bands(num_bands),
-            wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions(), [&](int i, int ispn){return eval_tol__;}, res_tol__,
-            60, locking, subspace_size__, estimate_eval__, extra_ortho__, std::cout, 2);
+    auto result = davidson<T, F, davidson_evp_t::hamiltonian>(
+            Hk, kp, wf::num_bands(num_bands), wf::num_mag_dims(ctx__.num_mag_dims()), kp.spinor_wave_functions(),
+            [&](int i, int ispn) { return eval_tol__; }, res_tol__, 60, locking, subspace_size__, estimate_eval__,
+            extra_ortho__, std::cout, 2);
 
     if (mpi::Communicator::world().rank() == 0 && only_kin__) {
         std::vector<double> ekin(kp.num_gkvec());
@@ -94,7 +95,8 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     }
 }
 
-void test_davidson(cmd_args const& args__)
+void
+test_davidson(cmd_args const& args__)
 {
     auto pw_cutoff     = args__.value<double>("pw_cutoff", 30);
     auto gk_cutoff     = args__.value<double>("gk_cutoff", 10);
@@ -119,18 +121,18 @@ void test_davidson(cmd_args const& args__)
     PROFILE_START("test_davidson|setup")
 
     /* create simulation context */
-    auto json_conf = R"({
+    auto json_conf                              = R"({
       "parameters" : {
         "electronic_structure_method" : "pseudopotential"
       }
     })"_json;
-    json_conf["control"]["processing_unit"] = args__.value<std::string>("device", "CPU");
-    json_conf["control"]["mpi_grid_dims"] = mpi_grid;
+    json_conf["control"]["processing_unit"]     = args__.value<std::string>("device", "CPU");
+    json_conf["control"]["mpi_grid_dims"]       = mpi_grid;
     json_conf["control"]["std_evp_solver_name"] = solver;
     json_conf["control"]["gen_evp_solver_name"] = solver;
-    json_conf["parameters"]["pw_cutoff"] = pw_cutoff;
-    json_conf["parameters"]["gk_cutoff"] = gk_cutoff;
-    json_conf["parameters"]["gamma_point"] = false;
+    json_conf["parameters"]["pw_cutoff"]        = pw_cutoff;
+    json_conf["parameters"]["gk_cutoff"]        = gk_cutoff;
+    json_conf["parameters"]["gamma_point"]      = false;
     if (num_bands >= 0) {
         json_conf["parameters"]["num_bands"] = num_bands;
     }
@@ -147,7 +149,7 @@ void test_davidson(cmd_args const& args__)
 
     double a{5};
     auto sctx_ptr = sirius::create_simulation_context(json_conf, {{a * N, 0, 0}, {0, a * N, 0}, {0, 0, a * N}},
-            N * N * N, coord, add_vloc, add_dion);
+                                                      N * N * N, coord, add_vloc, add_dion);
 
     auto& ctx = *sctx_ptr;
     PROFILE_STOP("test_davidson|setup")
@@ -172,38 +174,42 @@ void test_davidson(cmd_args const& args__)
         }
         if (precision_wf == "fp32" && precision_hs == "fp32") {
 #if defined(SIRIUS_USE_FP32)
-            diagonalize<float, std::complex<float>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+            diagonalize<float, std::complex<float>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size,
+                                                    estimate_eval, extra_ortho);
 #endif
         }
         if (precision_wf == "fp32" && precision_hs == "fp64") {
 #if defined(SIRIUS_USE_FP32)
-            diagonalize<float, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+            diagonalize<float, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size,
+                                                     estimate_eval, extra_ortho);
 #endif
         }
         if (precision_wf == "fp64" && precision_hs == "fp64") {
-            diagonalize<double, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size, estimate_eval, extra_ortho);
+            diagonalize<double, std::complex<double>>(ctx, vk, pot, res_tol, eval_tol, only_kin, subspace_size,
+                                                      estimate_eval, extra_ortho);
         }
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"device=",        "(string) CPU or GPU"},
-                               {"pw_cutoff=",     "(double) plane-wave cutoff for density and potential"},
-                               {"gk_cutoff=",     "(double) plane-wave cutoff for wave-functions"},
-                               {"num_bands=",     "(int) number of bands"},
-                               {"N=",             "(int) cell multiplicity"},
-                               {"mpi_grid=",      "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"solver=",        "(string) eigen-value solver"},
-                               {"res_tol=",       "(double) residual L2-norm tolerance"},
-                               {"eval_tol=",      "(double) eigen-value tolerance"},
-                               {"subspace_size=", "(int) size of the diagonalization subspace"},
-                               {"use_res_norm",   "use residual norm to estimate the convergence"},
-                               {"extra_ortho",    "use second orthogonalisation"},
-                               {"precision_wf=",  "{string} precision of wave-functions"},
-                               {"precision_hs=",  "{string} precision of the Hamiltonian subspace"},
-                               {"only_kin",       "use kinetic-operator only"}
-                              });
+    cmd_args args(argn, argv,
+                  {{"device=", "(string) CPU or GPU"},
+                   {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
+                   {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
+                   {"num_bands=", "(int) number of bands"},
+                   {"N=", "(int) cell multiplicity"},
+                   {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
+                   {"solver=", "(string) eigen-value solver"},
+                   {"res_tol=", "(double) residual L2-norm tolerance"},
+                   {"eval_tol=", "(double) eigen-value tolerance"},
+                   {"subspace_size=", "(int) size of the diagonalization subspace"},
+                   {"use_res_norm", "use residual norm to estimate the convergence"},
+                   {"extra_ortho", "use second orthogonalisation"},
+                   {"precision_wf=", "{string} precision of wave-functions"},
+                   {"precision_hs=", "{string} precision of the Hamiltonian subspace"},
+                   {"only_kin", "use kinetic-operator only"}});
 
     if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
@@ -215,8 +221,8 @@ int main(int argn, char** argv)
     test_davidson(args);
     int rank = mpi::Communicator::world().rank();
     sirius::finalize();
-    if (rank == 0)  {
+    if (rank == 0) {
         const auto timing_result = global_rtgraph_timer.process();
-        std::cout<< timing_result.print();
+        std::cout << timing_result.print();
     }
 }

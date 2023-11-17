@@ -110,7 +110,8 @@ class Broyden2 : public Mixer<FUNCS...>
     {
     }
 
-    void mix_impl() override
+    void
+    mix_impl() override
     {
         const auto idx_step      = this->idx_hist(this->step_);
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
@@ -120,11 +121,9 @@ class Broyden2 : public Mixer<FUNCS...>
         const bool normalize = false;
 
         for (int i = 0; i <= n; ++i) {
-            int j = this->idx_hist(this->step_ - i);
+            int j              = this->idx_hist(this->step_ - i);
             this->S_(n - i, n) = this->S_(n, n - i) = this->template inner_product<normalize>(
-                this->residual_history_[j],
-                this->residual_history_[idx_step]
-            );
+                    this->residual_history_[j], this->residual_history_[idx_step]);
         }
 
         // Expand (I - Δf₁Δf₁ᵀ/Δf₁ᵀΔf₁)...(I - Δfₙ₋₁Δfₙ₋₁ᵀ/Δfₙ₋₁ᵀΔfₙ₋₁)fₙ
@@ -137,12 +136,15 @@ class Broyden2 : public Mixer<FUNCS...>
 
             for (int j = 1; j < i; ++j) {
                 // compute -ΔfᵢᵀΔfⱼ
-                // = -(fᵢ₊₁ - fᵢ)(fⱼ₊₁ - fⱼ) 
-                // = -fᵢ₊₁ᵀfⱼ₊₁ + fᵢᵀfⱼ₊₁ + fᵢ₊₁ᵀfⱼ - fᵢᵀfⱼ 
-                this->gamma_(n - i) += (-this->S_(n - i + 1, n - j + 1) + this->S_(n - i + 1, n - j) + this->S_(n - i, n - j + 1) - this->S_(n - i, n - j)) * this->gamma_(n - j);
+                // = -(fᵢ₊₁ - fᵢ)(fⱼ₊₁ - fⱼ)
+                // = -fᵢ₊₁ᵀfⱼ₊₁ + fᵢᵀfⱼ₊₁ + fᵢ₊₁ᵀfⱼ - fᵢᵀfⱼ
+                this->gamma_(n - i) += (-this->S_(n - i + 1, n - j + 1) + this->S_(n - i + 1, n - j) +
+                                        this->S_(n - i, n - j + 1) - this->S_(n - i, n - j)) *
+                                       this->gamma_(n - j);
             }
 
-            this->gamma_(n - i) /= this->S_(n - i + 1, n - i + 1) - this->S_(n - i + 1, n - i) - this->S_(n - i, n - i + 1) + this->S_(n - i, n - i);
+            this->gamma_(n - i) /= this->S_(n - i + 1, n - i + 1) - this->S_(n - i + 1, n - i) -
+                                   this->S_(n - i, n - i + 1) + this->S_(n - i, n - i);
         }
 
         this->copy(this->output_history_[idx_step], this->input_);
@@ -157,7 +159,7 @@ class Broyden2 : public Mixer<FUNCS...>
 
             for (int i = 1; i < n; ++i) {
                 auto coeff = this->gamma_(n - i - 1) - this->gamma_(n - i);
-                int j = this->idx_hist(this->step_ - i);
+                int j      = this->idx_hist(this->step_ - i);
                 this->axpy(this->beta_ * coeff, this->residual_history_[j], this->input_);
                 this->axpy(coeff, this->output_history_[j], this->input_);
             }

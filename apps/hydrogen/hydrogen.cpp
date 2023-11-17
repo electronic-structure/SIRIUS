@@ -8,18 +8,22 @@ struct level_conf
     int l;
     int z;
 
-    level_conf(int n__, int l__, int z__) : n(n__), l(l__), z(z__)
+    level_conf(int n__, int l__, int z__)
+        : n(n__)
+        , l(l__)
+        , z(z__)
     {
     }
 };
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
-    args.register_key("--grid_type=","{int} type of the radial grid");
-    args.register_key("--num_points=","{int} number of grid points");
-    args.register_key("--rmin=","{double} first grid point");
-    args.register_key("--p=","{double} additional grid parameter");
+    args.register_key("--grid_type=", "{int} type of the radial grid");
+    args.register_key("--num_points=", "{int} number of grid points");
+    args.register_key("--rmin=", "{double} first grid point");
+    args.register_key("--p=", "{double} additional grid parameter");
     args.parse_args(argn, argv);
     if (args.exist("help")) {
         printf("Usage: %s [options]", argv[0]);
@@ -73,14 +77,13 @@ int main(int argn, char** argv)
     //}
 
     std::vector<double> err(levels.size());
-    
+
     #pragma omp parallel for
-    for (int j = 0; j < (int)levels.size(); j++)
-    {
+    for (int j = 0; j < (int)levels.size(); j++) {
         int n = levels[j].n;
         int l = levels[j].l;
         int z = levels[j].z;
-        
+
         auto radial_grid = Radial_grid_factory<double>(grid_type, num_points, rmin, 200.0 + z * 3.0, p);
 
         std::vector<double> v(radial_grid.num_points());
@@ -89,7 +92,7 @@ int main(int argn, char** argv)
         }
 
         double enu_exact = -0.5 * std::pow(double(z) / n, 2);
-        
+
         Bound_state bound_state(relativity_t::none, z, n, l, 0, radial_grid, v, enu_exact);
 
         double enu = bound_state.enu();
@@ -104,8 +107,8 @@ int main(int argn, char** argv)
         Spline<double> s(rg1);
         for (int i = 0; i < rg1.num_points(); i++) {
             double x = rg1[i];
-            s(i) = -0.5 * p.deriv(2, i) + (v[i] + l * (l + 1) / x / x / 2) * p(i) - enu * p(i);
-            s(i) = std::pow(s(i), 2);
+            s(i)     = -0.5 * p.deriv(2, i) + (v[i] + l * (l + 1) / x / x / 2) * p(i) - enu * p(i);
+            s(i)     = std::pow(s(i), 2);
         }
         double rtot = s.interpolate().integrate(0);
 
@@ -117,26 +120,25 @@ int main(int argn, char** argv)
                 printf("OK! ");
             }
 
-            printf("z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e, residual: %12.6e\n", z, n, l, enu, enu_exact, rel_err, rtot);
+            printf("z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e, residual: "
+                   "%12.6e\n",
+                   z, n, l, enu, enu_exact, rel_err, rtot);
         }
         err[j] = rel_err;
     }
 
     FILE* fout = fopen("err.dat", "w");
-    for (int j = 0; j < (int)err.size(); j++)
-    {
+    for (int j = 0; j < (int)err.size(); j++) {
         fprintf(fout, "%i %20.16f\n", j, err[j]);
     }
     fclose(fout);
 
     json dict;
     std::vector<int> xaxis;
-    
+
     int j = 0;
-    for (int n = 1; n <= 20; n++)
-    {
-        for (int l = 0; l <= n - 1; l++)
-        {
+    for (int n = 1; n <= 20; n++) {
+        for (int l = 0; l <= n - 1; l++) {
             xaxis.push_back(j);
             j++;
         }
@@ -147,8 +149,7 @@ int main(int argn, char** argv)
     std::vector<std::string> xaxis_tick_labels;
 
     j = 0;
-    for (int n = 1; n <= 20; n++)
-    {
+    for (int n = 1; n <= 20; n++) {
         std::stringstream s;
         s << "n=" << n;
         xaxis_ticks.push_back(j);
@@ -156,42 +157,37 @@ int main(int argn, char** argv)
         j += n;
     }
 
-    dict["xaxis_ticks"] = xaxis_ticks;
+    dict["xaxis_ticks"]       = xaxis_ticks;
     dict["xaxis_tick_labels"] = xaxis_tick_labels;
-    dict["plot"] = json::array();
+    dict["plot"]              = json::array();
 
     int i = 0;
-    for (int k = 0; k < 10; k++)
-    {
+    for (int k = 0; k < 10; k++) {
         int z = 1 + k * 10;
         std::stringstream s;
         s << "z=" << z;
 
         j = 0;
         xaxis.clear();
-        for (int n = 1; n <= 5 + k; n++)
-        {
-            for (int l = 0; l <= n - 1; l++)
-            {
+        for (int n = 1; n <= 5 + k; n++) {
+            for (int l = 0; l <= n - 1; l++) {
                 xaxis.push_back(j);
                 j++;
             }
         }
-        
+
         std::vector<double> yvalues;
 
         j = 0;
-        for (int n = 1; n <= 5 + k; n++)
-        {
-            for (int l = 0; l <= n - 1; l++)
-            {
+        for (int n = 1; n <= 5 + k; n++) {
+            for (int l = 0; l <= n - 1; l++) {
                 yvalues.push_back(err[i++]);
             }
         }
-        
+
         dict["plot"].push_back(json::object({{"label", s.str()}, {"xaxis", xaxis}, {"yvalues", yvalues}}));
     }
-    
+
     std::ofstream ofs("out.json", std::ofstream::out | std::ofstream::trunc);
     ofs << dict.dump(4);
 

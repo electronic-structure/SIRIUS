@@ -76,7 +76,8 @@ struct z_column_descriptor
 };
 
 /// Serialize a single z-column descriptor.
-inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
+inline void
+serialize(serializer& s__, z_column_descriptor const& zcol__)
 {
     serialize(s__, zcol__.x);
     serialize(s__, zcol__.y);
@@ -86,7 +87,8 @@ inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
 }
 
 /// Deserialize a single z-column descriptor.
-inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
+inline void
+deserialize(serializer& s__, z_column_descriptor& zcol__)
 {
     deserialize(s__, zcol__.x);
     deserialize(s__, zcol__.y);
@@ -96,16 +98,18 @@ inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
 }
 
 /// Serialize a vector of z-column descriptors.
-inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
+inline void
+serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
 {
     serialize(s__, zcol__.size());
-    for (auto& e: zcol__) {
+    for (auto& e : zcol__) {
         serialize(s__, e);
     }
 }
 
 /// Deserialize a vector of z-column descriptors.
-inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
+inline void
+deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
 {
     size_t sz;
     deserialize(s__, sz);
@@ -117,9 +121,12 @@ inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol_
 
 /* forward declarations */
 class Gvec;
-void serialize(serializer& s__, Gvec const& gv__);
-void deserialize(serializer& s__, Gvec& gv__);
-Gvec send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__);
+void
+serialize(serializer& s__, Gvec const& gv__);
+void
+deserialize(serializer& s__, Gvec& gv__);
+Gvec
+send_recv(mpi::Communicator const& comm__, Gvec const& gv_src__, int source__, int dest__);
 
 /// A set of G-vectors for FFTs and G+k basis functions.
 /** Current implemntation supports up to 2^12 (4096) z-dimension of the FFT grid and 2^20 (1048576) number of
@@ -244,38 +251,48 @@ class Gvec
     double sym_tol_{1e-6};
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
-    r3::vector<int> gvec_by_full_index(uint32_t idx__) const;
+    r3::vector<int>
+    gvec_by_full_index(uint32_t idx__) const;
 
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
-    void find_z_columns(double Gmax__, fft::Grid const& fft_box__);
+    void
+    find_z_columns(double Gmax__, fft::Grid const& fft_box__);
 
     /// Distribute z-columns between MPI ranks.
-    void distribute_z_columns();
+    void
+    distribute_z_columns();
 
     /// Find a list of G-vector shells.
     /** G-vectors belonging to the same shell have the same length and transform to each other
         under a lattice symmetry operation. */
-    void find_gvec_shells();
+    void
+    find_gvec_shells();
 
     /// Initialize lattice coordinates of the local fraction of G-vectors.
-    void init_gvec_local();
+    void
+    init_gvec_local();
 
     /// Initialize Cartesian coordinates of the local fraction of G-vectors.
-    void init_gvec_cart_local();
+    void
+    init_gvec_cart_local();
 
     /// Initialize everything.
-    void init(fft::Grid const& fft_grid);
+    void
+    init(fft::Grid const& fft_grid);
 
-    friend void serialize(serializer& s__, Gvec const& gv__);
+    friend void
+    serialize(serializer& s__, Gvec const& gv__);
 
-    friend void deserialize(serializer& s__, Gvec& gv__);
+    friend void
+    deserialize(serializer& s__, Gvec& gv__);
 
     /* copy constructor is forbidden */
     Gvec(Gvec const& src__) = delete;
 
     /* copy assignment operator is forbidden */
-    Gvec& operator=(Gvec const& src__) = delete;
+    Gvec&
+    operator=(Gvec const& src__) = delete;
 
   public:
     /// Constructor for G+k vectors.
@@ -287,7 +304,7 @@ class Gvec
      *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
     Gvec(r3::vector<double> vk__, r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__,
-            bool reduce_gvec__, double sym_tol__ = 1e-6)
+         bool reduce_gvec__, double sym_tol__ = 1e-6)
         : vk_{vk__}
         , Gmax_{Gmax__}
         , lattice_vectors_{M__}
@@ -307,7 +324,7 @@ class Gvec
      *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
     Gvec(r3::matrix<double> M__, double Gmax__, mpi::Communicator const& comm__, bool reduce_gvec__,
-            double sym_tol__ = 1e-6)
+         double sym_tol__ = 1e-6)
         : Gmax_{Gmax__}
         , lattice_vectors_{M__}
         , comm_{comm__}
@@ -326,7 +343,7 @@ class Gvec
      *  \param [in] sym_tol     Unit cell lattice symmetry tolerance.
      */
     Gvec(r3::matrix<double> M__, double Gmax__, fft::Grid const& fft_grid__, mpi::Communicator const& comm__,
-            bool reduce_gvec__, double sym_tol__ = 1e-6)
+         bool reduce_gvec__, double sym_tol__ = 1e-6)
         : Gmax_{Gmax__}
         , lattice_vectors_{M__}
         , comm_{comm__}
@@ -362,7 +379,7 @@ class Gvec
 
     /// Construct with the defined order of G-vectors.
     Gvec(r3::vector<double> vk__, r3::matrix<double> M__, int ngv_loc__, int const* gv__,
-            mpi::Communicator const& comm__, bool reduce_gvec__)
+         mpi::Communicator const& comm__, bool reduce_gvec__)
         : vk_(vk__)
         , lattice_vectors_(M__)
         , comm_(comm__)
@@ -394,7 +411,7 @@ class Gvec
         for (int ig = 0; ig < ngv_loc__; ig++) {
             zcol(G(0, ig), G(1, ig))++;
             for (int x : {0, 1, 2}) {
-                gvec_(x, ig) = G(x, ig);
+                gvec_(x, ig)  = G(x, ig);
                 gkvec_(x, ig) = G(x, ig) + vk_[x];
             }
         }
@@ -427,17 +444,20 @@ class Gvec
     }
 
     /// Move assignment operator.
-    Gvec& operator=(Gvec&& src__) = default;
+    Gvec&
+    operator=(Gvec&& src__) = default;
 
     /// Move constructor.
     Gvec(Gvec&& src__) = default;
 
-    inline auto const& vk() const
+    inline auto const&
+    vk() const
     {
         return vk_;
     }
 
-    inline mpi::Communicator const& comm() const
+    inline mpi::Communicator const&
+    comm() const
     {
         return comm_;
     }
@@ -445,7 +465,8 @@ class Gvec
     /// Set the new reciprocal lattice vectors.
     /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors.
      *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
-    inline auto const& lattice_vectors(r3::matrix<double> lattice_vectors__)
+    inline auto const&
+    lattice_vectors(r3::matrix<double> lattice_vectors__)
     {
         lattice_vectors_ = lattice_vectors__;
         find_gvec_shells();
@@ -454,47 +475,54 @@ class Gvec
     }
 
     /// Retrn a const reference to the reciprocal lattice vectors.
-    inline auto const& lattice_vectors() const
+    inline auto const&
+    lattice_vectors() const
     {
         return lattice_vectors_;
     }
 
-    inline auto const unit_cell_lattice_vectors() const
+    inline auto const
+    unit_cell_lattice_vectors() const
     {
         double const twopi = 6.2831853071795864769;
-        auto r = r3::transpose(r3::inverse(lattice_vectors_)) * twopi;
+        auto r             = r3::transpose(r3::inverse(lattice_vectors_)) * twopi;
         return r;
     }
 
     /// Return the volume of the real space unit cell that corresponds to the reciprocal lattice of G-vectors.
-    inline double omega() const
+    inline double
+    omega() const
     {
         double const twopi_pow3 = 248.050213442398561403810520537;
         return twopi_pow3 / std::abs(lattice_vectors().det());
     }
 
     /// Return the total number of G-vectors within the cutoff.
-    inline int num_gvec() const
+    inline int
+    num_gvec() const
     {
         return num_gvec_;
     }
 
     /// Number of z-columns for a fine-grained distribution.
-    inline int zcol_count(int rank__) const
+    inline int
+    zcol_count(int rank__) const
     {
         RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.counts[rank__];
     }
 
     /// Offset in the global index of z-columns for a given rank.
-    inline int zcol_offset(int rank__) const
+    inline int
+    zcol_offset(int rank__) const
     {
         RTE_ASSERT(rank__ < comm().size());
         return zcol_distr_.offsets[rank__];
     }
 
     /// Number of G-vectors for a fine-grained distribution.
-    inline int gvec_count(int rank__) const
+    inline int
+    gvec_count(int rank__) const
     {
         RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.counts[rank__];
@@ -502,13 +530,15 @@ class Gvec
 
     /// Number of G-vectors for a fine-grained distribution for the current MPI rank.
     /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
-    inline int count() const
+    inline int
+    count() const
     {
         return count_;
     }
 
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
-    inline int gvec_offset(int rank__) const
+    inline int
+    gvec_offset(int rank__) const
     {
         RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.offsets[rank__];
@@ -516,19 +546,22 @@ class Gvec
 
     /// Offset (in the global index) of G-vectors for a fine-grained distribution for a current MPI rank.
     /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
-    inline int offset() const
+    inline int
+    offset() const
     {
         return offset_;
     }
 
     /// Local starting index of G-vectors if G=0 is not counted.
-    inline int skip_g0() const
+    inline int
+    skip_g0() const
     {
         return (comm().rank() == 0) ? 1 : 0;
     }
 
     /// Return number of G-vector shells.
-    inline int num_shells() const
+    inline int
+    num_shells() const
     {
         return num_gvec_shells_;
     }
@@ -604,24 +637,28 @@ class Gvec
     }
 
     /// Return index of the G-vector shell by the G-vector index.
-    inline int shell(int ig__) const
+    inline int
+    shell(int ig__) const
     {
         return gvec_shell_(ig__);
     }
 
-    inline int shell(r3::vector<int> const& G__) const
+    inline int
+    shell(r3::vector<int> const& G__) const
     {
         return this->shell(index_by_gvec(G__));
     }
 
     /// Return length of the G-vector shell.
-    inline double shell_len(int igs__) const
+    inline double
+    shell_len(int igs__) const
     {
         return gvec_shell_len_(igs__);
     }
 
     /// Get lengths of all G-vector shells.
-    std::vector<double> shells_len() const
+    std::vector<double>
+    shells_len() const
     {
         std::vector<double> q(this->num_shells());
         for (int i = 0; i < this->num_shells(); i++) {
@@ -647,7 +684,8 @@ class Gvec
         }
     }
 
-    inline int index_g12(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const
+    inline int
+    index_g12(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const
     {
         auto v  = g1__ - g2__;
         int idx = index_by_gvec(v);
@@ -656,13 +694,14 @@ class Gvec
         return idx;
     }
 
-    std::pair<int, bool> index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const;
+    std::pair<int, bool>
+    index_g12_safe(r3::vector<int> const& g1__, r3::vector<int> const& g2__) const;
 
-    //inline int index_g12_safe(int ig1__, int ig2__) const
+    // inline int index_g12_safe(int ig1__, int ig2__) const
     //{
-    //    STOP();
-    //    return 0;
-    //}
+    //     STOP();
+    //     return 0;
+    // }
 
     /// Return a global G-vector index in the range [0, num_gvec) by the G-vector.
     /** The information about a G-vector index is encoded by two numbers: a starting index for the
@@ -671,65 +710,77 @@ class Gvec
      *  a given x and y. This information is used to compute the offset which is added to the starting index
      *  in order to get a full G-vector index. Check find_z_columns() to see how the z-columns are found and
      *  added to the list of columns. */
-    int index_by_gvec(r3::vector<int> const& G__) const;
+    int
+    index_by_gvec(r3::vector<int> const& G__) const;
 
-    inline bool reduced() const
+    inline bool
+    reduced() const
     {
         return reduce_gvec_;
     }
 
-    inline bool bare() const
+    inline bool
+    bare() const
     {
         return bare_gvec_;
     }
 
     /// Return global number of z-columns.
-    inline int num_zcol() const
+    inline int
+    num_zcol() const
     {
         return static_cast<int>(z_columns_.size());
     }
 
     /// Return local number of z-columns.
-    inline int num_zcol_local() const
+    inline int
+    num_zcol_local() const
     {
         return num_zcol_local_;
     }
 
-    inline z_column_descriptor const& zcol(size_t idx__) const
+    inline z_column_descriptor const&
+    zcol(size_t idx__) const
     {
         return z_columns_[idx__];
     }
 
-    inline int gvec_base_mapping(int igloc_base__) const
+    inline int
+    gvec_base_mapping(int igloc_base__) const
     {
         RTE_ASSERT(gvec_base_ != nullptr);
         return gvec_base_mapping_(igloc_base__);
     }
 
-    inline int num_gvec_shells_local() const
+    inline int
+    num_gvec_shells_local() const
     {
         return num_gvec_shells_local_;
     }
 
-    inline double gvec_shell_len_local(int idx__) const
+    inline double
+    gvec_shell_len_local(int idx__) const
     {
         return gvec_shell_len_local_[idx__];
     }
 
-    inline int gvec_shell_idx_local(int igloc__) const
+    inline int
+    gvec_shell_idx_local(int igloc__) const
     {
         return gvec_shell_idx_local_[igloc__];
     }
 
     /// Return local list of G-vectors.
-    inline auto const& gvec_local() const
+    inline auto const&
+    gvec_local() const
     {
         return gvec_;
     }
 
     /// Return local list of G-vectors for a given rank.
     /** This function must be called by all MPI ranks of the G-vector communicator. */
-    inline auto gvec_local(int rank__) const
+    inline auto
+    gvec_local(int rank__) const
     {
         int ngv = this->count();
         this->comm().bcast(&ngv, 1, rank__);
@@ -742,22 +793,26 @@ class Gvec
         return result;
     }
 
-    inline auto& gvec_tp()
+    inline auto&
+    gvec_tp()
     {
         return gvec_tp_;
     }
 
-    inline auto const& gvec_tp() const
+    inline auto const&
+    gvec_tp() const
     {
         return gvec_tp_;
     }
 
-    inline auto& gkvec_tp()
+    inline auto&
+    gkvec_tp()
     {
         return gkvec_tp_;
     }
 
-    inline auto const& gkvec_tp() const
+    inline auto const&
+    gkvec_tp() const
     {
         return gkvec_tp_;
     }
@@ -798,80 +853,92 @@ class Gvec_fft
     /// Cartesian coordinaes of a local set of G+k-vectors.
     mdarray<double, 2> gkvec_cart_array_;
 
-    void build_fft_distr();
+    void
+    build_fft_distr();
 
     /// Stack together the G-vector slabs to make a larger ("fat") slab for a FFT driver.
-    void pile_gvec();
+    void
+    pile_gvec();
 
   public:
     Gvec_fft(Gvec const& gvec__, mpi::Communicator const& fft_comm__, mpi::Communicator const& comm_ortho_fft__);
 
     /// Return FFT communicator
-    inline mpi::Communicator const& comm_fft() const
+    inline mpi::Communicator const&
+    comm_fft() const
     {
         return comm_fft_;
     }
 
     /// Return a communicator that is orthogonal to the FFT communicator.
-    inline mpi::Communicator const& comm_ortho_fft() const
+    inline mpi::Communicator const&
+    comm_ortho_fft() const
     {
         return comm_ortho_fft_;
     }
 
     /// Local number of G-vectors in the FFT distribution for a given rank.
-    inline int count(int rank__) const
+    inline int
+    count(int rank__) const
     {
         return gvec_distr_fft_.counts[rank__];
     }
 
     /// Local number of G-vectors for FFT-friendly distribution for this rank.
-    inline int count() const
+    inline int
+    count() const
     {
         return this->count(comm_fft().rank());
     }
 
     /// Return local number of z-columns.
-    inline int zcol_count() const
+    inline int
+    zcol_count() const
     {
         return num_zcol_local_;
     }
 
     /// Represents a "fat" slab of G-vectors in the FFT-friendly distribution.
-    inline auto const& gvec_slab() const
+    inline auto const&
+    gvec_slab() const
     {
         return gvec_fft_slab_;
     }
 
     /// Return the original (not reshuffled) G-vector class.
-    inline Gvec const& gvec() const
+    inline Gvec const&
+    gvec() const
     {
         return gvec_;
     }
 
     /// Return the Cartesian coordinates of the local G-vector.
-    inline auto gkvec_cart(int igloc__) const
+    inline auto
+    gkvec_cart(int igloc__) const
     {
         return r3::vector<double>(&gkvec_cart_array_(0, igloc__));
     }
 
     /// Return the full array of the local G-vector Cartesian coodinates.
-    inline auto const& gvec_array() const
+    inline auto const&
+    gvec_array() const
     {
         return gvec_array_;
     }
 
     template <typename T> // TODO: document
-    void gather_pw_fft(std::complex<T> const* f_pw_local__, std::complex<T>* f_pw_fft__) const
+    void
+    gather_pw_fft(std::complex<T> const* f_pw_local__, std::complex<T>* f_pw_fft__) const
     {
         int rank = gvec().comm().rank();
         /* collect scattered PW coefficients */
         comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_slab().counts.data(),
                                    gvec_slab().offsets.data());
-
     }
 
     template <typename T> // TODO: document
-    void gather_pw_global(std::complex<T> const* f_pw_fft__, std::complex<T>* f_pw_global__) const
+    void
+    gather_pw_global(std::complex<T> const* f_pw_fft__, std::complex<T>* f_pw_global__) const
     {
         for (int ig = 0; ig < gvec().count(); ig++) {
             /* position inside fft buffer */
@@ -881,8 +948,9 @@ class Gvec_fft
         gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
     }
 
-    template<typename T>
-    void scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
+    template <typename T>
+    void
+    scatter_pw_global(std::complex<T> const* f_pw_global__, std::complex<T>* f_pw_fft__) const
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
             /* offset in global index */
@@ -894,10 +962,11 @@ class Gvec_fft
     }
 
     /// Update Cartesian coordinates after a change in lattice vectors.
-    void update_gkvec_cart()
+    void
+    update_gkvec_cart()
     {
         for (int ig = 0; ig < this->count(); ig++) {
-            auto G = r3::vector<int>(&gvec_array_(0, ig));
+            auto G   = r3::vector<int>(&gvec_array_(0, ig));
             auto Gkc = dot(this->gvec_.lattice_vectors(), G + this->gvec_.vk());
             for (int x : {0, 1, 2}) {
                 gkvec_cart_array_(x, ig) = Gkc[x];
@@ -938,10 +1007,10 @@ class Gvec_shells
     std::map<r3::vector<int>, int> idx_gvec_;
 
   public:
-
     Gvec_shells(Gvec const& gvec__);
 
-    inline void print_gvec(std::ostream& out__) const
+    inline void
+    print_gvec(std::ostream& out__) const
     {
         mpi::pstdout pout(gvec_.comm());
         pout << "rank: " << gvec_.comm().rank() << std::endl;
@@ -953,26 +1022,29 @@ class Gvec_shells
             pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
         }
         pout << "-- reverse list --" << std::endl;
-        for (auto const& e: idx_gvec_) {
+        for (auto const& e : idx_gvec_) {
             pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
         }
         out__ << pout.flush(0);
     }
 
     /// Local number of G-vectors in the remapped distribution with complete shells on each rank.
-    int gvec_count_remapped() const
+    int
+    gvec_count_remapped() const
     {
         return a2a_recv_.size();
     }
 
     /// G-vector by local index (in the remapped set).
-    r3::vector<int> gvec_remapped(int igloc__) const
+    r3::vector<int>
+    gvec_remapped(int igloc__) const
     {
         return r3::vector<int>(gvec_remapped_(0, igloc__), gvec_remapped_(1, igloc__), gvec_remapped_(2, igloc__));
     }
 
     /// Return local index of the G-vector in the remapped set.
-    int index_by_gvec(r3::vector<int> G__) const
+    int
+    index_by_gvec(r3::vector<int> G__) const
     {
         if (idx_gvec_.count(G__)) {
             return idx_gvec_.at(G__);
@@ -982,13 +1054,15 @@ class Gvec_shells
     }
 
     /// Index of the G-vector shell by the local G-vector index (in the remapped set).
-    int gvec_shell_remapped(int igloc__) const
+    int
+    gvec_shell_remapped(int igloc__) const
     {
         return gvec_shell_remapped_(igloc__);
     }
 
     template <typename T>
-    auto remap_forward(T* data__) const
+    auto
+    remap_forward(T* data__) const
     {
         PROFILE("fft::Gvec_shells::remap_forward");
 
@@ -1011,7 +1085,8 @@ class Gvec_shells
     }
 
     template <typename T>
-    void remap_backward(std::vector<T> buf__, T* data__) const
+    void
+    remap_backward(std::vector<T> buf__, T* data__) const
     {
         PROFILE("fft::Gvec_shells::remap_backward");
 
@@ -1030,7 +1105,8 @@ class Gvec_shells
         }
     }
 
-    inline Gvec const& gvec() const
+    inline Gvec const&
+    gvec() const
     {
         return gvec_;
     }
@@ -1051,7 +1127,8 @@ gkvec_factory(r3::vector<double> vk__, r3::matrix<double> reciprocal_lattice_vec
     return std::make_shared<Gvec>(vk__, reciprocal_lattice_vectors__, gk_cutoff__, comm__, gamma__);
 }
 
-inline void print(std::ostream& out__, Gvec const& gvec__)
+inline void
+print(std::ostream& out__, Gvec const& gvec__)
 {
     std::map<int, std::vector<int>> gsh_map;
     for (int i = 0; i < gvec__.num_gvec(); i++) {
@@ -1069,28 +1146,28 @@ inline void print(std::ostream& out__, Gvec const& gvec__)
         auto len = gvec__.shell_len(igsh);
         out__ << "shell : " << igsh << ", length : " << len << std::endl;
         for (auto ig : gsh_map[igsh]) {
-            auto G = gvec__.gvec<index_domain_t::global>(ig);
+            auto G  = gvec__.gvec<index_domain_t::global>(ig);
             auto Gc = gvec__.gvec_cart<index_domain_t::global>(ig);
             out__ << "  ig : " << ig << ", G = " << G << ", length diff : " << std::abs(Gc.length() - len) << std::endl;
         }
     }
-    //mpi::pstdout pout(gvec__.comm());
-    //pout << "rank: " << gvec_.comm().rank() << std::endl;
-    //pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
-    //for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
-    //    auto G = gvec_remapped(igloc);
+    // mpi::pstdout pout(gvec__.comm());
+    // pout << "rank: " << gvec_.comm().rank() << std::endl;
+    // pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
+    // for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
+    //     auto G = gvec_remapped(igloc);
 
     //    int igsh = gvec_shell_remapped(igloc);
     //    pout << "igloc=" << igloc << " igsh=" << igsh << " G=" << G[0] << " " << G[1] << " " << G[2] << std::endl;
     //}
-    //pout << "-- reverse list --" << std::endl;
-    //for (auto const& e: idx_gvec_) {
+    // pout << "-- reverse list --" << std::endl;
+    // for (auto const& e: idx_gvec_) {
     //    pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
     //}
-    //out__ << pout.flush(0);
+    // out__ << pout.flush(0);
 }
 
-} // namespace
+} // namespace fft
 
 } // namespace sirius
 

@@ -31,8 +31,9 @@
 namespace sirius {
 
 template <typename T, typename F>
-void check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
-        wf::band_range br__, double* eval__)
+void
+check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
+                     wf::band_range br__, double* eval__)
 {
     wf::Wave_functions<T> hpsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), memory_t::host);
     wf::Wave_functions<T> spsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), memory_t::host);
@@ -46,7 +47,8 @@ void check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_func
 
     auto diff = check_identity(ovlp, br__.size());
     if (diff > 1e-12) {
-        std::cout << "[check_wave_functions] Error! Wave-functions are not orthonormal, difference : " << diff << std::endl;
+        std::cout << "[check_wave_functions] Error! Wave-functions are not orthonormal, difference : " << diff
+                  << std::endl;
     } else {
         std::cout << "[check_wave_functions] Ok! Wave-functions are orthonormal" << std::endl;
     }
@@ -58,7 +60,7 @@ void check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_func
             for (int ig = 0; ig < psi__.gkvec().count(); ig++) {
                 /* H|psi> - e S|psi> */
                 auto z = hpsi.pw_coeffs(ig, s1, wf::band_index(ib)) -
-                    spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<real_type<T>>(eval__[ib]);
+                         spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<real_type<T>>(eval__[ib]);
                 l2norm += std::real(z * std::conj(z));
             }
             psi__.gkvec().comm().allreduce(&l2norm, 1);
@@ -68,6 +70,6 @@ void check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_func
     }
 }
 
-}
+} // namespace sirius
 
 #endif

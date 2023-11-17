@@ -2,15 +2,17 @@
 
 using namespace sirius;
 
-double rounded(double a, int n)
+double
+rounded(double a, int n)
 {
     double a0 = std::floor(a);
-    double b = a - a0;
-    b = std::round(b * std::pow(10, n)) / std::pow(10, n);
+    double b  = a - a0;
+    b         = std::round(b * std::pow(10, n)) / std::pow(10, n);
     return a0 + b;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(1);
     double a = 124.144555443334;

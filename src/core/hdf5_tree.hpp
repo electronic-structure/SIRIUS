@@ -134,7 +134,8 @@ class HDF5_tree
         }
 
         /// Return HDF5 id of the current object.
-        inline hid_t id() const
+        inline hid_t
+        id() const
         {
             return id_;
         }
@@ -170,7 +171,8 @@ class HDF5_tree
         }
 
         /// Return HDF5 id of the current object.
-        inline hid_t id() const
+        inline hid_t
+        id() const
         {
             return id_;
         }
@@ -210,7 +212,8 @@ class HDF5_tree
         }
 
         /// Return HDF5 id of the current object.
-        inline hid_t id() const
+        inline hid_t
+        id() const
         {
             return id_;
         }
@@ -263,7 +266,8 @@ class HDF5_tree
         }
 
         /// Return HDF5 id of the current object
-        inline hid_t id() const
+        inline hid_t
+        id() const
         {
             return id_;
         }
@@ -278,7 +282,8 @@ class HDF5_tree
     }
 
     /// Create HDF5 string type from std::string
-    hid_t string_type(const std::string& data, hid_t base_string_type) const
+    hid_t
+    string_type(const std::string& data, hid_t base_string_type) const
     {
         // Create string type
         hid_t string_type = H5Tcopy(base_string_type);
@@ -290,7 +295,8 @@ class HDF5_tree
 
     /// Create HDF5 array type from std::vector
     template <typename T>
-    hid_t array_type(const std::vector<T>& data) const
+    hid_t
+    array_type(const std::vector<T>& data) const
     {
         hsize_t data_size = std::size(data);
         return H5Tarray_create(hdf5_type_wrapper<T>(), 1, &data_size);
@@ -298,7 +304,8 @@ class HDF5_tree
 
     /// Write a multidimensional array.
     template <typename T>
-    void write(const std::string& name, T const* data, std::vector<int> const& dims)
+    void
+    write(const std::string& name, T const* data, std::vector<int> const& dims)
     {
         /* open group */
         HDF5_group group(file_id_, path_);
@@ -321,7 +328,8 @@ class HDF5_tree
     /// @param data Attribute data
     /// @param type_id Attribute type ID
     template <typename T>
-    void write_attribute(const std::string& name, const T* const data, hid_t type_id) const
+    void
+    write_attribute(const std::string& name, const T* const data, hid_t type_id) const
     {
         HDF5_group group(file_id_, path_);
 
@@ -339,8 +347,8 @@ class HDF5_tree
     /// @param type_id Attribute type ID
     /// @param dataset_name Dataset in current group to wich attach the attribute
     template <typename T>
-    void write_attribute(const std::string& name, const T* const data, hid_t type_id,
-                         const std::string& dataset_name) const
+    void
+    write_attribute(const std::string& name, const T* const data, hid_t type_id, const std::string& dataset_name) const
     {
         HDF5_group group(file_id_, path_);
 
@@ -355,7 +363,8 @@ class HDF5_tree
 
     /// Read a multidimensional array.
     template <typename T>
-    void read(const std::string& name, T* data, std::vector<int> const& dims)
+    void
+    read(const std::string& name, T* data, std::vector<int> const& dims)
     {
         HDF5_group group(file_id_, path_);
 
@@ -421,14 +430,16 @@ class HDF5_tree
 
     /// Create node by integer index.
     /** Create node at the current location using integer index as a name. */
-    HDF5_tree create_node(int idx)
+    HDF5_tree
+    create_node(int idx)
     {
         return create_node(std::to_string(idx));
     }
 
     /// Create node by name.
     /** Create node with the given name at the current location.*/
-    HDF5_tree create_node(std::string const& name)
+    HDF5_tree
+    create_node(std::string const& name)
     {
         /* try to open a group */
         HDF5_group group(file_id_, path_);
@@ -439,7 +450,8 @@ class HDF5_tree
     }
 
     template <typename T, int N>
-    void write(const std::string& name, mdarray<std::complex<T>, N> const& data)
+    void
+    write(const std::string& name, mdarray<std::complex<T>, N> const& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
@@ -451,7 +463,8 @@ class HDF5_tree
 
     /// Write a multidimensional array by name.
     template <typename T, int N>
-    void write(std::string const& name__, mdarray<T, N> const& data__)
+    void
+    write(std::string const& name__, mdarray<T, N> const& data__)
     {
         std::vector<int> dims(N);
         for (int i = 0; i < N; i++) {
@@ -462,7 +475,8 @@ class HDF5_tree
 
     /// Write a multidimensional array by integer index.
     template <typename T, int N>
-    void write(int name_id, mdarray<T, N> const& data)
+    void
+    write(int name_id, mdarray<T, N> const& data)
     {
         std::string name = std::to_string(name_id);
         write(name, data);
@@ -470,7 +484,8 @@ class HDF5_tree
 
     /// Write a buffer.
     template <typename T>
-    void write(const std::string& name, T const* data, int size)
+    void
+    write(const std::string& name, T const* data, int size)
     {
         std::vector<int> dims(1);
         dims[0] = size;
@@ -479,7 +494,8 @@ class HDF5_tree
 
     /// Write a scalar.
     template <typename T>
-    void write(const std::string& name, T data)
+    void
+    write(const std::string& name, T data)
     {
         std::vector<int> dims(1);
         dims[0] = 1;
@@ -488,7 +504,8 @@ class HDF5_tree
 
     /// Write a vector by id.
     template <typename T>
-    void write(int name_id, std::vector<T> const& vec)
+    void
+    write(int name_id, std::vector<T> const& vec)
     {
         std::string name = std::to_string(name_id);
         write(name, &vec[0], (int)vec.size());
@@ -496,85 +513,96 @@ class HDF5_tree
 
     /// Write a vector by name.
     template <typename T>
-    void write(const std::string& name, std::vector<T> const& vec)
+    void
+    write(const std::string& name, std::vector<T> const& vec)
     {
         write(name, &vec[0], (int)vec.size());
     }
 
     /// Write attribute
     template <typename T>
-    void write_attribute(const std::string& name, const T& data) const
+    void
+    write_attribute(const std::string& name, const T& data) const
     {
         write_attribute(name, &data, hdf5_type_wrapper<T>());
     }
 
     /// Write attribute
     template <typename T>
-    void write_attribute(const std::string& name, const T& data, const std::string& dataset_name) const
+    void
+    write_attribute(const std::string& name, const T& data, const std::string& dataset_name) const
     {
         write_attribute(name, &data, hdf5_type_wrapper<T>(), dataset_name);
     }
 
     /// Write string attribute
-    void write_attribute(const std::string& name, const std::string& data,
-                         hid_t base_string_type = H5T_FORTRAN_S1) const
+    void
+    write_attribute(const std::string& name, const std::string& data, hid_t base_string_type = H5T_FORTRAN_S1) const
     {
         write_attribute(name, data.c_str(), string_type(data, base_string_type));
     }
 
     /// Write string attribute
-    void write_attribute(const std::string& name, const std::string& data, const std::string& dataset_name,
-                         hid_t base_string_type = H5T_FORTRAN_S1) const
+    void
+    write_attribute(const std::string& name, const std::string& data, const std::string& dataset_name,
+                    hid_t base_string_type = H5T_FORTRAN_S1) const
     {
         write_attribute(name, data.c_str(), string_type(data, base_string_type), dataset_name);
     }
 
     /// Write string attribute
     template <std::size_t N>
-    void write_attribute(const std::string& name, const char (&data)[N], hid_t base_string_type = H5T_FORTRAN_S1) const
+    void
+    write_attribute(const std::string& name, const char (&data)[N], hid_t base_string_type = H5T_FORTRAN_S1) const
     {
         write_attribute(name, std::string(data), base_string_type);
     }
 
     /// Write string attribute
     template <std::size_t N>
-    void write_attribute(const std::string& name, const char (&data)[N], const std::string& dataset_name,
-                         hid_t base_string_type = H5T_FORTRAN_S1) const
+    void
+    write_attribute(const std::string& name, const char (&data)[N], const std::string& dataset_name,
+                    hid_t base_string_type = H5T_FORTRAN_S1) const
     {
         write_attribute(name, std::string(data), dataset_name, base_string_type);
     }
 
     /// Write array attribute
     template <typename T>
-    void write_attribute(const std::string& name, const std::vector<T>& data) const
+    void
+    write_attribute(const std::string& name, const std::vector<T>& data) const
     {
         write_attribute(name, data.data(), array_type(data));
     }
 
     /// Write array attribute
     template <typename T>
-    void write_attribute(const std::string& name, const std::vector<T>& data, const std::string& dataset_name) const
+    void
+    write_attribute(const std::string& name, const std::vector<T>& data, const std::string& dataset_name) const
     {
         write_attribute(name, data.data(), array_type(data), dataset_name);
     }
 
     /// Write array attribute
     template <typename T>
-    void write_attribute(const std::string& name, const std::initializer_list<T>& data) const
+    void
+    write_attribute(const std::string& name, const std::initializer_list<T>& data) const
     {
         write_attribute(name, std::vector<T>(data));
     }
 
     /// Write array attribute
     template <typename T>
-    void write_attribute(const std::string& name, const std::initializer_list<T>& data,
-                         const std::string& dataset_name) const
+    void
+    write_attribute(const std::string& name, const std::initializer_list<T>& data,
+                    const std::string& dataset_name) const
     {
         write_attribute(name, std::vector<T>(data), dataset_name);
     }
 
     template <int N>
-    void read(const std::string& name, mdarray<std::complex<double>, N>& data)
+    void
+    read(const std::string& name, mdarray<std::complex<double>, N>& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
@@ -585,7 +613,8 @@ class HDF5_tree
     }
 
     template <typename T, int N>
-    void read(const std::string& name, mdarray<T, N>& data)
+    void
+    read(const std::string& name, mdarray<T, N>& data)
     {
         std::vector<int> dims(N);
         for (int i = 0; i < N; i++) {
@@ -595,7 +624,8 @@ class HDF5_tree
     }
 
     template <typename T, int N>
-    void read(int name_id, mdarray<T, N>& data)
+    void
+    read(int name_id, mdarray<T, N>& data)
     {
         std::string name = std::to_string(name_id);
         read(name, data);
@@ -603,7 +633,8 @@ class HDF5_tree
 
     /// Read a vector or a scalar.
     template <typename T>
-    void read(std::string const& name, T* data, int size)
+    void
+    read(std::string const& name, T* data, int size)
     {
         std::vector<int> dims(1);
         dims[0] = size;
@@ -611,30 +642,34 @@ class HDF5_tree
     }
 
     template <typename T>
-    void read(int name_id, std::vector<T>& vec)
+    void
+    read(int name_id, std::vector<T>& vec)
     {
         read(std::to_string(name_id), &vec[0], (int)vec.size());
     }
 
     template <typename T>
-    void read(std::string const& name, std::vector<T>& vec)
+    void
+    read(std::string const& name, std::vector<T>& vec)
     {
         read(name, &vec[0], (int)vec.size());
     }
 
-    HDF5_tree operator[](std::string const& path__)
+    HDF5_tree
+    operator[](std::string const& path__)
     {
         auto new_path = path_ + path__ + "/";
         return HDF5_tree(file_id_, new_path);
     }
 
-    HDF5_tree operator[](int idx__)
+    HDF5_tree
+    operator[](int idx__)
     {
         auto new_path = path_ + std::to_string(idx__) + "/";
         return HDF5_tree(file_id_, new_path);
     }
 };
 
-}; // namespace
+}; // namespace sirius
 
 #endif // __HDF5_TREE_HPP__

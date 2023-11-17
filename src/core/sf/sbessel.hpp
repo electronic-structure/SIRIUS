@@ -44,23 +44,28 @@ class Spherical_Bessel_functions
     std::vector<Spline<double>> sbessel_;
 
   public:
-    Spherical_Bessel_functions() {}
+    Spherical_Bessel_functions()
+    {
+    }
 
     Spherical_Bessel_functions(int lmax__, Radial_grid<double> const& rgrid__, double q__);
 
-    static void sbessel(int lmax__, double t__, double* jl__);
+    static void
+    sbessel(int lmax__, double t__, double* jl__);
 
-    static void sbessel_deriv_q(int lmax__, double q__, double x__, double* jl_dq__);
+    static void
+    sbessel_deriv_q(int lmax__, double q__, double x__, double* jl_dq__);
 
-    Spline<double> const& operator[](int l__) const;
+    Spline<double> const&
+    operator[](int l__) const;
 
     /// Derivative of Bessel function with respect to q.
     /** \f[
         \frac{\partial j_{\ell}(q x)}{\partial q} = \frac{\ell}{q} j_{\ell}(q x) - x j_{\ell+1}(q x)
         \f]
      */
-    Spline<double> deriv_q(int l__);
-
+    Spline<double>
+    deriv_q(int l__);
 };
 
 } // namespace sf

@@ -27,7 +27,8 @@
 
 namespace sirius {
 
-void check_xc_potential(Density const& rho__)
+void
+check_xc_potential(Density const& rho__)
 {
     Potential p0(const_cast<Simulation_context&>(rho__.ctx()));
     p0.generate(rho__, rho__.ctx().use_symmetry(), true);
@@ -68,7 +69,7 @@ void check_xc_potential(Density const& rho__)
 
         if (std::abs(evxc - deriv_rho) + std::abs(ebxc - deriv_mag) < best_result) {
             best_result = std::abs(evxc - deriv_rho) + std::abs(ebxc - deriv_mag);
-            best_eps = eps;
+            best_eps    = eps;
         }
 
         eps /= 10;
@@ -76,4 +77,4 @@ void check_xc_potential(Density const& rho__)
     std::printf("best total result : %18.12f for epsilon %18.12f\n", best_result, best_eps);
 }
 
-}
+} // namespace sirius

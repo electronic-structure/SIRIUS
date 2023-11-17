@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_lapw_xc(cmd_args const& args__)
+void
+test_lapw_xc(cmd_args const& args__)
 {
     auto pw_cutoff = args__.value<double>("pw_cutoff", 12);
     auto N         = args__.value<int>("N", 1);
@@ -35,7 +36,7 @@ void test_lapw_xc(cmd_args const& args__)
     /* set atomic density */
     std::vector<double> atom_rho(atype.free_atom_radial_grid().num_points());
     for (int i = 0; i < atype.free_atom_radial_grid().num_points(); i++) {
-        auto x = atype.free_atom_radial_grid(i);
+        auto x      = atype.free_atom_radial_grid(i);
         atom_rho[i] = 2 * std::sqrt(atype.zn()) * std::exp(-x);
     }
     atype.free_atom_density(atom_rho);
@@ -50,9 +51,7 @@ void test_lapw_xc(cmd_args const& args__)
     /* lattice constant */
     double a{5};
     /* set lattice vectors */
-    ctx.unit_cell().set_lattice_vectors({{a * N, 0, 0},
-                                         {0, a * N, 0},
-                                         {0, 0, a * N}});
+    ctx.unit_cell().set_lattice_vectors({{a * N, 0, 0}, {0, a * N, 0}, {0, 0, a * N}});
     /* add atoms */
     double p = 1.0 / N;
     for (int i = 0; i < N; i++) {
@@ -77,12 +76,13 @@ void test_lapw_xc(cmd_args const& args__)
     pot.xc(rho);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"device=", "(string) CPU or GPU"},
-                               {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
-                               {"N=", "(int) cell multiplicity"}
-                              });
+    cmd_args args(argn, argv,
+                  {{"device=", "(string) CPU or GPU"},
+                   {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
+                   {"N=", "(int) cell multiplicity"}});
 
     if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
@@ -96,6 +96,6 @@ int main(int argn, char** argv)
     sirius::finalize();
     if (!rank) {
         const auto timing_result = global_rtgraph_timer.process();
-        std::cout<< timing_result.print();
+        std::cout << timing_result.print();
     }
 }

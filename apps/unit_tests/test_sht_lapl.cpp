@@ -3,7 +3,8 @@
 using namespace sirius;
 
 template <typename T>
-double test()
+double
+test()
 {
     int lmax{10};
     SHT sht(device_t::CPU, lmax);
@@ -17,14 +18,14 @@ double test()
         double x = r[ir];
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
-                int lm = sf::lm(l, m);
+                int lm    = sf::lm(l, m);
                 f(lm, ir) = std::exp(-0.1 * (lm + 1) * x) * std::pow(x, l);
             }
         }
     }
 
-    auto lapl_f = laplacian(f);
-    auto grad_f = gradient(f);
+    auto lapl_f     = laplacian(f);
+    auto grad_f     = gradient(f);
     auto div_grad_f = divergence(grad_f);
 
     /* chek up to lmax-1 because \grad couples l-1 and l+1 and so \div\grad is incomplete at lmax */
@@ -40,7 +41,8 @@ double test()
     return s.interpolate().integrate(0) / s1.interpolate().integrate(0);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(true);
 

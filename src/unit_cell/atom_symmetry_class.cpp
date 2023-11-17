@@ -35,9 +35,9 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
         RTE_THROW("atom type is not initialized");
     }
 
-    int nl = atom_type_.indexr().lmax() + 1;
+    int nl        = atom_type_.indexr().lmax() + 1;
     int max_order = atom_type_.indexr().max_order();
-    int nrf = atom_type_.mt_radial_basis_size();
+    int nrf       = atom_type_.mt_radial_basis_size();
 
     surface_derivatives_ = mdarray<double, 2>({3, nrf});
 
@@ -81,8 +81,8 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
     {
         Spline<double> s(atom_type_.radial_grid());
 
-        std::vector<double>   p;
-        std::vector<double>   rdudr;
+        std::vector<double> p;
+        std::vector<double> rdudr;
         std::array<double, 2> uderiv;
 
         #pragma omp for schedule(dynamic, 1)
@@ -185,7 +185,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
 
         std::vector<std::vector<double>> p(num_rs);
         std::vector<std::vector<double>> rdudr(num_rs);
-        std::array<double, 2>            uderiv;
+        std::array<double, 2> uderiv;
 
         for (int order = 0; order < num_rs; order++) {
             auto rsd = lo_descriptor(idxlo).rsd_set[order];
@@ -213,7 +213,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
             a[order][1] = uderiv[0];
             a[order][2] = uderiv[1];
 
-            for (int i: {0, 1, 2}) {
+            for (int i : {0, 1, 2}) {
                 rderiv[order][i] = a[order][i];
             }
         }
@@ -352,7 +352,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__)
 {
     int nmtp = atom_type_.num_mt_points();
 
-    Spline<double>  s(atom_type_.radial_grid());
+    Spline<double> s(atom_type_.radial_grid());
     la::dmatrix<double> loprod(num_lo_descriptors(), num_lo_descriptors());
     loprod.zero();
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
@@ -474,19 +474,19 @@ Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
 
     spherical_potential_ = vs__;
 
-    //HDF5_tree fout("mt_potential.h5", true);
-    //fout.write("potential", spherical_potential_);
+    // HDF5_tree fout("mt_potential.h5", true);
+    // fout.write("potential", spherical_potential_);
 
     ///* write spherical potential */
-    //std::stringstream sstr;
-    //sstr << "mt_spheric_potential_" << id_ << ".dat";
-    //FILE* fout = fopen(sstr.str().c_str(), "w");
+    // std::stringstream sstr;
+    // sstr << "mt_spheric_potential_" << id_ << ".dat";
+    // FILE* fout = fopen(sstr.str().c_str(), "w");
 
-    //for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-    //    double r = atom_type_.radial_grid(ir);
-    //    fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_.zn() / r);
-    //}
-    //fclose(fout);
+    // for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+    //     double r = atom_type_.radial_grid(ir);
+    //     fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_.zn() / r);
+    // }
+    // fclose(fout);
 }
 
 void
@@ -521,8 +521,10 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
 
     #pragma omp parallel for
     for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
-        auto   rsd     = rs_with_auto_enu[i];
-        double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(), spherical_potential_, rsd->enu).enu();
+        auto rsd       = rs_with_auto_enu[i];
+        double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
+                                    spherical_potential_, rsd->enu)
+                                 .enu();
         /* update linearization energy only if its change is above a threshold */
         if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
             rsd->enu           = new_enu;
@@ -547,7 +549,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     generate_lo_radial_functions(rel__);
 
     if (atom_type().parameters().cfg().control().ortho_rf()) {
-       orthogonalize_radial_functions();
+        orthogonalize_radial_functions();
     }
 
     //** if (true)
@@ -629,8 +631,9 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                         double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
                         /* r*u'_1(r) * r*u'_2(r) */
                         double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                        s(ir)     = 0.5 * t1 * Minv + t0 * (0.5 * ll * Minv + spherical_potential_[ir] *
-                            std::pow(atom_type_.radial_grid(ir), 2));
+                        s(ir)     = 0.5 * t1 * Minv +
+                                t0 * (0.5 * ll * Minv +
+                                      spherical_potential_[ir] * std::pow(atom_type_.radial_grid(ir), 2));
                     }
                     h_spherical_integrals_(i1, i2) = s.interpolate().integrate(0) / y00;
                 }
@@ -709,12 +712,12 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                     for (int ir = 0; ir < nmtp; ir++) {
                         double M = 1.0 - 2 * soc * spherical_potential_[ir];
                         /* first part <f| dVe / dr |f'> */
-                        s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *
-                                soc * ve.deriv(1, ir) / pow(M, 2);
+                        s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * soc *
+                                ve.deriv(1, ir) / pow(M, 2);
 
                         /* second part <f| d(z/r) / dr |f'> */
-                        s1(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *
-                                 soc * atom_type_.zn() / pow(M, 2);
+                        s1(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * soc *
+                                 atom_type_.zn() / pow(M, 2);
                     }
                     s.interpolate();
                     s1.interpolate();
@@ -735,7 +738,7 @@ Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
         for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
             auto& rsd = aw_descriptor(l)[order];
             if (rsd.auto_enu) {
-                pout << rsd; //printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                pout << rsd; // printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
                 if (rsd.new_enu_found) {
                     pout << "  +";
                 }
@@ -749,7 +752,7 @@ Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
         for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
             auto& rsd = lo_descriptor(idxlo).rsd_set[order];
             if (rsd.auto_enu) {
-                //pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                // pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
                 pout << rsd;
                 if (rsd.new_enu_found) {
                     pout << "  +";
@@ -864,7 +867,8 @@ Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
     //    #pragma omp for
     //    for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {
     //        if (atom_type_.atomic_level(ist).core) {
-    //            Bound_state bs(core_rel__, atom_type_.zn(), atom_type_.atomic_level(ist).n, atom_type_.atomic_level(ist).l,
+    //            Bound_state bs(core_rel__, atom_type_.zn(), atom_type_.atomic_level(ist).n,
+    //            atom_type_.atomic_level(ist).l,
     //                           atom_type_.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
 
     //            auto& rho = bs.rho();
@@ -902,4 +906,3 @@ Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
 }
 
 } // namespace sirius
-

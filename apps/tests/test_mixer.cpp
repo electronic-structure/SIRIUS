@@ -3,16 +3,18 @@
 #include "mixer/mixer_factory.hpp"
 #include "core/cmd_args.hpp"
 
-
 using namespace sirius;
 
 /**
  * Diagonal matrix operator A(i, i) = 2 + 1 / i where i = 1 ... n
  */
-struct Operator {
+struct Operator
+{
     const size_t n; // dimension
 
-    void operator()(std::vector<double> &y, std::vector<double> const &x) const {
+    void
+    operator()(std::vector<double>& y, std::vector<double> const& x) const
+    {
         for (size_t i = 0; i < x.size(); ++i)
             y[i] = (2.0 + 1.0 / (i + 1)) * x[i];
     }
@@ -21,7 +23,9 @@ struct Operator {
 /**
  * Return g(x) = Ax - b
  */
-std::vector<double> g(Operator const &A, std::vector<double> const &x, std::vector<double> const &b) {
+std::vector<double>
+g(Operator const& A, std::vector<double> const& x, std::vector<double> const& b)
+{
     std::vector<double> r(x.size());
 
     A(r, x);
@@ -32,7 +36,9 @@ std::vector<double> g(Operator const &A, std::vector<double> const &x, std::vect
     return r;
 }
 
-double error_norm(std::vector<double> const &a, std::vector<double> const &b) {
+double
+error_norm(std::vector<double> const& a, std::vector<double> const& b)
+{
     double total = 0;
     for (size_t i = 0; i < a.size(); ++i) {
         auto diff = a[i] - b[i];
@@ -41,7 +47,8 @@ double error_norm(std::vector<double> const &a, std::vector<double> const &b) {
     return std::sqrt(total);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     // Suppose f(x) = g(x) - x where g(x) = Ax - b
     // then f(x) = 0 <=> g(x) = x <=> (A - I)x = b
@@ -60,11 +67,11 @@ int main(int argn, char** argv)
     args.register_key("--tol=", "{double} tolerance");
     args.parse_args(argn, argv);
 
-    const auto max_iter = args.value<size_t>("max_iter", 100);
+    const auto max_iter    = args.value<size_t>("max_iter", 100);
     const auto max_history = args.value<int>("max_history", 8);
-    const auto beta = args.value<double>("beta", 0.25);
-    const auto n = args.value<size_t>("dim", 100);
-    const auto tol = args.value<double>("tol", 1e-8);
+    const auto beta        = args.value<double>("beta", 0.25);
+    const auto n           = args.value<size_t>("dim", 100);
+    const auto tol         = args.value<double>("tol", 1e-8);
 
     Operator A{n};
 
@@ -77,34 +84,33 @@ int main(int argn, char** argv)
         b[i] -= 1;
 
     auto mixer_function_prop = mixer::FunctionProperties<std::vector<double>>(
-        [](const std::vector<double>& x) -> std::size_t { return 1; },
-        [](const std::vector<double>& x, const std::vector<double>& y) -> double {
-            double result = 0.0;
-            for (std::size_t i = 0; i < x.size(); ++i)
-                result += x[i] * y[i];
-            return result;
-        },
-        [](double alpha, std::vector<double>& x) -> void {
-            for (auto& val : x)
-                val *= alpha;
-        },
-        [](const std::vector<double>& x, std::vector<double>& y) -> void {
-            std::copy(x.begin(), x.end(), y.begin());
-        },
-        [](double alpha, const std::vector<double>& x, std::vector<double>& y) -> void {
-            for (std::size_t i = 0; i < x.size(); ++i)
-                y[i] += alpha * x[i];
-        },
-        [](double c, double s, std::vector<double>& x, std::vector<double>& y) -> void {
-            for (std::size_t i = 0; i < x.size(); ++i) {
-                auto xi = x[i];
-                auto yi = y[i];
+            [](const std::vector<double>& x) -> std::size_t { return 1; },
+            [](const std::vector<double>& x, const std::vector<double>& y) -> double {
+                double result = 0.0;
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    result += x[i] * y[i];
+                return result;
+            },
+            [](double alpha, std::vector<double>& x) -> void {
+                for (auto& val : x)
+                    val *= alpha;
+            },
+            [](const std::vector<double>& x, std::vector<double>& y) -> void {
+                std::copy(x.begin(), x.end(), y.begin());
+            },
+            [](double alpha, const std::vector<double>& x, std::vector<double>& y) -> void {
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    y[i] += alpha * x[i];
+            },
+            [](double c, double s, std::vector<double>& x, std::vector<double>& y) -> void {
+                for (std::size_t i = 0; i < x.size(); ++i) {
+                    auto xi = x[i];
+                    auto yi = y[i];
 
-                x[i] = xi *  c + yi * s;
-                y[i] = xi * -s + yi * c;
-            }
-        }
-    );
+                    x[i] = xi * c + yi * s;
+                    y[i] = xi * -s + yi * c;
+                }
+            });
 
     nlohmann::json mixer_dict = R"mixer(
     {
@@ -124,10 +130,8 @@ int main(int argn, char** argv)
     for (auto const mixer_name : {"anderson", "anderson_stable", "broyden2", "linear"}) {
         input.type(mixer_name);
 
-        std::cout << "max history = " << input.max_history()
-              << ". beta = " << input.beta()
-              << ". dim = " << n
-              << ". mixer = " << input.type() << '\n';
+        std::cout << "max history = " << input.max_history() << ". beta = " << input.beta() << ". dim = " << n
+                  << ". mixer = " << input.type() << '\n';
 
         auto mixer = mixer::Mixer_factory<std::vector<double>>(input);
 
@@ -145,9 +149,8 @@ int main(int argn, char** argv)
             mixer->set_input<0>(g_of_x);
 
             auto residual_norm = mixer->mix(tol);
-            std::cout << std::setw(8) << step
-                    << std::setw(30) << residual_norm
-                    << std::setw(30) <<  error_norm(x, true_x) << '\n';
+            std::cout << std::setw(8) << step << std::setw(30) << residual_norm << std::setw(30)
+                      << error_norm(x, true_x) << '\n';
 
             if (residual_norm < tol)
                 break;

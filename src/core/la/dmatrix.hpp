@@ -43,16 +43,17 @@ namespace la {
 
 namespace fmt {
 template <typename T>
-std::ostream& operator<<(std::ostream& out, std::complex<T> z)
+std::ostream&
+operator<<(std::ostream& out, std::complex<T> z)
 {
     out << z.real() << " + I*" << z.imag();
     return out;
 }
-}
+} // namespace fmt
 
 /// Distributed matrix.
 template <typename T>
-class dmatrix: public matrix<T>
+class dmatrix : public matrix<T>
 {
   private:
     /// Global number of matrix rows.
@@ -84,24 +85,26 @@ class dmatrix: public matrix<T>
 
     costa::grid_layout<T> grid_layout_;
 
-    void init()
+    void
+    init()
     {
         if (blacs_grid_ != nullptr) {
 #ifdef SIRIUS_SCALAPACK
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
 #endif
-            grid_layout_ = costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
-                    this->bs_col(), 1, 1, this->num_rows(), this->num_cols(), this->blacs_grid().num_ranks_row(),
-                    this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
-                    this->blacs_grid().comm().rank());
+            grid_layout_ = costa::block_cyclic_layout<T>(
+                    this->num_rows(), this->num_cols(), this->bs_row(), this->bs_col(), 1, 1, this->num_rows(),
+                    this->num_cols(), this->blacs_grid().num_ranks_row(), this->blacs_grid().num_ranks_col(), 'R', 0, 0,
+                    this->at(memory_t::host), this->ld(), 'C', this->blacs_grid().comm().rank());
         }
     }
 
     /* forbid copy constructor */
     dmatrix(dmatrix<T> const& src) = delete;
     /* forbid assignment operator */
-    dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
+    dmatrix<T>&
+    operator=(dmatrix<T> const& src) = delete;
 
   public:
     // Default constructor
@@ -125,10 +128,12 @@ class dmatrix: public matrix<T>
 
     dmatrix(dmatrix<T>&& src) = default;
 
-    dmatrix<T>& operator=(dmatrix<T>&& src) = default;
+    dmatrix<T>&
+    operator=(dmatrix<T>&& src) = default;
 
     /// Return size of the square matrix or -1 in case of rectangular matrix.
-    inline int size() const
+    inline int
+    size() const
     {
         if (num_rows_ == num_cols_) {
             return num_rows_;
@@ -136,74 +141,87 @@ class dmatrix: public matrix<T>
         return -1;
     }
 
-    inline int size_local() const
+    inline int
+    size_local() const
     {
-      return this->num_rows_local() * this->num_cols_local();
+        return this->num_rows_local() * this->num_cols_local();
     }
 
     /// Return number of rows in the global matrix.
-    inline int num_rows() const
+    inline int
+    num_rows() const
     {
         return num_rows_;
     }
 
     /// Return local number of rows for this MPI rank.
-    inline int num_rows_local() const
+    inline int
+    num_rows_local() const
     {
         return spl_row_.local_size();
     }
 
     /// Return local number of rows for a given MPI rank.
-    inline int num_rows_local(int rank) const
+    inline int
+    num_rows_local(int rank) const
     {
         return spl_row_.local_size(block_id(rank));
     }
 
     /// Return global row index in the range [0, num_rows) by the local index in the range [0, num_rows_local).
-    inline int irow(int irow_loc) const
+    inline int
+    irow(int irow_loc) const
     {
         return spl_row_.global_index(irow_loc);
     }
 
-    inline int num_cols() const
+    inline int
+    num_cols() const
     {
         return num_cols_;
     }
 
     /// Local number of columns.
-    inline int num_cols_local() const
+    inline int
+    num_cols_local() const
     {
         return spl_col_.local_size();
     }
 
-    inline int num_cols_local(int rank) const
+    inline int
+    num_cols_local(int rank) const
     {
         return spl_col_.local_size(block_id(rank));
     }
 
     /// Inindex of column in global matrix.
-    inline int icol(int icol_loc) const
+    inline int
+    icol(int icol_loc) const
     {
         return spl_col_.global_index(icol_loc);
     }
 
-    inline int const* descriptor() const
+    inline int const*
+    descriptor() const
     {
         return descriptor_;
     }
 
-    inline spla::MatrixDistribution& spla_distribution()
+    inline spla::MatrixDistribution&
+    spla_distribution()
     {
         return spla_dist_;
     }
 
-    //void zero(int ir0__, int ic0__, int nr__, int nc__)
+    // void zero(int ir0__, int ic0__, int nr__, int nc__)
     //{
-    //    splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
-    //    splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+    //     splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(),
+    //     bs_row_); splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(),
+    //     blacs_grid().rank_row(), bs_row_);
 
-    //    splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
-    //    splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+    //    splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(),
+    //    bs_col_); splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(),
+    //    blacs_grid().rank_col(), bs_col_);
 
     //    int m0 = spl_r0.local_size();
     //    int m1 = spl_r1.local_size();
@@ -220,19 +238,20 @@ class dmatrix: public matrix<T>
 
     using matrix<T>::copy_to;
 
-    void copy_to(memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
+    void
+    copy_to(memory_t mem__, int ir0__, int ic0__, int nr__, int nc__)
     {
         int m0, m1, n0, n1;
         if (blacs_grid_ != nullptr) {
             splindex_block_cyclic<> spl_r0(ir0__, n_blocks(blacs_grid().num_ranks_row()),
-                    block_id(blacs_grid().rank_row()), bs_row_);
+                                           block_id(blacs_grid().rank_row()), bs_row_);
             splindex_block_cyclic<> spl_r1(ir0__ + nr__, n_blocks(blacs_grid().num_ranks_row()),
-                    block_id(blacs_grid().rank_row()), bs_row_);
+                                           block_id(blacs_grid().rank_row()), bs_row_);
 
             splindex_block_cyclic<> spl_c0(ic0__, n_blocks(blacs_grid().num_ranks_col()),
-                    block_id(blacs_grid().rank_col()), bs_col_);
+                                           block_id(blacs_grid().rank_col()), bs_col_);
             splindex_block_cyclic<> spl_c1(ic0__ + nc__, n_blocks(blacs_grid().num_ranks_col()),
-                    block_id(blacs_grid().rank_col()), bs_col_);
+                                           block_id(blacs_grid().rank_col()), bs_col_);
 
             m0 = spl_r0.local_size();
             m1 = spl_r1.local_size();
@@ -246,78 +265,95 @@ class dmatrix: public matrix<T>
         }
 
         if (is_host_memory(mem__)) {
-            acc::copyout(this->at(memory_t::host, m0, n0), this->ld(),
-                         this->at(memory_t::device, m0, n0), this->ld(), m1 - m0, n1 - n0);
+            acc::copyout(this->at(memory_t::host, m0, n0), this->ld(), this->at(memory_t::device, m0, n0), this->ld(),
+                         m1 - m0, n1 - n0);
         }
         if (is_device_memory(mem__)) {
-            acc::copyin(this->at(memory_t::device, m0, n0), this->ld(),
-                        this->at(memory_t::host, m0, n0), this->ld(), m1 - m0, n1 - n0);
+            acc::copyin(this->at(memory_t::device, m0, n0), this->ld(), this->at(memory_t::host, m0, n0), this->ld(),
+                        m1 - m0, n1 - n0);
         }
     }
 
-    void set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__);
+    void
+    set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__);
 
-    void set(const int irow_glob, const int icol_glob, T val);
+    void
+    set(const int irow_glob, const int icol_glob, T val);
 
-    void add(const int irow_glob, const int icol_glob, T val);
+    void
+    add(const int irow_glob, const int icol_glob, T val);
 
-    void add(real_type<T> beta__, const int irow_glob, const int icol_glob, T val);
+    void
+    add(real_type<T> beta__, const int irow_glob, const int icol_glob, T val);
 
-    void make_real_diag(int n__);
+    void
+    make_real_diag(int n__);
 
-    mdarray<T, 1> get_diag(int n__);
+    mdarray<T, 1>
+    get_diag(int n__);
 
-    inline auto const& spl_col() const
+    inline auto const&
+    spl_col() const
     {
         return spl_col_;
     }
 
-    inline auto const& spl_row() const
+    inline auto const&
+    spl_row() const
     {
         return spl_row_;
     }
 
-    inline int rank_row() const
+    inline int
+    rank_row() const
     {
         return blacs_grid_->rank_row();
     }
 
-    inline int num_ranks_row() const
+    inline int
+    num_ranks_row() const
     {
         return blacs_grid_->num_ranks_row();
     }
 
-    inline int rank_col() const
+    inline int
+    rank_col() const
     {
         return blacs_grid_->rank_col();
     }
 
-    inline int num_ranks_col() const
+    inline int
+    num_ranks_col() const
     {
         return blacs_grid_->num_ranks_col();
     }
 
     /// Row blocking factor
-    inline int bs_row() const
+    inline int
+    bs_row() const
     {
         return bs_row_;
     }
-    
+
     /// Column blocking factor
-    inline int bs_col() const
+    inline int
+    bs_col() const
     {
         return bs_col_;
     }
 
-    inline auto const& blacs_grid() const
+    inline auto const&
+    blacs_grid() const
     {
         RTE_ASSERT(blacs_grid_ != nullptr);
         return *blacs_grid_;
     }
 
-    void save_to_hdf5(std::string name__, int m__, int n__);
+    void
+    save_to_hdf5(std::string name__, int m__, int n__);
 
-    auto get_full_matrix() const
+    auto
+    get_full_matrix() const
     {
         mdarray<T, 2> full_mtrx({num_rows(), num_cols()});
         full_mtrx.zero();
@@ -333,7 +369,8 @@ class dmatrix: public matrix<T>
         return full_mtrx;
     }
 
-    nlohmann::json serialize_to_json(int m__, int n__) const
+    nlohmann::json
+    serialize_to_json(int m__, int n__) const
     {
         auto full_mtrx = get_full_matrix();
 
@@ -357,7 +394,8 @@ class dmatrix: public matrix<T>
         return dict;
     }
 
-    std::stringstream serialize(std::string name__, int m__, int n__) const
+    std::stringstream
+    serialize(std::string name__, int m__, int n__) const
     {
         auto full_mtrx = get_full_matrix();
 
@@ -386,15 +424,16 @@ class dmatrix: public matrix<T>
         return out;
     }
 
-    inline T checksum(int m__, int n__) const
+    inline T
+    checksum(int m__, int n__) const
     {
         T cs{0};
 
         if (blacs_grid_ != nullptr) {
             splindex_block_cyclic<> spl_row(m__, n_blocks(this->blacs_grid().num_ranks_row()),
-                                                 block_id(this->blacs_grid().rank_row()), this->bs_row());
+                                            block_id(this->blacs_grid().rank_row()), this->bs_row());
             splindex_block_cyclic<> spl_col(n__, n_blocks(this->blacs_grid().num_ranks_col()),
-                                                 block_id(this->blacs_grid().rank_col()), this->bs_col());
+                                            block_id(this->blacs_grid().rank_col()), this->bs_col());
             for (int i = 0; i < spl_col.local_size(); i++) {
                 for (int j = 0; j < spl_row.local_size(); j++) {
                     cs += (*this)(j, i);
@@ -411,7 +450,8 @@ class dmatrix: public matrix<T>
         return cs;
     }
 
-    inline auto const& comm() const
+    inline auto const&
+    comm() const
     {
         if (blacs_grid_ != nullptr) {
             return blacs_grid().comm();
@@ -420,21 +460,23 @@ class dmatrix: public matrix<T>
         }
     }
 
-    costa::grid_layout<T>& grid_layout()
+    costa::grid_layout<T>&
+    grid_layout()
     {
         return grid_layout_;
     }
 
-    costa::grid_layout<T> grid_layout(int irow0__, int jcol0__, int mrow__, int ncol__)
+    costa::grid_layout<T>
+    grid_layout(int irow0__, int jcol0__, int mrow__, int ncol__)
     {
-        return costa::block_cyclic_layout<T>(this->num_rows(), this->num_cols(), this->bs_row(),
-                this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__, ncol__, this->blacs_grid().num_ranks_row(),
-                this->blacs_grid().num_ranks_col(), 'R', 0, 0, this->at(memory_t::host), this->ld(), 'C',
-                this->blacs_grid().comm().rank());
+        return costa::block_cyclic_layout<T>(
+                this->num_rows(), this->num_cols(), this->bs_row(), this->bs_col(), irow0__ + 1, jcol0__ + 1, mrow__,
+                ncol__, this->blacs_grid().num_ranks_row(), this->blacs_grid().num_ranks_col(), 'R', 0, 0,
+                this->at(memory_t::host), this->ld(), 'C', this->blacs_grid().comm().rank());
     }
 };
 
-} // namespace
+} // namespace la
 
 } // namespace sirius
 

@@ -4,7 +4,8 @@
 
 using namespace sirius;
 
-int run_test(cmd_args& args)
+int
+run_test(cmd_args& args)
 {
     angular_momentum aqn1(1);
     std::cout << aqn1.l() << " " << aqn1.s() << " " << aqn1.j() << std::endl;
@@ -32,7 +33,7 @@ int run_test(cmd_args& args)
 
     for (int l = 0; l < 3; l++) {
         for (int o = 0; o < ri.max_order(l); o++) {
-            for (auto j: ri.subshell(l, o)) {
+            for (auto j : ri.subshell(l, o)) {
                 auto idx = ri.index_of(j, o);
                 std::cout << idx << " " << ri.am(idx).l() << " " << ri.am(idx).s() << std::endl;
             }
@@ -42,7 +43,8 @@ int run_test(cmd_args& args)
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

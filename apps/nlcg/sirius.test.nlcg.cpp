@@ -15,16 +15,17 @@ enum class task_t : int
     k_point_path         = 2
 };
 
-void json_output_common(json& dict__)
+void
+json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    //dict__["build_date"] = build_date;
-    dict__["comm_world_size"] = Communicator::world().size();
+    // dict__["build_date"] = build_date;
+    dict__["comm_world_size"]  = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
-                                                   cmd_args const& args__)
+std::unique_ptr<Simulation_context>
+create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
     auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
@@ -39,11 +40,8 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     return ctx_ptr;
 }
 
-
-double ground_state(Simulation_context& ctx,
-                    task_t              task,
-                    cmd_args const&     args,
-                    int                 write_output)
+double
+ground_state(Simulation_context& ctx, task_t task, cmd_args const& args, int write_output)
 {
     print_memory_usage(ctx.out(), FILE_LINE);
 
@@ -59,7 +57,7 @@ double ground_state(Simulation_context& ctx,
     print_memory_usage(ctx.out(), FILE_LINE);
 
     auto& potential = dft.potential();
-    auto& density = dft.density();
+    auto& density   = dft.density();
 
     if (task == task_t::ground_state_restart) {
         if (!utils::file_exists(storage_file_name)) {
@@ -73,11 +71,13 @@ double ground_state(Simulation_context& ctx,
 
     /* launch the calculation */
     int num_dft_iter = 1;
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, ctx.cfg().iterative_solver().energy_tolerance(), num_dft_iter, write_state);
+    auto result      = dft.find(inp.density_tol_, inp.energy_tol_, ctx.cfg().iterative_solver().energy_tolerance(),
+                                num_dft_iter, write_state);
 
-    std::cout << "call my stub solver: " << "\n";
+    std::cout << "call my stub solver: "
+              << "\n";
     Energy energy(kset, density, potential, nlcglib::smearing_type::FERMI_DIRAC);
-    if(is_device_memory(ctx.preferred_memory_t())) {
+    if (is_device_memory(ctx.preferred_memory_t())) {
         // nlcglib::nlcg_mvp2_cuda(energy);
         nlcglib::test_nlcg_mvp2_cuda(energy);
     } else {
@@ -96,7 +96,7 @@ double ground_state(Simulation_context& ctx,
         }
     }
 
-    //dft.print_magnetic_moment();
+    // dft.print_magnetic_moment();
 
     if (ctx.control().print_stress_ && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -170,39 +170,39 @@ double ground_state(Simulation_context& ctx,
         json dict;
         json_output_common(dict);
 
-        dict["task"] = static_cast<int>(task);
-        dict["ground_state"] = result;
-        dict["timers"] = utils::timer::serialize();
-        dict["counters"] = json::object();
+        dict["task"]                                   = static_cast<int>(task);
+        dict["ground_state"]                           = result;
+        dict["timers"]                                 = utils::timer::serialize();
+        dict["counters"]                               = json::object();
         dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
-        dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
+        dict["counters"]["band_evp_work_count"]        = Band::evp_work_count();
 
         if (ctx.comm().rank() == 0) {
-            std::string output_file = args.value<std::string>("output", std::string("output_") +
-                                                              ctx.start_time_tag() + std::string(".json"));
+            std::string output_file = args.value<std::string>("output", std::string("output_") + ctx.start_time_tag() +
+                                                                                std::string(".json"));
             std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
 
-        //if (args.exist("aiida_output")) {
-        //    json dict;
-        //    json_output_common(dict);
-        //    dict["task"] = static_cast<int>(task);
-        //    if (result >= 0) {
-        //        dict["task_status"] = "converged";
-        //        dict["num_scf_iterations"] =  result;
-        //    } else {
-        //        dict["task_status"] = "unconverged";
-        //    }
-        //    dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
-        //    dict["volume_units"] = "angstrom^3";
-        //    dict["energy"] = dft.total_energy() * ha2ev;
-        //    dict["energy_units"] = "eV";
-        //    if (ctx.comm().rank() == 0) {
-        //        std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-        //        ofs << dict.dump(4);
-        //    }
-        //}
+        // if (args.exist("aiida_output")) {
+        //     json dict;
+        //     json_output_common(dict);
+        //     dict["task"] = static_cast<int>(task);
+        //     if (result >= 0) {
+        //         dict["task_status"] = "converged";
+        //         dict["num_scf_iterations"] =  result;
+        //     } else {
+        //         dict["task_status"] = "unconverged";
+        //     }
+        //     dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
+        //     dict["volume_units"] = "angstrom^3";
+        //     dict["energy"] = dft.total_energy() * ha2ev;
+        //     dict["energy_units"] = "eV";
+        //     if (ctx.comm().rank() == 0) {
+        //         std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+        //         ofs << dict.dump(4);
+        //     }
+        // }
     }
 
     /* wait for all */
@@ -212,7 +212,8 @@ double ground_state(Simulation_context& ctx,
 }
 
 /// Run a task based on a command line input.
-void run_tasks(cmd_args const& args)
+void
+run_tasks(cmd_args const& args)
 {
     /* get the task id */
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
@@ -228,9 +229,9 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        //}
+        // if (ctx->full_potential()) {
+        //     ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        // }
         ground_state(*ctx, task, args, 1);
     }
 
@@ -239,9 +240,9 @@ void run_tasks(cmd_args const& args)
         ctx->iterative_solver().energy_tolerance(1e-12);
         ctx->gamma_point(false);
         ctx->initialize();
-        //if (ctx->full_potential()) {
-        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        //}
+        // if (ctx->full_potential()) {
+        //     ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        // }
 
         Potential potential(*ctx);
 
@@ -256,7 +257,7 @@ void run_tasks(cmd_args const& args)
         std::vector<std::pair<std::string, std::vector<double>>> vertex;
 
         auto labels = inp["kpoints_path"].get<std::vector<std::string>>();
-        for (auto e: labels) {
+        for (auto e : labels) {
             auto v = inp["kpoints_rel"][e].get<std::vector<double>>();
             vertex.push_back({e, v});
         }
@@ -271,11 +272,11 @@ void run_tasks(cmd_args const& args)
 
         double t{0};
         for (size_t i = 0; i < vertex.size() - 1; i++) {
-            vector3d<double> v0 = vector3d<double>(vertex[i].second);
-            vector3d<double> v1 = vector3d<double>(vertex[i + 1].second);
-            vector3d<double> dv = v1 - v0;
+            vector3d<double> v0      = vector3d<double>(vertex[i].second);
+            vector3d<double> v1      = vector3d<double>(vertex[i + 1].second);
+            vector3d<double> dv      = v1 - v0;
             vector3d<double> dv_cart = ctx->unit_cell().reciprocal_lattice_vectors() * dv;
-            int np = std::max(10, static_cast<int>(30 * dv_cart.length()));
+            int np                   = std::max(10, static_cast<int>(30 * dv_cart.length()));
             for (int j = 1; j <= np; j++) {
                 vector3d<double> v = v0 + dv * static_cast<double>(j) / np;
                 ks.add_kpoint(&v[0], 1.0);
@@ -287,7 +288,7 @@ void run_tasks(cmd_args const& args)
 
         ks.initialize();
 
-        //density.initial_density();
+        // density.initial_density();
         density.load();
         potential.generate(density, ctx->use_symmetry(), true);
         Band band(*ctx);
@@ -296,7 +297,8 @@ void run_tasks(cmd_args const& args)
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 RTE_THROW("fix me");
-                potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
+                potential.U().hubbard_compute_occupation_numbers(
+                        ks); // TODO: this is wrong; U matrix should come form the saved file
                 potential.U().calculate_hubbard_potential_and_energy();
             }
         }
@@ -305,14 +307,14 @@ void run_tasks(cmd_args const& args)
         ks.sync_band<sync_band_t::_energy>();
         if (Communicator::world().rank() == 0) {
             json dict;
-            dict["header"] = {};
-            dict["header"]["x_axis"] = x_axis;
-            dict["header"]["x_ticks"] = std::vector<json>();
-            dict["header"]["num_bands"] = ctx->num_bands();
+            dict["header"]                 = {};
+            dict["header"]["x_axis"]       = x_axis;
+            dict["header"]["x_ticks"]      = std::vector<json>();
+            dict["header"]["num_bands"]    = ctx->num_bands();
             dict["header"]["num_mag_dims"] = ctx->num_mag_dims();
-            for (auto& e: x_ticks) {
+            for (auto& e : x_ticks) {
                 json j;
-                j["x"] = e.first;
+                j["x"]     = e.first;
                 j["label"] = e.second;
                 dict["header"]["x_ticks"].push_back(j);
             }
@@ -331,7 +333,7 @@ void run_tasks(cmd_args const& args)
                         bnd_e.push_back(ks[ik]->band_energy(j, ispn));
                     }
                 }
-                //ks.get_band_energies(ik, bnd_e.data());
+                // ks.get_band_energies(ik, bnd_e.data());
                 bnd_k["values"] = bnd_e;
                 dict["bands"].push_back(bnd_k);
             }
@@ -341,7 +343,8 @@ void run_tasks(cmd_args const& args)
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
@@ -353,7 +356,7 @@ int main(int argn, char** argv)
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");
     args.register_key("--control.verification=", "");
-    args.register_key("--control.mpi_grid_dims=","");
+    args.register_key("--control.mpi_grid_dims=", "");
     args.register_key("--control.std_evp_solver_name=", "");
     args.register_key("--control.gen_evp_solver_name=", "");
     args.register_key("--control.fft_mode=", "");

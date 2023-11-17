@@ -52,7 +52,8 @@ using namespace sirius;
 //     }
 // }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--memory_t=", "{string} type of the memory");
@@ -67,6 +68,7 @@ int main(int argn, char** argv)
     }
 
     sirius::initialize(1);
-    // test(args.value<int>("nGb", 2), args.value<int>("gran", 32), get_memory_t(args.value<std::string>("memory_t", "host")));
+    // test(args.value<int>("nGb", 2), args.value<int>("gran", 32), get_memory_t(args.value<std::string>("memory_t",
+    // "host")));
     sirius::finalize();
 }

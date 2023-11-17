@@ -2,8 +2,8 @@
 
 using namespace sirius;
 
-void test_fft_perf(std::vector<int> mpi_grid_dims__, double cutoff__, int repeat__,
-                   int use_gpu__, int gpu_ptr__)
+void
+test_fft_perf(std::vector<int> mpi_grid_dims__, double cutoff__, int repeat__, int use_gpu__, int gpu_ptr__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
@@ -24,9 +24,9 @@ void test_fft_perf(std::vector<int> mpi_grid_dims__, double cutoff__, int repeat
     }
 
     fft.prepare(gvec.partition());
-    
+
     mdarray<double_complex, 1> vin(gvec.partition().gvec_count_fft());
-    vin = [](size_t i){return type_wrapper<double_complex>::random();};
+    vin = [](size_t i) { return type_wrapper<double_complex>::random(); };
     mdarray<double_complex, 1> vout(gvec.partition().gvec_count_fft());
 
     if (pu == GPU) {
@@ -34,7 +34,7 @@ void test_fft_perf(std::vector<int> mpi_grid_dims__, double cutoff__, int repeat
         vin.copy<memory_t::host, memory_t::device>();
         vout.allocate(memory_t::device);
     }
-    
+
     mpi_comm_world().barrier();
     sddk::timer t1("test_fft_perf");
     for (int i = 0; i < repeat__; i++) {
@@ -70,7 +70,8 @@ void test_fft_perf(std::vector<int> mpi_grid_dims__, double cutoff__, int repeat
     fft.dismiss();
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
@@ -85,16 +86,16 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
-    auto cutoff = args.value<double>("cutoff", 2.0);
-    auto use_gpu = args.value<int>("use_gpu", 0);
-    auto gpu_ptr = args.value<int>("gpu_ptr", 0);
-    auto repeat = args.value<int>("repeat", 100);
+    auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
+    auto cutoff        = args.value<double>("cutoff", 2.0);
+    auto use_gpu       = args.value<int>("use_gpu", 0);
+    auto gpu_ptr       = args.value<int>("gpu_ptr", 0);
+    auto repeat        = args.value<int>("repeat", 100);
 
     sirius::initialize(1);
     test_fft_perf(mpi_grid_dims, cutoff, repeat, use_gpu, gpu_ptr);
     mpi_comm_world().barrier();
     sddk::timer::print();
-    //runtime::Timer::print_all();
+    // runtime::Timer::print_all();
     sirius::finalize();
 }

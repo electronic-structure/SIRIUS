@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_grid(std::vector<int> grid__)
+void
+test_grid(std::vector<int> grid__)
 {
     mpi::Grid mpi_grid(grid__, mpi::Communicator::world());
 
@@ -13,14 +14,14 @@ void test_grid(std::vector<int> grid__)
              << " " << mpi_grid.communicator(1 << 2).size() << std::endl;
     }
 
-    pout << "rank(flat): " << mpi::Communicator::world().rank() << ", coordinate: "
-         << mpi_grid.communicator(1 << 0).rank() << " "
-         << mpi_grid.communicator(1 << 1).rank() << " "
-         << mpi_grid.communicator(1 << 2).rank() << ", hostname: " << hostname() << std::endl;
+    pout << "rank(flat): " << mpi::Communicator::world().rank()
+         << ", coordinate: " << mpi_grid.communicator(1 << 0).rank() << " " << mpi_grid.communicator(1 << 1).rank()
+         << " " << mpi_grid.communicator(1 << 2).rank() << ", hostname: " << hostname() << std::endl;
     std::cout << pout.flush(0) << std::endl;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid=", "{vector3d<int>} MPI grid");

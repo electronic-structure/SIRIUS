@@ -51,7 +51,6 @@ symmetrize_stress_tensor(Crystal_symmetry const& sym__, r3::matrix<double>& s__)
     }
 }
 
-}
+} // namespace sirius
 
 #endif
-

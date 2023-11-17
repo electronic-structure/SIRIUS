@@ -48,7 +48,7 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
     int maxiter  = nlcg_params.maxiter();
     int restart  = nlcg_params.restart();
     auto nlcg_pu = ctx.processing_unit();
-    if(nlcg_params.processing_unit() != "") {
+    if (nlcg_params.processing_unit() != "") {
         nlcg_pu = get_device_t(nlcg_params.processing_unit());
     }
 

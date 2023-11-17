@@ -40,7 +40,8 @@ namespace mixer {
  *  \param [in]  comm     Communicator passed to the mixer.
  */
 template <typename... FUNCS>
-inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(config_t::mixer_t const& mix_cfg)
+inline std::unique_ptr<Mixer<FUNCS...>>
+Mixer_factory(config_t::mixer_t const& mix_cfg)
 {
     std::unique_ptr<Mixer<FUNCS...>> mixer;
 

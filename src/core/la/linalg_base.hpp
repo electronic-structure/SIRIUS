@@ -40,25 +40,29 @@ namespace la {
 template <typename T>
 struct constant
 {
-    static T const& one() noexcept
+    static T const&
+    one() noexcept
     {
         static const T a = 1;
         return a;
     }
 
-    static T const& two() noexcept
+    static T const&
+    two() noexcept
     {
         static const T a = 2;
         return a;
     }
 
-    static T const& m_one() noexcept
+    static T const&
+    m_one() noexcept
     {
         static const T a = -1;
         return a;
     }
 
-    static T const& zero() noexcept
+    static T const&
+    zero() noexcept
     {
         static const T a = 0;
         return a;
@@ -86,18 +90,15 @@ enum class lib_t
     spla
 };
 
-inline auto get_lib_t(std::string name__)
+inline auto
+get_lib_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
     static const std::map<std::string, lib_t> map_to_type = {
-        {"blas",      lib_t::blas},
-        {"lapack",    lib_t::lapack},
-        {"scalapack", lib_t::scalapack},
-        {"cublas",    lib_t::gpublas},
-        {"gpublas",   lib_t::gpublas},
-        {"cublasxt",  lib_t::cublasxt},
-        {"magma",     lib_t::magma},
+            {"blas", lib_t::blas},      {"lapack", lib_t::lapack},   {"scalapack", lib_t::scalapack},
+            {"cublas", lib_t::gpublas}, {"gpublas", lib_t::gpublas}, {"cublasxt", lib_t::cublasxt},
+            {"magma", lib_t::magma},
     };
 
     if (map_to_type.count(name__) == 0) {
@@ -109,7 +110,8 @@ inline auto get_lib_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-inline std::string to_string(lib_t la__)
+inline std::string
+to_string(lib_t la__)
 {
     switch (la__) {
         case lib_t::none: {
@@ -156,48 +158,57 @@ ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n
 ftn_double FORTRAN(dlamch)(ftn_char cmach, ftn_len cmach_len);
 
 #ifdef SIRIUS_SCALAPACK
-int Csys2blacs_handle(MPI_Comm SysCtxt);
+int
+Csys2blacs_handle(MPI_Comm SysCtxt);
 
-MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
+MPI_Comm
+Cblacs2sys_handle(int BlacsCtxt);
 
-void Cblacs_gridinit(int* ConTxt, const char* order, int nprow, int npcol);
+void
+Cblacs_gridinit(int* ConTxt, const char* order, int nprow, int npcol);
 
-void Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, int npcol0);
+void
+Cblacs_gridmap(int* ConTxt, int* usermap, int ldup, int nprow0, int npcol0);
 
-void Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
+void
+Cblacs_gridinfo(int ConTxt, int* nprow, int* npcol, int* myrow, int* mycol);
 
-void Cfree_blacs_system_handle(int ISysCtxt);
+void
+Cfree_blacs_system_handle(int ISysCtxt);
 
-void Cblacs_barrier(int ConTxt, const char* scope);
+void
+Cblacs_barrier(int ConTxt, const char* scope);
 
-void Cblacs_gridexit(int ConTxt);
+void
+Cblacs_gridexit(int ConTxt);
 
 void FORTRAN(psgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_single const* aplha,
-                     ftn_single const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_single const* B, ftn_int* ib,
-                     ftn_int* jb, ftn_int const* descb, ftn_single const* beta, ftn_single* C, ftn_int* ic, ftn_int* jc,
-                     ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
+                     ftn_single const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_single const* B,
+                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_single const* beta, ftn_single* C, ftn_int* ic,
+                     ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double const* aplha,
-                     ftn_double const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double const* B, ftn_int* ib,
-                     ftn_int* jb, ftn_int const* descb, ftn_double const* beta, ftn_double* C, ftn_int* ic, ftn_int* jc,
-                     ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
+                     ftn_double const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double const* B,
+                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double const* beta, ftn_double* C, ftn_int* ic,
+                     ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(pcgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_complex const* aplha,
                      ftn_complex const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_complex const* B,
                      ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_complex const* beta, ftn_complex* C,
                      ftn_int* ic, ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex const* aplha,
-                     ftn_double_complex const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double_complex const* B,
-                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex const* beta, ftn_double_complex* C,
-                     ftn_int* ic, ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
+void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k,
+                     ftn_double_complex const* aplha, ftn_double_complex const* A, ftn_int* ia, ftn_int* ja,
+                     ftn_int const* desca, ftn_double_complex const* B, ftn_int* ib, ftn_int* jb, ftn_int const* descb,
+                     ftn_double_complex const* beta, ftn_double_complex* C, ftn_int* ic, ftn_int* jc,
+                     ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc,
                        ftn_int* icsrc, ftn_int* ictxt, ftn_int* lld, ftn_int* info);
 
-void FORTRAN(pctranc)(ftn_int* m, ftn_int* n, ftn_complex* alpha, ftn_complex* a, ftn_int* ia,
-                      ftn_int* ja, ftn_int const* desca, ftn_complex* beta, ftn_complex* c, ftn_int* ic,
-                      ftn_int* jc, ftn_int const* descc);
+void FORTRAN(pctranc)(ftn_int* m, ftn_int* n, ftn_complex* alpha, ftn_complex* a, ftn_int* ia, ftn_int* ja,
+                      ftn_int const* desca, ftn_complex* beta, ftn_complex* c, ftn_int* ic, ftn_int* jc,
+                      ftn_int const* descc);
 
 void FORTRAN(pztranc)(ftn_int* m, ftn_int* n, ftn_double_complex* alpha, ftn_double_complex* a, ftn_int* ia,
                       ftn_int* ja, ftn_int const* desca, ftn_double_complex* beta, ftn_double_complex* c, ftn_int* ic,
@@ -230,55 +241,64 @@ void FORTRAN(pzgemr2d)(ftn_int* m, ftn_int* n, ftn_double_complex* a, ftn_int* i
 class linalg_base
 {
   public:
-    static ftn_int ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2,
-                          ftn_int n3, ftn_int n4)
+    static ftn_int
+    ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2, ftn_int n3,
+           ftn_int n4)
     {
         return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (ftn_len)name.length(),
                                (ftn_len)opts.length());
     }
 
-    static ftn_double dlamch(char cmach)
+    static ftn_double
+    dlamch(char cmach)
     {
         return FORTRAN(dlamch)(&cmach, (ftn_len)1);
     }
 
 #ifdef SIRIUS_SCALAPACK
-    static ftn_int numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)
+    static ftn_int
+    numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)
     {
         return FORTRAN(numroc)(&n, &nb, &iproc, &isrcproc, &nprocs);
     }
 
     /// Create BLACS handler.
-    static int create_blacs_handler(MPI_Comm comm)
+    static int
+    create_blacs_handler(MPI_Comm comm)
     {
         return Csys2blacs_handle(comm);
     }
 
     /// Free BLACS handler.
-    static void free_blacs_handler(int blacs_handler)
+    static void
+    free_blacs_handler(int blacs_handler)
     {
         Cfree_blacs_system_handle(blacs_handler);
     }
 
     /// Create BLACS context for the grid of MPI ranks
-    static void gridmap(int* blacs_context, int* map, int ld, int nrow, int ncol)
+    static void
+    gridmap(int* blacs_context, int* map, int ld, int nrow, int ncol)
     {
         Cblacs_gridmap(blacs_context, map, ld, nrow, ncol);
     }
 
     /// Destroy BLACS context.
-    static void gridexit(int blacs_context)
+    static void
+    gridexit(int blacs_context)
     {
         Cblacs_gridexit(blacs_context);
     }
 
-    static void gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
+    static void
+    gridinfo(int blacs_context, int* nrow, int* ncol, int* irow, int* icol)
     {
         Cblacs_gridinfo(blacs_context, nrow, ncol, irow, icol);
     }
 
-    static void descinit(ftn_int* desc, ftn_int m, ftn_int n, ftn_int mb, ftn_int nb, ftn_int irsrc, ftn_int icsrc,
-                         ftn_int ictxt, ftn_int lld)
+    static void
+    descinit(ftn_int* desc, ftn_int m, ftn_int n, ftn_int mb, ftn_int nb, ftn_int irsrc, ftn_int icsrc, ftn_int ictxt,
+             ftn_int lld)
     {
         ftn_int info;
         ftn_int lld1 = std::max(1, lld);
@@ -292,27 +312,30 @@ class linalg_base
         }
     }
 
-    static int pjlaenv(int32_t ictxt, int32_t ispec, const std::string& name, const std::string& opts, int32_t n1,
-                       int32_t n2, int32_t n3, int32_t n4)
+    static int
+    pjlaenv(int32_t ictxt, int32_t ispec, const std::string& name, const std::string& opts, int32_t n1, int32_t n2,
+            int32_t n3, int32_t n4)
     {
         return FORTRAN(pjlaenv)(&ictxt, &ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (int32_t)name.length(),
                                 (int32_t)opts.length());
     }
 
-    static int32_t indxl2g(int32_t indxloc, int32_t nb, int32_t iproc, int32_t isrcproc, int32_t nprocs)
+    static int32_t
+    indxl2g(int32_t indxloc, int32_t nb, int32_t iproc, int32_t isrcproc, int32_t nprocs)
     {
         return FORTRAN(indxl2g)(&indxloc, &nb, &iproc, &isrcproc, &nprocs);
     }
 
-    static int32_t iceil(int32_t inum, int32_t idenom)
+    static int32_t
+    iceil(int32_t inum, int32_t idenom)
     {
         return FORTRAN(iceil)(&inum, &idenom);
     }
 #endif
 };
 
-} // namespace
+} // namespace la
 
-}
+} // namespace sirius
 
 #endif // __LINALG_BASE_HPP__

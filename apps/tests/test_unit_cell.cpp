@@ -2,17 +2,18 @@
 
 using namespace sirius;
 
-void test1()
+void
+test1()
 {
     Simulation_context ctx(mpi_comm_world(), "pseudopotential");
     ctx.set_processing_unit("cpu");
-    
+
     int N = 3;
     double a{4};
-    ctx.unit_cell().set_lattice_vectors({{N*a,0,0}, {0,N*a,0}, {0,0,N*a}});
+    ctx.unit_cell().set_lattice_vectors({{N * a, 0, 0}, {0, N * a, 0}, {0, 0, N * a}});
 
     ctx.unit_cell().add_atom_type("A");
-    
+
     auto& atype = ctx.unit_cell().atom_type(0);
 
     atype.zn(1);
@@ -21,7 +22,7 @@ void test1()
     std::vector<double> beta(atype.num_mt_points());
     for (int i = 0; i < atype.num_mt_points(); i++) {
         double x = atype.radial_grid(i);
-        beta[i] = std::exp(-x) * (4 - x * x);
+        beta[i]  = std::exp(-x) * (4 - x * x);
     }
     atype.add_beta_radial_function(0, beta);
     atype.add_beta_radial_function(1, beta);
@@ -36,7 +37,7 @@ void test1()
 
     Spline<double> ps_dens(atype.radial_grid());
     for (int i = 0; i < atype.num_mt_points(); i++) {
-        double x = atype.radial_grid(i);
+        double x   = atype.radial_grid(i);
         ps_dens(i) = std::exp(-x * x) * x * x;
     }
     double norm = ps_dens.interpolate().integrate(0);
@@ -70,7 +71,7 @@ void test1()
 
     Hamiltonian hmlt(ctx, pot);
     hmlt.prepare<double_complex>();
-    
+
     double vk[] = {0, 0, 0};
     K_point kp(ctx, vk, 1.0);
 
@@ -91,16 +92,17 @@ void test1()
 
     ctx.fft_coarse().dismiss();
 
-    //for (int k = 0; k < 10; k++) {
-    //    kp.beta_projectors().prepare();
-    //    for (int ichunk = 0; ichunk < kp.beta_projectors().num_chunks(); ichunk++) {
-    //        kp.beta_projectors().generate(ichunk);
-    //    }
-    //    kp.beta_projectors().dismiss();
-    //}
+    // for (int k = 0; k < 10; k++) {
+    //     kp.beta_projectors().prepare();
+    //     for (int ichunk = 0; ichunk < kp.beta_projectors().num_chunks(); ichunk++) {
+    //         kp.beta_projectors().generate(ichunk);
+    //     }
+    //     kp.beta_projectors().dismiss();
+    // }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -114,7 +116,7 @@ int main(int argn, char** argv)
     sirius::initialize();
 
     test1();
-    
+
     if (mpi_comm_world().rank() == 0) {
         sddk::timer::print();
     }

@@ -42,7 +42,8 @@ template <typename T>
 class D_operator : public Non_local_operator<T>
 {
   private:
-    void initialize();
+    void
+    initialize();
 
   public:
     D_operator(Simulation_context const& ctx_);
@@ -52,7 +53,8 @@ template <typename T>
 class Q_operator : public Non_local_operator<T>
 {
   private:
-    void initialize();
+    void
+    initialize();
 
   public:
     Q_operator(Simulation_context const& ctx__);
@@ -74,36 +76,43 @@ class U_operator
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__);
     ~U_operator() = default;
 
-    inline auto atomic_orbitals() const
+    inline auto
+    atomic_orbitals() const
     {
         return atomic_orbitals_;
     }
 
-    inline auto atomic_orbitals(const int idx__) const
+    inline auto
+    atomic_orbitals(const int idx__) const
     {
         return atomic_orbitals_[idx__];
     }
-    inline auto nhwf() const
+    inline auto
+    nhwf() const
     {
         return nhwf_;
     }
 
-    inline auto offset(int ia__) const
+    inline auto
+    offset(int ia__) const
     {
         return offset_[ia__];
     }
 
-    std::complex<T> const& operator()(int m1, int m2, int j) const
+    std::complex<T> const&
+    operator()(int m1, int m2, int j) const
     {
         return um_[j](m1, m2);
     }
 
-    std::complex<T> const* at(memory_t mem__, const int idx1, const int idx2, const int idx3) const
+    std::complex<T> const*
+    at(memory_t mem__, const int idx1, const int idx2, const int idx3) const
     {
         return um_[idx3].at(mem__, idx1, idx2);
     }
 
-    int find_orbital_index(const int ia__, const int n__, const int l__) const;
+    int
+    find_orbital_index(const int ia__, const int n__, const int l__) const;
 };
 
 /** \tparam T  Precision of the wave-functions.
@@ -122,10 +131,10 @@ class U_operator
  **/
 template <typename T, typename F>
 void
-apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__,
-                    Beta_projector_generator<T>& beta__, beta_projectors_coeffs_t<T>& beta_coeffs__,
-                    wf::Wave_functions<T> const& phi__, D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__,
-                    Q_operator<T> const* q_op__, wf::Wave_functions<T>* sphi__)
+apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__, Beta_projector_generator<T>& beta__,
+                    beta_projectors_coeffs_t<T>& beta_coeffs__, wf::Wave_functions<T> const& phi__,
+                    D_operator<T> const* d_op__, wf::Wave_functions<T>* hphi__, Q_operator<T> const* q_op__,
+                    wf::Wave_functions<T>* sphi__)
 {
     if (is_device_memory(mem__)) {
         RTE_ASSERT(beta__.pu() == device_t::GPU);
@@ -138,7 +147,7 @@ apply_non_local_D_Q(memory_t mem__, wf::spin_range spins__, wf::band_range br__,
         beta__.generate(beta_coeffs__, i);
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-            auto sp = phi__.actual_spin_index(s);
+            auto sp       = phi__.actual_spin_index(s);
             auto beta_phi = inner_prod_beta<F>(ctx.spla_context(), mem__, ctx.host_memory_t(),
                                                is_device_memory(mem__), /* copy result back to gpu if true */
                                                beta_coeffs__, phi__, sp, br__);
@@ -188,16 +197,18 @@ apply_S_operator(memory_t mem__, wf::spin_range spins__, wf::band_range br__, Be
  * \param [out] hphi     Output wave-functions to which the result is added.
  */
 template <typename T>
-void apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-                      wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
-                      wf::Wave_functions<T>& hphi__);
+void
+apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
+                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
+                 wf::Wave_functions<T>& hphi__);
 /// Apply strain derivative of S-operator to all scalar functions.
-void apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
-                                   beta_projectors_coeffs_t<double>& bp_coeffs__,
-                                   Beta_projector_generator<double>& bp_strain_deriv__,
-                                   beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
-                                   wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
-                                   wf::Wave_functions<double>& ds_phi__);
+void
+apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generator<double>& bp__,
+                              beta_projectors_coeffs_t<double>& bp_coeffs__,
+                              Beta_projector_generator<double>& bp_strain_deriv__,
+                              beta_projectors_coeffs_t<double>& bp_strain_deriv_coeffs__,
+                              wf::Wave_functions<double>& phi__, Q_operator<double>& q_op__,
+                              wf::Wave_functions<double>& ds_phi__);
 } // namespace sirius
 
 #endif

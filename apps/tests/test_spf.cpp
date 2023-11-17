@@ -2,9 +2,8 @@
 
 using namespace sirius;
 
-void test_spf(std::vector<int> mpi_grid_dims__,
-              double cutoff__,
-              int use_gpu__)
+void
+test_spf(std::vector<int> mpi_grid_dims__, double cutoff__, int use_gpu__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
@@ -12,10 +11,10 @@ void test_spf(std::vector<int> mpi_grid_dims__,
 
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
 
-    //auto& c1 = mpi_grid.communicator(1 << 0 | 1 << 2); ////mpi_comm_world().split(mpi_comm_world().rank() / mpi_grid_dims__[0]);
-    //auto c2 = mpi_comm_world().split(c1.rank());
+    // auto& c1 = mpi_grid.communicator(1 << 0 | 1 << 2); ////mpi_comm_world().split(mpi_comm_world().rank() /
+    // mpi_grid_dims__[0]); auto c2 = mpi_comm_world().split(c1.rank());
     auto& c2 = mpi_grid.communicator(1 << 0);
-    
+
     /* create FFT box */
     FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
     /* create FFT driver */
@@ -31,10 +30,10 @@ void test_spf(std::vector<int> mpi_grid_dims__,
     }
 
     experimental::Smooth_periodic_function<double_complex> spf(fft, gvec, mpi_comm_world());
-    
+
     std::vector<double_complex> fpw(gvec.num_gvec());
     for (int i = 0; i < gvec.num_gvec(); i++) {
-        fpw[i] = double_complex(i, 0); //type_wrapper<double_complex>::random();
+        fpw[i] = double_complex(i, 0); // type_wrapper<double_complex>::random();
     }
 
     mdarray<double_complex, 1> tmp(gvec.gvec_count(mpi_comm_world().rank()));
@@ -72,7 +71,8 @@ void test_spf(std::vector<int> mpi_grid_dims__,
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
@@ -86,14 +86,14 @@ int main(int argn, char** argv)
         return 0;
     }
     auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
-    auto cutoff = args.value<double>("cutoff", 2.0);
-    auto use_gpu = args.value<int>("use_gpu", 0);
+    auto cutoff        = args.value<double>("cutoff", 2.0);
+    auto use_gpu       = args.value<int>("use_gpu", 0);
 
     sirius::initialize(1);
     test_spf(mpi_grid_dims, cutoff, use_gpu);
 
     mpi_comm_world().barrier();
     sddk::timer::print();
-    //sddk::timer::print_all();
+    // sddk::timer::print_all();
     sirius::finalize();
 }

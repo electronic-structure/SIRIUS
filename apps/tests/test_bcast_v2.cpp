@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-int test1(int size)
+int
+test1(int size)
 {
     double t = -wtime();
     mdarray<char, 1> buf({size});
@@ -18,7 +19,8 @@ int test1(int size)
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--size=", "buffer size in bytes");

@@ -38,7 +38,8 @@ namespace sirius {
 /// Run-time error and warning handling.
 namespace rte {
 
-inline void message_impl(bool fatal__, const char* func__, const char* file__, int line__, std::string const& msg__)
+inline void
+message_impl(bool fatal__, const char* func__, const char* file__, int line__, std::string const& msg__)
 {
     std::stringstream s;
 
@@ -57,7 +58,8 @@ inline void message_impl(bool fatal__, const char* func__, const char* file__, i
     }
 }
 
-inline void message_impl(bool fatal__, const char* func__, const char* file__, int line__, std::stringstream const& msg__)
+inline void
+message_impl(bool fatal__, const char* func__, const char* file__, int line__, std::stringstream const& msg__)
 {
     message_impl(fatal__, func__, file__, line__, msg__.str());
 }
@@ -67,6 +69,7 @@ class ostream : public std::ostringstream
   private:
     std::ostream* out_{nullptr};
     std::string prefix_;
+
   public:
     ostream()
     {
@@ -77,11 +80,11 @@ class ostream : public std::ostringstream
     {
     }
     ostream(ostream&& src__)
-      : std::ostringstream(std::move(src__))
+        : std::ostringstream(std::move(src__))
     {
-        out_ = src__.out_;
+        out_       = src__.out_;
         src__.out_ = nullptr;
-        prefix_ = src__.prefix_;
+        prefix_    = src__.prefix_;
     }
     ~ostream()
     {
@@ -101,34 +104,34 @@ class ostream : public std::ostringstream
 
 #define FILE_LINE std::string(__FILE__) + ":" + std::to_string(__LINE__)
 
-#define RTE_THROW(...) \
-{\
-    ::sirius::rte::message_impl(true, __func__, __FILE__, __LINE__, __VA_ARGS__);\
-}
+#define RTE_THROW(...)                                                                                                 \
+    {                                                                                                                  \
+        ::sirius::rte::message_impl(true, __func__, __FILE__, __LINE__, __VA_ARGS__);                                  \
+    }
 
-#define RTE_WARNING(...) \
-{\
-    ::sirius::rte::message_impl(false, __func__, __FILE__, __LINE__, __VA_ARGS__);\
-}
+#define RTE_WARNING(...)                                                                                               \
+    {                                                                                                                  \
+        ::sirius::rte::message_impl(false, __func__, __FILE__, __LINE__, __VA_ARGS__);                                 \
+    }
 
 #ifdef NDEBUG
 #define RTE_ASSERT(condition__)
 #else
-#define RTE_ASSERT(condition__)                                  \
-{                                                                \
-    if (!(condition__)) {                                        \
-        std::stringstream _s;                                    \
-        _s << "Assertion (" <<  #condition__ << ") failed "      \
-           << "at " << __FILE__ << ":" << __LINE__;              \
-        RTE_THROW(_s);                                           \
-    }                                                            \
-}
+#define RTE_ASSERT(condition__)                                                                                        \
+    {                                                                                                                  \
+        if (!(condition__)) {                                                                                          \
+            std::stringstream _s;                                                                                      \
+            _s << "Assertion (" << #condition__ << ") failed "                                                         \
+               << "at " << __FILE__ << ":" << __LINE__;                                                                \
+            RTE_THROW(_s);                                                                                             \
+        }                                                                                                              \
+    }
 #endif
 
 #define RTE_OUT(_out) rte::ostream(_out, std::string(__func__))
 
-} // rte
+} // namespace rte
 
-} // sirius
+} // namespace sirius
 
 #endif

@@ -3,9 +3,8 @@
 
 namespace sirius {
 template <typename T>
-inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
-                                          int ispn__,
-                                          Hamiltonian& H__)
+inline dmatrix<T>
+pseudopotential_hmatrix(K_point& kp__, int ispn__, Hamiltonian& H__)
 {
     PROFILE("sirius::pseudopotential_hmatrix");
 
@@ -20,8 +19,7 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
     H__.ctx().fft_coarse().prepare(kp__.gkvec_partition());
     kp__.beta_projectors().prepare();
 
-
-    auto& ctx = H__.ctx();
+    auto& ctx    = H__.ctx();
     const int bs = ctx.cyclic_block_size();
     dmatrix<T> hmlt(kp__.num_gkvec(), kp__.num_gkvec(), ctx.blacs_grid(), bs, bs);
     // dmatrix<T> ovlp(kp__.num_gkvec(), kp__.num_gkvec(), ctx.blacs_grid(), bs, bs);
@@ -41,8 +39,8 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
     if (ctx.num_mag_dims() == 1) {
         beff = H__.potential().effective_magnetic_field(0).gather_f_pw();
         for (int ig = 0; ig < ctx.gvec().num_gvec(); ig++) {
-            auto z1 = veff[ig];
-            auto z2 = beff[ig];
+            auto z1  = veff[ig];
+            auto z2  = beff[ig];
             veff[ig] = z1 + z2;
             beff[ig] = z1 - z2;
         }
@@ -55,7 +53,7 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
         for (int igk_row = 0; igk_row < kp__.num_gkvec_row(); igk_row++) {
             int ig_row    = kp__.igk_row(igk_row);
             auto gvec_row = kp__.gkvec().gvec(ig_row);
-            auto ig12 = ctx.gvec().index_g12_safe(gvec_row, gvec_col);
+            auto ig12     = ctx.gvec().index_g12_safe(gvec_row, gvec_col);
 
             if (ispn__ == 0) {
                 if (ig12.second) {
@@ -80,7 +78,7 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
 
     kp__.beta_projectors_row().prepare();
     kp__.beta_projectors_col().prepare();
-    for (int ichunk = 0; ichunk <  kp__.beta_projectors_row().num_chunks(); ichunk++) {
+    for (int ichunk = 0; ichunk < kp__.beta_projectors_row().num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
         kp__.beta_projectors_row().generate(ichunk);
         kp__.beta_projectors_col().generate(ichunk);
@@ -88,7 +86,7 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
         auto& beta_row = kp__.beta_projectors_row().pw_coeffs_a();
         auto& beta_col = kp__.beta_projectors_col().pw_coeffs_a();
 
-        for (int i = 0; i <  kp__.beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
+        for (int i = 0; i < kp__.beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
             /* number of beta functions for a given atom */
             int nbf  = kp__.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::nbf, i);
             int offs = kp__.beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
@@ -100,28 +98,25 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     if (ctx.num_mag_dims() == 1) {
                         if (ispn__ == 0) {
-                            dop(xi1, xi2) = ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) + ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
+                            dop(xi1, xi2) = ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) +
+                                            ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
                         } else {
-                            dop(xi1, xi2) = ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) - ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
+                            dop(xi1, xi2) = ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) -
+                                            ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
                         }
                     } else {
                         dop(xi1, xi2) = ctx.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0);
                     }
-                    if(augment_op.atom_type().augment()) {
+                    if (augment_op.atom_type().augment()) {
                         qop(xi1, xi2) = augment_op.q_mtrx(xi1, xi2);
                     }
                 }
             }
-            linalg<device_t::CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf,
-                              &beta_row(0, offs), beta_row.ld(),
-                              &dop(0, 0), dop.ld(),
-                              &btmp(0, 0), btmp.ld());
+            linalg<device_t::CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf, &beta_row(0, offs), beta_row.ld(),
+                                        &dop(0, 0), dop.ld(), &btmp(0, 0), btmp.ld());
             linalg<device_t::CPU>::gemm(0, 2, kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf,
-                              linalg_const<double_complex>::one(),
-                              &btmp(0, 0), btmp.ld(),
-                              &beta_col(0, offs), beta_col.ld(),
-                              linalg_const<double_complex>::one(),
-                              &hmlt(0, 0), hmlt.ld());
+                                        linalg_const<double_complex>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs),
+                                        beta_col.ld(), linalg_const<double_complex>::one(), &hmlt(0, 0), hmlt.ld());
             // if(augment_op.atom_type().augment()) {
             //     linalg<device_t::CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf,
             //                       &beta_row(0, offs), beta_row.ld(),
@@ -146,6 +141,6 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
 
     return hmlt;
 }
-}  // sirius
+} // namespace sirius
 
 #endif /* __PSEUDOPOTENTIAL_HMATRIX_HPP__ */
