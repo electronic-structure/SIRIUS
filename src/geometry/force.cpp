@@ -46,7 +46,8 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
 }
 
 template <typename T>
-void Force::calc_forces_nonloc_aux()
+void
+Force::calc_forces_nonloc_aux()
 {
     forces_nonloc_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_nonloc_.zero();
@@ -68,7 +69,8 @@ void Force::calc_forces_nonloc_aux()
     symmetrize_forces(ctx_.unit_cell(), forces_nonloc_);
 }
 
-mdarray<double, 2> const& Force::calc_forces_nonloc()
+mdarray<double, 2> const&
+Force::calc_forces_nonloc()
 {
     PROFILE("sirius::Force::calc_forces_nonloc");
 
@@ -93,7 +95,7 @@ Force::add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) 
 
     Beta_projectors_gradient<T> bp_grad(ctx_, kp__.gkvec(), kp__.beta_projectors());
     auto mem = ctx_.processing_unit_memory_t();
-    auto mg = kp__.spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
+    auto mg  = kp__.spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
 
     mdarray<real_type<F>, 2> f({3, ctx_.unit_cell().num_atoms()});
     f.zero();
@@ -120,7 +122,7 @@ Force::compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm
     } else {
         if (ctx_.num_mag_dims() != 3) {
             la::dmatrix<std::complex<double>> ev1(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
-                                        ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                                                  ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 auto& ev = kp__->sv_eigen_vectors(ispn);
                 /* multiply second-variational eigen-vectors with band occupancies */
@@ -133,13 +135,13 @@ Force::compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm
                 }
 
                 la::wrap(la::lib_t::scalapack)
-                    .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                          &la::constant<std::complex<double>>::one(), ev1, 0, 0, ev, 0, 0,
-                          &la::constant<std::complex<double>>::one(), dm__, 0, 0);
+                        .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
+                              &la::constant<std::complex<double>>::one(), ev1, 0, 0, ev, 0, 0,
+                              &la::constant<std::complex<double>>::one(), dm__, 0, 0);
             }
         } else {
             la::dmatrix<std::complex<double>> ev1(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(),
-                    ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+                                                  ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
             auto& ev = kp__->sv_eigen_vectors(0);
             /* multiply second-variational eigen-vectors with band occupancies */
             for (int j = 0; j < ev.num_cols_local(); j++) {
@@ -153,9 +155,9 @@ Force::compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm
                 int offs = ispn * ctx_.num_fv_states();
 
                 la::wrap(la::lib_t::scalapack)
-                    .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                          &la::constant<std::complex<double>>::one(), ev1, offs, 0, ev, offs, 0,
-                          &la::constant<std::complex<double>>::one(), dm__, 0, 0);
+                        .gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
+                              &la::constant<std::complex<double>>::one(), ev1, offs, 0, ev, offs, 0,
+                              &la::constant<std::complex<double>>::one(), dm__, 0, 0);
             }
         }
     }
@@ -275,7 +277,8 @@ Force::calc_forces_hubbard()
             auto kp = kset_.get<double>(it.i);
             // kp->beta_projectors().prepare();
             auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
-            auto mg2 = kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+            auto mg2 =
+                    kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg3 = kp->atomic_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg4 = kp->atomic_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
 
@@ -358,8 +361,8 @@ Force::calc_forces_ewald()
             auto t = dot(unit_cell.lattice_vectors(), r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation));
 
             double scalar_part =
-                static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
-                (std::erfc(std::sqrt(alpha) * d) / d + 2.0 * std::sqrt(alpha * invpi) * std::exp(-d2 * alpha));
+                    static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
+                    (std::erfc(std::sqrt(alpha) * d) / d + 2.0 * std::sqrt(alpha * invpi) * std::exp(-d2 * alpha));
 
             for (int x : {0, 1, 2}) {
                 forces_ewald_(x, ia) += scalar_part * t[x];
@@ -434,7 +437,8 @@ Force::calc_forces_us()
                          * but in formula we have   i * G * exp[-iGRn] Veff*(G)
                          * the differences because we unfold complex array in the real one
                          * and need negative imagine part due to a multiplication law of complex numbers */
-                        auto z = std::complex<double>(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
+                        auto z = std::complex<double>(0, -gvc[ivec]) *
+                                 ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
                                  potential_.component(ispin).rg().f_pw_local(igloc);
                         v_tmp(ia, 2 * igloc)     = z.real();
                         v_tmp(ia, 2 * igloc + 1) = z.imag();
@@ -443,16 +447,15 @@ Force::calc_forces_us()
 
                 /* multiply tmp matrices, or sum over G */
                 la::wrap(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                &la::constant<double>::one(), aug_op.q_pw().at(memory_t::host), aug_op.q_pw().ld(),
-                                v_tmp.at(memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
-                                tmp.at(memory_t::host), tmp.ld());
+                                  &la::constant<double>::one(), aug_op.q_pw().at(memory_t::host), aug_op.q_pw().ld(),
+                                  v_tmp.at(memory_t::host), v_tmp.ld(), &la::constant<double>::zero(),
+                                  tmp.at(memory_t::host), tmp.ld());
 
                 #pragma omp parallel for
                 for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                     for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                         forces_us_(ivec, atom_type.atom_id(ia)) += ctx_.unit_cell().omega() * reduce_g_fact *
-                                                                   dm(i, ia, ispin) * aug_op.sym_weight(i) *
-                                                                   tmp(i, ia);
+                                                                   dm(i, ia, ispin) * aug_op.sym_weight(i) * tmp(i, ia);
                     }
                 }
             }
@@ -507,7 +510,7 @@ Force::calc_forces_scf_corr()
 
             /* scalar part of a force without multipying by G-vector */
             std::complex<double> z =
-                fact * fourpi * ff(igsh, iat) * std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                    fact * fourpi * ff(igsh, iat) * std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
             for (int x : {0, 1, 2}) {
@@ -566,8 +569,8 @@ Force::calc_forces_core()
             auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            std::complex<double> z =
-                fact * fourpi * ff(igsh, iat) * std::conj(xc_pot.rg().f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+            std::complex<double> z = fact * fourpi * ff(igsh, iat) *
+                                     std::conj(xc_pot.rg().f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
             for (int x : {0, 1, 2}) {
@@ -608,7 +611,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                         for (int m2 = 0; m2 < lmax_at; m2++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 d += potential_.hubbard_potential().local(at_lvl)(m1, m2, ispn) *
-                                    dn(offset + m2, offset + m1, ispn, dir, ia);
+                                     dn(offset + m2, offset + m1, ispn, dir, ia);
                             }
                         }
                     }
@@ -635,7 +638,7 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
                     for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                         for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                             auto result1_ = z1 * std::conj(dn(offset2 + m2, offset1 + m1, is, dir, ia)) *
-                                potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
+                                            potential_.hubbard_potential().nonlocal(i)(m1, m2, is);
                             d += std::real(result1_);
                         }
                     }
@@ -685,7 +688,7 @@ Force::calc_forces_vloc()
 
             /* scalar part of a force without multiplying by G-vector */
             std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.rg().f_pw_local(igloc)) *
-                               std::conj(ctx_.gvec_phase_factor(ig, ia));
+                                     std::conj(ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */
             for (int x : {0, 1, 2}) {
@@ -772,17 +775,17 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
 
         /* apw-apw block of the overlap matrix */
         la::wrap(la::lib_t::blas)
-            .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<double>>::one(), alm_row.at(memory_t::host), alm_row.ld(),
-                  alm_col.at(memory_t::host), alm_col.ld(), &la::constant<std::complex<double>>::zero(),
-                  o.at(memory_t::host), o.ld());
+                .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+                      &la::constant<std::complex<double>>::one(), alm_row.at(memory_t::host), alm_row.ld(),
+                      alm_col.at(memory_t::host), alm_col.ld(), &la::constant<std::complex<double>>::zero(),
+                      o.at(memory_t::host), o.ld());
 
         /* apw-apw block of the Hamiltonian matrix */
         la::wrap(la::lib_t::blas)
-            .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<double>>::one(), alm_row.at(memory_t::host), alm_row.ld(),
-                  halm_col.at(memory_t::host), halm_col.ld(), &la::constant<std::complex<double>>::zero(),
-                  h.at(memory_t::host), h.ld());
+                .gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+                      &la::constant<std::complex<double>>::one(), alm_row.at(memory_t::host), alm_row.ld(),
+                      halm_col.at(memory_t::host), halm_col.ld(), &la::constant<std::complex<double>>::zero(),
+                      h.at(memory_t::host), h.ld());
 
         int iat = type.id();
 
@@ -827,10 +830,10 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
                     auto gkvec_row_cart = kp__->gkvec_row().gkvec_cart<index_domain_t::local>(igk_row);
                     /* multiply by i(G+k) */
                     h1(igk_row, icol + kp__->num_gkvec_col()) =
-                        std::complex<double>(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
+                            std::complex<double>(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
                     /* multiply by i(G+k) */
                     o1(igk_row, icol + kp__->num_gkvec_col()) =
-                        std::complex<double>(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
+                            std::complex<double>(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
                 }
             }
 
@@ -839,17 +842,17 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
                     auto gkvec_col_cart = kp__->gkvec_col().gkvec_cart<index_domain_t::local>(igk_col);
                     /* multiply by i(G+k) */
                     h1(irow + kp__->num_gkvec_row(), igk_col) =
-                        std::complex<double>(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
+                            std::complex<double>(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
                     /* multiply by i(G+k) */
                     o1(irow + kp__->num_gkvec_row(), igk_col) =
-                        std::complex<double>(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
+                            std::complex<double>(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
                 }
             }
 
             /* zm1 = dO * V */
             la::wrap(la::lib_t::scalapack)
-                .gemm('N', 'N', ngklo, nfv, ngklo, &la::constant<std::complex<double>>::one(), o1, 0, 0, fv_evec, 0, 0,
-                      &la::constant<std::complex<double>>::zero(), zm1, 0, 0);
+                    .gemm('N', 'N', ngklo, nfv, ngklo, &la::constant<std::complex<double>>::one(), o1, 0, 0, fv_evec, 0,
+                          0, &la::constant<std::complex<double>>::zero(), zm1, 0, 0);
             /* multiply by energy: zm1 = E * (dO * V)  */
             for (int i = 0; i < zm1.num_cols_local(); i++) {
                 int ist = zm1.icol(i);
@@ -859,13 +862,13 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
             }
             /* compute zm1 = dH * V - E * (dO * V) */
             la::wrap(la::lib_t::scalapack)
-                .gemm('N', 'N', ngklo, nfv, ngklo, &la::constant<std::complex<double>>::one(), h1, 0, 0, fv_evec, 0, 0,
-                      &la::constant<std::complex<double>>::m_one(), zm1, 0, 0);
+                    .gemm('N', 'N', ngklo, nfv, ngklo, &la::constant<std::complex<double>>::one(), h1, 0, 0, fv_evec, 0,
+                          0, &la::constant<std::complex<double>>::m_one(), zm1, 0, 0);
 
             /* compute zf = V^{+} * zm1 = V^{+} * (dH * V - E * (dO * V)) */
             la::wrap(la::lib_t::scalapack)
-                .gemm('C', 'N', nfv, nfv, ngklo, &la::constant<std::complex<double>>::one(), fv_evec, 0, 0, zm1, 0, 0,
-                      &la::constant<std::complex<double>>::zero(), zf, 0, 0);
+                    .gemm('C', 'N', nfv, nfv, ngklo, &la::constant<std::complex<double>>::one(), fv_evec, 0, 0, zm1, 0,
+                          0, &la::constant<std::complex<double>>::zero(), zf, 0, 0);
 
             for (int i = 0; i < dm.num_cols_local(); i++) {
                 for (int j = 0; j < dm.num_rows_local(); j++) {
@@ -882,8 +885,8 @@ Force::print_info(std::ostream& out__, int verbosity__)
     auto print_forces = [&](std::string label__, mdarray<double, 2> const& forces) {
         out__ << "==== " << label__ << " =====" << std::endl;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            out__ << "atom: " << std::setw(4) << ia << ", force: " << ffmt(15, 7) << forces(0, ia) <<
-                ffmt(15, 7) << forces(1, ia) << ffmt(15, 7) << forces(2, ia) << std::endl;
+            out__ << "atom: " << std::setw(4) << ia << ", force: " << ffmt(15, 7) << forces(0, ia) << ffmt(15, 7)
+                  << forces(1, ia) << ffmt(15, 7) << forces(2, ia) << std::endl;
         }
     };
 
@@ -909,12 +912,10 @@ Force::print_info(std::ostream& out__, int verbosity__)
     }
 }
 
-template
-void
+template void
 Force::calc_forces_nonloc_aux<double>();
 #if defined(SIRIUS_USE_FP32)
-template
-void
+template void
 Force::calc_forces_nonloc_aux<float>();
 #endif
 

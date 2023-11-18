@@ -39,7 +39,8 @@ namespace env {
 
 /// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
 template <typename T>
-inline T const* get_value_ptr(std::string const& name__)
+inline T const*
+get_value_ptr(std::string const& name__)
 {
     static std::map<std::string, std::unique_ptr<T>> map_name;
     if (map_name.count(name__) == 0) {

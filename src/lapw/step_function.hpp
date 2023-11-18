@@ -41,7 +41,8 @@ unit_step_function_form_factors(double R__, double g__)
 }
 
 /// Representation of the unit step function.
-struct step_function_t {
+struct step_function_t
+{
     /// Step function on the real-space grid.
     mdarray<double, 1> rg;
     /// Plane wave expansion coefficients of the step function (global array).
@@ -85,14 +86,12 @@ struct step_function_t {
  */
 inline auto
 init_step_function(Unit_cell const& uc__, fft::Gvec const& gv__, fft::Gvec_fft const& gvec_fft__,
-        mdarray<std::complex<double>, 2> const& phase_factors_t__,
-        fft::spfft_transform_type<double> spfft__)
+                   mdarray<std::complex<double>, 2> const& phase_factors_t__, fft::spfft_transform_type<double> spfft__)
 {
-    auto v = make_periodic_function<index_domain_t::global>(uc__, gv__, phase_factors_t__,
-            [&](int iat, double g) {
-                auto R = uc__.atom_type(iat).mt_radius();
-                return unit_step_function_form_factors(R, g);
-            });
+    auto v = make_periodic_function<index_domain_t::global>(uc__, gv__, phase_factors_t__, [&](int iat, double g) {
+        auto R = uc__.atom_type(iat).mt_radius();
+        return unit_step_function_form_factors(R, g);
+    });
 
     step_function_t theta;
     theta.rg = mdarray<double, 1>({spfft__.local_slice_size()});
@@ -136,7 +135,6 @@ init_step_function(Unit_cell const& uc__, fft::Gvec const& gv__, fft::Gvec_fft c
     return theta;
 }
 
-}
+} // namespace sirius
 
 #endif
-

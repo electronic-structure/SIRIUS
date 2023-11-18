@@ -686,7 +686,7 @@ class Density : public Field4D
         //==     //== FILE* fout = fopen("potential.ted", "w");
         //==     //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
         //==     //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha,
-        //p.beta, p.gamma);
+        // p.beta, p.gamma);
         //==     //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
         //==     //== for (int i0 = 0; i0 <= nx; i0++)
         //==     //== {
@@ -749,7 +749,7 @@ class Density : public Field4D
         //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
         //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
         //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
-        //Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+        // Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
         //== //==               "      </Geometry>\n"
         //== //==               "      <Attribute\n"
         //== //==               "           AttributeType=\"Scalar\"\n"
@@ -766,7 +766,7 @@ class Density : public Field4D
         //== //==               "    </Grid>\n"
         //== //==               "  </Domain>\n"
         //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
-        //fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+        // fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
         //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
         //==               "<Xdmf>\n"
@@ -775,7 +775,7 @@ class Density : public Field4D
         //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
         //==               "      <Geometry GeometryType=\"XYZ\">\n"
         //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
-        //Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
+        // Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
         //==               "      </Geometry>\n"
         //==               "      <Attribute\n"
         //==               "           AttributeType=\"Vector\"\n"
@@ -792,7 +792,7 @@ class Density : public Field4D
         //==               "    </Grid>\n"
         //==               "  </Domain>\n"
         //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
-        //fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
+        // fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
         //== fclose(fout);
     }
 };

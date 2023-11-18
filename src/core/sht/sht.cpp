@@ -41,7 +41,8 @@ wigner_d_matrix(int l, double beta)
                                     (std::sqrt(factorial<long double>(l - m1)) / factorial<long double>(l + m1 - j)) *
                                     (std::sqrt(factorial<long double>(l - m2)) / factorial<long double>(j + m2 - m1)) *
                                     (std::sqrt(factorial<long double>(l + m2)) / factorial<long double>(j));
-                    d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
+                    d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) *
+                         std::pow(sin_b2, 2 * j + m2 - m1);
                 }
             }
             d_mtrx(m1 + l, m2 + l) = (double)d;
@@ -86,8 +87,7 @@ rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rot
 
             for (int m3 : i13) {
                 for (int m4 : i24) {
-                    rot_mtrx(m1 + l, m2 + l) += std::real(SHT::rlm_dot_ylm(l, m1, m3) *
-                                                          rot_mtrx_ylm(m3 + l, m4 + l) *
+                    rot_mtrx(m1 + l, m2 + l) += std::real(SHT::rlm_dot_ylm(l, m1, m3) * rot_mtrx_ylm(m3 + l, m4 + l) *
                                                           SHT::ylm_dot_rlm(l, m4, m2));
                 }
             }
@@ -96,13 +96,11 @@ rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rot
     return rot_mtrx;
 }
 
-
 // TODO: this is used in rotatin rlm spherical functions, but this is wrong.
 // the rotation must happen inside l-shells
 template <typename T>
 void
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                mdarray<T, 2>& rotm)
+rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm)
 {
     rotm.zero();
 
@@ -116,15 +114,12 @@ rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation,
     }
 }
 
-template
-void
-rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                        mdarray<double, 2>& rotm);
+template void
+rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<double, 2>& rotm);
 
-template
-void
+template void
 rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                                mdarray<std::complex<double>, 2>& rotm);
+                                      mdarray<std::complex<double>, 2>& rotm);
 
 template <typename T>
 std::vector<mdarray<T, 2>>
@@ -138,12 +133,10 @@ rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
     return result;
 }
 
-template
-std::vector<mdarray<double, 2>>
+template std::vector<mdarray<double, 2>>
 rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
-template
-std::vector<mdarray<std::complex<double>, 2>>
+template std::vector<mdarray<std::complex<double>, 2>>
 rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
 double
@@ -161,7 +154,7 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
 
     const double denom = std::sqrt(1.0 / (2.0 * l + 1.0));
 
-    if (std::abs(j - l - 0.5) < 1e-8) { // check for j = l + 1/2
+    if (std::abs(j - l - 0.5) < 1e-8) {     // check for j = l + 1/2
         int m = static_cast<int>(mj - 0.5); // if mj is integer (2 * m), then int m = (mj-1) >> 1;
         if (spin == 0) {
             CG = std::sqrt(l + m + 1.0);
@@ -191,7 +184,6 @@ ClebschGordan(const int l, const double j, const double mj, const int spin)
     return (CG * denom);
 }
 
-
 // this function computes the U^sigma_{ljm mj} coefficient that
 // rotates the complex spherical harmonics to the real one for the
 // spin orbit case
@@ -211,10 +203,10 @@ calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, con
         // m = mj - 1/2
 
         int m1 = (mj - 1) >> 1;
-        if (sigma == 0) { // up spin
+        if (sigma == 0) {  // up spin
             if (m1 < -l) { // convention U^s_{mj,m'} = 0
                 return 0.0;
-            } else {// U^s_{mj,mp} =
+            } else { // U^s_{mj,mp} =
                 return SHT::rlm_dot_ylm(l, m1, mp);
             }
         } else { // down spin
@@ -241,46 +233,54 @@ calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, con
 
 } // namespace sht
 
-template<>
-void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmmax, double *ftp) const
+template <>
+void
+SHT::backward_transform<double>(int ld, double const* flm, int nr, int lmmax, double* ftp) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    la::wrap(la::lib_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &la::constant<double>::one(),
-        &rlm_backward_(0, 0), lmmax_, flm, ld, &la::constant<double>::zero(), ftp, num_points_);
+    la::wrap(la::lib_t::blas)
+            .gemm('T', 'N', num_points_, nr, lmmax, &la::constant<double>::one(), &rlm_backward_(0, 0), lmmax_, flm, ld,
+                  &la::constant<double>::zero(), ftp, num_points_);
 }
 
-template<>
-void SHT::backward_transform<std::complex<double>>(int ld, std::complex<double> const *flm, int nr, int lmmax,
-                                             std::complex<double> *ftp) const
+template <>
+void
+SHT::backward_transform<std::complex<double>>(int ld, std::complex<double> const* flm, int nr, int lmmax,
+                                              std::complex<double>* ftp) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    la::wrap(la::lib_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
-        &la::constant<std::complex<double>>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
-        &la::constant<std::complex<double>>::zero(), ftp, num_points_);
+    la::wrap(la::lib_t::blas)
+            .gemm('T', 'N', num_points_, nr, lmmax, &la::constant<std::complex<double>>::one(), &ylm_backward_(0, 0),
+                  lmmax_, flm, ld, &la::constant<std::complex<double>>::zero(), ftp, num_points_);
 }
 
-template<>
-void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld, double *flm) const
+template <>
+void
+SHT::forward_transform<double>(double const* ftp, int nr, int lmmax, int ld, double* flm) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    la::wrap(la::lib_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &la::constant<double>::one(),
-        &rlm_forward_(0, 0), num_points_, ftp, num_points_, &la::constant<double>::zero(), flm, ld);
+    la::wrap(la::lib_t::blas)
+            .gemm('T', 'N', lmmax, nr, num_points_, &la::constant<double>::one(), &rlm_forward_(0, 0), num_points_, ftp,
+                  num_points_, &la::constant<double>::zero(), flm, ld);
 }
 
-template<>
-void SHT::forward_transform<std::complex<double>>(std::complex<double> const *ftp, int nr, int lmmax, int ld,
-                                            std::complex<double> *flm) const
+template <>
+void
+SHT::forward_transform<std::complex<double>>(std::complex<double> const* ftp, int nr, int lmmax, int ld,
+                                             std::complex<double>* flm) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    la::wrap(la::lib_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &la::constant<std::complex<double>>::one(),
-        &ylm_forward_(0, 0), num_points_, ftp, num_points_, &la::constant<std::complex<double>>::zero(), flm, ld);
+    la::wrap(la::lib_t::blas)
+            .gemm('T', 'N', lmmax, nr, num_points_, &la::constant<std::complex<double>>::one(), &ylm_forward_(0, 0),
+                  num_points_, ftp, num_points_, &la::constant<std::complex<double>>::zero(), flm, ld);
 }
 
-void SHT::check() const
+void
+SHT::check() const
 {
     double dr = 0;
     double dy = 0;
@@ -331,11 +331,10 @@ void SHT::check() const
 
         if (t > 1e-15) {
             std::stringstream s;
-            s << "test of backward / forward real SHT failed" << std::endl
-              << "  total error " << t;
+            s << "test of backward / forward real SHT failed" << std::endl << "  total error " << t;
             RTE_WARNING(s.str());
         }
     }
 }
 
-}
+} // namespace sirius

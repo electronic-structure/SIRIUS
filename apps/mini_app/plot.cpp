@@ -1,18 +1,19 @@
 #include <sirius.h>
 
-void plot(cmd_args& args)
+void
+plot(cmd_args& args)
 {
-    vector3d<double> origin = args.value< vector3d<double> >("origin");
+    vector3d<double> origin = args.value<vector3d<double>>("origin");
 
-    vector3d<double> b1 = args.value< vector3d<double> >("b1");
-    int N1 = args.value<int>("N1");
+    vector3d<double> b1 = args.value<vector3d<double>>("b1");
+    int N1              = args.value<int>("N1");
 
     bool plot2d{false};
     vector3d<double> b2;
     int N2;
     if (args.exist("b2")) {
-        b2 = args.value< vector3d<double> >("b2");
-        N2 = args.value<int>("N2");
+        b2     = args.value<vector3d<double>>("b2");
+        N2     = args.value<int>("N2");
         plot2d = true;
     }
 
@@ -43,37 +44,35 @@ void plot(cmd_args& args)
     ctx.set_auto_rmt(inp.auto_rmt_);
 
     ctx.initialize();
-    
+
     sirius::Potential* potential = new sirius::Potential(ctx);
     potential->allocate();
-    
+
     sirius::Density* density = new sirius::Density(ctx);
     density->allocate();
-    
-    density->load();
-    //potential->load();
 
-    //density->generate_pw_coefs();
-    
-    //density->initial_density();
+    density->load();
+    // potential->load();
+
+    // density->generate_pw_coefs();
+
+    // density->initial_density();
 
     if (plot2d) {
         splindex<block> spl_N2(N2, ctx.comm().size(), ctx.comm().rank());
 
         mdarray<double, 2> rho(N1, N2);
-        
+
         runtime::Timer t1("compute_density");
-        for (int j2 = 0; j2 < spl_N2.local_size(); j2++)
-        {
+        for (int j2 = 0; j2 < spl_N2.local_size(); j2++) {
             int i2 = spl_N2[j2];
 
             std::cout << "column " << i2 << " out of " << N2 << std::endl;
 
             #pragma omp parallel for
-            for (int i1 = 0; i1 < N1; i1++)
-            {
+            for (int i1 = 0; i1 < N1; i1++) {
                 vector3d<double> v;
-                for (int x: {0, 1, 2}) {
+                for (int x : {0, 1, 2}) {
                     v[x] = origin[x] + double(i1) * b1[x] / (N1 - 1) + double(i2) * b2[x] / (N2 - 1);
                 }
 
@@ -95,11 +94,11 @@ void plot(cmd_args& args)
     } else {
         std::vector<double> rho(N1);
         std::vector<double> r(N1);
-        
+
         #pragma omp parallel for
         for (int i1 = 0; i1 < N1; i1++) {
             vector3d<double> v;
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 v[x] = origin[x] + double(i1) * b1[x] / (N1 - 1);
             }
 
@@ -108,7 +107,7 @@ void plot(cmd_args& args)
             }
 
             rho[i1] = density->rho()->value(v);
-            r[i1] = v.length();
+            r[i1]   = v.length();
         }
 
         FILE* fout = fopen("rho.dat", "w");
@@ -118,12 +117,12 @@ void plot(cmd_args& args)
         fclose(fout);
     }
 
-
     delete density;
     delete potential;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     using namespace sirius;
 
@@ -135,7 +134,7 @@ int main(int argn, char** argv)
     args.register_key("--N2=", "{int} number of 2nd boundary vector divisions");
     args.register_key("--coordinates=", "{cart | frac} Cartesian or fractional coordinates");
     args.parse_args(argn, argv);
-    
+
     if (args.exist("help")) {
         std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();

@@ -47,9 +47,10 @@ class Overlap_operators : public nlcglib::OverlapBase
     Overlap_operators(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op);
     // virtual void apply(nlcglib::MatrixBaseZ& out, const nlcglib::MatrixBaseZ& in) const override;
     /// return a functor for nlcglib at given key
-    virtual void apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out,
-                       nlcglib::MatrixBaseZ::buffer_t& in) const override;
-    virtual std::vector<std::pair<int, int>> get_keys() const override;
+    virtual void
+    apply(const key_t& key, nlcglib::MatrixBaseZ::buffer_t& out, nlcglib::MatrixBaseZ::buffer_t& in) const override;
+    virtual std::vector<std::pair<int, int>>
+    get_keys() const override;
 
   private:
     std::map<key_t, std::shared_ptr<op_t>> data_;

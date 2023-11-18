@@ -216,7 +216,8 @@ class Stress
      * \tparam T  One of float, double, complex<float> or complex<double> types for generic or Gamma point case.
      */
     template <typename T, typename F>
-    void calc_stress_nonloc_aux();
+    void
+    calc_stress_nonloc_aux();
 
   public:
     Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
@@ -274,9 +275,11 @@ class Stress
      *   Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4}\Big)
      *  \f]
      */
-    r3::matrix<double> calc_stress_vloc();
+    r3::matrix<double>
+    calc_stress_vloc();
 
-    inline r3::matrix<double> stress_vloc() const
+    inline r3::matrix<double>
+    stress_vloc() const
     {
         return stress_vloc_;
     }
@@ -310,9 +313,11 @@ class Stress
      *  -\delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
      * \f]
      */
-    r3::matrix<double> calc_stress_har();
+    r3::matrix<double>
+    calc_stress_har();
 
-    inline r3::matrix<double> stress_har() const
+    inline r3::matrix<double>
+    stress_har() const
     {
         return stress_har_;
     }
@@ -357,9 +362,11 @@ class Stress
      *   = \frac{2\pi}{\Omega^2}\frac{N_{el}^2}{4 \lambda} \delta_{\mu \nu}
      *  \f]
      */
-    r3::matrix<double> calc_stress_ewald();
+    r3::matrix<double>
+    calc_stress_ewald();
 
-    inline r3::matrix<double> stress_ewald() const
+    inline r3::matrix<double>
+    stress_ewald() const
     {
         return stress_ewald_;
     }
@@ -378,18 +385,23 @@ class Stress
      *  \f]
      */
     template <typename T>
-    void calc_stress_kin_aux();
+    void
+    calc_stress_kin_aux();
 
-    r3::matrix<double> calc_stress_kin();
+    r3::matrix<double>
+    calc_stress_kin();
 
-    inline r3::matrix<double> stress_kin() const
+    inline r3::matrix<double>
+    stress_kin() const
     {
         return stress_kin_;
     }
 
-    r3::matrix<double> calc_stress_nonloc();
+    r3::matrix<double>
+    calc_stress_nonloc();
 
-    inline r3::matrix<double> stress_nonloc() const
+    inline r3::matrix<double>
+    stress_nonloc() const
     {
         return stress_nonloc_;
     }
@@ -436,14 +448,17 @@ class Stress
      *  \frac{\partial j_{\ell}(Gr)}{\partial G} G_{\nu} r^2 dr \Big)
      * \f]
      */
-    r3::matrix<double> calc_stress_us();
+    r3::matrix<double>
+    calc_stress_us();
 
-    inline auto stress_us() const
+    inline auto
+    stress_us() const
     {
         return stress_us_;
     }
 
-    inline auto stress_us_nl() const
+    inline auto
+    stress_us_nl() const
     {
         return stress_nonloc_ + stress_us_;
     }
@@ -456,36 +471,45 @@ class Stress
      *  \rho({\bf r})\big) }{\nabla_{\mu} \rho({\bf r})} \nabla_{\nu}\rho({\bf r}) d{\bf r}
      *  \f]
      */
-    r3::matrix<double> calc_stress_xc();
+    r3::matrix<double>
+    calc_stress_xc();
 
-    inline auto stress_xc() const
+    inline auto
+    stress_xc() const
     {
         return stress_xc_;
     }
 
     /// Non-linear core correction to stress tensor.
-    r3::matrix<double> calc_stress_core();
+    r3::matrix<double>
+    calc_stress_core();
 
-    inline auto stress_core() const
+    inline auto
+    stress_core() const
     {
         return stress_core_;
     }
 
-    r3::matrix<double> calc_stress_hubbard();
+    r3::matrix<double>
+    calc_stress_hubbard();
 
-    inline auto stress_hubbard() const
+    inline auto
+    stress_hubbard() const
     {
         return stress_hubbard_;
     }
 
-    r3::matrix<double> calc_stress_total();
+    r3::matrix<double>
+    calc_stress_total();
 
-    inline auto stress_total() const
+    inline auto
+    stress_total() const
     {
         return stress_total_;
     }
 
-    void print_info(std::ostream& out__, int verbosity__) const;
+    void
+    print_info(std::ostream& out__, int verbosity__) const;
 };
 
 } // namespace sirius

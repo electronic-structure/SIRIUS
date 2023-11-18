@@ -49,7 +49,8 @@ class Linear : public Mixer<FUNCS...>
     {
     }
 
-    void mix_impl() override
+    void
+    mix_impl() override
     {
         const auto idx = this->idx_hist(this->step_ + 1);
 

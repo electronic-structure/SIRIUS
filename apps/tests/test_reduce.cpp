@@ -3,7 +3,8 @@
 using namespace sirius;
 using namespace mpi;
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(true);
 
@@ -36,12 +37,14 @@ int main(int argn, char** argv)
     if (pr) {
         std::cout << "allreduce<reinterpret_cast<std::complex<double>>> " << std::endl;
     }
-    Communicator::world().allreduce(reinterpret_cast<double*>(tmp.at(memory_t::host)), 2 * static_cast<int>(tmp.size()));
+    Communicator::world().allreduce(reinterpret_cast<double*>(tmp.at(memory_t::host)),
+                                    2 * static_cast<int>(tmp.size()));
 
     if (pr) {
         std::cout << "reduce<reinterpret_cast<std::complex<double>>> " << std::endl;
     }
-    Communicator::world().reduce(reinterpret_cast<double*>(tmp.at(memory_t::host)), 2 * static_cast<int>(tmp.size()), 1);
+    Communicator::world().reduce(reinterpret_cast<double*>(tmp.at(memory_t::host)), 2 * static_cast<int>(tmp.size()),
+                                 1);
 
     if (pr) {
         std::cout << "allreduce<std::complex<double>> " << std::endl;

@@ -6,7 +6,8 @@
 using namespace sirius;
 
 template <typename T>
-int run_test_impl(cmd_args& args)
+int
+run_test_impl(cmd_args& args)
 {
     r3::matrix<double> lattice;
     lattice(0, 0) = 7;
@@ -45,7 +46,7 @@ int run_test_impl(cmd_args& args)
             r3::vector<double> coord(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
             auto scoord = r3::spherical_coordinates(coord);
             /* rotated coordinates */
-            auto coord2 = dot(Rc, coord);
+            auto coord2  = dot(Rc, coord);
             auto scoord2 = r3::spherical_coordinates(coord2);
 
             int lmax{10};
@@ -79,7 +80,8 @@ int run_test_impl(cmd_args& args)
             if (d1 > 1e-10) {
                 for (int i = 0; i < sf::lmmax(lmax); i++) {
                     if (std::abs(ylm1(i) - ylm2(i)) > 1e-10) {
-                        std::cout << "lm="<< i << " " << ylm1(i) << " " << ylm2(i) << " " << std::abs(ylm1(i) - ylm2(i)) << std::endl;
+                        std::cout << "lm=" << i << " " << ylm1(i) << " " << ylm2(i) << " "
+                                  << std::abs(ylm1(i) - ylm2(i)) << std::endl;
                     }
                 }
                 return 1;
@@ -89,15 +91,16 @@ int run_test_impl(cmd_args& args)
     return 0;
 }
 
-
-int run_test(cmd_args& args)
+int
+run_test(cmd_args& args)
 {
     int result = run_test_impl<double>(args);
     result += run_test_impl<std::complex<double>>(args);
     return result;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -112,9 +115,15 @@ int main(int argn, char** argv)
     printf("running %-30s : ", argv[0]);
     int result = run_test(args);
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     sirius::finalize();
 

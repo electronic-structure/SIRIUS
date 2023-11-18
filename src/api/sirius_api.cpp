@@ -5956,7 +5956,6 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                     elem["lm_order"] = lm_order_;
                 }
                 sim_ctx.cfg().hubbard().local_constraint().append(elem);
-
             },
             error_code__);
 }

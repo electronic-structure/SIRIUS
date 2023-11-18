@@ -54,7 +54,7 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
             for (int m1 = 0; m1 < 2 * il + 1; m1++) {
                 for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
                     um_[is](um1__.offset(at1_lvl) + m1, um1__.offset(at2_lvl) + m2) +=
-                        z1 * um1__.nonlocal(i)(m1, m2, is);
+                            z1 * um1__.nonlocal(i)(m1, m2, is);
                 }
             }
         }
@@ -153,8 +153,8 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
                                     const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
                                     Up(um__.nhwf() * s1 + um__.offset(at_lvl) + m1, nbd) +=
-                                        um__(um__.offset(at_lvl) + m2, um__.offset(at_lvl) + m1, ind) *
-                                        dm(um__.nhwf() * s2 + um__.offset(at_lvl) + m2, nbd);
+                                            um__(um__.offset(at_lvl) + m2, um__.offset(at_lvl) + m1, ind) *
+                                            dm(um__.nhwf() * s2 + um__.offset(at_lvl) + m2, nbd);
                                 }
                             }
                         }
@@ -171,21 +171,21 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
         }
     }
     for (auto s = spins__.begin(); s != spins__.end(); s++) {
-        auto sp = hub_wf__.actual_spin_index(s);
+        auto sp  = hub_wf__.actual_spin_index(s);
         auto sp1 = hphi__.actual_spin_index(s);
         wf::transform(ctx__.spla_context(), mt, Up, 0, 0, 1.0, hub_wf__, sp, wf::band_range(0, hub_wf__.num_wf().get()),
                       1.0, hphi__, sp1, br__);
     }
 }
 
-template void apply_U_operator<double>(Simulation_context&, wf::spin_range, wf::band_range,
-                                       const wf::Wave_functions<double>&, const wf::Wave_functions<double>&,
-                                       U_operator<double> const&, wf::Wave_functions<double>&);
+template void
+apply_U_operator<double>(Simulation_context&, wf::spin_range, wf::band_range, const wf::Wave_functions<double>&,
+                         const wf::Wave_functions<double>&, U_operator<double> const&, wf::Wave_functions<double>&);
 
 #ifdef SIRIUS_USE_FP32
-template void apply_U_operator<float>(Simulation_context&, wf::spin_range, wf::band_range,
-                                      const wf::Wave_functions<float>&, const wf::Wave_functions<float>&,
-                                      U_operator<float> const&, wf::Wave_functions<float>&);
+template void
+apply_U_operator<float>(Simulation_context&, wf::spin_range, wf::band_range, const wf::Wave_functions<float>&,
+                        const wf::Wave_functions<float>&, U_operator<float> const&, wf::Wave_functions<float>&);
 #endif
 
 /// Apply strain derivative of S-operator to all scalar functions.

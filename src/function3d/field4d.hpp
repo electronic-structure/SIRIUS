@@ -62,8 +62,8 @@ class Field4D
             }
             if (ctx_.full_potential()) {
                 /* allocate with global MT part */
-                components_[i] = std::make_unique<Periodic_function<double>>(ctx_, [&](int ia){return lmax__;}, nullptr,
-                        ptr_rg, ptr_mt);
+                components_[i] = std::make_unique<Periodic_function<double>>(
+                        ctx_, [&](int ia) { return lmax__; }, nullptr, ptr_rg, ptr_mt);
             } else {
                 components_[i] = std::make_unique<Periodic_function<double>>(ctx_, ptr_rg);
             }
@@ -71,39 +71,45 @@ class Field4D
     }
 
     /// Return scalar part of the field.
-    inline auto& scalar()
+    inline auto&
+    scalar()
     {
         return *(components_[0]);
     }
 
     /// Return scalar part of the field.
-    inline auto const& scalar() const
+    inline auto const&
+    scalar() const
     {
         return *(components_[0]);
     }
 
     /// Return component of the vector part of the field.
-    inline auto& vector(int i)
+    inline auto&
+    vector(int i)
     {
         RTE_ASSERT(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
     /// Return component of the vector part of the field.
-    inline auto const& vector(int i) const
+    inline auto const&
+    vector(int i) const
     {
         RTE_ASSERT(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
-    inline auto& component(int i)
+    inline auto&
+    component(int i)
     {
         RTE_ASSERT(i >= 0 && i <= 3);
         return *(components_[i]);
     }
 
     /// Throws error in case of invalid access.
-    inline auto& component_raise(int i)
+    inline auto&
+    component_raise(int i)
     {
         if (components_[i] == nullptr) {
             throw std::runtime_error("invalid access");
@@ -111,37 +117,43 @@ class Field4D
         return *(components_[i]);
     }
 
-    inline auto const& component(int i) const
+    inline auto const&
+    component(int i) const
     {
         RTE_ASSERT(i >= 0 && i <= 3);
         return *(components_[i]);
     }
 
-    inline void zero()
+    inline void
+    zero()
     {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             component(i).zero();
         }
     }
 
-    inline void fft_transform(int direction__)
+    inline void
+    fft_transform(int direction__)
     {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             component(i).rg().fft_transform(direction__);
         }
     }
 
-    inline auto& ctx()
+    inline auto&
+    ctx()
     {
         return ctx_;
     }
 
-    inline auto const& ctx() const
+    inline auto const&
+    ctx() const
     {
         return ctx_;
     }
 
-    auto mt_components()
+    auto
+    mt_components()
     {
         std::vector<Spheric_function_set<double, atom_index_t>*> result;
         result.push_back(&components_[0]->mt());
@@ -164,7 +176,8 @@ class Field4D
         return result;
     }
 
-    auto pw_components()
+    auto
+    pw_components()
     {
         std::vector<Smooth_periodic_function<double>*> result;
         result.push_back(&components_[0]->rg());

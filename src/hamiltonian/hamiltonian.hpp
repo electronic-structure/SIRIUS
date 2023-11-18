@@ -96,7 +96,8 @@ class Hamiltonian0
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0<T> const& src) = delete;
     /* copy assignment operator is forbidden */
-    Hamiltonian0<T>& operator=(Hamiltonian0<T> const& src) = delete;
+    Hamiltonian0<T>&
+    operator=(Hamiltonian0<T> const& src) = delete;
 
   public:
     /// Constructor.
@@ -108,34 +109,41 @@ class Hamiltonian0
     Hamiltonian0(Hamiltonian0<T>&& src) = default;
 
     /// Return a Hamiltonian for the given k-point.
-    inline Hamiltonian_k<T> operator()(K_point<T>& kp__) const;
+    inline Hamiltonian_k<T>
+    operator()(K_point<T>& kp__) const;
 
-    Simulation_context& ctx() const
+    Simulation_context&
+    ctx() const
     {
         return ctx_;
     }
 
-    Potential& potential() const
+    Potential&
+    potential() const
     {
         return *potential_;
     }
 
-    Local_operator<T>& local_op() const
+    Local_operator<T>&
+    local_op() const
     {
         return *local_op_;
     }
 
-    inline Q_operator<T>& Q() const
+    inline Q_operator<T>&
+    Q() const
     {
         return *q_op_;
     }
 
-    inline D_operator<T>& D() const
+    inline D_operator<T>&
+    D() const
     {
         return *d_op_;
     }
 
-    auto const& hmt(int ia__) const
+    auto const&
+    hmt(int ia__) const
     {
         return hmt_[ia__];
     }
@@ -150,15 +158,18 @@ class Hamiltonian0
      *  \f]
      */
     template <spin_block_t sblock>
-    void apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
-                          mdarray<std::complex<T>, 2>& halm__) const;
+    void
+    apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
+                     mdarray<std::complex<T>, 2>& halm__) const;
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
-    void add_o1mt_to_apw(Atom const& atom__, int num_gkvec__,
-                         mdarray<std::complex<T>, 2>& alm__) const; // TODO: documentation
+    void
+    add_o1mt_to_apw(Atom const& atom__, int num_gkvec__,
+                    mdarray<std::complex<T>, 2>& alm__) const; // TODO: documentation
 
     /// Apply muffin-tin part of magnetic filed to the wave-functions.
-    void apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
+    void
+    apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
 
     /// Apply SO correction to the first-variational LAPW wave-functions.
     /** Raising and lowering operators:
@@ -166,7 +177,8 @@ class Hamiltonian0
      *      L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
      *  \f]
      */
-    void apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& hpsi__) const;
+    void
+    apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& hpsi__) const;
 };
 
 template <typename T>
@@ -184,7 +196,8 @@ class Hamiltonian_k
     Hamiltonian_k(Hamiltonian_k<T> const& src__) = delete;
 
     /// Assignment operator is forbidden.
-    Hamiltonian_k<T>& operator=(Hamiltonian_k<T> const& src__) = delete;
+    Hamiltonian_k<T>&
+    operator=(Hamiltonian_k<T> const& src__) = delete;
 
   public:
     Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__);
@@ -193,18 +206,22 @@ class Hamiltonian_k
 
     ~Hamiltonian_k();
 
-    Hamiltonian0<T> const& H0() const
+    Hamiltonian0<T> const&
+    H0() const
     {
         return H0_;
     }
 
     template <typename F, int what>
-    std::pair<mdarray<T, 2>, mdarray<T, 2>> get_h_o_diag_pw() const;
+    std::pair<mdarray<T, 2>, mdarray<T, 2>>
+    get_h_o_diag_pw() const;
 
     template <int what>
-    std::pair<mdarray<T, 2>, mdarray<T, 2>> get_h_o_diag_lapw() const;
+    std::pair<mdarray<T, 2>, mdarray<T, 2>>
+    get_h_o_diag_lapw() const;
 
-    auto U() const -> U_operator<T> const&
+    auto
+    U() const -> U_operator<T> const&
     {
         return *u_op_;
     }
@@ -339,8 +356,9 @@ class Hamiltonian_k
      *  \param [out] hphi       Result of Hamiltonian, applied to wave-functions.
      *  \param [out] ophi       Result of overlap operator, applied to wave-functions.
      */
-    void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range b__, wf::Wave_functions<T>& phi__,
-                      wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__) const;
+    void
+    apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range b__, wf::Wave_functions<T>& phi__,
+                 wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__) const;
 
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
     /** The Hamiltonian matrix has the following expression:
@@ -409,18 +427,22 @@ class Hamiltonian_k
      *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
      *  \f]
      */
-    void set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
+    void
+    set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap.
-    void set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
+    void
+    set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup lo-lo block of Hamiltonian and overlap matrices.
-    void set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
+    void
+    set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup apw-lo and lo-apw blocks of LAPW Hamiltonian and overlap matrices.
-    void set_fv_h_o_apw_lo(Atom const& atom, int ia, mdarray<std::complex<T>, 2>& alm_row,
-                           mdarray<std::complex<T>, 2>& alm_col, mdarray<std::complex<T>, 2>& h,
-                           mdarray<std::complex<T>, 2>& o) const;
+    void
+    set_fv_h_o_apw_lo(Atom const& atom, int ia, mdarray<std::complex<T>, 2>& alm_row,
+                      mdarray<std::complex<T>, 2>& alm_col, mdarray<std::complex<T>, 2>& h,
+                      mdarray<std::complex<T>, 2>& o) const;
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
     /** \tparam F    Type of the subspace matrix.
@@ -461,7 +483,7 @@ class Hamiltonian_k
 
         /* set initial sphi */
         if (sphi__ != nullptr) {
-            for (auto s = spins__.begin(); s!= spins__.end(); s++) {
+            for (auto s = spins__.begin(); s != spins__.end(); s++) {
                 auto sp = phi__.actual_spin_index(s);
                 wf::copy(mem, phi__, sp, br__, *sphi__, sp, br__);
             }
@@ -471,7 +493,8 @@ class Hamiltonian_k
         if (H0().ctx().unit_cell().max_mt_basis_size()) {
             auto bp_generator = kp_.beta_projectors().make_generator();
             auto beta_coeffs  = bp_generator.prepare();
-            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__, &H0().Q(), sphi__);
+            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__,
+                                      &H0().Q(), sphi__);
         }
 
         /* apply the hubbard potential if relevant */
@@ -512,16 +535,18 @@ class Hamiltonian_k
      */
     template <typename F>
     std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-    apply_s(wf::spin_range spin__, wf::band_range br__, wf::Wave_functions<T> const& phi__, wf::Wave_functions<T>& sphi__) const {
-        auto mem = H0().ctx().processing_unit_memory_t();
+    apply_s(wf::spin_range spin__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
+            wf::Wave_functions<T>& sphi__) const
+    {
+        auto mem       = H0().ctx().processing_unit_memory_t();
         auto bp_gen    = kp_.beta_projectors().make_generator();
         auto bp_coeffs = bp_gen.prepare();
-        apply_S_operator<T, F>(mem, spin__, br__,
-                               bp_gen, bp_coeffs, phi__, &H0().Q(), sphi__);
+        apply_S_operator<T, F>(mem, spin__, br__, bp_gen, bp_coeffs, phi__, &H0().Q(), sphi__);
     }
 
     /// Apply magnetic field to first-variational LAPW wave-functions.
-    void apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
+    void
+    apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const;
 };
 
 template <typename T>
@@ -531,6 +556,6 @@ Hamiltonian0<T>::operator()(K_point<T>& kp__) const
     return Hamiltonian_k<T>(*this, kp__);
 }
 
-}
+} // namespace sirius
 
 #endif

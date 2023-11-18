@@ -95,7 +95,8 @@ class Atom
     }
 
     /// Initialize atom.
-    inline void init()
+    inline void
+    init()
     {
         lmax_pot_ = type().parameters().lmax_pot();
 
@@ -119,7 +120,7 @@ class Atom
         if (!type().parameters().full_potential()) {
             int nbf = type().mt_basis_size();
             d_mtrx_ = mdarray<double, 3>({nbf, nbf, type().parameters().num_mag_dims() + 1},
-                                               mdarray_label("Atom::d_mtrx_"));
+                                         mdarray_label("Atom::d_mtrx_"));
             d_mtrx_.zero();
         }
     }
@@ -138,7 +139,8 @@ class Atom
      *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
      *  \f]
      */
-    inline void generate_radial_integrals(device_t pu__, mpi::Communicator const& comm__)
+    inline void
+    generate_radial_integrals(device_t pu__, mpi::Communicator const& comm__)
     {
         PROFILE("sirius::Atom::generate_radial_integrals");
 
@@ -207,8 +209,7 @@ class Atom
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
                     std::copy(rf_spline[i].coeffs().at(memory_t::host),
-                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
-                              rf_coef.at(memory_t::host, 0, 0, i));
+                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4, rf_coef.at(memory_t::host, 0, 0, i));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -241,11 +242,11 @@ class Atom
                                         rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
                                         result.at(memory_t::device));
             acc::sync();
-            //if (type().parameters().control().print_performance_) {
-            //    double tval = t2.stop();
-            //    DUMP("spline GPU integration performance: %12.6f GFlops",
-            //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-            //}
+            // if (type().parameters().control().print_performance_) {
+            //     double tval = t2.stop();
+            //     DUMP("spline GPU integration performance: %12.6f GFlops",
+            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+            // }
             result.copy_to(memory_t::host);
             result.deallocate(memory_t::device);
 #endif
@@ -279,11 +280,11 @@ class Atom
             for (int j = 0; j < (int)idx_ri.size(1); j++) {
                 result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
             }
-            //if (type().parameters().control().print_performance_) {
-            //    double tval = t2.stop();
-            //    DUMP("spline CPU integration performance: %12.6f GFlops",
-            //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-            //}
+            // if (type().parameters().control().print_performance_) {
+            //     double tval = t2.stop();
+            //     DUMP("spline CPU integration performance: %12.6f GFlops",
+            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+            // }
         }
 
         int n{0};
@@ -309,55 +310,63 @@ class Atom
             }
         }
 
-        //if (type().parameters().control().print_checksum_) {
-        //    DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
-        //}
+        // if (type().parameters().control().print_checksum_) {
+        //     DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
+        // }
     }
 
     /// Return const reference to corresponding atom type object.
-    inline Atom_type const& type() const
+    inline Atom_type const&
+    type() const
     {
         return type_;
     }
 
     /// Return reference to corresponding atom symmetry class.
-    inline Atom_symmetry_class& symmetry_class()
+    inline Atom_symmetry_class&
+    symmetry_class()
     {
         return (*symmetry_class_);
     }
 
     /// Return const referenced to atom symmetry class.
-    inline Atom_symmetry_class const& symmetry_class() const
+    inline Atom_symmetry_class const&
+    symmetry_class() const
     {
         return (*symmetry_class_);
     }
 
     /// Return atom type id.
-    inline int type_id() const
+    inline int
+    type_id() const
     {
         return type_.id();
     }
 
     /// Return atom position in fractional coordinates.
-    inline r3::vector<double> const& position() const
+    inline r3::vector<double> const&
+    position() const
     {
         return position_;
     }
 
     /// Set atom position in fractional coordinates.
-    inline void set_position(r3::vector<double> position__)
+    inline void
+    set_position(r3::vector<double> position__)
     {
         position_ = position__;
     }
 
     /// Return vector field.
-    inline auto vector_field() const
+    inline auto
+    vector_field() const
     {
         return vector_field_;
     }
 
     /// Return id of the symmetry class.
-    inline int symmetry_class_id() const
+    inline int
+    symmetry_class_id() const
     {
         if (symmetry_class_ != nullptr) {
             return symmetry_class_->id();
@@ -366,13 +375,15 @@ class Atom
     }
 
     /// Set symmetry class of the atom.
-    inline void set_symmetry_class(std::shared_ptr<Atom_symmetry_class> symmetry_class__)
+    inline void
+    set_symmetry_class(std::shared_ptr<Atom_symmetry_class> symmetry_class__)
     {
         symmetry_class_ = std::move(symmetry_class__);
     }
 
     /// Set muffin-tin potential and magnetic field.
-    inline void set_nonspherical_potential(double* veff__, double* beff__[3])
+    inline void
+    set_nonspherical_potential(double* veff__, double* beff__[3])
     {
         veff_ = mdarray<double, 2>({sf::lmmax(lmax_pot_), type().num_mt_points()}, veff__);
         for (int j = 0; j < 3; j++) {
@@ -380,7 +391,8 @@ class Atom
         }
     }
 
-    inline void sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
+    inline void
+    sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
     {
         comm__.bcast(h_radial_integrals_.at(memory_t::host), (int)h_radial_integrals_.size(), rank__);
         if (type().parameters().num_mag_dims()) {
@@ -388,22 +400,26 @@ class Atom
         }
     }
 
-    inline void sync_occupation_matrix(mpi::Communicator const& comm__, int const rank__)
+    inline void
+    sync_occupation_matrix(mpi::Communicator const& comm__, int const rank__)
     {
         comm__.bcast(occupation_matrix_.at(memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
-    inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
+    inline double const*
+    h_radial_integrals(int idxrf1, int idxrf2) const
     {
         return &h_radial_integrals_(0, idxrf1, idxrf2);
     }
 
-    inline double* h_radial_integrals(int idxrf1, int idxrf2)
+    inline double*
+    h_radial_integrals(int idxrf1, int idxrf2)
     {
         return &h_radial_integrals_(0, idxrf1, idxrf2);
     }
 
-    inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
+    inline double const*
+    b_radial_integrals(int idxrf1, int idxrf2, int x) const
     {
         return &b_radial_integrals_(0, idxrf1, idxrf2, x);
     }
@@ -442,14 +458,16 @@ class Atom
                 }
                 case spin_block_t::ud: {
                     /* Bx - i By */
-                    zsum += gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-                                                           -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
+                    zsum += gnt__[i].coef *
+                            std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
+                                                 -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                     break;
                 }
                 case spin_block_t::du: {
                     /* Bx + i By */
-                    zsum += gnt__[i].coef * std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-                                                           b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
+                    zsum += gnt__[i].coef *
+                            std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
+                                                 b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                     break;
                 }
             }
@@ -457,100 +475,118 @@ class Atom
         return zsum;
     }
 
-    inline int num_mt_points() const
+    inline int
+    num_mt_points() const
     {
         return type_.num_mt_points();
     }
 
-    inline Radial_grid<double> const& radial_grid() const
+    inline Radial_grid<double> const&
+    radial_grid() const
     {
         return type_.radial_grid();
     }
 
-    inline double radial_grid(int idx) const
+    inline double
+    radial_grid(int idx) const
     {
         return type_.radial_grid(idx);
     }
 
-    inline double mt_radius() const
+    inline double
+    mt_radius() const
     {
         return type_.mt_radius();
     }
 
-    inline int zn() const
+    inline int
+    zn() const
     {
         return type_.zn();
     }
 
-    inline int mt_basis_size() const
+    inline int
+    mt_basis_size() const
     {
         return type_.mt_basis_size();
     }
 
-    inline int mt_aw_basis_size() const
+    inline int
+    mt_aw_basis_size() const
     {
         return type_.mt_aw_basis_size();
     }
 
-    inline int mt_lo_basis_size() const
+    inline int
+    mt_lo_basis_size() const
     {
         return type_.mt_lo_basis_size();
     }
 
-    inline void set_occupation_matrix(const std::complex<double>* source)
+    inline void
+    set_occupation_matrix(const std::complex<double>* source)
     {
         std::memcpy(occupation_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
         apply_uj_correction_ = false;
     }
 
-    inline void get_occupation_matrix(std::complex<double>* destination)
+    inline void
+    get_occupation_matrix(std::complex<double>* destination)
     {
         std::memcpy(destination, occupation_matrix_.at(memory_t::host), 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
     }
 
-    inline void set_uj_correction_matrix(const int l, const std::complex<double>* source)
+    inline void
+    set_uj_correction_matrix(const int l, const std::complex<double>* source)
     {
         uj_correction_l_ = l;
         std::memcpy(uj_correction_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(std::complex<double>));
         apply_uj_correction_ = true;
     }
 
-    inline bool apply_uj_correction()
+    inline bool
+    apply_uj_correction()
     {
         return apply_uj_correction_;
     }
 
-    inline int uj_correction_l()
+    inline int
+    uj_correction_l()
     {
         return uj_correction_l_;
     }
 
-    inline auto uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
+    inline auto
+    uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
     {
         return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
     }
 
-    inline double& d_mtrx(int xi1, int xi2, int iv)
+    inline double&
+    d_mtrx(int xi1, int xi2, int iv)
     {
         return d_mtrx_(xi1, xi2, iv);
     }
 
-    inline double const& d_mtrx(int xi1, int xi2, int iv) const
+    inline double const&
+    d_mtrx(int xi1, int xi2, int iv) const
     {
         return d_mtrx_(xi1, xi2, iv);
     }
 
-    inline auto const& d_mtrx() const
+    inline auto const&
+    d_mtrx() const
     {
         return d_mtrx_;
     }
 
-    inline auto& d_mtrx()
+    inline auto&
+    d_mtrx()
     {
         return d_mtrx_;
     }
 };
 
-} // namespace
+} // namespace sirius
 
 #endif // __ATOM_H__

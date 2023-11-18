@@ -85,7 +85,6 @@ Eigensolver_factory(std::string name__)
     return std::unique_ptr<Eigensolver>(ptr);
 }
 
-}
+} // namespace la
 
-}
-
+} // namespace sirius

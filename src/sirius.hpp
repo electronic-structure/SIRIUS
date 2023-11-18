@@ -58,20 +58,23 @@ namespace sirius {
 extern json sirius_options_parser_;
 
 /// Return the status of the library (initialized or not).
-inline static bool& is_initialized()
+inline static bool&
+is_initialized()
 {
     static bool b{false};
     return b;
 }
 
 #if defined(SIRIUS_USE_POWER_COUNTER)
-inline static double& energy()
+inline static double&
+energy()
 {
     static double e__{0};
     return e__;
 }
 
-inline static double& energy_acc()
+inline static double&
+energy_acc()
 {
     static double e__{0};
     return e__;
@@ -79,7 +82,8 @@ inline static double& energy_acc()
 #endif
 
 /// Initialize the library.
-inline void initialize(bool call_mpi_init__ = true)
+inline void
+initialize(bool call_mpi_init__ = true)
 {
     PROFILE_START("sirius");
     PROFILE("sirius::initialize");
@@ -87,7 +91,7 @@ inline void initialize(bool call_mpi_init__ = true)
         RTE_THROW("SIRIUS library is already initialized");
     }
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    energy() = -power::energy();
+    energy()     = -power::energy();
     energy_acc() = -power::device_energy();
 #endif
     if (call_mpi_init__) {
@@ -99,7 +103,7 @@ inline void initialize(bool call_mpi_init__ = true)
 
     if (mpi::Communicator::world().rank() == 0) {
         std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
-               sirius::revision(), sirius::git_hash().c_str());
+                    sirius::revision(), sirius::git_hash().c_str());
 #if !defined(NDEBUG)
         std::printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif
@@ -140,7 +144,8 @@ inline void initialize(bool call_mpi_init__ = true)
 }
 
 /// Shut down the library.
-inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
+inline void
+finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
 {
     PROFILE_START("sirius::finalize");
     if (!is_initialized()) {
@@ -175,7 +180,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     apex::finalize();
 #endif
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    double e = energy() + power::energy();
+    double e     = energy() + power::energy();
     double e_acc = energy_acc() + power::device_energy();
     if (mpi::Communicator::world().rank() == 0) {
         printf("=== Energy consumption (root MPI rank) ===\n");
@@ -225,7 +230,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     }
 }
 
-}
+} // namespace sirius
 #endif // __SIRIUS_HPP__
 
 /** \mainpage Welcome to SIRIUS

@@ -55,7 +55,8 @@ class Non_local_operator
     bool is_diag_{true};
 
     /* copy assignment operrator is forbidden */
-    Non_local_operator<T>& operator=(Non_local_operator<T> const& src) = delete;
+    Non_local_operator<T>&
+    operator=(Non_local_operator<T> const& src) = delete;
     /* copy constructor is forbidden */
     Non_local_operator(Non_local_operator<T> const& src) = delete;
 
@@ -67,9 +68,9 @@ class Non_local_operator
     /** \tparam F  Type of the subspace matrix
      */
     template <typename F>
-    void apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
-               wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__,
-               matrix<F> const& beta_phi__) const;
+    void
+    apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__, wf::band_range br__,
+          beta_projectors_coeffs_t<T> const& beta_coeffs__, matrix<F> const& beta_phi__) const;
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename F>
@@ -79,44 +80,52 @@ class Non_local_operator
 
     /// computes α B*Q + β out
     template <typename F>
-    void lmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t,
-                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
+    void
+    lmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t, identity_t<F> alpha = F{1},
+            identity_t<F> beta = F{0}) const;
 
     /// computes α Q*B + β out
     template <typename F>
-    void rmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t,
-                 identity_t<F> alpha = F{1}, identity_t<F> beta = F{0}) const;
+    void
+    rmatmul(matrix<F>& out, matrix<F> const& B__, int ispn_block__, memory_t mem_t, identity_t<F> alpha = F{1},
+            identity_t<F> beta = F{0}) const;
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
-    inline F value(int xi1__, int xi2__, int ia__)
+    inline F
+    value(int xi1__, int xi2__, int ia__)
     {
         return this->value<F>(xi1__, xi2__, 0, ia__);
     }
 
     template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
-    F value(int xi1__, int xi2__, int ispn__, int ia__)
+    F
+    value(int xi1__, int xi2__, int ispn__, int ia__)
     {
         int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
         return this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
     }
 
     template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
-    F value(int xi1__, int xi2__, int ispn__, int ia__)
+    F
+    value(int xi1__, int xi2__, int ispn__, int ia__)
     {
         int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
         return std::complex<T>(this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__),
                                this->op_(1, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__));
     }
 
-    int size(int i) const;
+    int
+    size(int i) const;
 
-    inline bool is_diag() const
+    inline bool
+    is_diag() const
     {
         return is_diag_;
     }
 
     template <typename F>
-    matrix<F> get_matrix(int ispn, memory_t mem) const;
+    matrix<F>
+    get_matrix(int ispn, memory_t mem) const;
 };
 
 template <class T>
@@ -172,17 +181,17 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::
             }
         }
     }
-    //switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
-    //    case device_t::GPU: {
-    //        /* wait for previous zgemms */
-    //        #pragma omp parallel
-    //        acc::sync_stream(acc::stream_id(omp_get_thread_num()));
-    //        break;
-    //    }
-    //    case device_t::CPU: {
-    //        break;
-    //    }
-    //}
+    // switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
+    //     case device_t::GPU: {
+    //         /* wait for previous zgemms */
+    //         #pragma omp parallel
+    //         acc::sync_stream(acc::stream_id(omp_get_thread_num()));
+    //         break;
+    //     }
+    //     case device_t::CPU: {
+    //         break;
+    //     }
+    // }
 
     auto sp = op_phi__.actual_spin_index(wf::spin_index(ispn_block__ & 1));
 

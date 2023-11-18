@@ -33,26 +33,26 @@ extern "C" {
 
 void
 aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
-        std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__, double const* gc__, int ld0__,
-        int ld1__, double const* gvec_rlm__, int ld2__, double const* ri_values__, int ld3__, int ld4__,
-        double* q_pw__, int ld5__, double fourpi_omega__);
+                     std::complex<double> const* zilm__, int const* l_by_lm__, int lmmax__, double const* gc__,
+                     int ld0__, int ld1__, double const* gvec_rlm__, int ld2__, double const* ri_values__, int ld3__,
+                     int ld4__, double* q_pw__, int ld5__, double fourpi_omega__);
 
 void
 aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__, int const* idx__,
-        int idxmax__, double const* gc__, int ld0__, int ld1__, double const* rlm__, double const* rlm_dg__, int ld2__,
-        double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__, double* q_pw__, int ld5__,
-        double fourpi__, int nu__, int lmax_q__);
+                           int idxmax__, double const* gc__, int ld0__, int ld1__, double const* rlm__,
+                           double const* rlm_dg__, int ld2__, double const* ri_values__, double const* ri_dg_values__,
+                           int ld3__, int ld4__, double* q_pw__, int ld5__, double fourpi__, int nu__, int lmax_q__);
 
 void
 spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* theta__, double const* phi__, double* rlm__, int ld__);
-
 }
 #endif
 
 namespace sirius {
 
 template <typename F>
-inline void iterate_aug_atom_types(Unit_cell const& uc__, F&& f__)
+inline void
+iterate_aug_atom_types(Unit_cell const& uc__, F&& f__)
 {
     for (int iat = 0; iat < uc__.num_atom_types(); iat++) {
         auto& atom_type = uc__.atom_type(iat);
@@ -64,42 +64,32 @@ inline void iterate_aug_atom_types(Unit_cell const& uc__, F&& f__)
     }
 }
 
-inline auto max_l_aug(Unit_cell const& uc__)
+inline auto
+max_l_aug(Unit_cell const& uc__)
 {
     int l{0};
 
-    iterate_aug_atom_types(uc__,
-        [&l](Atom_type const& type__)
-        {
-            l = std::max(l, type__.indexr().lmax());
-        });
+    iterate_aug_atom_types(uc__, [&l](Atom_type const& type__) { l = std::max(l, type__.indexr().lmax()); });
 
     return l;
 }
 
-inline auto max_na_aug(Unit_cell const& uc__)
+inline auto
+max_na_aug(Unit_cell const& uc__)
 {
     int na{0};
 
-    iterate_aug_atom_types(uc__,
-        [&na](Atom_type const& type__)
-        {
-            na = std::max(na, type__.num_atoms());
-        });
+    iterate_aug_atom_types(uc__, [&na](Atom_type const& type__) { na = std::max(na, type__.num_atoms()); });
 
     return na;
-
 }
 
-inline auto max_nb_aug(Unit_cell const& uc__)
+inline auto
+max_nb_aug(Unit_cell const& uc__)
 {
     int nb{0};
 
-    iterate_aug_atom_types(uc__,
-        [&nb](Atom_type const& type__)
-        {
-            nb = std::max(nb, type__.mt_basis_size());
-        });
+    iterate_aug_atom_types(uc__, [&nb](Atom_type const& type__) { nb = std::max(nb, type__.mt_basis_size()); });
 
     return nb;
 }
@@ -136,7 +126,7 @@ class Augmentation_operator
      * \param [in] radial_integrals Radial integrals of the Q(r) with spherical Bessel functions.
      */
     Augmentation_operator(Atom_type const& atom_type__, fft::Gvec const& gvec__,
-        Radial_integrals_aug<false> const& ri__, Radial_integrals_aug<true> const& ri_dq__)
+                          Radial_integrals_aug<false> const& ri__, Radial_integrals_aug<true> const& ri_dq__)
         : atom_type_(atom_type__)
         , gvec_(gvec__)
     {
@@ -146,7 +136,7 @@ class Augmentation_operator
 
         /* compute l of lm index */
         auto l_by_lm = sf::l_by_lm(lmax);
-        l_by_lm_ = mdarray<int, 1>({lmmax});
+        l_by_lm_     = mdarray<int, 1>({lmmax});
         std::copy(l_by_lm.begin(), l_by_lm.end(), &l_by_lm_[0]);
 
         /* compute i^l array */
@@ -189,11 +179,11 @@ class Augmentation_operator
         ri_dq_values_ = mdarray<double, 3>({nbrf * (nbrf + 1) / 2, lmax + 1, gvec_.num_gvec_shells_local()});
         #pragma omp parallel for
         for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
-            auto ri = ri__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
+            auto ri    = ri__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
             auto ri_dq = ri_dq__.values(atom_type__.id(), gvec_.gvec_shell_len_local(j));
             for (int l = 0; l <= lmax; l++) {
                 for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
-                    ri_values_(i, l, j) = ri(i, l);
+                    ri_values_(i, l, j)    = ri(i, l);
                     ri_dq_values_(i, l, j) = ri_dq(i, l);
                 }
             }
@@ -214,73 +204,79 @@ class Augmentation_operator
         }
 
         /* allocate array of plane-wave coefficients */
-        auto mt = (atom_type_.parameters().processing_unit() == device_t::CPU) ? memory_t::host :
-            memory_t::host_pinned;
-        q_pw_ = mdarray<double, 2>({nqlm, 2 * gvec_.count()}, get_memory_pool(mt), mdarray_label("q_pw_"));
-
+        auto mt = (atom_type_.parameters().processing_unit() == device_t::CPU) ? memory_t::host : memory_t::host_pinned;
+        q_pw_   = mdarray<double, 2>({nqlm, 2 * gvec_.count()}, get_memory_pool(mt), mdarray_label("q_pw_"));
     }
 
-// TODO: not used at the moment, evaluate the possibility to remove in the future
-//    /// Generate chunk of plane-wave coefficients on the GPU.
-//    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, double const* gvec_rlm__, int ld__,
-//            mdarray<double, 2>& qpw__) const
-//    {
-//#if defined(SIRIUS_GPU)
-//        double fourpi_omega = fourpi / gvec_.omega();
-//
-//        /* maximum l of beta-projectors */
-//        int lmax_beta = atom_type_.indexr().lmax();
-//        int lmmax     = sf::lmmax(2 * lmax_beta);
-//        /* number of beta-projectors */
-//        int nbf = atom_type_.mt_basis_size();
-//        /* only half of Q_{xi,xi'}(G) matrix is stored */
-//        int nqlm = nbf * (nbf + 1) / 2;
-//        /* generate Q(G) */
-//        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(memory_t::device, g_begin__), idx_.at(memory_t::device),
-//            nqlm, zilm_.at(memory_t::device), l_by_lm_.at(memory_t::device), lmmax,
-//            gaunt_coefs_.at(memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
-//            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__, ld__,
-//            ri_values_.at(memory_t::device), static_cast<int>(ri_values_.size(0)),
-//            static_cast<int>(ri_values_.size(1)), qpw__.at(memory_t::device), static_cast<int>(qpw__.size(0)),
-//            fourpi_omega);
-//#endif
-//    }
+    // TODO: not used at the moment, evaluate the possibility to remove in the future
+    //    /// Generate chunk of plane-wave coefficients on the GPU.
+    //    void generate_pw_coeffs_chunk_gpu(int g_begin__, int ng__, double const* gvec_rlm__, int ld__,
+    //            mdarray<double, 2>& qpw__) const
+    //    {
+    // #if defined(SIRIUS_GPU)
+    //        double fourpi_omega = fourpi / gvec_.omega();
+    //
+    //        /* maximum l of beta-projectors */
+    //        int lmax_beta = atom_type_.indexr().lmax();
+    //        int lmmax     = sf::lmmax(2 * lmax_beta);
+    //        /* number of beta-projectors */
+    //        int nbf = atom_type_.mt_basis_size();
+    //        /* only half of Q_{xi,xi'}(G) matrix is stored */
+    //        int nqlm = nbf * (nbf + 1) / 2;
+    //        /* generate Q(G) */
+    //        aug_op_pw_coeffs_gpu(ng__, gvec_shell_.at(memory_t::device, g_begin__), idx_.at(memory_t::device),
+    //            nqlm, zilm_.at(memory_t::device), l_by_lm_.at(memory_t::device), lmmax,
+    //            gaunt_coefs_.at(memory_t::device), static_cast<int>(gaunt_coefs_.size(0)),
+    //            static_cast<int>(gaunt_coefs_.size(1)), gvec_rlm__, ld__,
+    //            ri_values_.at(memory_t::device), static_cast<int>(ri_values_.size(0)),
+    //            static_cast<int>(ri_values_.size(1)), qpw__.at(memory_t::device), static_cast<int>(qpw__.size(0)),
+    //            fourpi_omega);
+    // #endif
+    //    }
 
     /// Generate Q_{xi,xi'}(G) plane wave coefficients.
-    void generate_pw_coeffs();
+    void
+    generate_pw_coeffs();
 
     /// Generate G-vector derivative Q_{xi,xi'}(G)/dG of the plane-wave coefficients */
-    void generate_pw_coeffs_gvec_deriv(int nu__);
+    void
+    generate_pw_coeffs_gvec_deriv(int nu__);
 
-    auto const& q_pw() const
+    auto const&
+    q_pw() const
     {
         return q_pw_;
     }
 
-    double q_pw(int i__, int ig__) const
+    double
+    q_pw(int i__, int ig__) const
     {
         return q_pw_(i__, ig__);
     }
 
     /// Get values of the Q-matrix.
-    inline double q_mtrx(int xi1__, int xi2__) const
+    inline double
+    q_mtrx(int xi1__, int xi2__) const
     {
         return q_mtrx_(xi1__, xi2__);
     }
 
-    inline auto const& sym_weight() const
+    inline auto const&
+    sym_weight() const
     {
         return sym_weight_;
     }
 
     /// Weight of Q_{\xi,\xi'}.
     /** 2 if off-diagonal (xi != xi'), 1 if diagonal (xi=xi') */
-    inline double sym_weight(int idx__) const
+    inline double
+    sym_weight(int idx__) const
     {
         return sym_weight_(idx__);
     }
 
-    Atom_type const& atom_type() const
+    Atom_type const&
+    atom_type() const
     {
         return atom_type_;
     }

@@ -8,11 +8,11 @@ typedef double_complex gemm_type;
 int const nop_gemm = 8;
 #endif
 
-
-double test_gemm(int M, int N, int K, int transa)
+double
+test_gemm(int M, int N, int K, int transa)
 {
-    runtime::Timer t("test_gemm"); 
-    
+    runtime::Timer t("test_gemm");
+
     matrix<gemm_type> a, b, c;
     int imax, jmax;
     if (transa == 0) {
@@ -32,13 +32,12 @@ double test_gemm(int M, int N, int K, int transa)
         }
     }
 
-    for (int j = 0; j < N; j++)
-    {
+    for (int j = 0; j < N; j++) {
         for (int i = 0; i < K; i++) {
             b(i, j) = 1.0;
         }
     }
-    
+
     a.allocate(memory_t::device);
     a.copy_to_device();
     b.allocate(memory_t::device);
@@ -50,7 +49,7 @@ double test_gemm(int M, int N, int K, int transa)
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    runtime::Timer t1("gemm_only"); 
+    runtime::Timer t1("gemm_only");
     linalg<GPU>::gemm(transa, 0, M, N, K, a.at<GPU>(), a.ld(), b.at<GPU>(), b.ld(), c.at<GPU>(), c.ld());
     c.copy_to_host();
     double tval = t1.stop();
@@ -69,7 +68,8 @@ double test_gemm(int M, int N, int K, int transa)
     return perf;
 }
 
-int main(int argn, char **argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--M=", "{int} M");

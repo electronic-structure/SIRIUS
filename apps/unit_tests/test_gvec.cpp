@@ -5,17 +5,18 @@
 
 using namespace sirius;
 
-int run_test(cmd_args& args)
+int
+run_test(cmd_args& args)
 {
     auto vd = args.value("dims", std::vector<int>({132, 132, 132}));
-    r3::vector<int> dims(vd[0], vd[1], vd[2]); 
+    r3::vector<int> dims(vd[0], vd[1], vd[2]);
     double cutoff = args.value<double>("cutoff", 50);
 
     r3::matrix<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-    M(0, 1) = 0.1;
-    M(0, 2) = 0.2;
-    M(2, 0) = 0.3;
+    M(0, 1)                     = 0.1;
+    M(0, 2)                     = 0.2;
+    M(2, 0)                     = 0.3;
 
     fft::Gvec gvec(M, cutoff, mpi::Communicator::world(), false);
     fft::Gvec gvec_r(M, cutoff, mpi::Communicator::world(), true);
@@ -26,7 +27,8 @@ int run_test(cmd_args& args)
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--dims=", "{vector<int>} FFT dimensions");
@@ -43,9 +45,15 @@ int main(int argn, char** argv)
     printf("running %-30s : ", argv[0]);
     int result = run_test(args);
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     sirius::finalize();
 

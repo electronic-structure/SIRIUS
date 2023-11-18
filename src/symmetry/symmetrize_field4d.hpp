@@ -42,14 +42,14 @@ symmetrize_field4d(Field4D& f__)
     }
 
     /* symmetrize PW components */
-    symmetrize_pw_function(ctx.unit_cell().symmetry(), ctx.remap_gvec(), ctx.sym_phase_factors(),
-        ctx.num_mag_dims(), f__.pw_components());
+    symmetrize_pw_function(ctx.unit_cell().symmetry(), ctx.remap_gvec(), ctx.sym_phase_factors(), ctx.num_mag_dims(),
+                           f__.pw_components());
 
     if (ctx.full_potential()) {
         symmetrize_mt_function(ctx.unit_cell().symmetry(), ctx.comm(), ctx.num_mag_dims(), f__.mt_components());
     }
 }
 
-}
+} // namespace sirius
 
 #endif

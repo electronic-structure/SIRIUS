@@ -65,7 +65,8 @@ class vector : public std::array<T, 3>
         }
     }
 
-    vector& operator=(std::initializer_list<T> v__)
+    vector&
+    operator=(std::initializer_list<T> v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
@@ -83,7 +84,8 @@ class vector : public std::array<T, 3>
         }
     }
 
-    vector& operator=(std::vector<T> const& v__)
+    vector&
+    operator=(std::vector<T> const& v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
@@ -117,24 +119,28 @@ class vector : public std::array<T, 3>
     }
 
     /// Return L1 norm of the vector.
-    inline T l1norm() const
+    inline T
+    l1norm() const
     {
         return std::abs((*this)[0]) + std::abs((*this)[1]) + std::abs((*this)[2]);
     }
 
     /// Return vector length (L2 norm).
-    inline double length() const
+    inline double
+    length() const
     {
         return std::sqrt(this->length2());
     }
 
     /// Return square length of the vector.
-    inline double length2() const
+    inline double
+    length2() const
     {
         return static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2));
     }
 
-    inline vector<T>& operator+=(vector<T> const& b)
+    inline vector<T>&
+    operator+=(vector<T> const& b)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] += b[x];
@@ -142,14 +148,14 @@ class vector : public std::array<T, 3>
         return *this;
     }
 
-    inline vector<T>& operator-=(vector<T> const& b)
+    inline vector<T>&
+    operator-=(vector<T> const& b)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] -= b[x];
         }
         return *this;
     }
-
 };
 
 template <typename T, typename U>
@@ -204,13 +210,15 @@ operator/(vector<T> const& vec, U p)
 }
 
 template <typename T, typename U>
-inline auto dot(vector<T> const a, vector<U> const b) -> decltype(T{} * U{})
+inline auto
+dot(vector<T> const a, vector<U> const b) -> decltype(T{} * U{})
 {
     return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
 }
 
 template <typename T>
-inline auto cross(vector<T> const a, vector<T> const b)
+inline auto
+cross(vector<T> const a, vector<T> const b)
 {
     vector<T> res;
     res[0] = a[1] * b[2] - a[2] * b[1];
@@ -220,7 +228,8 @@ inline auto cross(vector<T> const a, vector<T> const b)
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, r3::vector<T> const& v)
+std::ostream&
+operator<<(std::ostream& out, r3::vector<T> const& v)
 {
     out << "{" << v[0] << ", " << v[1] << ", " << v[2] << "}";
     return out;
@@ -295,7 +304,8 @@ class matrix
     }
 
     /// Assignment operator.
-    matrix<T>& operator=(matrix<T> const& rhs)
+    matrix<T>&
+    operator=(matrix<T> const& rhs)
     {
         if (this != &rhs) {
             for (int i = 0; i < 3; i++) {
@@ -307,19 +317,22 @@ class matrix
         return *this;
     }
 
-    inline T& operator()(const int i, const int j)
+    inline T&
+    operator()(const int i, const int j)
     {
         return mtrx_[i][j];
     }
 
-    inline T const& operator()(const int i, const int j) const
+    inline T const&
+    operator()(const int i, const int j) const
     {
         return mtrx_[i][j];
     }
 
     /// Sum of two matrices.
     template <typename U>
-    inline auto operator+(matrix<U> const& b) const
+    inline auto
+    operator+(matrix<U> const& b) const
     {
         matrix<decltype(T{} + U{})> a;
         for (int i = 0; i < 3; i++) {
@@ -332,7 +345,8 @@ class matrix
 
     /// += operator
     template <typename U>
-    inline auto& operator+=(matrix<U> const& b)
+    inline auto&
+    operator+=(matrix<U> const& b)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -344,7 +358,8 @@ class matrix
 
     /// Multiply matrix by a scalar number.
     template <typename U>
-    inline auto& operator*=(U p)
+    inline auto&
+    operator*=(U p)
     {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -355,14 +370,16 @@ class matrix
     }
 
     /// Return determinant of a matrix.
-    inline T det() const
+    inline T
+    det() const
     {
         return (mtrx_[0][2] * (mtrx_[1][0] * mtrx_[2][1] - mtrx_[1][1] * mtrx_[2][0]) +
                 mtrx_[0][1] * (mtrx_[1][2] * mtrx_[2][0] - mtrx_[1][0] * mtrx_[2][2]) +
                 mtrx_[0][0] * (mtrx_[1][1] * mtrx_[2][2] - mtrx_[1][2] * mtrx_[2][1]));
     }
 
-    inline void zero()
+    inline void
+    zero()
     {
         std::fill(&mtrx_[0][0], &mtrx_[0][0] + 9, 0);
     }
@@ -370,7 +387,8 @@ class matrix
 
 /// Multiply matrix by a scalar number.
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> operator*(matrix<T> const& a__, U p__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>>
+operator*(matrix<T> const& a__, U p__)
 {
     matrix<decltype(T{} * U{})> c;
     for (int i = 0; i < 3; i++) {
@@ -382,12 +400,14 @@ inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> o
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> operator*(U p__, matrix<T> const& a__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>>
+operator*(U p__, matrix<T> const& a__)
 {
     return a__ * p__;
 }
 
-inline bool operator==(matrix<int> const& a__, matrix<int> const& b__)
+inline bool
+operator==(matrix<int> const& a__, matrix<int> const& b__)
 {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -401,7 +421,8 @@ inline bool operator==(matrix<int> const& a__, matrix<int> const& b__)
 
 /// Multiply two matrices.
 template <typename T, typename U>
-inline auto dot(matrix<T> const& a__, matrix<U> const& b__)
+inline auto
+dot(matrix<T> const& a__, matrix<U> const& b__)
 {
     matrix<decltype(T{} * U{})> c;
     for (int i = 0; i < 3; i++) {
@@ -416,7 +437,8 @@ inline auto dot(matrix<T> const& a__, matrix<U> const& b__)
 
 /// Matrix-vector multiplication.
 template <typename T, typename U>
-inline auto dot(matrix<T> const& m__, vector<U> const& b__)
+inline auto
+dot(matrix<T> const& m__, vector<U> const& b__)
 {
     vector<decltype(T{} * U{})> a;
     for (int i = 0; i < 3; i++) {
@@ -429,7 +451,8 @@ inline auto dot(matrix<T> const& m__, vector<U> const& b__)
 
 /// Vector-matrix multiplication.
 template <typename T, typename U>
-inline auto dot(vector<U> const& b__, matrix<T> const& m__)
+inline auto
+dot(vector<U> const& b__, matrix<T> const& m__)
 {
     vector<decltype(T{} * U{})> a;
     for (int i = 0; i < 3; i++) {
@@ -442,7 +465,8 @@ inline auto dot(vector<U> const& b__, matrix<T> const& m__)
 
 /// Return transpose of the matrix.
 template <typename T>
-inline auto transpose(matrix<T> src)
+inline auto
+transpose(matrix<T> src)
 {
     matrix<T> mtrx;
     for (int i = 0; i < 3; i++) {
@@ -454,7 +478,8 @@ inline auto transpose(matrix<T> src)
 }
 
 template <typename T>
-inline auto inverse_aux(matrix<T> src)
+inline auto
+inverse_aux(matrix<T> src)
 {
     matrix<T> mtrx;
 
@@ -472,7 +497,8 @@ inline auto inverse_aux(matrix<T> src)
 }
 
 /// Return inverse of the integer matrix
-inline auto inverse(matrix<int> src)
+inline auto
+inverse(matrix<int> src)
 {
     int t1 = src.det();
     if (std::abs(t1) != 1) {
@@ -483,7 +509,8 @@ inline auto inverse(matrix<int> src)
 
 /// Return inverse of the matrix.
 template <typename T>
-inline auto inverse(matrix<T> src)
+inline auto
+inverse(matrix<T> src)
 {
     T t1 = src.det();
 
@@ -495,7 +522,8 @@ inline auto inverse(matrix<T> src)
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& out, matrix<T> const& v)
+inline std::ostream&
+operator<<(std::ostream& out, matrix<T> const& v)
 {
     out << "{";
     for (int i = 0; i < 3; i++) {
@@ -532,8 +560,7 @@ reduce_coordinates(vector<double> coord__)
         v.first[i] -= v.second[i];
         if (v.first[i] < -eps || v.first[i] > 1.0 + eps) {
             std::stringstream s;
-            s << "wrong fractional coordinates" << std::endl
-              << v.first[0] << " " << v.first[1] << " " << v.first[2];
+            s << "wrong fractional coordinates" << std::endl << v.first[0] << " " << v.first[1] << " " << v.first[2];
             throw std::runtime_error(s.str());
         }
         if (v.first[i] < 0) {
@@ -545,8 +572,7 @@ reduce_coordinates(vector<double> coord__)
         }
         if (v.first[i] < 0 || v.first[i] >= 1) {
             std::stringstream s;
-            s << "wrong fractional coordinates" << std::endl
-              << v.first[0] << " " << v.first[1] << " " << v.first[2];
+            s << "wrong fractional coordinates" << std::endl << v.first[0] << " " << v.first[1] << " " << v.first[2];
             throw std::runtime_error(s.str());
         }
     }
@@ -569,7 +595,8 @@ reduce_coordinates(vector<double> coord__)
  *  by equating the expressions for the volume of the supercell:
  *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3|
  *   Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
-inline auto find_translations(double radius__, matrix<double> const& lattice_vectors__)
+inline auto
+find_translations(double radius__, matrix<double> const& lattice_vectors__)
 {
     vector<double> a0(lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0));
     vector<double> a1(lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1));
@@ -587,7 +614,8 @@ inline auto find_translations(double radius__, matrix<double> const& lattice_vec
 }
 
 /// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
-inline auto spherical_coordinates(vector<double> vc)
+inline auto
+spherical_coordinates(vector<double> vc)
 {
     r3::vector<double> vs;
 

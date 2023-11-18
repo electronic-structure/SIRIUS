@@ -33,7 +33,7 @@ inline void
 symmetrize_occupation_matrix(Occupation_matrix& om__)
 {
     auto& ctx = om__.ctx();
-    auto& uc = ctx.unit_cell();
+    auto& uc  = ctx.unit_cell();
 
     if (!ctx.hubbard_correction()) {
         return;
@@ -46,13 +46,13 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
     local_tmp.resize(om__.local().size());
 
     for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        const int ia     = om__.atomic_orbitals(at_lvl).first;
+        const int ia          = om__.atomic_orbitals(at_lvl).first;
         auto const& atom_type = uc.atom(ia).type();
         /* We can skip the symmetrization for this atomic level since it does not contribute
          * to the Hubbard correction (or U = 0) */
         if (atom_type.lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
             local_tmp[at_lvl] =
-                mdarray<std::complex<double>, 3>({om__.local(at_lvl).size(0), om__.local(at_lvl).size(1), 4});
+                    mdarray<std::complex<double>, 3>({om__.local(at_lvl).size(0), om__.local(at_lvl).size(1), 4});
             copy(om__.local(at_lvl), local_tmp[at_lvl]);
         }
     }
@@ -77,17 +77,17 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
                 int iap = sym[isym].spg_op.inv_sym_atom[ia];
                 dm_ia.zero();
 
-                int at_lvl1 =
-                    om__.find_orbital_index(iap, atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).n(),
-                                       atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l());
+                int at_lvl1 = om__.find_orbital_index(
+                        iap, atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).n(),
+                        atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l());
 
                 for (int ispn = 0; ispn < (ctx.num_mag_dims() == 3 ? 4 : ctx.num_spins()); ispn++) {
                     for (int m1 = 0; m1 < lmmax_at; m1++) {
                         for (int m2 = 0; m2 < lmmax_at; m2++) {
                             for (int m1p = 0; m1p < lmmax_at; m1p++) {
                                 for (int m2p = 0; m2p < lmmax_at; m2p++) {
-                                    dm_ia(m1, m2, ispn) +=
-                                        rotm[il](m1, m1p) * rotm[il](m2, m2p) * local_tmp[at_lvl1](m1p, m2p, ispn) * f;
+                                    dm_ia(m1, m2, ispn) += rotm[il](m1, m1p) * rotm[il](m2, m2p) *
+                                                           local_tmp[at_lvl1](m1p, m2p, ispn) * f;
                                 }
                             }
                         }
@@ -115,7 +115,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
                                 for (int s1p = 0; s1p < 2; s1p++) {
                                     for (int s2p = 0; s2p < 2; s2p++) {
                                         om__.local(at_lvl)(m1, m2, j) +=
-                                            dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
+                                                dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
                                     }
                                 }
                             }
@@ -140,8 +140,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
                                 for (int j = 0; j < 2; j++) {
                                     for (int s1p = 0; s1p < 2; s1p++) {
                                         for (int s2p = 0; s2p < 2; s2p++) {
-                                            dm1[i][j] +=
-                                                dm[s1p][s2p] * spin_rot_su2(i, s1p) * std::conj(spin_rot_su2(j, s2p));
+                                            dm1[i][j] += dm[s1p][s2p] * spin_rot_su2(i, s1p) *
+                                                         std::conj(spin_rot_su2(j, s2p));
                                         }
                                     }
                                 }
@@ -194,8 +194,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
              * multiple orbitals involved in the hubbard correction */
 
             /* NOTE : the atom order is important here. */
-            int at1_lvl    = om__.find_orbital_index(iap, n1, il);
-            int at2_lvl    = om__.find_orbital_index(jap, n2, jl);
+            int at1_lvl          = om__.find_orbital_index(iap, n1, il);
+            int at2_lvl          = om__.find_orbital_index(jap, n2, jl);
             auto const& occ_mtrx = om__.occ_mtrx_T(Ttot);
 
             mdarray<std::complex<double>, 3> dm_ia_ja({2 * il + 1, 2 * jl + 1, ctx.num_spins()});
@@ -207,8 +207,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
                         for (int m1p = 0; m1p < ib; m1p++) {
                             for (int m2p = 0; m2p < jb; m2p++) {
                                 dm_ia_ja(m1, m2, ispn) +=
-                                    rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
-                                    occ_mtrx(om__.offset(at1_lvl) + m1p, om__.offset(at2_lvl) + m2p, ispn) * f;
+                                        rotm[il](m1, m1p) * rotm[jl](m2, m2p) *
+                                        occ_mtrx(om__.offset(at1_lvl) + m1p, om__.offset(at2_lvl) + m2p, ispn) * f;
                             }
                         }
                     }
@@ -235,7 +235,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
                             for (int s1p = 0; s1p < 2; s1p++) {
                                 for (int s2p = 0; s2p < 2; s2p++) {
                                     om__.nonlocal(i)(m1, m2, j) +=
-                                        dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
+                                            dm[s1p][s2p] * spin_rot_su2(s1, s1p) * std::conj(spin_rot_su2(s2, s2p));
                                 }
                             }
                         }
@@ -244,10 +244,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             }
         }
     }
-
-
 }
 
-}
+} // namespace sirius
 
 #endif

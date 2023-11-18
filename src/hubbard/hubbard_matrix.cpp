@@ -98,12 +98,13 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
                                 (((n == constraint_.n()) || (n < 0)) || (constraint_.n() < 0))) {
                                 const auto& occ_matrix__ = constraint_.occupancy();
                                 if (constraint_.contains("lm_order")) {
-                                    const auto &lm_order_ = constraint_.lm_order();
+                                    const auto& lm_order_ = constraint_.lm_order();
                                     for (unsigned int sp = 0; sp < occ_matrix__.size();
                                          sp++) { // spin blocks up-up, up-down, down-down
                                         for (int m1 = 0; m1 < mmax; m1++) {
                                             for (int m2 = 0; m2 < mmax; m2++) {
-                                                local_constraints_[at_lvl](m2, m1, sp) = occ_matrix__[sp][l + lm_order_[m1]][l + lm_order_[m2]];
+                                                local_constraints_[at_lvl](m2, m1, sp) =
+                                                        occ_matrix__[sp][l + lm_order_[m1]][l + lm_order_[m2]];
                                             }
                                         }
                                     }

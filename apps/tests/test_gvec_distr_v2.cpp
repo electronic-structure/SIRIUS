@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_gvec_distr(double cutoff__)
+void
+test_gvec_distr(double cutoff__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
@@ -36,7 +37,7 @@ void test_gvec_distr(double cutoff__)
         auto G = gvec_coarse.gvec(ig);
 
         int igloc2 = gvec2.gvec_base_mapping(igloc);
-        auto G2 = gvec2.gvec(gvec2.offset() + igloc2);
+        auto G2    = gvec2.gvec(gvec2.offset() + igloc2);
         if (!(G[0] == G2[0] && G[1] == G2[1] && G[2] == G2[2])) {
             printf("wrong order of G-vectors: %i %i %i vs. %i %i %i\n", G[0], G[1], G[2], G2[0], G2[1], G2[2]);
             printf("ig=%i, ig2=%i\n", ig, gvec2.offset() + igloc2);
@@ -44,7 +45,8 @@ void test_gvec_distr(double cutoff__)
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

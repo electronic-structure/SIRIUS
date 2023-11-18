@@ -34,22 +34,20 @@ template <typename T>
 class Beta_projectors : public Beta_projectors_base<T>
 {
   protected:
-
     /// Generate plane-wave coefficients for beta-projectors of atom types.
-    void generate_pw_coefs_t()
+    void
+    generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
 
         auto& uc = this->ctx_.unit_cell();
 
         std::vector<int> offset_t(uc.num_atom_types());
-        std::generate(offset_t.begin(), offset_t.end(),
-                [n = 0, iat = 0, &uc] () mutable
-                {
-                    int offs = n;
-                    n += uc.atom_type(iat++).mt_basis_size();
-                    return offs;
-                });
+        std::generate(offset_t.begin(), offset_t.end(), [n = 0, iat = 0, &uc]() mutable {
+            int offs = n;
+            n += uc.atom_type(iat++).mt_basis_size();
+            return offs;
+        });
 
         auto& comm = this->gkvec_.comm();
 
@@ -78,7 +76,7 @@ class Beta_projectors : public Beta_projectors_base<T>
                     int idxrf = atom_type.indexb(xi).idxrf;
 
                     this->pw_coeffs_t_(igkloc, offset_t[atom_type.id()] + xi, 0) =
-                        static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
+                            static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
                 }
             }
         }
@@ -118,7 +116,7 @@ class Beta_projectors : public Beta_projectors_base<T>
             for (int ichunk = 0; ichunk < this->num_chunks(); ichunk++) {
                 /* wrap chunk of beta-projectors */
                 matrix<std::complex<T>> tmp({this->num_gkvec_loc(), this->beta_chunks_[ichunk].num_beta_},
-                        &this->pw_coeffs_all_atoms_(0, this->beta_chunks_[ichunk].offset_, 0));
+                                            &this->pw_coeffs_all_atoms_(0, this->beta_chunks_[ichunk].offset_, 0));
                 local::beta_projectors_generate_cpu(tmp, this->pw_coeffs_t_, ichunk, /*j*/ 0,
                                                     this->beta_chunks_[ichunk], ctx__, gkvec__);
             }

@@ -2,7 +2,7 @@
 #define __SPHERIC_FUNCTION_SET_HPP__
 
 #include "unit_cell/unit_cell.hpp"
-//#include "core/strong_type.hpp"
+// #include "core/strong_type.hpp"
 
 namespace sirius {
 
@@ -26,19 +26,19 @@ class Spheric_function_set
 
     bool all_atoms_{false};
 
-    void init(std::function<lmax_t(int)> lmax__, spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
+    void
+    init(std::function<lmax_t(int)> lmax__, spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
     {
         func_.resize(unit_cell_->num_atoms());
 
-        auto set_func = [&](int ia)
-        {
+        auto set_func = [&](int ia) {
             if (sptr__) {
                 func_[ia] = Spheric_function<function_domain_t::spectral, T>(
-                            sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia,
-                            sptr__->lmmax, unit_cell_->atom(ia).radial_grid());
+                        sptr__->ptr + sptr__->lmmax * sptr__->nrmtmax * ia, sptr__->lmmax,
+                        unit_cell_->atom(ia).radial_grid());
             } else {
                 func_[ia] = Spheric_function<function_domain_t::spectral, T>(sf::lmmax(lmax__(ia)),
-                            unit_cell_->atom(ia).radial_grid());
+                                                                             unit_cell_->atom(ia).radial_grid());
             }
         };
 
@@ -60,8 +60,8 @@ class Spheric_function_set
 
     /// Constructor for all atoms.
     Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::function<lmax_t(int)> lmax__,
-            splindex_block<I> const* spl_atoms__ = nullptr,
-            spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
+                         splindex_block<I> const* spl_atoms__        = nullptr,
+                         spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , spl_atoms_{spl_atoms__}
@@ -79,7 +79,7 @@ class Spheric_function_set
 
     /// Constructor for a subset of atoms.
     Spheric_function_set(std::string label__, Unit_cell const& unit_cell__, std::vector<int> atoms__,
-            std::function<lmax_t(int)> lmax__, splindex_block<I> const* spl_atoms__ = nullptr)
+                         std::function<lmax_t(int)> lmax__, splindex_block<I> const* spl_atoms__ = nullptr)
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , atoms_{atoms__}
@@ -94,27 +94,32 @@ class Spheric_function_set
         init(lmax__);
     }
 
-    auto const& atoms() const
+    auto const&
+    atoms() const
     {
         return atoms_;
     }
 
-    auto& operator[](int ia__)
+    auto&
+    operator[](int ia__)
     {
         return func_[ia__];
     }
 
-    auto const& operator[](int ia__) const
+    auto const&
+    operator[](int ia__) const
     {
         return func_[ia__];
     }
 
-    inline auto const& unit_cell() const
+    inline auto const&
+    unit_cell() const
     {
         return *unit_cell_;
     }
 
-    inline void zero()
+    inline void
+    zero()
     {
         if (unit_cell_) {
             for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) {
@@ -128,16 +133,18 @@ class Spheric_function_set
     /// Synchronize global function.
     /** Assuming that each MPI rank was handling part of the global spherical function, broadcast data
      *  from each rank. As a result, each rank stores a full and identical copy of global spherical function. */
-    inline void sync(splindex_block<I> const& spl_atoms__)
+    inline void
+    sync(splindex_block<I> const& spl_atoms__)
     {
         for (int i = 0; i < spl_atoms__.size(); i++) {
             auto loc = spl_atoms__.location(typename I::global(i));
-            int ia = atoms_[i];
+            int ia   = atoms_[i];
             unit_cell_->comm().bcast(func_[ia].at(memory_t::host), static_cast<int>(func_[ia].size()), loc.ib);
         }
     }
 
-    Spheric_function_set<T, I>& operator+=(Spheric_function_set<T, I> const& rhs__)
+    Spheric_function_set<T, I>&
+    operator+=(Spheric_function_set<T, I> const& rhs__)
     {
         for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) {
             if (func_[ia].size() && rhs__[ia].size()) {
@@ -173,7 +180,8 @@ class Spheric_function_set
 };
 
 template <typename T, typename I>
-inline T inner(Spheric_function_set<T, I> const& f1__, Spheric_function_set<T, I> const& f2__)
+inline T
+inner(Spheric_function_set<T, I> const& f1__, Spheric_function_set<T, I> const& f2__)
 {
     auto ptr = (f1__.spl_atoms_) ? f1__.spl_atoms_ : f2__.spl_atoms_;
 
@@ -226,7 +234,7 @@ copy(Spheric_function_set<T, I> const& src__, spheric_function_set_ptr_t<T> dest
     if (src__.spl_atoms_) {
         int ld = dest__.lmmax * dest__.nrmtmax;
         src__.unit_cell_->comm().allgather(dest__.ptr, ld * src__.spl_atoms_->local_size(),
-                ld * src__.spl_atoms_->global_offset());
+                                           ld * src__.spl_atoms_->global_offset());
     }
 }
 
@@ -286,6 +294,6 @@ axpy(T alpha__, Spheric_function_set<T, I> const& x__, Spheric_function_set<T, I
     }
 }
 
-}
+} // namespace sirius
 
 #endif

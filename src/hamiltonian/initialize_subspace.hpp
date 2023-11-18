@@ -84,7 +84,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
     std::vector<int> atoms(ctx.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
     kp__.generate_atomic_wave_functions(
-        atoms, [&](int iat) { return &ctx.unit_cell().atom_type(iat).indexb_wfs(); }, *ctx.ri().ps_atomic_wf_, phi);
+            atoms, [&](int iat) { return &ctx.unit_cell().atom_type(iat).indexb_wfs(); }, *ctx.ri().ps_atomic_wf_, phi);
 
     /* generate some random noise */
     std::vector<T> tmp(4096);

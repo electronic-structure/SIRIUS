@@ -61,8 +61,7 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
     auto& gen_solver = ctx.gen_evp_solver();
 
     for (int ig = 0; ig < kp__.num_gkvec(); ig++) {
-        hmlt.set(ig, ig,
-                 0.5 * std::pow(kp__.gkvec().template gkvec_cart<index_domain_t::global>(ig).length(), 2));
+        hmlt.set(ig, ig, 0.5 * std::pow(kp__.gkvec().template gkvec_cart<index_domain_t::global>(ig).length(), 2));
         ovlp.set(ig, ig, 1);
     }
 
@@ -139,21 +138,22 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
             }
             /* compute <G+k|beta> D */
             la::wrap(la::lib_t::blas)
-                .gemm('N', 'N', kp__.num_gkvec_row(), nbf, nbf, &la::constant<F>::one(), &beta_row(0, offs),
-                      beta_row.ld(), &dop(0, 0), dop.ld(), &la::constant<F>::zero(), &btmp(0, 0), btmp.ld());
+                    .gemm('N', 'N', kp__.num_gkvec_row(), nbf, nbf, &la::constant<F>::one(), &beta_row(0, offs),
+                          beta_row.ld(), &dop(0, 0), dop.ld(), &la::constant<F>::zero(), &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
             la::wrap(la::lib_t::blas)
-                .gemm('N', 'C', kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf, &la::constant<F>::one(), &btmp(0, 0),
-                      btmp.ld(), &beta_col(0, offs), beta_col.ld(), &la::constant<F>::one(), &hmlt(0, 0), hmlt.ld());
+                    .gemm('N', 'C', kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf, &la::constant<F>::one(),
+                          &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(), &la::constant<F>::one(),
+                          &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx.unit_cell().atom(ia).type().augment()) {
                 la::wrap(la::lib_t::blas)
-                    .gemm('N', 'N', kp__.num_gkvec_row(), nbf, nbf, &la::constant<F>::one(), &beta_row(0, offs),
-                          beta_row.ld(), &qop(0, 0), qop.ld(), &la::constant<F>::zero(), &btmp(0, 0), btmp.ld());
+                        .gemm('N', 'N', kp__.num_gkvec_row(), nbf, nbf, &la::constant<F>::one(), &beta_row(0, offs),
+                              beta_row.ld(), &qop(0, 0), qop.ld(), &la::constant<F>::zero(), &btmp(0, 0), btmp.ld());
                 la::wrap(la::lib_t::blas)
-                    .gemm('N', 'C', kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf, &la::constant<F>::one(),
-                          &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(), &la::constant<F>::one(),
-                          &ovlp(0, 0), ovlp.ld());
+                        .gemm('N', 'C', kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf, &la::constant<F>::one(),
+                              &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(), &la::constant<F>::one(),
+                              &ovlp(0, 0), ovlp.ld());
             }
         } // i (atoms in chunk)
     }
@@ -206,7 +206,7 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 
     auto layout_in = evec.grid_layout(0, 0, kp__.num_gkvec(), ctx.num_bands());
     auto layout_out =
-        kp__.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn__), wf::band_range(0, ctx.num_bands()));
+            kp__.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn__), wf::band_range(0, ctx.num_bands()));
 
     costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<T>>::one(),
                      la::constant<std::complex<T>>::zero(), kp__.gkvec().comm().native());
@@ -278,9 +278,9 @@ diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
     }
 
     auto result = davidson<T, F, davidson_evp_t::overlap>(
-        Hk__, kp__, wf::num_bands(nevec), num_mag_dims, *psi, [](int i, int ispn) { return 1e-10; },
-        itso.residual_tolerance(), itso.num_steps(), itso.locking(), 10, itso.converge_by_energy(), itso.extra_ortho(),
-        std::cout, 0);
+            Hk__, kp__, wf::num_bands(nevec), num_mag_dims, *psi, [](int i, int ispn) { return 1e-10; },
+            itso.residual_tolerance(), itso.num_steps(), itso.locking(), 10, itso.converge_by_energy(),
+            itso.extra_ortho(), std::cout, 0);
 
     mdarray<real_type<F>, 1> eval({nevec});
     for (int i = 0; i < nevec; i++) {
@@ -317,9 +317,9 @@ diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
         std::ostream* out = (kp__.comm().rank() == 0) ? &std::cout : &s;
 
         result = davidson<T, F, davidson_evp_t::hamiltonian>(
-            Hk__, kp__, wf::num_bands(ctx.num_bands()), wf::num_mag_dims(ctx.num_mag_dims()),
-            kp__.spinor_wave_functions(), tolerance, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
-            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, 0);
+                Hk__, kp__, wf::num_bands(ctx.num_bands()), wf::num_mag_dims(ctx.num_mag_dims()),
+                kp__.spinor_wave_functions(), tolerance, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
+                itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, 0);
         for (int ispn = 0; ispn < ctx.num_spinors(); ispn++) {
             for (int j = 0; j < ctx.num_bands(); j++) {
                 kp__.band_energy(j, ispn, result.eval(j, ispn));

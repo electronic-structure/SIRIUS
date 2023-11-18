@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_gvec_distr(double cutoff__)
+void
+test_gvec_distr(double cutoff__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
@@ -14,8 +15,8 @@ void test_gvec_distr(double cutoff__)
 
     std::vector<double_complex> fpw(gvec.count());
     for (int igloc = 0; igloc < gvec.count(); igloc++) {
-        int ig = igloc + gvec.offset();
-        fpw[igloc] = type_wrapper<double_complex>::random(); //ig;
+        int ig     = igloc + gvec.offset();
+        fpw[igloc] = type_wrapper<double_complex>::random(); // ig;
     }
 
     std::vector<double_complex> fpw_fft(gvp.gvec_count_fft());
@@ -28,7 +29,7 @@ void test_gvec_distr(double cutoff__)
     }
 
     runtime::pstdout pout(mpi_comm_world());
-    
+
     pout.printf("--- num_gvec: %i ---\n", gvec.num_gvec());
     pout.printf("--- fft rank: %i --- \n", gvp.fft_comm().rank());
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
@@ -37,7 +38,8 @@ void test_gvec_distr(double cutoff__)
     pout.printf("diff: %f\n", diff);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

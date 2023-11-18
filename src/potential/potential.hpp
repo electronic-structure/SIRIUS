@@ -31,12 +31,15 @@
 
 namespace sirius {
 
-void check_xc_potential(Density const& rho__);
+void
+check_xc_potential(Density const& rho__);
 
-double xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
-        int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
+double
+xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
+      int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
 
-double density_residual_hartree_energy(Density const& rho1__, Density const& rho2__);
+double
+density_residual_hartree_energy(Density const& rho1__, Density const& rho2__);
 
 /// Generate effective potential from charge density and magnetization.
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the
@@ -142,22 +145,28 @@ class Potential : public Field4D
     /** This is used to verify the variational derivative of Exc w.r.t. magnetisation mag */
     double add_delta_mag_xc_{0};
 
-    void init_PAW();
+    void
+    init_PAW();
 
     /// Calculate PAW potential for a given atom.
     /** \return Hartree energy contribution. */
-    double calc_PAW_local_potential(typename atom_index_t::global ia__, std::vector<Flm const*> ae_density,
-            std::vector<Flm const*> ps_density);
+    double
+    calc_PAW_local_potential(typename atom_index_t::global ia__, std::vector<Flm const*> ae_density,
+                             std::vector<Flm const*> ps_density);
 
-    void calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__);
+    void
+    calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__);
 
-    double calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
+    double
+    calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
-    double calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const& density_matrix__,
-            mdarray<double, 3> const& paw_dij__) const;
+    double
+    calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const& density_matrix__,
+                             mdarray<double, 3> const& paw_dij__) const;
 
     /// Compute MT part of the potential and MT multipole moments
-    auto poisson_vmt(Periodic_function<double> const& rho__) const
+    auto
+    poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
@@ -167,8 +176,9 @@ class Potential : public Field4D
         for (auto it : unit_cell_.spl_num_atoms()) {
             auto ia = it.i;
 
-            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.mt()[ia],
-                const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
+            auto qmt_re = poisson_vmt<false>(
+                    unit_cell_.atom(ia), rho__.mt()[ia],
+                    const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
 
             SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
         }
@@ -178,8 +188,9 @@ class Potential : public Field4D
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
-    void poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__,
-            mdarray<std::complex<double>, 2>& qit__, std::complex<double>* rho_pw__);
+    void
+    poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__, mdarray<std::complex<double>, 2>& qit__,
+                          std::complex<double>* rho_pw__);
 
     /// Generate local part of pseudo potential.
     /** Total local potential is a lattice sum:
@@ -245,7 +256,8 @@ class Potential : public Field4D
      *   Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
      * \f]
      */
-    void generate_local_potential()
+    void
+    generate_local_potential()
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
@@ -254,15 +266,15 @@ class Potential : public Field4D
         /* get form-factors for all G shells */
         auto const ff = ctx_.ri().vloc_->values(q, ctx_.comm());
         /* make Vloc(G) */
-        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(),
-                ctx_.phase_factors_t(), ff);
+        auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
+                                                               ff);
 
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
 
         local_potential_->fft_transform(1);
 
         if (env::print_checksum()) {
-            auto cs = local_potential_->checksum_pw();
+            auto cs  = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
             print_checksum("local_potential_pw", cs, ctx_.out());
             print_checksum("local_potential_rg", cs1, ctx_.out());
@@ -270,22 +282,26 @@ class Potential : public Field4D
     }
 
     /// Generate XC potential in the muffin-tins.
-    void xc_mt(Density const& density__);
+    void
+    xc_mt(Density const& density__);
 
     /// Generate non-magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
-    void xc_rg_nonmagnetic(Density const& density__);
+    void
+    xc_rg_nonmagnetic(Density const& density__);
 
     /// Generate magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
-    void xc_rg_magnetic(Density const& density__);
+    void
+    xc_rg_magnetic(Density const& density__);
 
   public:
     /// Constructor
     Potential(Simulation_context& ctx__);
 
     /// Recompute some variables that depend on atomic positions or the muffin-tin radius.
-    void update();
+    void
+    update();
 
     /// Solve Poisson equation for a single atom.
     template <bool free_atom, typename T>
@@ -306,8 +322,8 @@ class Potential : public Field4D
         }
         std::vector<T> qmt(lmmax_rho, 0);
 
-        double R    = atom__.mt_radius();
-        int    nmtp = atom__.num_mt_points();
+        double R = atom__.mt_radius();
+        int nmtp = atom__.num_mt_points();
 
         #pragma omp parallel
         {
@@ -352,9 +368,10 @@ class Potential : public Field4D
                         if (free_atom) {
                             vha_mt__(lm, ir) = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
                         } else {
-                            double d1 = 1.0 / std::pow(R, 2 * l + 1);
+                            double d1        = 1.0 / std::pow(R, 2 * l + 1);
                             vha_mt__(lm, ir) = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                  (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
+                                               (g2.back() - g2[ir]) * std::pow(r, l) -
+                                               (g1.back() - g1[ir]) * std::pow(r, l) * d1;
                         }
                         vha_mt__(lm, ir) *= fact;
                     }
@@ -426,7 +443,8 @@ class Potential : public Field4D
      *  Multipole moments of each plane-wave are computed as:
      *  \f[
      *      q_{\ell m}^{\alpha}({\bf G}) = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G}) i^{\ell}
-     *          \int_{0}^{R} j_{\ell}(Gr) r^{\ell + 2} dr = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G}) i^{\ell}
+     *          \int_{0}^{R} j_{\ell}(Gr) r^{\ell + 2} dr = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G})
+     * i^{\ell}
      *          \left\{\begin{array}{ll} \frac{R^{\ell + 2} j_{\ell + 1}(GR)}{G} & G \ne 0 \\
      *                                   \frac{R^3}{3} \delta_{\ell 0} & G = 0 \end{array} \right.
      *  \f]
@@ -439,28 +457,22 @@ class Potential : public Field4D
      *  Now we are going to modify interstitial charge density inside the muffin-tin region in order to
      *  get the true multipole moments. We will add a pseudodensity of the form:
      *  \f[
-     *      P({\bf r}) = \sum_{\ell m} p_{\ell m}^{\alpha} Y_{\ell m}(\hat {\bf r}) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n
-     *  \f]
-     *  Radial functions of the pseudodensity are chosen in a special way. First, they produce a confined and
-     *  smooth functions inside muffin-tins and second (most important) plane-wave coefficients of the
-     *  pseudodensity can be computed analytically. Let's find the relation between \f$ p_{\ell m}^{\alpha} \f$
-     *  coefficients and true and interstitial multipole moments first. We are searching for the pseudodensity which restores
-     *  the true multipole moments:
-     *  \f[
-     *      \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \Big(\rho^{I}({\bf r}) + P({\bf r})\Big) d {\bf r} = q_{\ell m}^{\alpha}
-     *  \f]
-     *  Then
-     *  \f[
-     *      p_{\ell m}^{\alpha} = \frac{q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}}
+     *      P({\bf r}) = \sum_{\ell m} p_{\ell m}^{\alpha} Y_{\ell m}(\hat {\bf r}) r^{\ell}
+     * \left(1-\frac{r^2}{R^2}\right)^n \f] Radial functions of the pseudodensity are chosen in a special way. First,
+     * they produce a confined and smooth functions inside muffin-tins and second (most important) plane-wave
+     * coefficients of the pseudodensity can be computed analytically. Let's find the relation between \f$ p_{\ell
+     * m}^{\alpha} \f$ coefficients and true and interstitial multipole moments first. We are searching for the
+     * pseudodensity which restores the true multipole moments: \f[ \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell}
+     * \Big(\rho^{I}({\bf r}) + P({\bf r})\Big) d {\bf r} = q_{\ell m}^{\alpha} \f] Then \f[ p_{\ell m}^{\alpha} =
+     * \frac{q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}}
      *                  {\int r^{2 \ell + 2} \left(1-\frac{r^2}{R^2}\right)^n dr} =
-     *         (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \frac{2 \Gamma(5/2 + \ell + n)}{R^{2\ell + 3}\Gamma(3/2 + \ell) \Gamma(n + 1)}
-     *  \f]
+     *         (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \frac{2 \Gamma(5/2 + \ell + n)}{R^{2\ell + 3}\Gamma(3/2 +
+     * \ell) \Gamma(n + 1)} \f]
      *
      *  Now let's find the plane-wave coefficients of \f$ P({\bf r}) \f$ inside each muffin-tin:
      *  \f[
-     *      P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})
-     *         p_{\ell m}^{\alpha} \int_{0}^{R} j_{\ell}(G r) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n r^2 dr
-     *  \f]
+     *      P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf
+     * \hat G}) p_{\ell m}^{\alpha} \int_{0}^{R} j_{\ell}(G r) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n r^2 dr \f]
      *
      *  Integral of the spherical Bessel function with the radial pseudodensity component is taken analytically:
      *  \f[
@@ -470,10 +482,9 @@ class Potential : public Field4D
      *
      *  The final expression for the pseudodensity plane-wave component is:
      *  \f[
-     *       P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})
-     *          (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \Big( \frac{2}{GR} \Big)^{n+1}
-     *          \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)} j_{n + \ell + 1}(GR)
-     *  \f]
+     *       P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell
+     * m}({\bf \hat G}) (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \Big( \frac{2}{GR} \Big)^{n+1} \frac{ \Gamma(5/2 +
+     * n + \ell) } {R^{\ell} \Gamma(3/2+\ell)} j_{n + \ell + 1}(GR) \f]
      *
      *  For \f$ G=0 \f$ only \f$ \ell = 0 \f$ contribution survives:
      *  \f[
@@ -517,7 +528,8 @@ class Potential : public Field4D
      *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
      *  \f]
      */
-  void poisson(Periodic_function<double> const& rho);
+    void
+    poisson(Periodic_function<double> const& rho);
 
     /// Generate XC potential and energy density
     /** In case of spin-unpolarized GGA the XC potential has the following expression:
@@ -565,7 +577,8 @@ class Potential : public Field4D
      *      - \a sigma array
      *      - a call to Libxc must be performed \a sigma derivatives must be obtained
      *      - \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ in spectral representation
-     *      - gradient of \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ in spectral representation
+     *      - gradient of \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ in spectral
+     * representation
      *      - gradient of \f$ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \f$ on the real space grid
      *
      *  Expression for spin-polarized potential has a bit more complicated form:
@@ -599,22 +612,29 @@ class Potential : public Field4D
      *  \f}
      */
     template <bool add_pseudo_core__ = false>
-    void xc(Density const& rho__);
+    void
+    xc(Density const& rho__);
 
     /// Generate effective potential and magnetic field from charge density and magnetization.
-    void generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
+    void
+    generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
 
-    void save(std::string name__);
+    void
+    save(std::string name__);
 
-    void load(std::string name__);
+    void
+    load(std::string name__);
 
-    void update_atomic_potential();
+    void
+    update_atomic_potential();
 
     template <device_t pu>
-    void add_mt_contribution_to_pw();
+    void
+    add_mt_contribution_to_pw();
 
     /// Generate plane-wave coefficients of the potential in the interstitial region.
-    void generate_pw_coefs();
+    void
+    generate_pw_coefs();
 
     /// Calculate D operator from potential and augmentation charge.
     /** The following real symmetric matrix is computed:
@@ -623,35 +643,28 @@ class Potential : public Field4D
      *  \f]
      *  In the plane-wave domain this integrals transform into sum over Fourier components:
      *  \f[
-     *      D_{\xi \xi'}^{\alpha} = \sum_{\bf G} \langle V |{\bf G}\rangle \langle{\bf G}|Q_{\xi \xi'}^{\alpha} \rangle =
-     *        \sum_{\bf G} V^{*}({\bf G}) e^{-i{\bf r}_{\alpha}{\bf G}} Q_{\xi \xi'}^{A}({\bf G}) =
-     *        \sum_{\bf G} Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G})
-     *  \f]
-     *  where \f$ \alpha \f$ is the atom, \f$ A \f$ is the atom type and
-     *  \f[
-     *      \tilde V_{\alpha}({\bf G}) = e^{i{\bf r}_{\alpha}{\bf G}} V({\bf G})
-     *  \f]
-     *  Both \f$ V({\bf r}) \f$ and \f$ Q({\bf r}) \f$ functions are real and the following condition is fulfilled:
-     *  \f[
-     *      \tilde V_{\alpha}({\bf G}) = \tilde V_{\alpha}^{*}(-{\bf G})
-     *  \f]
-     *  \f[
-     *      Q_{\xi \xi'}({\bf G}) = Q_{\xi \xi'}^{*}(-{\bf G})
-     *  \f]
-     *  In the sum over plane-wave coefficients the \f$ {\bf G} \f$ and \f$ -{\bf G} \f$ contributions will give:
-     *  \f[
-     *       Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) + Q_{\xi \xi'}^{A}(-{\bf G}) \tilde V_{\alpha}^{*}(-{\bf G}) =
+     *      D_{\xi \xi'}^{\alpha} = \sum_{\bf G} \langle V |{\bf G}\rangle \langle{\bf G}|Q_{\xi \xi'}^{\alpha} \rangle
+     * = \sum_{\bf G} V^{*}({\bf G}) e^{-i{\bf r}_{\alpha}{\bf G}} Q_{\xi \xi'}^{A}({\bf G}) = \sum_{\bf G} Q_{\xi
+     * \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) \f] where \f$ \alpha \f$ is the atom, \f$ A \f$ is the atom
+     * type and \f[ \tilde V_{\alpha}({\bf G}) = e^{i{\bf r}_{\alpha}{\bf G}} V({\bf G}) \f] Both \f$ V({\bf r}) \f$ and
+     * \f$ Q({\bf r}) \f$ functions are real and the following condition is fulfilled: \f[ \tilde V_{\alpha}({\bf G}) =
+     * \tilde V_{\alpha}^{*}(-{\bf G}) \f] \f[ Q_{\xi \xi'}({\bf G}) = Q_{\xi \xi'}^{*}(-{\bf G}) \f] In the sum over
+     * plane-wave coefficients the \f$ {\bf G} \f$ and \f$ -{\bf G} \f$ contributions will give: \f[ Q_{\xi
+     * \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) + Q_{\xi \xi'}^{A}(-{\bf G}) \tilde V_{\alpha}^{*}(-{\bf G}) =
      *          2 \Re \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Re \Big( \tilde V_{\alpha}({\bf G}) \Big) +
      *          2 \Im \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Im \Big( \tilde V_{\alpha}({\bf G}) \Big)
      *  \f]
      *  This allows the use of a <b>dgemm</b> instead of a <b>zgemm</b> when \f$  D_{\xi \xi'}^{\alpha} \f$ matrix
      *  is calculated for all atoms of the same type.
      */
-    void generate_D_operator_matrix();
+    void
+    generate_D_operator_matrix();
 
-    void generate_PAW_effective_potential(Density const& density);
+    void
+    generate_PAW_effective_potential(Density const& density);
 
-    double PAW_xc_total_energy(Density const& density__) const
+    double
+    PAW_xc_total_energy(Density const& density__) const
     {
         if (!unit_cell_.num_paw_atoms()) {
             return 0;
@@ -673,22 +686,24 @@ class Potential : public Field4D
             auto y00inv = 1.0 / y00;
             for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
                 s(ir) = y00inv * ((*paw_ae_exc_)[ia](0, ir) * ae_core[ir] - (*paw_ps_exc_)[ia](0, ir) * ps_core[ir]) *
-                    std::pow(atom_type.radial_grid(ir), 2);
+                        std::pow(atom_type.radial_grid(ir), 2);
             }
             ecore += s.interpolate().integrate(0);
         }
         comm_.allreduce(&ecore, 1);
 
         return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
-            inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
+               inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
     }
 
-    double PAW_total_energy(Density const& density__) const
+    double
+    PAW_total_energy(Density const& density__) const
     {
         return paw_hartree_total_energy_ + PAW_xc_total_energy(density__);
     }
 
-    double PAW_one_elec_energy(Density const& density__) const
+    double
+    PAW_one_elec_energy(Density const& density__) const
     {
         double e{0};
         #pragma omp parallel for reduction(+:e)
@@ -701,134 +716,160 @@ class Potential : public Field4D
         return e;
     }
 
-    void check_potential_continuity_at_mt();
+    void
+    check_potential_continuity_at_mt();
 
-    auto& effective_potential()
+    auto&
+    effective_potential()
     {
         return this->scalar();
     }
 
-    auto const& effective_potential() const
+    auto const&
+    effective_potential() const
     {
         return this->scalar();
     }
 
-    auto& local_potential()
+    auto&
+    local_potential()
     {
         return *local_potential_;
     }
 
-    auto const& local_potential() const
+    auto const&
+    local_potential() const
     {
         return *local_potential_;
     }
 
-    auto& dveff()
+    auto&
+    dveff()
     {
         return *dveff_;
     }
 
-    auto const& effective_potential_mt(atom_index_t::local ialoc) const
+    auto const&
+    effective_potential_mt(atom_index_t::local ialoc) const
     {
         auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
         return this->scalar().mt()[ia];
     }
 
-    auto& effective_magnetic_field(int i)
+    auto&
+    effective_magnetic_field(int i)
     {
         return this->vector(i);
     }
 
-    auto& effective_magnetic_field(int i) const
+    auto&
+    effective_magnetic_field(int i) const
     {
         return this->vector(i);
     }
 
-    auto& hartree_potential()
+    auto&
+    hartree_potential()
     {
         return *hartree_potential_;
     }
 
-    auto const& hartree_potential_mt(atom_index_t::local ialoc) const
+    auto const&
+    hartree_potential_mt(atom_index_t::local ialoc) const
     {
         auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
         return hartree_potential_->mt()[ia];
     }
 
-    auto& xc_potential()
+    auto&
+    xc_potential()
     {
         return *xc_potential_;
     }
 
-    auto const& xc_potential() const
+    auto const&
+    xc_potential() const
     {
         return *xc_potential_;
     }
 
-    auto& xc_energy_density()
+    auto&
+    xc_energy_density()
     {
         return *xc_energy_density_;
     }
 
-    auto const& xc_energy_density() const
+    auto const&
+    xc_energy_density() const
     {
         return *xc_energy_density_;
     }
 
-    inline auto vh_el(int ia) const
+    inline auto
+    vh_el(int ia) const
     {
         return vh_el_(ia);
     }
 
-    auto energy_vha() const
+    auto
+    energy_vha() const
     {
         return energy_vha_;
     }
 
-    auto const& veff_pw(int ig__) const
+    auto const&
+    veff_pw(int ig__) const
     {
         return veff_pw_(ig__);
     }
 
-    void set_veff_pw(std::complex<double> const* veff_pw__)
+    void
+    set_veff_pw(std::complex<double> const* veff_pw__)
     {
         std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
     }
 
-    auto const& rm_inv_pw(int ig__) const
+    auto const&
+    rm_inv_pw(int ig__) const
     {
         return rm_inv_pw_(ig__);
     }
 
-    void set_rm_inv_pw(std::complex<double> const* rm_inv_pw__)
+    void
+    set_rm_inv_pw(std::complex<double> const* rm_inv_pw__)
     {
         std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
     }
 
-    auto const& rm2_inv_pw(int ig__) const
+    auto const&
+    rm2_inv_pw(int ig__) const
     {
         return rm2_inv_pw_(ig__);
     }
 
-    inline void set_rm2_inv_pw(std::complex<double> const* rm2_inv_pw__)
+    inline void
+    set_rm2_inv_pw(std::complex<double> const* rm2_inv_pw__)
     {
         std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(memory_t::host));
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
-    auto energy_vxc(Density const& density__) const
+    auto
+    energy_vxc(Density const& density__) const
     {
         return inner(density__.rho(), xc_potential());
     }
 
     /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
-    auto energy_vxc_core(Density const& density__) const
+    auto
+    energy_vxc_core(Density const& density__) const
     {
         return inner(density__.rho_pseudo_core(), xc_potential().rg());
     }
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
-    auto energy_exc(Density const& density__) const
+    auto
+    energy_exc(Density const& density__) const
     {
         double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
@@ -837,35 +878,42 @@ class Potential : public Field4D
         return exc;
     }
 
-    bool is_gradient_correction() const;
+    bool
+    is_gradient_correction() const;
 
-    auto& vsigma(int idx__)
+    auto&
+    vsigma(int idx__)
     {
         RTE_ASSERT(idx__ >= 0 && idx__ < 3);
         return (*vsigma_[idx__].get());
     }
 
-    inline void add_delta_rho_xc(double d__)
+    inline void
+    add_delta_rho_xc(double d__)
     {
         add_delta_rho_xc_ = d__;
     }
 
-    inline void add_delta_mag_xc(double d__)
+    inline void
+    add_delta_mag_xc(double d__)
     {
         add_delta_mag_xc_ = d__;
     }
 
-    auto& U() const
+    auto&
+    U() const
     {
         return *U_;
     }
 
-    auto& hubbard_potential()
+    auto&
+    hubbard_potential()
     {
         return hubbard_potential_;
     }
 
-    auto const& hubbard_potential() const
+    auto const&
+    hubbard_potential() const
     {
         return hubbard_potential_;
     }

@@ -2,14 +2,16 @@
 
 using namespace sirius;
 
-inline void memcpy_simple_1(char* dest__, char* src__, size_t n__)
+inline void
+memcpy_simple_1(char* dest__, char* src__, size_t n__)
 {
     for (size_t i = 0; i < n__; i++) {
         dest__[i] = src__[i];
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -48,5 +50,4 @@ int main(int argn, char** argv)
     std::fill(v1.begin(), v1.end(), 0.0);
     t += omp_get_wtime();
     printf("std::fill bandwidth     : %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
-
 }

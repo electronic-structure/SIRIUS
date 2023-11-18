@@ -824,7 +824,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
 {
     /* number of beta projectors */
     int nbeta = bp_coeffs__.beta_chunk_->num_beta_;
-    auto mt = ctx__.processing_unit_memory_t();
+    auto mt   = ctx__.processing_unit_memory_t();
 
     for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
         /* total number of occupied bands for this spin */
@@ -850,7 +850,7 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
                     continue;
                 }
                 int offs = bp_coeffs__.beta_chunk_->desc_(beta_desc_idx::offset, ia);
-                int ja = bp_coeffs__.beta_chunk_->desc_(beta_desc_idx::ia, ia);
+                int ja   = bp_coeffs__.beta_chunk_->desc_(beta_desc_idx::ia, ia);
 
                 for (int i = 0; i < nbnd_loc; i++) {
                     /* global index of band */
@@ -864,8 +864,8 @@ add_k_point_contribution_dm_pwpp_collinear(Simulation_context& ctx__, K_point<T>
 
                 la::wrap(la::lib_t::blas)
                         .gemm('N', 'T', nbf, nbf, nbnd_loc, &la::constant<std::complex<double>>::one(), &bp1(0, 0),
-                                  bp1.ld(), &bp2(0, 0), bp2.ld(), &la::constant<std::complex<double>>::one(),
-                                  &density_matrix__[ja](0, 0, ispn), density_matrix__[ja].ld());
+                              bp1.ld(), &bp2(0, 0), bp2.ld(), &la::constant<std::complex<double>>::one(),
+                              &density_matrix__[ja](0, 0, ispn), density_matrix__[ja].ld());
             }
         }
     } // ispn

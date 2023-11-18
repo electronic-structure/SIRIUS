@@ -31,7 +31,8 @@ namespace sirius {
 
 /// Return the timestamp string in a specified format.
 /** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" */
-inline auto timestamp(std::string fmt)
+inline auto
+timestamp(std::string fmt)
 {
     timeval t;
     gettimeofday(&t, NULL);
@@ -44,7 +45,8 @@ inline auto timestamp(std::string fmt)
 }
 
 /// Wall-clock time in seconds.
-inline double wtime()
+inline double
+wtime()
 {
     timeval t;
     gettimeofday(&t, NULL);
@@ -53,17 +55,18 @@ inline double wtime()
 
 using time_point_t = std::chrono::high_resolution_clock::time_point;
 
-inline auto time_now()
+inline auto
+time_now()
 {
     return std::chrono::high_resolution_clock::now();
 }
 
-inline double time_interval(std::chrono::high_resolution_clock::time_point t0)
+inline double
+time_interval(std::chrono::high_resolution_clock::time_point t0)
 {
     return std::chrono::duration_cast<std::chrono::duration<double>>(time_now() - t0).count();
 }
 
-}
+} // namespace sirius
 
 #endif
-
