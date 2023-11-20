@@ -52,13 +52,15 @@ class Overlap_operator
     {
     }
 
-    const Simulation_context& ctx() const
+    const Simulation_context&
+    ctx() const
     {
         return ctx_;
     }
 
     /// global dimension of the operator
-    int size() const
+    int
+    size() const
     {
         return n_;
     }
@@ -71,8 +73,8 @@ class Overlap_operator
 /// computes C <- A.H x B
 template <class T>
 void
-inner(memory_t mem, spla::Context& ctx, const mdarray<T, 2>& A, const mdarray<T, 2>& B,
-      mdarray<T, 2>& C, const mpi::Communicator& comm, int row_offset = 0, int col_offset = 0)
+inner(memory_t mem, spla::Context& ctx, const mdarray<T, 2>& A, const mdarray<T, 2>& B, mdarray<T, 2>& C,
+      const mpi::Communicator& comm, int row_offset = 0, int col_offset = 0)
 {
     auto spla_mat_dist = spla::MatrixDistribution::create_mirror(comm.native());
     int m              = A.size(1);
@@ -113,15 +115,17 @@ class InverseS_k : public local::Overlap_operator
         initialize(bp);
     }
 
-    mdarray<numeric_t, 2> apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
+    mdarray<numeric_t, 2>
+    apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
-    void apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X,
-               memory_t pm = memory_t::none);
+    void
+    apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
     const std::string label{"inverse overlap"};
 
   private:
-    void initialize(const Beta_projectors_base<double>& bp);
+    void
+    initialize(const Beta_projectors_base<double>& bp);
     const Q_operator<double>& q_op_;
     const Beta_projectors_base<double>& bp_;
     const int ispn_;
@@ -142,9 +146,10 @@ class S_k : public local::Overlap_operator
     { /* empty */
     }
 
-    mdarray<numeric_t, 2> apply(mdarray<numeric_t, 2> const& X, memory_t pu = memory_t::none);
-    void apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X,
-               memory_t pm = memory_t::none);
+    mdarray<numeric_t, 2>
+    apply(mdarray<numeric_t, 2> const& X, memory_t pu = memory_t::none);
+    void
+    apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, memory_t pm = memory_t::none);
 
     const std::string label{"overlap"};
 
@@ -175,8 +180,7 @@ InverseS_k<numeric_t>::initialize(Beta_projectors_base<double> const& beta_proje
     }
     // add identity matrix
     std::vector<complex_t> ones(n, complex_t{1, 0});
-    la::wrap(la::lib_t::blas)
-        .axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(memory_t::host), n + 1);
+    la::wrap(la::lib_t::blas).axpy(n, &la::constant<complex_t>::one(), ones.data(), 1, BQ.at(memory_t::host), n + 1);
 
     LU_ = empty_like(BQ, get_memory_pool(memory_t::host));
     auto_copy(LU_, BQ, device_t::CPU);
@@ -195,7 +199,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
 {
     int nbnd = X.size(1);
     assert(static_cast<int>(X.size(0)) == this->size());
-    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -205,7 +209,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
     auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
-    int num_beta = bp_.num_total_beta();
+    int num_beta = bp_.num_beta();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
@@ -213,13 +217,13 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
         bp_gen.generate(beta_coeffs, ichunk);
 
         local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
-                     beta_coeffs.beta_chunk_.offset_, 0);
+                     beta_coeffs.beta_chunk_->offset_, 0);
     }
 
     // compute bphi <- (I + B*Q)⁻¹ (B^H X)
     la::wrap(la::lib_t::lapack)
-        .getrs('N', num_beta, nbnd, LU_.at(memory_t::host), LU_.ld(), ipiv_.at(memory_t::host),
-               bphi.at(memory_t::host), bphi.ld());
+            .getrs('N', num_beta, nbnd, LU_.at(memory_t::host), LU_.ld(), ipiv_.at(memory_t::host),
+                   bphi.at(memory_t::host), bphi.ld());
 
     // compute R <- -Q * Z, where Z = (I + B*Q)⁻¹ (B^H X)
     matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
@@ -244,7 +248,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
         int k = beta_coeffs.pw_coeffs_a_.size(1);
 
         la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a_.at(pm),
-                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_->offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(pm), Y.ld());
     }
 }
@@ -256,8 +260,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y =
-        empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -268,7 +271,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
 {
     assert(static_cast<int>(X.size(0)) == this->size());
 
-    pm                = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -278,14 +281,14 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
     int nbnd         = X.size(1);
     auto bp_gen      = bp_.make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
-    int num_beta     = bp_.num_total_beta();
+    int num_beta     = bp_.num_beta();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
-                     beta_coeffs.beta_chunk_.offset_, 0);
+                     beta_coeffs.beta_chunk_->offset_, 0);
     }
 
     matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
@@ -308,7 +311,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
         int k = beta_coeffs.pw_coeffs_a_.size(1);
 
         la::wrap(la).gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), beta_coeffs.pw_coeffs_a_.at(pm),
-                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_.offset_, 0), R.ld(),
+                          beta_coeffs.pw_coeffs_a_.ld(), R.at(pm, beta_coeffs.beta_chunk_->offset_, 0), R.ld(),
                           &la::constant<numeric_t>::one(), Y.at(pm), Y.ld());
     }
 }
@@ -317,8 +320,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 S_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y =
-        empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
     this->apply(Y, X, pm);
     return Y;
 }

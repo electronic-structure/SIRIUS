@@ -110,73 +110,91 @@ class DFT_ground_state
     }
 
     /// Return reference to a simulation context.
-    inline Simulation_context const& ctx() const
+    inline Simulation_context const&
+    ctx() const
     {
         return ctx_;
     }
 
-    inline Hamiltonian0<double>& get_H0() const
+    inline Hamiltonian0<double>&
+    get_H0() const
     {
         return *H0_;
     }
 
-    inline Density& density()
+    inline Density&
+    density()
     {
         return density_;
     }
 
-    inline Potential& potential()
+    inline Potential&
+    potential()
     {
         return potential_;
     }
 
-    inline K_point_set& k_point_set()
+    inline K_point_set&
+    k_point_set()
     {
         return kset_;
     }
 
-    inline Force& forces()
+    inline Force&
+    forces()
     {
         return forces_;
     }
 
-    inline Stress& stress()
+    inline Stress&
+    stress()
     {
         return stress_;
     }
 
-    inline double ewald_energy() const
+    inline double
+    ewald_energy() const
     {
         return ewald_energy_;
     }
 
-    inline double scf_correction_energy() const
+    inline double
+    scf_correction_energy() const
     {
         return scf_correction_energy_;
     }
 
-    void create_H0();
+    void
+    create_H0();
 
-    double total_energy() const;
+    double
+    total_energy() const;
 
     /// Generate initial density, potential and a subspace of wave-functions.
-    void initial_state();
+    void
+    initial_state();
 
     /// Update the parameters after the change of lattice vectors or atomic positions.
-    void update();
+    void
+    update();
 
     /// Run the SCF ground state calculation and find a total energy minimum.
-    json find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
+    json
+    find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
 
     /// Print the basic information (total energy, charges, moments, etc.).
-    void print_info(std::ostream& out__) const;
+    void
+    print_info(std::ostream& out__) const;
 
-    double energy_kin_sum_pw() const;
+    double
+    energy_kin_sum_pw() const;
 
-    json serialize();
+    json
+    serialize();
 
     /// A quick check of self-constent density in case of pseudopotential.
-    json check_scf_density();
+    json
+    check_scf_density();
 };
 
 } // namespace sirius

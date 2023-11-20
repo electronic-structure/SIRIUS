@@ -3,7 +3,8 @@
 
 using namespace sirius;
 
-void test_davidson(cmd_args const& args__)
+void
+test_davidson(cmd_args const& args__)
 {
     auto pw_cutoff    = args__.value<double>("pw_cutoff", 30);
     auto gk_cutoff    = args__.value<double>("gk_cutoff", 10);
@@ -18,17 +19,17 @@ void test_davidson(cmd_args const& args__)
 
     PROFILE_START("test_davidson|setup")
 
-    auto json_conf = R"({
+    auto json_conf                            = R"({
       "parameters" : {
         "electronic_structure_method" : "pseudopotential",
         "use_symmetry" : true
       }
     })"_json;
     json_conf["parameters"]["xc_functionals"] = {xc_name};
-    json_conf["parameters"]["pw_cutoff"] = pw_cutoff;
-    json_conf["parameters"]["gk_cutoff"] = gk_cutoff;
-    json_conf["parameters"]["num_mag_dims"] = num_mag_dims;
-    json_conf["control"]["mpi_grid_dims"] = mpi_grid;
+    json_conf["parameters"]["pw_cutoff"]      = pw_cutoff;
+    json_conf["parameters"]["gk_cutoff"]      = gk_cutoff;
+    json_conf["parameters"]["num_mag_dims"]   = num_mag_dims;
+    json_conf["control"]["mpi_grid_dims"]     = mpi_grid;
 
     double p = 1.0 / N;
     std::vector<r3::vector<double>> coord;
@@ -41,7 +42,7 @@ void test_davidson(cmd_args const& args__)
     }
 
     auto sctx_ptr = sirius::create_simulation_context(json_conf, {{5.0 * N, 0, 0}, {0, 5.0 * N, 0}, {0, 0, 5.0 * N}},
-        N * N * N, coord, add_vloc, add_dion);
+                                                      N * N * N, coord, add_vloc, add_dion);
 
     auto& ctx = *sctx_ptr;
 
@@ -54,17 +55,18 @@ void test_davidson(cmd_args const& args__)
     check_xc_potential(rho);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"device=", "(string) CPU or GPU"},
-                               {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
-                               {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
-                               {"N=", "(int) cell multiplicity"},
-                               {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"solver=", "eigen-value solver"},
-                               {"xc_name=", "name of XC potential"},
-                               {"num_mag_dims=", "number of magnetic dimensions"}
-                              });
+    cmd_args args(argn, argv,
+                  {{"device=", "(string) CPU or GPU"},
+                   {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
+                   {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
+                   {"N=", "(int) cell multiplicity"},
+                   {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
+                   {"solver=", "eigen-value solver"},
+                   {"xc_name=", "name of XC potential"},
+                   {"num_mag_dims=", "number of magnetic dimensions"}});
 
     if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
@@ -76,8 +78,8 @@ int main(int argn, char** argv)
     test_davidson(args);
     int rank = mpi::Communicator::world().rank();
     sirius::finalize();
-    if (rank == 0)  {
+    if (rank == 0) {
         const auto timing_result = global_rtgraph_timer.process();
-        std::cout<< timing_result.print();
+        std::cout << timing_result.print();
     }
 }

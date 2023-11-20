@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file beta_projectors_strain_deriv.hpp
@@ -33,8 +33,8 @@ template <typename T>
 class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
 {
   private:
-
-    void generate_pw_coefs_t()
+    void
+    generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t");
 
@@ -45,13 +45,11 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
         auto& uc = this->ctx_.unit_cell();
 
         std::vector<int> offset_t(uc.num_atom_types());
-        std::generate(offset_t.begin(), offset_t.end(),
-                [n = 0, iat = 0, &uc] () mutable
-                {
-                    int offs = n;
-                    n += uc.atom_type(iat++).mt_basis_size();
-                    return offs;
-                });
+        std::generate(offset_t.begin(), offset_t.end(), [n = 0, iat = 0, &uc]() mutable {
+            int offs = n;
+            n += uc.atom_type(iat++).mt_basis_size();
+            return offs;
+        });
 
         auto& beta_ri0 = *this->ctx_.ri().beta_;
         auto& beta_ri1 = *this->ctx_.ri().beta_djl_;
@@ -102,15 +100,14 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
                             int lm    = atom_type.indexb(xi).lm;
                             int idxrf = atom_type.indexb(xi).idxrf;
 
-                            auto z = std::pow(std::complex<double>(0, -1), l) * fourpi /
-                                     std::sqrt(uc.omega());
+                            auto z = std::pow(std::complex<double>(0, -1), l) * fourpi / std::sqrt(uc.omega());
 
                             auto d1 = ri0(idxrf) * (-gvc[mu] * rlm_dg(lm, nu, igkloc) - p * rlm_g(lm, igkloc));
 
                             auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] * inv_len);
 
                             this->pw_coeffs_t_(igkloc, offset_t[atom_type.id()] + xi, mu + nu * 3) =
-                                static_cast<std::complex<T>>(z * (d1 + d2));
+                                    static_cast<std::complex<T>>(z * (d1 + d2));
                         }
                     }
                 }

@@ -40,18 +40,17 @@
 namespace sirius {
 
 template <typename F>
-inline int call_test(std::string label__, F&& f__)
+inline int
+call_test(std::string label__, F&& f__)
 {
     int err{0};
     std::string msg;
     try {
         err = f__();
-    }
-    catch (std::exception const& e) {
+    } catch (std::exception const& e) {
         err = 1;
         msg = e.what();
-    }
-    catch (...) {
+    } catch (...) {
         err = 1;
         msg = "unknown exception";
     }
@@ -68,23 +67,30 @@ inline int call_test(std::string label__, F&& f__)
 }
 
 template <typename F>
-inline int call_test(std::string label__, F&& f__, cmd_args const& args__)
+inline int
+call_test(std::string label__, F&& f__, cmd_args const& args__)
 {
     printf("running %-30s : ", label__.c_str());
     int result = f__(args__);
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     return result;
 }
 
-class Measurement: public std::vector<double>
+class Measurement : public std::vector<double>
 {
   public:
-
-    double average() const
+    double
+    average() const
     {
         double d = 0;
         for (size_t i = 0; i < this->size(); i++) {
@@ -94,9 +100,10 @@ class Measurement: public std::vector<double>
         return d;
     }
 
-    double sigma() const
+    double
+    sigma() const
     {
-        double avg = average();
+        double avg      = average();
         double variance = 0;
         for (size_t i = 0; i < this->size(); i++) {
             variance += std::pow((*this)[i] - avg, 2);
@@ -145,13 +152,13 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 
 template <typename T>
 inline auto
-random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const *blacs_grid__ = nullptr)
+random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const* blacs_grid__ = nullptr)
 {
     PROFILE("random_positive_definite");
 
     double p = 1.0 / N__;
-    auto A = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
-    auto B = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
+    auto A   = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
+    auto B   = (blacs_grid__) ? la::dmatrix<T>(N__, N__, *blacs_grid__, bs__, bs__) : la::dmatrix<T>(N__, N__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
             A(i, j) = p * random<T>();
@@ -160,14 +167,16 @@ random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const *blacs_gri
 
     if (blacs_grid__) {
 #ifdef SIRIUS_SCALAPACK
-        la::wrap(la::lib_t::scalapack).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), A, 0, 0, A, 0, 0,
-            &la::constant<T>::zero(), B, 0, 0);
+        la::wrap(la::lib_t::scalapack)
+                .gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), A, 0, 0, A, 0, 0, &la::constant<T>::zero(), B,
+                      0, 0);
 #else
         RTE_THROW("not compiled with scalapack");
 #endif
     } else {
-        la::wrap(la::lib_t::blas).gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), &A(0, 0), A.ld(),
-                &A(0, 0), A.ld(), &la::constant<T>::zero(), &B(0, 0), B.ld());
+        la::wrap(la::lib_t::blas)
+                .gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), &A(0, 0), A.ld(), &A(0, 0), A.ld(),
+                      &la::constant<T>::zero(), &B(0, 0), B.ld());
     }
 
     for (int i = 0; i < N__; i++) {
@@ -179,7 +188,7 @@ random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const *blacs_gri
 
 inline auto
 create_simulation_context(nlohmann::json const& conf__, r3::matrix<double> L__, int num_atoms__,
-std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
+                          std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
 {
     auto ctx = std::make_unique<sirius::Simulation_context>(conf__);
 
@@ -195,7 +204,7 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
             /* set radial grid */
             atype.set_radial_grid(radial_grid_t::lin_exp, 1000, 0.0, 100.0, 6);
             /* cutoff at ~1 a.u. */
-            int icut = atype.radial_grid().index_of(1.0);
+            int icut    = atype.radial_grid().index_of(1.0);
             double rcut = atype.radial_grid(icut);
             /* create beta radial function */
             std::vector<double> beta(icut + 1);
@@ -203,7 +212,7 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
             for (int l = 0; l <= 2; l++) {
                 for (int i = 0; i <= icut; i++) {
                     double x = atype.radial_grid(i);
-                    beta[i] = confined_polynomial(x, rcut, l, l + 1, 0);
+                    beta[i]  = confined_polynomial(x, rcut, l, l + 1, 0);
                     beta1[i] = confined_polynomial(x, rcut, l, l + 2, 0);
                 }
                 /* add radial function for l */
@@ -226,7 +235,7 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
             if (add_vloc__) {
                 for (int i = 0; i < atype.radial_grid().num_points(); i++) {
                     double x = atype.radial_grid(i);
-                    vloc[i] = -atype.zn() / (std::exp(-x * (x + 1)) + x);
+                    vloc[i]  = -atype.zn() / (std::exp(-x * (x + 1)) + x);
                 }
             }
             atype.local_potential(vloc);
@@ -244,12 +253,12 @@ std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
             std::vector<double> arho(atype.radial_grid().num_points());
             for (int i = 0; i < atype.radial_grid().num_points(); i++) {
                 double x = atype.radial_grid(i);
-                arho[i] = 2 * atype.zn() * std::exp(-x * x) * x;
+                arho[i]  = 2 * atype.zn() * std::exp(-x * x) * x;
             }
             atype.ps_total_charge_density(arho);
         }
 
-        for (auto v: coord__) {
+        for (auto v : coord__) {
             ctx->unit_cell().add_atom("Cu", v, {0, 0, 1});
         }
     }
@@ -271,6 +280,6 @@ randomize(wf::Wave_functions<T>& wf__)
     }
 }
 
-}
+} // namespace sirius
 
 #endif

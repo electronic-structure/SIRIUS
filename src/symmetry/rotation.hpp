@@ -33,7 +33,8 @@
 namespace sirius {
 
 /// Return angle phi in the range [0, 2Pi) by its values of sin(phi) and cos(phi).
-inline double phi_by_sin_cos(double sinp, double cosp)
+inline double
+phi_by_sin_cos(double sinp, double cosp)
 {
     double phi = std::atan2(sinp, cosp);
     if (phi < 0) {
@@ -52,9 +53,9 @@ rotation_matrix_su2(std::array<double, 3> u__, double theta__)
     auto sint = std::sin(theta__ / 2);
 
     rotm(0, 0) = std::complex<double>(cost, -u__[2] * sint);
-    rotm(1, 1) = std::complex<double>(cost,  u__[2] * sint);
+    rotm(1, 1) = std::complex<double>(cost, u__[2] * sint);
     rotm(0, 1) = std::complex<double>(-u__[1] * sint, -u__[0] * sint);
-    rotm(1, 0) = std::complex<double>( u__[1] * sint, -u__[0] * sint);
+    rotm(1, 0) = std::complex<double>(u__[1] * sint, -u__[0] * sint);
 
     return rotm;
 }
@@ -100,7 +101,7 @@ axis_angle(r3::matrix<double> R__)
 {
     r3::vector<double> u;
     /* make proper rotation */
-    R__ = R__ * R__.det();
+    R__  = R__ * R__.det();
     u[0] = R__(2, 1) - R__(1, 2);
     u[1] = R__(0, 2) - R__(2, 0);
     u[2] = R__(1, 0) - R__(0, 1);
@@ -173,7 +174,7 @@ inline auto
 rot_mtrx_cart(r3::vector<double> euler_angles__)
 {
     double alpha = euler_angles__[0];
-    double beta = euler_angles__[1];
+    double beta  = euler_angles__[1];
     double gamma = euler_angles__[2];
 
     r3::matrix<double> rm;
@@ -224,9 +225,9 @@ euler_angles(r3::matrix<double> const& rot__, double tolerance__)
         angles[1] = pi;
     } else {
         double beta = std::acos(rot__(2, 2));
-        angles[0] = phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
-        angles[1] = beta;
-        angles[2] = phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
+        angles[0]   = phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
+        angles[1]   = beta;
+        angles[2]   = phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
     }
 
     auto rm1 = rot_mtrx_cart(angles);
@@ -249,6 +250,6 @@ euler_angles(r3::matrix<double> const& rot__, double tolerance__)
     return angles;
 }
 
-}
+} // namespace sirius
 
 #endif // __ROTATION_HPP__

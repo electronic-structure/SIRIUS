@@ -39,6 +39,7 @@ class hubbard_orbital_descriptor
     int l_{-1};
     /// Set to true if this orbital is part the Hubbard subspace.
     bool use_for_calculation_{true};
+
     /// Orbital occupancy.
     double occupancy_{-1.0};
 
@@ -71,9 +72,10 @@ class hubbard_orbital_descriptor
     std::vector<double> initial_occupancy_;
 
     /// Index of the corresponding atomic wave-function.
-    int idx_wf_{-1}; //TODO: better name
+    int idx_wf_{-1}; // TODO: better name
 
-    inline auto hubbard_F_coefficients() const
+    inline auto
+    hubbard_F_coefficients() const
     {
         std::vector<double> F(4);
         F[0] = U();
@@ -109,7 +111,8 @@ class hubbard_orbital_descriptor
         return F;
     }
 
-    inline void calculate_ak_coefficients(mdarray<double, 5>& ak)
+    inline void
+    calculate_ak_coefficients(mdarray<double, 5>& ak)
     {
         // compute the ak coefficients appearing in the general treatment of
         // hubbard corrections.  expression taken from Liechtenstein {\it et
@@ -150,9 +153,10 @@ class hubbard_orbital_descriptor
     /// a_k(m,m',m'',m''') F_k \f] where the F_k are calculated for real
     /// spherical harmonics
 
-    inline void compute_hubbard_matrix()
+    inline void
+    compute_hubbard_matrix()
     {
-        int l = this->l();
+        int l                 = this->l();
         this->hubbard_matrix_ = mdarray<double, 4>({2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         mdarray<double, 5> ak({l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
         auto F = hubbard_F_coefficients();
@@ -175,7 +179,8 @@ class hubbard_orbital_descriptor
         }
     }
 
-    void initialize_hubbard_matrix()
+    void
+    initialize_hubbard_matrix()
     {
         int l = this->l();
         mdarray<double, 5> ak({l, 2 * l + 1, 2 * l + 1, 2 * l + 1, 2 * l + 1});
@@ -201,7 +206,6 @@ class hubbard_orbital_descriptor
     }
 
   public:
-
     /// Constructor.
     hubbard_orbital_descriptor()
     {
@@ -259,98 +263,117 @@ class hubbard_orbital_descriptor
         f_ = std::move(src.f_);
     }
 
-    inline int n() const
+    inline int
+    n() const
     {
         return n_;
     }
 
-    inline int l() const
+    inline int
+    l() const
     {
         return l_;
     }
 
-    inline double hubbard_matrix(const int m1, const int m2, const int m3, const int m4) const
+    inline double
+    hubbard_matrix(const int m1, const int m2, const int m3, const int m4) const
     {
         return hubbard_matrix_(m1, m2, m3, m4);
     }
 
-    inline double& hubbard_matrix(const int m1, const int m2, const int m3, const int m4)
+    inline double&
+    hubbard_matrix(const int m1, const int m2, const int m3, const int m4)
     {
         return hubbard_matrix_(m1, m2, m3, m4);
     }
 
-    inline double J0() const
+    inline double
+    J0() const
     {
         return J0_;
     }
 
-    inline double U() const
+    inline double
+    U() const
     {
         return U_;
     }
 
-    inline double J() const
+    inline double
+    J() const
     {
         return J_;
     }
 
-    inline double U_minus_J() const
+    inline double
+    U_minus_J() const
     {
         return this->U() - this->J();
     }
 
-    inline double B() const
+    inline double
+    B() const
     {
         return hubbard_coefficients_[2];
     }
 
-    inline double E2() const
+    inline double
+    E2() const
     {
         return hubbard_coefficients_[2];
     }
 
-    inline double E3() const
+    inline double
+    E3() const
     {
         return hubbard_coefficients_[3];
     }
 
-    inline double alpha() const
+    inline double
+    alpha() const
     {
         return alpha_;
     }
 
-    inline double beta() const
+    inline double
+    beta() const
     {
         return beta_;
     }
 
-    inline double occupancy() const
+    inline double
+    occupancy() const
     {
         return occupancy_;
     }
 
-    Spline<double> const& f() const
+    Spline<double> const&
+    f() const
     {
         return f_;
     }
 
-    bool use_for_calculation() const
+    bool
+    use_for_calculation() const
     {
         return use_for_calculation_;
     }
 
-    auto const& initial_occupancy() const
+    auto const&
+    initial_occupancy() const
     {
         return initial_occupancy_;
     }
 
-    auto idx_wf() const
+    auto
+    idx_wf() const
     {
         return idx_wf_;
     }
 };
 
-inline std::ostream& operator<<(std::ostream& out, hubbard_orbital_descriptor const& ho)
+inline std::ostream&
+operator<<(std::ostream& out, hubbard_orbital_descriptor const& ho)
 {
     out << "{n: " << ho.n() << ", l: " << ho.l() << "}";
     return out;

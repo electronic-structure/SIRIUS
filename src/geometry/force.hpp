@@ -76,7 +76,8 @@ class Force
     mdarray<double, 2> forces_total_;
 
     template <typename T, typename F>
-    void add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) const;
+    void
+    add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) const;
 
     /** In the second-variational approach we need to compute the following expression for the k-dependent
      *  contribution to the forces:
@@ -90,105 +91,135 @@ class Force
      *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
      *  \f]
      */
-    void compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm__) const;
+    void
+    compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm__) const;
 
     /** Compute the forces for the simplex LDA+U method not the fully rotationally invariant one.
      *  It can not be used for LDA+U+SO either.
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__, mdarray<double, 2>& forceh_);
+    void
+    hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_operator<double>& q_op__,
+                                               mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
+    void
+    add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray<double, 2>& ffac__,
+                  mdarray<double, 2>& forcek__) const;
 
   public:
     Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__);
 
-    mdarray<double, 2> const& calc_forces_vloc();
+    mdarray<double, 2> const&
+    calc_forces_vloc();
 
-    inline auto const& forces_vloc() const
+    inline auto const&
+    forces_vloc() const
     {
         return forces_vloc_;
     }
 
     template <typename T>
-    void calc_forces_nonloc_aux();
+    void
+    calc_forces_nonloc_aux();
 
-    mdarray<double, 2> const& calc_forces_nonloc();
+    mdarray<double, 2> const&
+    calc_forces_nonloc();
 
-    inline auto const& forces_nonloc() const
+    inline auto const&
+    forces_nonloc() const
     {
         return forces_nonloc_;
     }
 
-    mdarray<double, 2> const& calc_forces_core();
+    mdarray<double, 2> const&
+    calc_forces_core();
 
-    inline auto const& forces_core() const
+    inline auto const&
+    forces_core() const
     {
         return forces_core_;
     }
 
     /// Calculate SCF correction to the forces.
     /** Based on the following paper: PhysRevB.47.4771 */
-    mdarray<double, 2> const& calc_forces_scf_corr();
+    mdarray<double, 2> const&
+    calc_forces_scf_corr();
 
-    inline auto const& forces_scf_corr() const
+    inline auto const&
+    forces_scf_corr() const
     {
         return forces_scf_corr_;
     }
 
-    mdarray<double, 2> const& calc_forces_us();
+    mdarray<double, 2> const&
+    calc_forces_us();
 
-    inline auto const& forces_us() const
+    inline auto const&
+    forces_us() const
     {
         return forces_us_;
     }
 
-    mdarray<double, 2> const& calc_forces_ewald();
+    mdarray<double, 2> const&
+    calc_forces_ewald();
 
-    inline auto const& forces_ewald() const
+    inline auto const&
+    forces_ewald() const
     {
         return forces_ewald_;
     }
 
-    mdarray<double, 2> const& calc_forces_hubbard();
+    mdarray<double, 2> const&
+    calc_forces_hubbard();
 
-    inline auto const& forces_hubbard() const
+    inline auto const&
+    forces_hubbard() const
     {
         return forces_hubbard_;
     }
 
-    mdarray<double, 2> const& calc_forces_usnl();
+    mdarray<double, 2> const&
+    calc_forces_usnl();
 
-    mdarray<double, 2> const& calc_forces_hf();
+    mdarray<double, 2> const&
+    calc_forces_hf();
 
-    inline auto const& forces_hf() const
+    inline auto const&
+    forces_hf() const
     {
         return forces_hf_;
     }
 
-    mdarray<double, 2> const& calc_forces_rho();
+    mdarray<double, 2> const&
+    calc_forces_rho();
 
-    inline auto const& forces_rho() const
+    inline auto const&
+    forces_rho() const
     {
         return forces_rho_;
     }
 
-    mdarray<double, 2> const& calc_forces_ibs();
+    mdarray<double, 2> const&
+    calc_forces_ibs();
 
-    inline auto const& forces_ibs() const
+    inline auto const&
+    forces_ibs() const
     {
         return forces_ibs_;
     }
 
-    mdarray<double, 2> const& calc_forces_total();
+    mdarray<double, 2> const&
+    calc_forces_total();
 
-    inline auto const& forces_total() const
+    inline auto const&
+    forces_total() const
     {
         return forces_total_;
     }
 
-    void print_info(std::ostream& out__, int verbosity__);
+    void
+    print_info(std::ostream& out__, int verbosity__);
 };
 
 } // namespace sirius

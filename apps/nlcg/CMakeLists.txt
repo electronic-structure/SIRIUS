@@ -3,7 +3,6 @@ find_package(Kokkos REQUIRED)
 target_link_libraries(sirius.nlcg PRIVATE sirius)
 target_link_libraries(sirius.nlcg PRIVATE nlcglib::nlcglib)
 target_link_libraries(sirius.nlcg PRIVATE ${KOKKOS_LIBRARIES})
-set_property(TARGET sirius.nlcg PROPERTY POSITION_INDEPENDENT_CODE OFF)
 install(TARGETS sirius.nlcg RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
 

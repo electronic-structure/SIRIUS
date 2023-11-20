@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void read_atom(std::string fname)
+void
+read_atom(std::string fname)
 {
     Simulation_parameters params;
     params.electronic_structure_method("pseudopotential");
@@ -11,7 +12,8 @@ void read_atom(std::string fname)
     atype.init();
 }
 
-int main(int argn, char **argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(1);
     read_atom(argv[1]);

@@ -147,9 +147,10 @@ class Radial_solver
     /// Integrate system of two first-order differential equations forward starting from the origin.
     /** Use Runge-Kutta 4th order method */
     template <relativity_t rel, bool prevent_overflow>
-    int integrate_forward_rk4(double enu__, int l__, int k__, Spline<double> const& chi_p__,
-                              Spline<double> const& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
-                              std::vector<double>& q__, std::vector<double>& dqdr__) const
+    int
+    integrate_forward_rk4(double enu__, int l__, int k__, Spline<double> const& chi_p__, Spline<double> const& chi_q__,
+                          std::vector<double>& p__, std::vector<double>& dpdr__, std::vector<double>& q__,
+                          std::vector<double>& dqdr__) const
     {
         /* number of mesh points */
         int nr = num_points();
@@ -705,9 +706,9 @@ class Radial_solver
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M = 1 - 0.5 * sq_alpha * V;
                             double x = radial_grid_[i];
-                            chi_p(i) =
-                                q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) +
-                                q[j - 2][i] * std::pow(sq_alpha, 2) / 2 / M / std::pow(1 - sq_alpha * enu__ / 2 / M, 3);
+                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) +
+                                       q[j - 2][i] * std::pow(sq_alpha, 2) / 2 / M /
+                                               std::pow(1 - sq_alpha * enu__ / 2 / M, 3);
                             chi_q(i) = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
                         }
                     } else {
@@ -777,8 +778,9 @@ class Radial_solver
      *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
      *  \f]
      */
-    int solve(relativity_t rel__, int dme__, int l__, double enu__, std::vector<double>& p__,
-              std::vector<double>& rdudr__, std::array<double, 2>& uderiv__) const
+    int
+    solve(relativity_t rel__, int dme__, int l__, double enu__, std::vector<double>& p__, std::vector<double>& rdudr__,
+          std::array<double, 2>& uderiv__) const
     {
         auto result = solve(rel__, dme__, l__, 0, enu__);
         int nr      = num_points();
@@ -808,22 +810,26 @@ class Radial_solver
         return std::get<0>(result);
     }
 
-    inline int num_points() const
+    inline int
+    num_points() const
     {
         return radial_grid_.num_points();
     }
 
-    inline int zn() const
+    inline int
+    zn() const
     {
         return zn_;
     }
 
-    inline double radial_grid(int i__) const
+    inline double
+    radial_grid(int i__) const
     {
         return radial_grid_[i__];
     }
 
-    inline Radial_grid<double> const& radial_grid() const
+    inline Radial_grid<double> const&
+    radial_grid() const
     {
         return radial_grid_;
     }
@@ -855,7 +861,8 @@ class Bound_state : public Radial_solver
 
     std::vector<double> dpdr_;
 
-    void solve(relativity_t rel__, double enu_start__)
+    void
+    solve(relativity_t rel__, double enu_start__)
     {
         int np = num_points();
 
@@ -1018,30 +1025,35 @@ class Bound_state : public Radial_solver
         solve(rel__, enu_start__);
     }
 
-    inline double enu() const
+    inline double
+    enu() const
     {
         return enu_;
     }
 
     /// Return charge density, corresponding to a radial solution.
-    Spline<double> const& rho() const
+    Spline<double> const&
+    rho() const
     {
         return rho_;
     }
 
     /// Return radial function.
-    Spline<double> const& u() const
+    Spline<double> const&
+    u() const
     {
         return u_;
     }
 
     /// Return radial function multiplied by x.
-    Spline<double> const& p() const
+    Spline<double> const&
+    p() const
     {
         return p_;
     }
 
-    std::vector<double> const& dpdr() const
+    std::vector<double> const&
+    dpdr() const
     {
         return dpdr_;
     }
@@ -1059,7 +1071,8 @@ class Enu_finder : public Radial_solver
     double etop_;
     double ebot_;
 
-    void find_enu(relativity_t rel__, double enu_start__)
+    void
+    find_enu(relativity_t rel__, double enu_start__)
     {
         int np = num_points();
 
@@ -1189,7 +1202,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                   throw std::runtime_error("not implemented"); 
+                    throw std::runtime_error("not implemented");
                 }
             }
             /* derivative at the boundary */
@@ -1263,17 +1276,20 @@ class Enu_finder : public Radial_solver
         find_enu(rel__, enu_start__);
     }
 
-    inline double enu() const
+    inline double
+    enu() const
     {
         return enu_;
     }
 
-    inline double ebot() const
+    inline double
+    ebot() const
     {
         return ebot_;
     }
 
-    inline double etop() const
+    inline double
+    etop() const
     {
         return etop_;
     }

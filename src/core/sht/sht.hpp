@@ -71,7 +71,7 @@ ClebschGordan(const int l, const double j, const double mj, const int spin);
 std::complex<double>
 calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
 
-}
+} // namespace sht
 
 /// Spherical harmonics transformations and related oprtations.
 /** This class is responsible for the generation of complex and real spherical harmonics, generation of transformation
@@ -118,7 +118,7 @@ class SHT // TODO: better name
 
   public:
     /// Default constructor.
-    SHT(device_t pu__, int lmax__, int  mesh_type__ = 0)
+    SHT(device_t pu__, int lmax__, int mesh_type__ = 0)
         : pu_(pu__)
         , lmax_(lmax__)
         , mesh_type_(mesh_type__)
@@ -229,7 +229,8 @@ class SHT // TODO: better name
     }
 
     /// Check the transformations.
-    void check() const;
+    void
+    check() const;
 
     /// Perform a backward transformation from spherical harmonics to spherical coordinates.
     /** \f[
@@ -243,7 +244,8 @@ class SHT // TODO: better name
      *  \param [out] ftp Raw pointer to \f$ f(\theta, \phi, r) \f$.
      */
     template <typename T>
-    void backward_transform(int ld, T const* flm, int nr, int lmmax, T* ftp) const;
+    void
+    backward_transform(int ld, T const* flm, int nr, int lmmax, T* ftp) const;
 
     /// Perform a forward transformation from spherical coordinates to spherical harmonics.
     /** \f[
@@ -258,10 +260,12 @@ class SHT // TODO: better name
      *  \param [out] flm Raw pointer to \f$ f_{\ell m}(r) \f$.
      */
     template <typename T>
-    void forward_transform(T const* ftp, int nr, int lmmax, int ld, T* flm) const;
+    void
+    forward_transform(T const* ftp, int nr, int lmmax, int ld, T* flm) const;
 
     /// Convert form Rlm to Ylm representation.
-    static void convert(int lmax__, double const* f_rlm__, std::complex<double>* f_ylm__)
+    static void
+    convert(int lmax__, double const* f_rlm__, std::complex<double>* f_ylm__)
     {
         int lm = 0;
         for (int l = 0; l <= lmax__; l++) {
@@ -278,7 +282,8 @@ class SHT // TODO: better name
     }
 
     /// Convert from Ylm to Rlm representation.
-    static void convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
+    static void
+    convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
     {
         int lm = 0;
         for (int l = 0; l <= lmax__; l++) {
@@ -294,16 +299,17 @@ class SHT // TODO: better name
         }
     }
 
-    //void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
+    // void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
     //{
-    //    Timer t("sirius::SHT::rlm_forward_iterative_transform");
+    //     Timer t("sirius::SHT::rlm_forward_iterative_transform");
     //
-    //    RTE_ASSERT(lmmax <= lmmax_);
+    //     RTE_ASSERT(lmmax <= lmmax_);
 
     //    mdarray<double, 2> ftp(ftp__, num_points_, ncol);
     //    mdarray<double, 2> ftp1(num_points_, ncol);
     //
-    //    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0), num_points_, 0.0,
+    //    blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp(0, 0),
+    //    num_points_, 0.0,
     //                    flm, lmmax);
     //
     //    for (int i = 0; i < 2; i++)
@@ -324,7 +330,8 @@ class SHT // TODO: better name
     //            tdiff += fabs(ftp1(itp, ncol - 1));
     //        }
     //        std::cout << "iter : " << i << " avg. MT diff = " << tdiff / num_points_ << std::endl;
-    //        blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0), num_points_, 1.0,
+    //        blas<cpu>::gemm(1, 0, lmmax, ncol, num_points_, 1.0, &rlm_forward_(0, 0), num_points_, &ftp1(0, 0),
+    //        num_points_, 1.0,
     //                        flm, lmmax);
     //    }
     //}
@@ -360,7 +367,8 @@ class SHT // TODO: better name
         Rlm[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
         \endverbatim
      */
-    static inline std::complex<double> ylm_dot_rlm(int l, int m1, int m2)
+    static inline std::complex<double>
+    ylm_dot_rlm(int l, int m1, int m2)
     {
         double const isqrt2 = 1.0 / std::sqrt(2);
 
@@ -389,7 +397,8 @@ class SHT // TODO: better name
         }
     }
 
-    static inline std::complex<double> rlm_dot_ylm(int l, int m1, int m2)
+    static inline std::complex<double>
+    rlm_dot_ylm(int l, int m1, int m2)
     {
         return std::conj(ylm_dot_rlm(l, m2, m1));
     }
@@ -400,7 +409,8 @@ class SHT // TODO: better name
      *    \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
+    static double
+    gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -409,7 +419,8 @@ class SHT // TODO: better name
         RTE_ASSERT(m2 >= -l2 && m2 <= l2);
         RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
-        return std::pow(-1.0, std::abs(m1)) * std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
+        return std::pow(-1.0, std::abs(m1)) *
+               std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
     }
@@ -420,7 +431,8 @@ class SHT // TODO: better name
      *    \langle R_{\ell_1 m_1} | R_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
+    static double
+    gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -433,8 +445,7 @@ class SHT // TODO: better name
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k2 = -l2; k2 <= l2; k2++) {
                 for (int k3 = -l3; k3 <= l3; k3++) {
-                    d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
-                                   SHT::ylm_dot_rlm(l2, k2, m2) *
+                    d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l2, k2, m2) *
                                    SHT::ylm_dot_rlm(l3, k3, m3)) *
                          SHT::gaunt_yyy(l1, l2, l3, k1, k2, k3);
                 }
@@ -449,7 +460,8 @@ class SHT // TODO: better name
      *    \langle R_{\ell_1 m_1} | Y_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double gaunt_rlm_ylm_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
+    static double
+    gaunt_rlm_ylm_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -461,8 +473,7 @@ class SHT // TODO: better name
         double d = 0;
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k3 = -l3; k3 <= l3; k3++) {
-                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
-                               SHT::ylm_dot_rlm(l3, k3, m3)) *
+                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3)) *
                      SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
             }
         }
@@ -475,7 +486,8 @@ class SHT // TODO: better name
      *    \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static std::complex<double> gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
+    static std::complex<double>
+    gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -492,7 +504,8 @@ class SHT // TODO: better name
         }
     }
 
-    void uniform_coverage()
+    void
+    uniform_coverage()
     {
         tp_(0, 0) = pi;
         tp_(1, 0) = 0;
@@ -512,7 +525,8 @@ class SHT // TODO: better name
     /** Clebsch-Gordan coefficients arise when two angular momenta are combined into a
      *  total angular momentum.
      */
-    static inline double clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
+    static inline double
+    clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -525,52 +539,62 @@ class SHT // TODO: better name
                gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);
     }
 
-    inline auto ylm_backward(int lm, int itp) const
+    inline auto
+    ylm_backward(int lm, int itp) const
     {
         return ylm_backward_(lm, itp);
     }
 
-    inline auto rlm_backward(int lm, int itp) const
+    inline auto
+    rlm_backward(int lm, int itp) const
     {
         return rlm_backward_(lm, itp);
     }
 
-    inline auto coord(int x, int itp) const
+    inline auto
+    coord(int x, int itp) const
     {
         return coord_(x, itp);
     }
 
-    inline auto coord(int idx__) const
+    inline auto
+    coord(int idx__) const
     {
         return r3::vector<double>(coord_(0, idx__), coord_(1, idx__), coord(2, idx__));
     }
 
-    inline auto theta(int idx__) const
+    inline auto
+    theta(int idx__) const
     {
         return tp_(0, idx__);
     }
 
-    inline auto phi(int idx__) const
+    inline auto
+    phi(int idx__) const
     {
         return tp_(1, idx__);
     }
 
-    inline auto weight(int idx__) const
+    inline auto
+    weight(int idx__) const
     {
         return w_[idx__];
     }
 
-    inline auto num_points() const
+    inline auto
+    num_points() const
     {
         return num_points_;
     }
 
-    inline auto lmax() const
+    inline auto
+    lmax() const
     {
         return lmax_;
     }
 
-    inline auto lmmax() const
+    inline auto
+    lmmax() const
     {
         return lmmax_;
     }

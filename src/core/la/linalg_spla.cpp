@@ -27,9 +27,9 @@ namespace splablas {
 std::shared_ptr<::spla::Context>&
 get_handle_ptr()
 {
-  static std::shared_ptr<::spla::Context> handle{new ::spla::Context{SPLA_PU_HOST}};
-  return handle;
+    static std::shared_ptr<::spla::Context> handle{new ::spla::Context{SPLA_PU_HOST}};
+    return handle;
 }
 
-}
-}
+} // namespace splablas
+} // namespace sirius

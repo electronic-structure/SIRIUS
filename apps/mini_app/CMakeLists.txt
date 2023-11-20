@@ -7,7 +7,6 @@ if(SIRIUS_USE_VCSQNM)
   target_link_libraries (sirius.scf PRIVATE Eigen3::Eigen sirius)
 endif()
 install(TARGETS sirius.scf RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-set_property(TARGET sirius.scf PROPERTY POSITION_INDEPENDENT_CODE OFF)
 
 # Register verification tests as well
 set(SIRIUS_SCF_LABELS cpu_serial cpu_band_parallel)

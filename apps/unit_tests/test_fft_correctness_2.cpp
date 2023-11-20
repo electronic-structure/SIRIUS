@@ -6,7 +6,8 @@ using namespace sirius;
 using namespace mpi;
 
 template <typename T>
-int test_fft_complex(cmd_args& args, device_t fft_pu__)
+int
+test_fft_complex(cmd_args& args, device_t fft_pu__)
 {
     double cutoff = args.value<double>("cutoff", 40);
 
@@ -26,14 +27,14 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     fft::Gvec_fft gvp(gvec, Communicator::world(), Communicator::self());
 
     fft::spfft_grid_type<T> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count(), spl_z.local_size(),
-                           SPFFT_PU_HOST, -1, Communicator::world().native(), SPFFT_EXCH_DEFAULT);
+                                       SPFFT_PU_HOST, -1, Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
     auto const& gv = gvp.gvec_array();
-    fft::spfft_transform_type<T> spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
-        spl_z.local_size(), gvp.count(), SPFFT_INDEX_TRIPLETS,
-        gv.at(memory_t::host)));
+    fft::spfft_transform_type<T> spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1],
+                                                                   fft_grid[2], spl_z.local_size(), gvp.count(),
+                                                                   SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
     mdarray<std::complex<T>, 1> f({gvp.count()});
     for (int ig = 0; ig < gvp.count(); ig++) {
@@ -58,7 +59,8 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 }
 
 template <typename T>
-int run_test(cmd_args& args)
+int
+run_test(cmd_args& args)
 {
     int result = test_fft_complex<T>(args, device_t::CPU);
 #ifdef SIRIUS_GPU
@@ -67,11 +69,12 @@ int run_test(cmd_args& args)
     return result;
 }
 
-int main(int argn, char **argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--cutoff=", "{double} cutoff radius in G-space");
-    args.register_key("--fp32",    "run in FP32 arithmetics");
+    args.register_key("--fp32", "run in FP32 arithmetics");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -93,9 +96,15 @@ int main(int argn, char **argv)
         result = run_test<double>(args);
     }
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     sirius::finalize();
 

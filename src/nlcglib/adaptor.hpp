@@ -54,25 +54,31 @@ class Matrix : public nlcglib::MatrixBaseZ
     { /* empty */
     }
 
-    buffer_t get(int i) override;
-    const buffer_t get(int i) const override;
+    buffer_t
+    get(int i) override;
+    const buffer_t
+    get(int i) const override;
 
-    int size() const override
+    int
+    size() const override
     {
         return data.size();
     };
 
-    MPI_Comm mpicomm(int i) const override
+    MPI_Comm
+    mpicomm(int i) const override
     {
         return data[i].mpi_comm;
     }
 
-    MPI_Comm mpicomm() const override
+    MPI_Comm
+    mpicomm() const override
     {
         return mpi_comm;
     }
 
-    kindex_t kpoint_index(int i) const override
+    kindex_t
+    kpoint_index(int i) const override
     {
         return indices[i];
     }
@@ -102,26 +108,32 @@ class Array1d : public nlcglib::VectorBaseZ
     {
     }
 
-    buffer_t get(int i) override;
-    const buffer_t get(int i) const override;
+    buffer_t
+    get(int i) override;
+    const buffer_t
+    get(int i) const override;
 
-    int size() const override
+    int
+    size() const override
     {
         return data.size();
     };
 
-    MPI_Comm mpicomm(int i) const override
+    MPI_Comm
+    mpicomm(int i) const override
     {
         // this object is never distributed
         return MPI_COMM_SELF;
     }
 
-    MPI_Comm mpicomm() const override
+    MPI_Comm
+    mpicomm() const override
     {
         return mpi_comm;
     }
 
-    kindex_t kpoint_index(int i) const override
+    kindex_t
+    kpoint_index(int i) const override
     {
         assert(i < static_cast<int>(indices.size()));
         return indices[i];
@@ -150,33 +162,39 @@ class Scalar : public nlcglib::ScalarBaseZ
     {
     }
 
-    buffer_t get(int i) override
+    buffer_t
+    get(int i) override
     {
         return data[i];
     }
 
-    const buffer_t get(int i) const override
+    const buffer_t
+    get(int i) const override
     {
         return data[i];
     }
 
-    int size() const override
+    int
+    size() const override
     {
         return data.size();
     };
 
-    MPI_Comm mpicomm(int i) const override
+    MPI_Comm
+    mpicomm(int i) const override
     {
         // this object is never distributed
         return MPI_COMM_SELF;
     }
 
-    MPI_Comm mpicomm() const override
+    MPI_Comm
+    mpicomm() const override
     {
         return mpi_comm;
     }
 
-    kindex_t kpoint_index(int i) const override
+    kindex_t
+    kpoint_index(int i) const override
     {
         return indices[i];
     }
@@ -192,22 +210,35 @@ class Energy : public nlcglib::EnergyBase
 {
   public:
     Energy(K_point_set& kset, Density& density, Potential& potential);
-    int nelectrons() override;
-    int occupancy() override;
-    void compute() override;
-    double get_total_energy() override;
-    std::map<std::string, double> get_energy_components() override;
+    int
+    nelectrons() override;
+    int
+    occupancy() override;
+    void
+    compute() override;
+    double
+    get_total_energy() override;
+    std::map<std::string, double>
+    get_energy_components() override;
     std::shared_ptr<nlcglib::MatrixBaseZ> get_hphi(nlcglib::memory_type) override;
     std::shared_ptr<nlcglib::MatrixBaseZ> get_sphi(nlcglib::memory_type) override;
     std::shared_ptr<nlcglib::MatrixBaseZ> get_C(nlcglib::memory_type) override;
-    std::shared_ptr<nlcglib::VectorBaseZ> get_fn() override;
-    void set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<std::vector<double>>& fn) override;
-    std::shared_ptr<nlcglib::VectorBaseZ> get_ek() override;
-    std::shared_ptr<nlcglib::VectorBaseZ> get_gkvec_ekin() override;
-    std::shared_ptr<nlcglib::ScalarBaseZ> get_kpoint_weights() override;
-    void set_chemical_potential(double) override;
-    double get_chemical_potential() override;
-    void print_info() const override;
+    std::shared_ptr<nlcglib::VectorBaseZ>
+    get_fn() override;
+    void
+    set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<std::vector<double>>& fn) override;
+    std::shared_ptr<nlcglib::VectorBaseZ>
+    get_ek() override;
+    std::shared_ptr<nlcglib::VectorBaseZ>
+    get_gkvec_ekin() override;
+    std::shared_ptr<nlcglib::ScalarBaseZ>
+    get_kpoint_weights() override;
+    void
+    set_chemical_potential(double) override;
+    double
+    get_chemical_potential() override;
+    void
+    print_info() const override;
 
   private:
     K_point_set& kset_;

@@ -48,7 +48,6 @@ using bf_lo_index = strong_type<int, struct __bf_lo_index_tag>;
 class angular_momentum
 {
   private:
-
     /// Orbital quantum number l.
     int l_;
 
@@ -58,10 +57,9 @@ class angular_momentum
     int s_{0};
 
   public:
-
     /// Constructor.
     explicit angular_momentum(int l__)
-      : l_(l__)
+        : l_(l__)
     {
         if (l__ < 0) {
             RTE_THROW("l can't be negative");
@@ -70,8 +68,8 @@ class angular_momentum
 
     /// Constructor.
     explicit angular_momentum(int l__, int s__)
-      : l_(l__)
-      , s_(s__)
+        : l_(l__)
+        , s_(s__)
     {
         if (l__ < 0) {
             RTE_THROW("l can't be negative");
@@ -85,19 +83,22 @@ class angular_momentum
     }
 
     /// Get orbital quantum number l.
-    inline auto l() const
+    inline auto
+    l() const
     {
         return l_;
     }
 
     /// Get total angular momentum j = l +/- 1/2
-    inline auto j() const
+    inline auto
+    j() const
     {
         return l_ + s_ / 2.0;
     }
 
     /// Get twice the total angular momentum 2j = 2l +/- 1
-    inline auto two_j() const
+    inline auto
+    two_j() const
     {
         return 2 * l_ + s_;
     }
@@ -105,30 +106,35 @@ class angular_momentum
     /// The size of the subshell for the angular momentum l or j.
     /** This is the number of m_l values in the range [-l, l] or the number of
      *  m_j values in the range [-j, j] */
-    inline auto subshell_size() const
+    inline auto
+    subshell_size() const
     {
         return two_j() + 1;
     }
 
     /// Get spin quantum number s.
-    inline auto s() const
+    inline auto
+    s() const
     {
         return s_;
     }
 };
 
-inline bool operator==(angular_momentum lhs__, angular_momentum rhs__)
+inline bool
+operator==(angular_momentum lhs__, angular_momentum rhs__)
 {
     return (lhs__.l() == rhs__.l()) && (lhs__.s() == rhs__.s());
 }
 
-inline bool operator!=(angular_momentum lhs__, angular_momentum rhs__)
+inline bool
+operator!=(angular_momentum lhs__, angular_momentum rhs__)
 {
     return !(lhs__ == rhs__);
 }
 
 /// Output angular momentum to a stream.
-inline std::ostream& operator<<(std::ostream& out, angular_momentum am)
+inline std::ostream&
+operator<<(std::ostream& out, angular_momentum am)
 {
     if (am.s() == 0) {
         out << "{l: " << am.l() << "}";
@@ -157,7 +163,7 @@ struct radial_function_index_descriptor
     rf_index idxrf{-1};
 
     radial_function_index_descriptor(angular_momentum am__, int order__, rf_index idxrf__,
-            rf_lo_index idxlo__ = rf_lo_index(-1))
+                                     rf_lo_index idxlo__ = rf_lo_index(-1))
         : am{am__}
         , order{order__}
         , idxlo{idxlo__}
@@ -185,6 +191,7 @@ class radial_functions_index
 
     /// Starting index of local orbitals (if added in LAPW case).
     int offset_lo_{-1};
+
   public:
     /// Default constructor.
     radial_functions_index()
@@ -192,7 +199,8 @@ class radial_functions_index
     }
 
     /// Add a single radial function with a given angular momentum.
-    void add(angular_momentum am__)
+    void
+    add(angular_momentum am__)
     {
         /* current l */
         auto l = am__.l();
@@ -225,7 +233,8 @@ class radial_functions_index
     /// Add local-orbital type of radial function.
     /** Local orbitals are only used in FP-LAPW, where the distinction between APW and local orbitals
      *  must be made. For PP-PW this is not used. */
-    void add_lo(angular_momentum am__)
+    void
+    add_lo(angular_momentum am__)
     {
         /* mark the start of the local orbital block of radial functions */
         if (offset_lo_ < 0) {
@@ -238,7 +247,8 @@ class radial_functions_index
     }
 
     /// Add two component of the spinor radial function.
-    void add(angular_momentum am1__, angular_momentum am2__)
+    void
+    add(angular_momentum am1__, angular_momentum am2__)
     {
         /* current l */
         auto l = am1__.l();
@@ -298,25 +308,29 @@ class radial_functions_index
     }
 
     /// Return angular momentum of the radial function.
-    inline auto am(rf_index idx__) const
+    inline auto
+    am(rf_index idx__) const
     {
         return vrd_[idx__].am;
     }
 
     /// Return order of the radial function.
-    inline auto order(rf_index idx__) const
+    inline auto
+    order(rf_index idx__) const
     {
         return vrd_[idx__].order;
     }
 
     /// Return maximum angular momentum quantum number.
-    inline auto lmax() const
+    inline auto
+    lmax() const
     {
         return static_cast<int>(index_by_j_order_.size()) - 1;
     }
 
     /// Maximum angular momentum quantum number for local orbitals.
-    inline auto lmax_lo() const
+    inline auto
+    lmax_lo() const
     {
         int result{-1};
         if (offset_lo_ >= 0) {
@@ -328,7 +342,8 @@ class radial_functions_index
     }
 
     /// Number of local orbitals for a given l.
-    inline auto num_lo(int l__) const
+    inline auto
+    num_lo(int l__) const
     {
         int result{-1};
         if (offset_lo_ >= 0) {
@@ -342,13 +357,15 @@ class radial_functions_index
     }
 
     /// Return maximum order of the radial functions for a given angular momentum.
-    inline auto max_order(int l__) const
+    inline auto
+    max_order(int l__) const
     {
         return static_cast<int>(index_by_j_order_[l__].size());
     }
 
     /// Return maximum order of the radial functions across all angular momentums.
-    inline auto max_order() const
+    inline auto
+    max_order() const
     {
         int result{0};
         for (int l = 0; l <= this->lmax(); l++) {
@@ -358,21 +375,24 @@ class radial_functions_index
     }
 
     /// Return index of radial function.
-    inline auto index_of(angular_momentum am__, int order__) const
+    inline auto
+    index_of(angular_momentum am__, int order__) const
     {
         /* std::max(s, 0) maps s = -1 -> 0, s = 0 -> 0, s = 1 -> 1 */
         return rf_index(index_by_j_order_[am__.l()][order__][std::max(am__.s(), 0)]);
     }
 
     /// Return index of local orbital.
-    inline auto index_of(rf_lo_index idxlo__) const
+    inline auto
+    index_of(rf_lo_index idxlo__) const
     {
         RTE_ASSERT(idxlo__ >= 0 && idxlo__ + offset_lo_ < this->size());
         return rf_index(offset_lo_ + idxlo__);
     }
 
     /// Check if the angular momentum is treated as full (j = l +/- 1/2).
-    auto full_j(int l__, int o__) const
+    auto
+    full_j(int l__, int o__) const
     {
         /* look at index of l + s */
         if (index_by_j_order_[l__][o__][1] >= 0) {
@@ -383,7 +403,8 @@ class radial_functions_index
     }
 
     /// Return the angular mementum(s) of the subshell with given l and order.
-    auto subshell(int l__, int o__) const
+    auto
+    subshell(int l__, int o__) const
     {
         if (full_j(l__, o__)) {
             if (l__ == 0) {
@@ -397,7 +418,8 @@ class radial_functions_index
     }
 
     /// Return total number of radial functions.
-    inline int size() const
+    inline int
+    size() const
     {
         return static_cast<int>(vrd_.size());
     }
@@ -406,44 +428,50 @@ class radial_functions_index
     /** In case of orbital quantum number l the size is 2l+1; in case of full
      *  angular momentum j the size is 2*(2l+1) and consists of 2j_{+} + 1 and 2j_{-} + 1
      *  contributions */
-    inline auto subshell_size(int l__, int o__) const
+    inline auto
+    subshell_size(int l__, int o__) const
     {
         int size{0};
-        for (auto j: subshell(l__, o__)) {
+        for (auto j : subshell(l__, o__)) {
             size += j.subshell_size();
         }
         return size;
     }
 
     /// Return radial function descriptor for a given index.
-    inline auto const& operator[](rf_index i__) const
+    inline auto const&
+    operator[](rf_index i__) const
     {
         return vrd_[i__];
     }
 
     /// Begin iterator of radial function descriptor list.
-    auto begin() const
+    auto
+    begin() const
     {
         return vrd_.begin();
     }
 
     /// End iterator of radial function descriptor list.
-    auto end() const
+    auto
+    end() const
     {
         return vrd_.end();
     }
 };
 
-inline auto begin(radial_functions_index const& idx__)
+inline auto
+begin(radial_functions_index const& idx__)
 {
     return idx__.begin();
 }
 
-inline auto end(radial_functions_index const& idx__)
+inline auto
+end(radial_functions_index const& idx__)
 {
     return idx__.end();
 }
 
-}
+} // namespace sirius
 
 #endif

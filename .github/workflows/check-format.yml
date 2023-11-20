@@ -1,17 +1,21 @@
-name: Check formatting of modified files
+name: Check source code formatting
 
 on:
   push:
-    branches: ['master', 'develop', '!trying', '!staging']
+    branches: ['master', 'develop']
   pull_request:
     branches: ['master', 'develop']
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    container: zhongruoyu/llvm-ports:17.0.4-slim-focal
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Check .cpp, .h and .hpp files
-        run: ./check_format.x
+      - uses: actions/checkout@v4
+      - name: Check .cpp and .hpp files
+        run: |
+          find ./src -name \*.cpp -o -name \*.hpp ! -name nlohmann_json.hpp ! -name lebedev_grids.hpp ! -name config.hpp | python3 check_format.py
+          find ./apps -name \*.cpp -o -name \*.hpp | python3 check_format.py
+          find ./python_module -maxdepth 1 -name \*.cpp -o -name \*.hpp | python3 check_format.py
+
+

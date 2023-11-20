@@ -2,15 +2,16 @@
 
 using namespace sirius;
 
-int run_test()
+int
+run_test()
 {
     r3::vector<double> a(1.1, 2.2, 3.3);
     r3::vector<double> b = a;
     r3::vector<double> c(b);
     r3::vector<double> d;
-    d = c;
-    r3::matrix<int> R = {{1,0,0},{0,1,0},{0,0,1}};
-    auto e = dot(R, a) + b;
+    d                 = c;
+    r3::matrix<int> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    auto e            = dot(R, a) + b;
     r3::vector<double> ref(2.2, 4.4, 6.6);
     if ((ref - e).length() > 1e-16) {
         return 1;
@@ -23,7 +24,8 @@ int run_test()
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 
@@ -38,9 +40,15 @@ int main(int argn, char** argv)
     printf("%-30s", "testing geometry3d: ");
     int result = run_test();
     if (result) {
-        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+        printf("\x1b[31m"
+               "Failed"
+               "\x1b[0m"
+               "\n");
     } else {
-        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+        printf("\x1b[32m"
+               "OK"
+               "\x1b[0m"
+               "\n");
     }
     sirius::finalize();
 

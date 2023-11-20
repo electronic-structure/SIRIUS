@@ -27,12 +27,13 @@
 namespace sirius {
 
 template <typename T, sync_band_t what>
-void K_point_set::sync_band()
+void
+K_point_set::sync_band()
 {
     PROFILE("sirius::K_point_set::sync_band");
 
-    mdarray<double, 3> data({ctx_.num_bands(), ctx_.num_spinors(), num_kpoints()},
-            get_memory_pool(memory_t::host), mdarray_label("K_point_set::sync_band.data"));
+    mdarray<double, 3> data({ctx_.num_bands(), ctx_.num_spinors(), num_kpoints()}, get_memory_pool(memory_t::host),
+                            mdarray_label("K_point_set::sync_band.data"));
     data.zero();
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
@@ -69,25 +70,22 @@ void K_point_set::sync_band()
     }
 }
 
-template
-void
+template void
 K_point_set::sync_band<double, sync_band_t::energy>();
 
-template
-void
+template void
 K_point_set::sync_band<double, sync_band_t::occupancy>();
 
 #if defined(SIRIUS_USE_FP32)
-template
-void
+template void
 K_point_set::sync_band<float, sync_band_t::energy>();
 
-template
-void
+template void
 K_point_set::sync_band<float, sync_band_t::occupancy>();
 #endif
 
-void K_point_set::create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__)
+void
+K_point_set::create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__)
 {
     PROFILE("sirius::K_point_set::create_k_mesh");
 
@@ -130,7 +128,8 @@ void K_point_set::create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shif
     initialize();
 }
 
-void K_point_set::initialize(std::vector<int> const& counts)
+void
+K_point_set::initialize(std::vector<int> const& counts)
 {
     if (this->initialized_) {
         RTE_THROW("K-point set is already initialized");
@@ -139,17 +138,17 @@ void K_point_set::initialize(std::vector<int> const& counts)
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
         splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
-        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
-                block_id(comm().rank()), spl_tmp.counts());
+        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()),
+                                                      spl_tmp.counts());
     } else {
-        spl_num_kpoints_ = splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()),
-                block_id(comm().rank()), counts);
+        spl_num_kpoints_ =
+                splindex_chunk<kp_index_t>(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()), counts);
     }
 
     for (auto it : spl_num_kpoints_) {
-      kpoints_[it.i]->initialize();
+        kpoints_[it.i]->initialize();
 #if defined(SIRIUS_USE_FP32)
-      kpoints_float_[it.i]->initialize();
+        kpoints_float_[it.i]->initialize();
 #endif
     }
 
@@ -160,11 +159,11 @@ void K_point_set::initialize(std::vector<int> const& counts)
     this->initialized_ = true;
 }
 
-
-template<class F>
-double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
+template <class F>
+double
+bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
 {
-    double x = (a+b)/2;
+    double x  = (a + b) / 2;
     double fi = f(x);
     int step{0};
     /* compute fermy energy */
@@ -177,7 +176,7 @@ double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
             a = x;
         }
 
-        x = (a + b) / 2.0;
+        x  = (a + b) / 2.0;
         fi = f(x);
 
         if (step > maxstep) {
@@ -204,15 +203,17 @@ double bisection_search(F&& f, double a, double b, double tol, int maxstep=1000)
  */
 template <class Nt, class DNt, class D2Nt>
 auto
-newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, int maxstep = 1000)
+newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol,
+                                       int maxstep = 1000)
 {
     // Newton finds the minimum, not necessarily N(mu) == ne, tolerate up to `tol_ne` difference in number of electrons
     // if |N(mu_0) -ne| > tol_ne an error is thrown.
     const double tol_ne = 1e-2;
 
-    struct {
-        double mu; // chemical potential
-        int iter{0}; // newton information
+    struct
+    {
+        double mu;              // chemical potential
+        int iter{0};            // newton information
         std::vector<double> ys; // newton history
     } res;
 
@@ -220,10 +221,10 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
     double alpha{1.0}; // Newton damping
     int iter{0};
 
-    if ( std::abs(N(mu) - ne) < tol) {
-        res.mu = mu;
+    if (std::abs(N(mu) - ne) < tol) {
+        res.mu   = mu;
         res.iter = iter;
-        res.ys = {};
+        res.ys   = {};
         return res;
     }
 
@@ -233,11 +234,11 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         double dNf  = dN(mu);
         double ddNf = ddN(mu);
         /* minimize (N(mu) - ne)^2  */
-        //double F = (Nf - ne) * (Nf - ne);
-        double dF = 2 * (Nf - ne) * dNf;
-        double ddF = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
+        // double F = (Nf - ne) * (Nf - ne);
+        double dF   = 2 * (Nf - ne) * dNf;
+        double ddF  = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
         double step = alpha * dF / std::abs(ddF);
-        mu = mu - step;
+        mu          = mu - step;
 
         res.ys.push_back(mu);
 
@@ -251,7 +252,8 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         if (std::abs(step) < tol || std::abs(Nf - ne) < tol) {
             if (std::abs(Nf - ne) > tol_ne) {
                 std::stringstream s;
-                s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search." << "\n";
+                s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search."
+                  << "\n";
                 RTE_THROW(s);
             }
 
@@ -273,7 +275,8 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 }
 
 template <typename T>
-void K_point_set::find_band_occupancies()
+void
+K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
 
@@ -364,27 +367,27 @@ void K_point_set::find_band_occupancies()
     }
 
     try {
-        auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+        auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
         energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
 
         /* for cold and Methfessel Paxton smearing start newton minimization  */
-        if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
-            f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-            auto df  = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
-            auto ddf = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
-            auto N   = [&](double mu) { return compute_ne(mu, f); };
-            auto dN  = [&](double mu) { return compute_ne(mu, df); };
-            auto ddN = [&](double mu) { return compute_ne(mu, ddf); };
-            auto res_newton =  newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 1000);
-            energy_fermi_ = res_newton.mu;
+        if (ctx_.smearing() == smearing::smearing_t::cold ||
+            ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
+            f               = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+            auto df         = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
+            auto ddf        = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
+            auto N          = [&](double mu) { return compute_ne(mu, f); };
+            auto dN         = [&](double mu) { return compute_ne(mu, df); };
+            auto ddN        = [&](double mu) { return compute_ne(mu, ddf); };
+            auto res_newton = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 1000);
+            energy_fermi_   = res_newton.mu;
             if (ctx_.verbosity() >= 2) {
                 RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
             }
         }
-    } catch(std::exception const& e) {
+    } catch (std::exception const& e) {
         if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << e.what() << std::endl
-                << "fallback to bisection search" << std::endl;
+            RTE_OUT(ctx_.out()) << e.what() << std::endl << "fallback to bisection search" << std::endl;
         }
         f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
@@ -439,15 +442,16 @@ void K_point_set::find_band_occupancies()
     }
 }
 
-template
-void K_point_set::find_band_occupancies<double>();
+template void
+K_point_set::find_band_occupancies<double>();
 #if defined(SIRIUS_USE_FP32)
-template
-void K_point_set::find_band_occupancies<float>();
+template void
+K_point_set::find_band_occupancies<float>();
 #endif
 
 template <typename T>
-double K_point_set::valence_eval_sum() const
+double
+K_point_set::valence_eval_sum() const
 {
     double eval_sum{0};
 
@@ -469,7 +473,8 @@ double K_point_set::valence_eval_sum() const
     return eval_sum;
 }
 
-double K_point_set::valence_eval_sum() const
+double
+K_point_set::valence_eval_sum() const
 {
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
@@ -484,14 +489,14 @@ double K_point_set::valence_eval_sum() const
 }
 
 template <typename T>
-double K_point_set::entropy_sum() const
+double
+K_point_set::entropy_sum() const
 {
     double s_sum{0};
 
     double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
-    bool only_occ = (ctx_.num_mag_dims() != 1 &&
-                     std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10);
+    bool only_occ = (ctx_.num_mag_dims() != 1 && std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10);
 
     if (only_occ) {
         return 0;
@@ -517,7 +522,8 @@ double K_point_set::entropy_sum() const
     return s_sum;
 }
 
-double K_point_set::entropy_sum() const
+double
+K_point_set::entropy_sum() const
 {
     if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
@@ -531,7 +537,8 @@ double K_point_set::entropy_sum() const
     }
 }
 
-void K_point_set::print_info()
+void
+K_point_set::print_info()
 {
     mpi::pstdout pout(this->comm());
 
@@ -549,9 +556,9 @@ void K_point_set::print_info()
 
     for (auto it : spl_num_kpoints()) {
         int ik = it.i;
-        pout << std::setw(4) << ik << ffmt(9, 4) << kpoints_[ik]->vk()[0] << ffmt(9, 4)
-             << kpoints_[ik]->vk()[1] << ffmt(9, 4) << kpoints_[ik]->vk()[2] << ffmt(17, 6)
-             << kpoints_[ik]->weight() << std::setw(11) << kpoints_[ik]->num_gkvec();
+        pout << std::setw(4) << ik << ffmt(9, 4) << kpoints_[ik]->vk()[0] << ffmt(9, 4) << kpoints_[ik]->vk()[1]
+             << ffmt(9, 4) << kpoints_[ik]->vk()[2] << ffmt(17, 6) << kpoints_[ik]->weight() << std::setw(11)
+             << kpoints_[ik]->num_gkvec();
 
         if (ctx_.full_potential()) {
             pout << std::setw(18) << kpoints_[ik]->gklo_basis_size();
@@ -561,7 +568,8 @@ void K_point_set::print_info()
     RTE_OUT(ctx_.out()) << pout.flush(0);
 }
 
-void K_point_set::save(std::string const& name__) const
+void
+K_point_set::save(std::string const& name__) const
 {
     if (ctx_.comm().rank() == 0) {
         if (!file_exists(name__)) {
@@ -583,7 +591,8 @@ void K_point_set::save(std::string const& name__) const
 }
 
 /// \todo check parameters of saved data in a separate function
-void K_point_set::load()
+void
+K_point_set::load()
 {
     RTE_THROW("not implemented");
 

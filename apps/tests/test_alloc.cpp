@@ -3,7 +3,8 @@
 using namespace sirius;
 
 template <int touch, int pin, device_t pu>
-void test_alloc(int size__)
+void
+test_alloc(int size__)
 {
     auto t0 = time_now();
     if (pu == device_t::CPU) {
@@ -20,13 +21,14 @@ void test_alloc(int size__)
             a.zero(memory_t::device);
         }
     }
-    #endif
+#endif
     double tval = time_interval(t0);
     printf("time: %f microseconds\n", tval * 1e6);
     printf("effective speed: %f GB/sec.\n", size__ / 1024.0 / tval);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

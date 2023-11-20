@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_comm_split(int comm_size)
+void
+test_comm_split(int comm_size)
 {
     if (mpi::Communicator::world().rank() == 0) {
         printf("sub comm size: %i\n", comm_size);
@@ -21,7 +22,8 @@ void test_comm_split(int comm_size)
     std::cout << pout.flush(0);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--comm_size=", "{int} size of sub-communicator");

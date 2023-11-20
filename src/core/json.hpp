@@ -32,7 +32,9 @@
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
-inline nlohmann::json try_parse(std::istream &is) {
+inline nlohmann::json
+try_parse(std::istream& is)
+{
     nlohmann::json dict;
 
     try {
@@ -46,7 +48,9 @@ inline nlohmann::json try_parse(std::istream &is) {
     return dict;
 }
 
-inline nlohmann::json read_json_from_file(std::string const &filename) {
+inline nlohmann::json
+read_json_from_file(std::string const& filename)
+{
     std::ifstream file{filename};
     if (!file.is_open()) {
         std::stringstream s;
@@ -57,7 +61,9 @@ inline nlohmann::json read_json_from_file(std::string const &filename) {
     return try_parse(file);
 }
 
-inline nlohmann::json read_json_from_string(std::string const &str) {
+inline nlohmann::json
+read_json_from_string(std::string const& str)
+{
     if (str.empty()) {
         return {};
     }
@@ -65,7 +71,8 @@ inline nlohmann::json read_json_from_string(std::string const &str) {
     return try_parse(input);
 }
 
-inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
+inline nlohmann::json
+read_json_from_file_or_string(std::string const& str__)
 {
     if (str__.empty()) {
         return {};

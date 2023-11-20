@@ -185,12 +185,15 @@ class K_point
     std::array<int, 2> ispn_map_{0, -1};
 
     /// Generate G+k and local orbital basis sets.
-    void generate_gklo_basis();
+    void
+    generate_gklo_basis();
 
     /// Find G+k vectors within the cutoff.
-    void generate_gkvec(double gk_cutoff__);
+    void
+    generate_gkvec(double gk_cutoff__);
 
-    inline int get_ispn(int ispn__) const
+    inline int
+    get_ispn(int ispn__) const
     {
         RTE_ASSERT(ispn__ == 0 || ispn__ == 1);
         return ispn_map_[ispn__];
@@ -198,9 +201,11 @@ class K_point
 
     friend class K_point_set;
 
-    void init0()
+    void
+    init0()
     {
-        band_occupancies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
+        band_occupancies_ =
+                mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
         band_occupancies_.zero();
         band_energies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_energies"));
         band_energies_.zero();
@@ -229,7 +234,7 @@ class K_point
     {
         this->init0();
         gkvec_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
-                                        ctx_.gamma_point());
+                                             ctx_.gamma_point());
     }
 
     /// Constructor
@@ -251,10 +256,12 @@ class K_point
     }
 
     /// Initialize the k-point related arrays and data.
-    void initialize(); // TODO: initialize from HDF5
+    void
+    initialize(); // TODO: initialize from HDF5
 
     /// Update the reciprocal lattice vectors of the G+k array.
-    void update();
+    void
+    update();
 
     /// Generate first-variational states from eigen-vectors.
     /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
@@ -285,12 +292,14 @@ class K_point
         \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
         \f]
      */
-    void generate_fv_states();
+    void
+    generate_fv_states();
 
     /// Generate two-component spinor wave functions.
     /** In case of second-variational diagonalization spinor wave-functions are generated from the first-variational
         states and second-variational eigen-vectors. */
-    void generate_spinor_wave_functions();
+    void
+    generate_spinor_wave_functions();
 
     /// Generate plane-wave coefficients of the atomic wave-functions.
     /** Plane-wave coefficients of the atom-centered wave-functions
@@ -322,25 +331,30 @@ class K_point
         \param [out] wf     Resulting wave-functions for the list of atoms. Output wave-functions must have
                             sufficient storage space.
      */
-    void generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<basis_functions_index const*(int)> indexb__,
-                                        Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__);
-    void generate_hubbard_orbitals();
+    void
+    generate_atomic_wave_functions(std::vector<int> atoms__, std::function<basis_functions_index const*(int)> indexb__,
+                                   Radial_integrals_atomic_wf<false> const& ri__, wf::Wave_functions<T>& wf__);
+    void
+    generate_hubbard_orbitals();
 
     /// Save data to HDF5 file.
-    void save(std::string const& name__, int id__) const;
+    void
+    save(std::string const& name__, int id__) const;
 
-    void load(HDF5_tree h5in, int id);
+    void
+    load(HDF5_tree h5in, int id);
 
     //== void save_wave_functions(int id);
 
     //== void load_wave_functions(int id);
 
     /// Collect distributed first-variational vectors into a global array.
-    void get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const;
+    void
+    get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const;
 
     /// Collect distributed second-variational vectors into a global array.
-    void get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
+    void
+    get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
     {
         RTE_ASSERT((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
         RTE_ASSERT((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
@@ -370,32 +384,36 @@ class K_point
         comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
     }
 
-    /// Return const. reference to G+k vector object.
-    inline auto const& gkvec() const
+    inline auto const&
+    gkvec() const
     {
         return *gkvec_;
     }
 
     /// Return shared pointer to gkvec object.
-    inline auto gkvec_sptr() const
+    inline auto
+    gkvec_sptr() const
     {
         return gkvec_;
     }
 
     /// Total number of G+k vectors within the cutoff distance
-    inline int num_gkvec() const
+    inline int
+    num_gkvec() const
     {
         return gkvec_->num_gvec();
     }
 
     /// Local number of G+k vectors in case of flat distribution.
-    inline int num_gkvec_loc() const
+    inline int
+    num_gkvec_loc() const
     {
         return gkvec().count();
     }
 
     /// Get the number of occupied bands for each spin channel.
-    inline int num_occupied_bands(int ispn__ = -1) const
+    inline int
+    num_occupied_bands(int ispn__ = -1) const
     {
         if (ctx_.num_mag_dims() == 3) {
             ispn__ = 0;
@@ -409,18 +427,21 @@ class K_point
     }
 
     /// Get band energy.
-    inline double band_energy(int j__, int ispn__) const
+    inline double
+    band_energy(int j__, int ispn__) const
     {
         return band_energies_(j__, get_ispn(ispn__));
     }
 
     /// Set band energy.
-    inline void band_energy(int j__, int ispn__, double e__)
+    inline void
+    band_energy(int j__, int ispn__, double e__)
     {
         band_energies_(j__, get_ispn(ispn__)) = e__;
     }
 
-    inline auto band_energies(int ispn__) const
+    inline auto
+    band_energies(int ispn__) const
     {
         std::vector<double> result(ctx_.num_bands());
         for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -430,53 +451,62 @@ class K_point
     }
 
     /// Get band occupancy.
-    inline double band_occupancy(int j__, int ispn__) const
+    inline double
+    band_occupancy(int j__, int ispn__) const
     {
         return band_occupancies_(j__, get_ispn(ispn__));
     }
 
     /// Set band occupancy.
-    inline void band_occupancy(int j__, int ispn__, double occ__)
+    inline void
+    band_occupancy(int j__, int ispn__, double occ__)
     {
         band_occupancies_(j__, get_ispn(ispn__)) = occ__;
     }
 
-    inline double fv_eigen_value(int i) const
+    inline double
+    fv_eigen_value(int i) const
     {
         return fv_eigen_values_[i];
     }
 
-    void set_fv_eigen_values(double* eval__)
+    void
+    set_fv_eigen_values(double* eval__)
     {
         std::copy(eval__, eval__ + ctx_.num_fv_states(), &fv_eigen_values_[0]);
     }
 
     /// Return weight of k-point.
-    inline double weight() const
+    inline double
+    weight() const
     {
         return weight_;
     }
 
-    inline auto& fv_states()
+    inline auto&
+    fv_states()
     {
         RTE_ASSERT(fv_states_ != nullptr);
         return *fv_states_;
     }
 
-    inline wf::Wave_functions<T> const& spinor_wave_functions() const
+    inline wf::Wave_functions<T> const&
+    spinor_wave_functions() const
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline wf::Wave_functions<T>& spinor_wave_functions()
+    inline wf::Wave_functions<T>&
+    spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
         // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
     }
 
-    inline auto& spinor_wave_functions2()
+    inline auto&
+    spinor_wave_functions2()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
@@ -485,45 +515,52 @@ class K_point
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on
     /// these functions.
-    inline auto const& atomic_wave_functions_S() const
+    inline auto const&
+    atomic_wave_functions_S() const
     {
         /* the S operator is applied on these functions */
         RTE_ASSERT(atomic_wave_functions_S_ != nullptr);
         return *atomic_wave_functions_S_;
     }
 
-    inline auto& atomic_wave_functions_S()
+    inline auto&
+    atomic_wave_functions_S()
     {
         return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions_S());
     }
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions.
-    inline auto const& atomic_wave_functions() const
+    inline auto const&
+    atomic_wave_functions() const
     {
         RTE_ASSERT(atomic_wave_functions_ != nullptr);
         return *atomic_wave_functions_;
     }
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions.
-    inline auto& atomic_wave_functions()
+    inline auto&
+    atomic_wave_functions()
     {
         return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).atomic_wave_functions());
     }
 
     /// Return the actual hubbard wave functions used in the calculations.
     /** The S operator is applied on these functions. */
-    inline auto const& hubbard_wave_functions_S() const
+    inline auto const&
+    hubbard_wave_functions_S() const
     {
         RTE_ASSERT(hubbard_wave_functions_S_ != nullptr);
         return *hubbard_wave_functions_S_;
     }
 
-    inline auto& singular_components()
+    inline auto&
+    singular_components()
     {
         return *singular_components_;
     }
 
-    inline auto vk() const
+    inline auto
+    vk() const
     {
         return vk_;
     }
@@ -531,201 +568,237 @@ class K_point
     /// Basis size of LAPW+lo method.
     /** The total LAPW+lo basis size is equal to the sum of the number of LAPW functions and the total number
      *  of the local orbitals. */
-    inline int gklo_basis_size() const
+    inline int
+    gklo_basis_size() const
     {
         return num_gkvec() + unit_cell_.mt_lo_basis_size();
     }
 
     /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
-    inline int num_gkvec_row() const
+    inline int
+    num_gkvec_row() const
     {
         return num_gkvec_row_;
     }
 
     /// Local number of local orbitals for each MPI rank in the row of the 2D MPI grid.
-    inline int num_lo_row() const
+    inline int
+    num_lo_row() const
     {
         return static_cast<int>(lo_basis_descriptors_row_.size());
     }
 
     /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
-    inline int gklo_basis_size_row() const
+    inline int
+    gklo_basis_size_row() const
     {
         return num_gkvec_row() + num_lo_row();
     }
 
     /// Local number of G+k vectors for each MPI rank in the column of the 2D MPI grid.
-    inline int num_gkvec_col() const
+    inline int
+    num_gkvec_col() const
     {
         return num_gkvec_col_;
     }
 
     /// Local number of local orbitals for each MPI rank in the column of the 2D MPI grid.
-    inline int num_lo_col() const
+    inline int
+    num_lo_col() const
     {
         return static_cast<int>(lo_basis_descriptors_col_.size());
     }
 
     /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
-    inline int gklo_basis_size_col() const
+    inline int
+    gklo_basis_size_col() const
     {
         return num_gkvec_col() + num_lo_col();
     }
 
-    inline lo_basis_descriptor const& lo_basis_descriptor_col(int idx) const
+    inline lo_basis_descriptor const&
+    lo_basis_descriptor_col(int idx) const
     {
         RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
         return lo_basis_descriptors_col_[idx];
     }
 
-    inline lo_basis_descriptor const& lo_basis_descriptor_row(int idx) const
+    inline lo_basis_descriptor const&
+    lo_basis_descriptor_row(int idx) const
     {
         RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
         return lo_basis_descriptors_row_[idx];
     }
 
-    inline int num_ranks_row() const
+    inline int
+    num_ranks_row() const
     {
         return num_ranks_row_;
     }
 
-    inline int rank_row() const
+    inline int
+    rank_row() const
     {
         return rank_row_;
     }
 
-    inline int num_ranks_col() const
+    inline int
+    num_ranks_col() const
     {
         return num_ranks_col_;
     }
 
-    inline int rank_col() const
+    inline int
+    rank_col() const
     {
         return rank_col_;
     }
 
     /// Number of MPI ranks for a given k-point
-    inline int num_ranks() const
+    inline int
+    num_ranks() const
     {
         return comm_.size();
     }
 
-    inline int rank() const
+    inline int
+    rank() const
     {
         return comm_.rank();
     }
 
     /// Return number of lo columns for a given atom
-    inline int num_atom_lo_cols(int ia) const
+    inline int
+    num_atom_lo_cols(int ia) const
     {
         return (int)atom_lo_cols_[ia].size();
     }
 
     /// Return local index (for the current MPI rank) of a column for a given atom and column index within an atom
-    inline int lo_col(int ia, int i) const
+    inline int
+    lo_col(int ia, int i) const
     {
         return atom_lo_cols_[ia][i];
     }
 
     /// Return number of lo rows for a given atom
-    inline int num_atom_lo_rows(int ia) const
+    inline int
+    num_atom_lo_rows(int ia) const
     {
         return (int)atom_lo_rows_[ia].size();
     }
 
     /// Return local index (for the current MPI rank) of a row for a given atom and row index within an atom
-    inline int lo_row(int ia, int i) const
+    inline int
+    lo_row(int ia, int i) const
     {
         return atom_lo_rows_[ia][i];
     }
 
-    inline auto& fv_eigen_vectors()
+    inline auto&
+    fv_eigen_vectors()
     {
         return fv_eigen_vectors_;
     }
 
-    inline auto& fv_eigen_vectors_slab()
+    inline auto&
+    fv_eigen_vectors_slab()
     {
         return *fv_eigen_vectors_slab_;
     }
 
-    inline auto& sv_eigen_vectors(int ispn)
+    inline auto&
+    sv_eigen_vectors(int ispn)
     {
         return sv_eigen_vectors_[ispn];
     }
 
-    inline auto& fd_eigen_vectors()
+    inline auto&
+    fd_eigen_vectors()
     {
         return fd_eigen_vectors_;
     }
 
-    void bypass_sv()
+    void
+    bypass_sv()
     {
         std::copy(&fv_eigen_values_[0], &fv_eigen_values_[0] + ctx_.num_fv_states(), &band_energies_[0]);
     }
 
-    inline auto const& alm_coeffs_row() const
+    inline auto const&
+    alm_coeffs_row() const
     {
         return *alm_coeffs_row_;
     }
 
-    inline auto const& alm_coeffs_col() const
+    inline auto const&
+    alm_coeffs_col() const
     {
         return *alm_coeffs_col_;
     }
 
-    inline auto const& alm_coeffs_loc() const
+    inline auto const&
+    alm_coeffs_loc() const
     {
         return *alm_coeffs_loc_;
     }
 
-    inline auto const& comm() const
+    inline auto const&
+    comm() const
     {
         return comm_;
     }
 
-    inline auto const& comm_row() const
+    inline auto const&
+    comm_row() const
     {
         return comm_row_;
     }
 
-    inline auto const& comm_col() const
+    inline auto const&
+    comm_col() const
     {
         return comm_col_;
     }
 
-    auto beta_projectors() -> Beta_projectors<T>&
+    auto
+    beta_projectors() -> Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    auto beta_projectors() const -> const Beta_projectors<T>&
+    auto
+    beta_projectors() const -> const Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
     }
 
-    auto& beta_projectors_row()
+    auto&
+    beta_projectors_row()
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_row_;
     }
 
-    auto& beta_projectors_col()
+    auto&
+    beta_projectors_col()
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_col_;
     }
 
-    auto const& ctx() const
+    auto const&
+    ctx() const
     {
         return ctx_;
     }
 
     /// Return stdout stream for high verbosity output.
     /** This output will not be passed to a ctx_.out() stream. */
-    std::ostream& out(int level__) const
+    std::ostream&
+    out(int level__) const
     {
         if (ctx_.verbosity() >= level__ && this->comm().rank() == 0) {
             return std::cout;
@@ -734,27 +807,32 @@ class K_point
         }
     }
 
-    auto& spfft_transform() const
+    auto&
+    spfft_transform() const
     {
         return *spfft_transform_;
     }
 
-    inline auto const& gkvec_fft() const
+    inline auto const&
+    gkvec_fft() const
     {
         return *gkvec_partition_;
     }
 
-    inline auto gkvec_fft_sptr() const
+    inline auto
+    gkvec_fft_sptr() const
     {
         return gkvec_partition_;
     }
 
-    inline auto const& gkvec_col() const
+    inline auto const&
+    gkvec_col() const
     {
         return *gkvec_col_;
     }
 
-    inline auto const& gkvec_row() const
+    inline auto const&
+    gkvec_row() const
     {
         return *gkvec_row_;
     }
@@ -763,7 +841,7 @@ class K_point
 template <typename T>
 inline auto
 wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, wf::num_bands num_wf__,
-        wf::num_mag_dims num_md__, bool mt_part__)
+                      wf::num_mag_dims num_md__, bool mt_part__)
 {
     using wf_t = wf::Wave_functions<T>;
     std::unique_ptr<wf_t> wf{nullptr};

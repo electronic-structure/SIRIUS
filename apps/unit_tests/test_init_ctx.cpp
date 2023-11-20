@@ -5,7 +5,8 @@
 
 using namespace sirius;
 
-int run_test(cmd_args const& args)
+int
+run_test(cmd_args const& args)
 {
     Simulation_context ctx;
     if (ctx.cfg().hubbard().local().size() != 0) {
@@ -14,10 +15,10 @@ int run_test(cmd_args const& args)
 
     nlohmann::json node;
     node["atom_type"] = "Fe";
-    node["U"] = 4.0;
-    node["J"] = 1.0;
-    node["l"] = 2;
-    node["n"] = 3;
+    node["U"]         = 4.0;
+    node["J"]         = 1.0;
+    node["l"]         = 2;
+    node["n"]         = 3;
     ctx.cfg().hubbard().local().append(node);
     if (ctx.cfg().hubbard().local().size() != 1) {
         return 2;
@@ -40,7 +41,8 @@ int run_test(cmd_args const& args)
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

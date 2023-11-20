@@ -35,23 +35,19 @@ class Beta_projectors : public Beta_projectors_base<T>
 {
   protected:
     /// Generate plane-wave coefficients for beta-projectors of atom types.
-    void generate_pw_coefs_t()
+    void
+    generate_pw_coefs_t()
     {
         PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
-        if (!this->num_beta_t()) {
-            return;
-        }
 
         auto& uc = this->ctx_.unit_cell();
 
         std::vector<int> offset_t(uc.num_atom_types());
-        std::generate(offset_t.begin(), offset_t.end(),
-                [n = 0, iat = 0, &uc] () mutable
-                {
-                    int offs = n;
-                    n += uc.atom_type(iat++).mt_basis_size();
-                    return offs;
-                });
+        std::generate(offset_t.begin(), offset_t.end(), [n = 0, iat = 0, &uc]() mutable {
+            int offs = n;
+            n += uc.atom_type(iat++).mt_basis_size();
+            return offs;
+        });
 
         auto& comm = this->gkvec_.comm();
 
@@ -80,7 +76,7 @@ class Beta_projectors : public Beta_projectors_base<T>
                     int idxrf = atom_type.indexb(xi).idxrf;
 
                     this->pw_coeffs_t_(igkloc, offset_t[atom_type.id()] + xi, 0) =
-                        static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
+                            static_cast<std::complex<T>>(z[l] * gkvec_rlm[lm] * ri_val(idxrf));
                 }
             }
         }
@@ -98,32 +94,37 @@ class Beta_projectors : public Beta_projectors_base<T>
     Beta_projectors(Simulation_context& ctx__, fft::Gvec const& gkvec__)
         : Beta_projectors_base<T>(ctx__, gkvec__, 1)
     {
-        PROFILE("sirius::Beta_projectors");
-        /* generate phase-factor independent projectors for atom types */
-        generate_pw_coefs_t();
+        /* quick exit */
         if (!this->num_beta_t()) {
             return;
         }
 
-        if (this->ctx_.processing_unit() == device_t::GPU) {
-            this->reallocate_pw_coeffs_t_on_gpu_ = false;
-            // TODO remove is done in `Beta_projector_generator`
-            this->pw_coeffs_t_.allocate(memory_t::device).copy_to(memory_t::device);
-        }
-        int nbeta{0};
-        for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
-            nbeta += ctx__.unit_cell().atom_type(iat).num_atoms() * ctx__.unit_cell().atom_type(iat).mt_basis_size();
+        PROFILE("sirius::Beta_projectors");
+        /* generate phase-factor independent projectors for atom types */
+        generate_pw_coefs_t();
+
+        if (true) { // current implementation: allocate beta_t(G+k) on GPUs
+            if (this->ctx_.processing_unit() == device_t::GPU) {
+                this->pw_coeffs_t_.allocate(memory_t::device).copy_to(memory_t::device);
+            }
         }
 
         // TODO: can be improved... nlcglib might ask for beta coefficients on host,
         // create them such that they are there in any case
-        this->beta_pw_all_atoms_ = matrix<std::complex<T>>({this->num_gkvec_loc(), nbeta});
-        for (int ichunk = 0; ichunk < this->num_chunks(); ++ichunk) {
-            this->pw_coeffs_a_ =
-                matrix<std::complex<T>>({this->num_gkvec_loc(), this->beta_chunks_[ichunk].num_beta_},
-                        &this->beta_pw_all_atoms_(0, this->beta_chunks_[ichunk].offset_));
-            local::beta_projectors_generate_cpu(this->pw_coeffs_a_, this->pw_coeffs_t_, ichunk, /*j*/ 0,
-                                                this->beta_chunks_[ichunk], ctx__, gkvec__);
+        if (true) { // current implementation: store all beta-projectors in host memory
+            this->pw_coeffs_all_atoms_ = mdarray<std::complex<T>, 3>({this->num_gkvec_loc(), this->num_beta(), 1});
+            for (int ichunk = 0; ichunk < this->num_chunks(); ichunk++) {
+                /* wrap chunk of beta-projectors */
+                matrix<std::complex<T>> tmp({this->num_gkvec_loc(), this->beta_chunks_[ichunk].num_beta_},
+                                            &this->pw_coeffs_all_atoms_(0, this->beta_chunks_[ichunk].offset_, 0));
+                local::beta_projectors_generate_cpu(tmp, this->pw_coeffs_t_, ichunk, /*j*/ 0,
+                                                    this->beta_chunks_[ichunk], ctx__, gkvec__);
+            }
+            if (ctx__.cfg().control().beta_on_device()) {
+                if (this->ctx_.processing_unit() == device_t::GPU) {
+                    this->pw_coeffs_all_atoms_.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+                }
+            }
         }
     }
 };

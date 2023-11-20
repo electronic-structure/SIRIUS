@@ -40,11 +40,17 @@ namespace sirius {
 // define type traits that return real type
 // general case for real type
 template <typename T>
-struct Real {using type = T;};
+struct Real
+{
+    using type = T;
+};
 
 // special case for complex type
 template <typename T>
-struct Real<std::complex<T>> {using type = T;};
+struct Real<std::complex<T>>
+{
+    using type = T;
+};
 
 template <typename T>
 using real_type = typename Real<T>::type;
@@ -64,7 +70,7 @@ enum class spin_block_t
     /// Down-donw block.
     dd,
 
-    ///Up-down block.
+    /// Up-down block.
     ud,
 
     /// Down-up block.
@@ -104,23 +110,22 @@ enum class relativity_t
     dirac
 };
 
-inline relativity_t get_relativity_t(std::string name__)
+inline relativity_t
+get_relativity_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, relativity_t> const m = {
-        {"none", relativity_t::none},
-        {"koelling_harmon", relativity_t::koelling_harmon},
-        {"zora", relativity_t::zora},
-        {"iora", relativity_t::iora},
-        {"dirac", relativity_t::dirac}
-    };
+    std::map<std::string, relativity_t> const m = {{"none", relativity_t::none},
+                                                   {"koelling_harmon", relativity_t::koelling_harmon},
+                                                   {"zora", relativity_t::zora},
+                                                   {"iora", relativity_t::iora},
+                                                   {"dirac", relativity_t::dirac}};
 
     if (m.count(name__) == 0) {
         std::stringstream s;
         s << "get_relativity_t(): wrong label of the relativity_t enumerator: " << name__;
         throw std::runtime_error(s.str());
-     }
-     return m.at(name__);
+    }
+    return m.at(name__);
 }
 
 /// Describes radial solution.
@@ -144,10 +149,11 @@ struct radial_solution_descriptor
     bool new_enu_found{false};
 };
 
-inline std::ostream& operator<<(std::ostream& out, radial_solution_descriptor const& rsd)
+inline std::ostream&
+operator<<(std::ostream& out, radial_solution_descriptor const& rsd)
 {
-    out << "{l: " << rsd.l << ", n: " << rsd.n << ", enu: " << rsd.enu
-        << ", dme: " << rsd.dme << ", auto: " << rsd.auto_enu << "}";
+    out << "{l: " << rsd.l << ", n: " << rsd.n << ", enu: " << rsd.enu << ", dme: " << rsd.dme
+        << ", auto: " << rsd.auto_enu << "}";
     return out;
 }
 
@@ -268,6 +274,6 @@ struct periodic_function_ptr_t
     }
 };
 
-}
+} // namespace sirius
 
 #endif // __TYPEDEFS_HPP__

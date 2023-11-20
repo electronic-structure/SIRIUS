@@ -2,12 +2,14 @@
 
 using namespace sirius;
 
-void foo()
+void
+foo()
 {
     PROFILE("foo");
 }
 
-double bar()
+double
+bar()
 {
     utils::timer t1("bar");
     double r{0};
@@ -19,8 +21,8 @@ double bar()
     return r;
 }
 
-
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
 

@@ -29,6 +29,25 @@ namespace sirius {
 /* we can use Ref PRB {\bf 102}, 235159 (2020) as reference for the collinear case.  */
 
 static void
+generate_constraint_potential(Simulation_context const& ctx__, Atom_type const& atom_type__, const int idx_hub_wf,
+                              const int at_lvl, mdarray<std::complex<double>, 3> const& om__, // __unused__
+                              mdarray<std::complex<double>, 3> const& om_ref__,               // __unused__
+                              mdarray<std::complex<double>, 3> const& lagrange_multiplier__,
+                              mdarray<std::complex<double>, 3>& um__)
+{
+    auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf);
+
+    int const lmax_at = 2 * hub_wf.l() + 1;
+    for (int is = 0; is < ctx__.num_spins(); is++) {
+        for (int m1 = 0; m1 < lmax_at; m1++) {
+            for (int m2 = 0; m2 < lmax_at; m2++) {
+                um__(m2, m1, is) -= ctx__.cfg().hubbard().constraint_strength() * lagrange_multiplier__(m2, m1, is);
+            }
+        }
+    }
+}
+
+static void
 generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int index__,
                                       mdarray<std::complex<double>, 3> const& om__,
                                       mdarray<std::complex<double>, 3>& um__)
@@ -162,6 +181,39 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
 }
 
 static double
+calculate_energy_constraint_contribution(Simulation_context const& ctx__, Atom_type const& atom_type__,
+                                         const int idx_hub_wf, mdarray<std::complex<double>, 3> const& om__,
+                                         mdarray<std::complex<double>, 3> const& om_constraints__,
+                                         mdarray<std::complex<double>, 3> const& lagrange_multipliers__)
+{
+    std::complex<double> hubbard_energy_constraint{0};
+    /* quick exit */
+
+    /* single orbital implementation */
+    auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf);
+
+    if (!hub_wf.use_for_calculation())
+        return 0.0;
+
+    int const lmax_at = 2 * hub_wf.l() + 1;
+    for (int is = 0; is < ctx__.num_spins(); is++) {
+
+        // is = 0 up-up
+        // is = 1 down-down
+
+        for (int m1 = 0; m1 < lmax_at; m1++) {
+            for (int m2 = 0; m2 < lmax_at; m2++) {
+                hubbard_energy_constraint += ctx__.cfg().hubbard().constraint_strength() *
+                                             (om__(m2, m1, is) - om_constraints__(m2, m1, is)) *
+                                             lagrange_multipliers__(m2, m1, is);
+            }
+        }
+    }
+
+    return std::real(hubbard_energy_constraint);
+}
+
+static double
 calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int index__,
                                     mdarray<std::complex<double>, 3> const& om__)
 {
@@ -285,8 +337,8 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
         }
 
         hubbard_energy_dc_contribution +=
-            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
-                   hub_wf.J() * magnetization * 0.5);
+                0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
+                       hub_wf.J() * magnetization * 0.5);
 
         /* now hubbard contribution */
 
@@ -299,11 +351,12 @@ calculate_energy_collinear_local(Simulation_context const& ctx__, Atom_type cons
                         for (int m4 = 0; m4 < lmax_at; m4++) {
 
                             hubbard_energy_u +=
-                                0.5 * ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
-                                           om__(m1, m3, is) * om__(m2, m4, is) +
-                                       hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) *
-                                           om__(m2, m4, (ctx__.num_mag_dims() == 1) ? ((is + 1) % 2) : (0)))
-                                          .real();
+                                    0.5 *
+                                    ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
+                                             om__(m1, m3, is) * om__(m2, m4, is) +
+                                     hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) *
+                                             om__(m2, m4, (ctx__.num_mag_dims() == 1) ? ((is + 1) % 2) : (0)))
+                                            .real();
                         }
                     }
                 }
@@ -377,7 +430,7 @@ generate_potential_non_collinear_local(Simulation_context const& ctx__, Atom_typ
                     for (int m3 = 0; m3 < lmax_at; ++m3) {
                         for (int m4 = 0; m4 < lmax_at; ++m4) {
                             um__(m1, m2, is) +=
-                                hub_wf.hubbard_matrix(m1, m3, m2, m4) * (om__(m3, m4, 0) + om__(m3, m4, 1));
+                                    hub_wf.hubbard_matrix(m1, m3, m2, m4) * (om__(m3, m4, 0) + om__(m3, m4, 1));
                         }
                     }
                 }
@@ -453,8 +506,8 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
     double magnetization = mz * mz + mx * mx + my * my;
 
     hubbard_energy_dc_contribution +=
-        0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
-               0.5 * hub_wf.J() * magnetization);
+            0.5 * (hub_wf.U() * n_total * (n_total - 1.0) - hub_wf.J() * n_total * (0.5 * n_total - 1.0) -
+                   0.5 * hub_wf.J() * magnetization);
 
     for (int is = 0; is < 4; is++) {
 
@@ -484,11 +537,12 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
                             //            = 1 if is = 0
 
                             hubbard_energy_noflip +=
-                                0.5 *
-                                ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
-                                     om__(m1, m3, is) * om__(m2, m4, is) +
-                                 hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) * om__(m2, m4, (is + 1) % 2))
-                                    .real();
+                                    0.5 *
+                                    ((hub_wf.hubbard_matrix(m1, m2, m3, m4) - hub_wf.hubbard_matrix(m1, m2, m4, m3)) *
+                                             om__(m1, m3, is) * om__(m2, m4, is) +
+                                     hub_wf.hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is) *
+                                             om__(m2, m4, (is + 1) % 2))
+                                            .real();
                         }
                     }
                 }
@@ -500,8 +554,8 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
                     for (int m3 = 0; m3 < lmax_at; ++m3) {
                         for (int m4 = 0; m4 < lmax_at; ++m4) {
                             hubbard_energy_flip -=
-                                0.5 *
-                                (hub_wf.hubbard_matrix(m1, m2, m4, m3) * om__(m1, m3, is) * om__(m2, m4, is1)).real();
+                                    0.5 * (hub_wf.hubbard_matrix(m1, m2, m4, m3) * om__(m1, m3, is) * om__(m2, m4, is1))
+                                                  .real();
                         }
                     }
                 }
@@ -510,11 +564,6 @@ calculate_energy_non_collinear_local(Simulation_context const& ctx__, Atom_type 
     }
 
     hubbard_energy = hubbard_energy_noflip + hubbard_energy_flip - hubbard_energy_dc_contribution;
-
-    // if ((ctx_.verbosity() >= 1) && (ctx_.comm().rank() == 0)) {
-    //    std::printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n",
-    //        hubbard_energy, hubbard_energy_noflip, hubbard_energy_flip, hubbard_energy_dc_contribution);
-    //}
 
     return hubbard_energy;
 }
@@ -535,15 +584,27 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
             ::sirius::generate_potential_non_collinear_local(ctx, atype, lo_ind, om__.local(at_lvl),
                                                              um__.local(at_lvl));
         }
+
+        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "energy") {
+            if (om__.apply_constraints(at_lvl)) {
+                ::sirius::generate_constraint_potential(ctx, atype, lo_ind, at_lvl, om__.local(at_lvl),
+                                                        om__.local_constraints(at_lvl),
+                                                        om__.multipliers_constraints(at_lvl), um__.local(at_lvl));
+            }
+        }
+
+        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "occupantion") {
+            if (om__.apply_constraints(at_lvl)) {
+                ::sirius::generate_constraint_potential(ctx, atype, lo_ind, at_lvl, om__.local(at_lvl),
+                                                        om__.local_constraints(at_lvl), om__.local_constraints(at_lvl),
+                                                        um__.local(at_lvl));
+            }
+        }
     }
-
     for (int i = 0; i < static_cast<int>(ctx.cfg().hubbard().nonlocal().size()); i++) {
-
         if (ctx.num_mag_dims() != 3) {
             ::sirius::generate_potential_collinear_nonlocal(ctx, i, om__.nonlocal(i), um__.nonlocal(i));
-        } // else {
-        //    ::sirius::generate_potential_non_collinear_nonlocal(ctx, nl, om__.nonlocal(i), um__.nonlocal(i));
-        //}
+        }
     }
 }
 
@@ -563,14 +624,20 @@ energy(Hubbard_matrix const& om__)
         } else {
             energy += ::sirius::calculate_energy_non_collinear_local(ctx, atype, lo_ind, om__.local(at_lvl));
         }
-    }
 
+        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "energy") {
+            if (om__.apply_constraints(at_lvl)) {
+                double tmp_ = ::sirius::calculate_energy_constraint_contribution(ctx, atype, lo_ind, om__.local(at_lvl),
+                                                                                 om__.local_constraints(at_lvl),
+                                                                                 om__.multipliers_constraints(at_lvl));
+                energy += tmp_;
+            }
+        }
+    }
     for (int i = 0; i < static_cast<int>(ctx.cfg().hubbard().nonlocal().size()); i++) {
         if (ctx.num_mag_dims() != 3) {
             energy += ::sirius::calculate_energy_collinear_nonlocal(ctx, i, om__.nonlocal(i));
-        } // else {
-        //    energy += ::sirius::calculate_energy_noncollinear_nonlocal(ctx, nl, om__.nonlocal(i));
-        //}
+        }
     }
     return energy;
 }

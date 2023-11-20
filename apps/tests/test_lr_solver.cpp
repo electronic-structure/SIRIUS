@@ -6,10 +6,12 @@
 
 using namespace sirius;
 
-void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> const& H0, double const* vkq__, int const* num_gvec_kq_loc__,
-        int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double> * psi__, double* eigvals__,
-        std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__, double const * alpha_pv__,
-        int const* spin__, int const* nbnd_occ__, double tol)
+void
+linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> const& H0, double const* vkq__,
+                       int const* num_gvec_kq_loc__, int const* gvec_kq_loc__, std::complex<double>* dpsi__,
+                       std::complex<double>* psi__, double* eigvals__, std::complex<double>* dvpsi__, int const* ld__,
+                       int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ__,
+                       double tol)
 {
     PROFILE("linear_solver_executor")
 
@@ -31,12 +33,11 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
     }
 
     std::shared_ptr<fft::Gvec> gvkq_in;
-    gvkq_in = std::make_shared<fft::Gvec>(r3::vector<double>(vkq__),
-            sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_kq_loc__, gvec_kq_loc__,
-            sctx.comm_band(), false);
+    gvkq_in = std::make_shared<fft::Gvec>(r3::vector<double>(vkq__), sctx.unit_cell().reciprocal_lattice_vectors(),
+                                          *num_gvec_kq_loc__, gvec_kq_loc__, sctx.comm_band(), false);
 
     int num_gvec_kq_loc = *num_gvec_kq_loc__;
-    int num_gvec_kq = num_gvec_kq_loc;
+    int num_gvec_kq     = num_gvec_kq_loc;
     sctx.comm_band().allreduce(&num_gvec_kq, 1);
 
     if (num_gvec_kq != gvkq_in->num_gvec()) {
@@ -50,7 +51,7 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
 
     /* copy eigenvalues (factor 2 for rydberg/hartree) */
     std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
-    for (auto &val : eigvals_vec) {
+    for (auto& val : eigvals_vec) {
         val /= 2;
     }
 
@@ -59,15 +60,16 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
     mdarray<std::complex<double>, 3> dpsi({*ld__, *num_spin_comp__, nbnd_occ}, dpsi__);
     mdarray<std::complex<double>, 3> dvpsi({*ld__, *num_spin_comp__, nbnd_occ}, dvpsi__);
 
-    auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-    auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-    auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-    auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+    auto dpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+    auto psi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+    auto dvpsi_wf =
+            sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
+    auto tmp_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
     for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
         for (int i = 0; i < nbnd_occ; i++) {
             for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
+                psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i))  = psi(ig, ispn, i);
                 dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
                 // divide by two to account for hartree / rydberg, this is
                 // dv * psi and dv should be 2x smaller in sirius.
@@ -82,7 +84,7 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
         kp.initialize();
         auto Hk = H0(kp);
         sirius::check_wave_functions<double, std::complex<double>>(Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ),
-                eigvals_vec.data());
+                                                                   eigvals_vec.data());
     }
 
     /* setup auxiliary state vectors for CG */
@@ -106,18 +108,10 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
     mg.emplace_back(Hphi_wf->memory_guard(mem, wf::copy_to::device));
     mg.emplace_back(Sphi_wf->memory_guard(mem, wf::copy_to::device));
 
-    sirius::lr::Linear_response_operator linear_operator(
-        const_cast<sirius::Simulation_context&>(sctx),
-        Hk,
-        eigvals_vec,
-        Hphi_wf.get(),
-        Sphi_wf.get(),
-        psi_wf.get(),
-        tmp_wf.get(),
-        *alpha_pv__ / 2, // rydberg/hartree factor
-        wf::band_range(0, nbnd_occ),
-        sr,
-        mem);
+    sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk, eigvals_vec,
+                                                         Hphi_wf.get(), Sphi_wf.get(), psi_wf.get(), tmp_wf.get(),
+                                                         *alpha_pv__ / 2, // rydberg/hartree factor
+                                                         wf::band_range(0, nbnd_occ), sr, mem);
     /* CG state vectors */
     auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
     auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
@@ -127,31 +121,20 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
     /* set up the diagonal preconditioner */
     auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
     mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
-    eigvals_mdarray = [&](int i) {
-        return eigvals_vec[i];
-    };
+    eigvals_mdarray = [&](int i) { return eigvals_vec[i]; };
     /* allocate and copy eigvals_mdarray to GPU if running on GPU */
     if (is_device_memory(mem)) {
         eigvals_mdarray.allocate(mem).copy_to(mem);
     }
 
     sirius::lr::Smoothed_diagonal_preconditioner preconditioner{
-      std::move(h_o_diag.first),
-      std::move(h_o_diag.second),
-      std::move(eigvals_mdarray),
-      nbnd_occ,
-      mem,
-      sr
-    };
+            std::move(h_o_diag.first), std::move(h_o_diag.second), std::move(eigvals_mdarray), nbnd_occ, mem, sr};
 
     // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
-    auto result = sirius::cg::multi_cg(
-        linear_operator,
-        preconditioner,
-        X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
-        1000, // iters
-        tol // tol
+    auto result = sirius::cg::multi_cg(linear_operator, preconditioner, X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
+                                       20,                                                              // iters
+                                       tol                                                              // tol
     );
     mg.clear();
 
@@ -170,7 +153,8 @@ void linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double>
 }
 
 template <typename T>
-void init_wf(K_point<T> const& kp__, wf::Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
+void
+init_wf(K_point<T> const& kp__, wf::Wave_functions<T>& phi__, int num_bands__, int num_mag_dims__)
 {
     std::vector<double> tmp(0xFFFF);
     for (int i = 0; i < 0xFFFF; i++) {
@@ -203,7 +187,7 @@ void init_wf(K_point<T> const& kp__, wf::Wave_functions<T>& phi__, int num_bands
     if (num_mag_dims__ == 3) {
         /* make pure spinor up- and dn- wave functions */
         wf::copy(memory_t::host, phi__, wf::spin_index(0), wf::band_range(0, num_bands__), phi__, wf::spin_index(1),
-                wf::band_range(num_bands__, 2 * num_bands__));
+                 wf::band_range(num_bands__, 2 * num_bands__));
     }
 }
 
@@ -215,7 +199,8 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
     K_point<T> kp(ctx__, &vk__[0], 1.0);
     kp.initialize();
     if (mpi::Communicator::world().rank() == 0) {
-        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
+        std::cout << "num_gkvec: " << kp.num_gkvec() << "\n";
+        std::cout << "num_bands: " << ctx__.num_bands() << "\n";
     }
     for (int i = 0; i < ctx__.num_bands(); i++) {
         kp.band_occupancy(i, 0, 2);
@@ -236,7 +221,7 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
     const int num_bands = ctx__.num_bands();
 
     int num_gvec_kq_loc = kp.num_gkvec_loc();
-    int ld = kp.spinor_wave_functions().ld();
+    int ld              = kp.spinor_wave_functions().ld();
     int num_spin_comp{1};
     double alpha_pv{1.0};
     int spin{0};
@@ -249,31 +234,30 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
     }
 
     linear_solver_executor(ctx__, H0, &vk__[0], &num_gvec_kq_loc, &gvec_kq_loc(0, 0),
-            dpsi->at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-            kp.spinor_wave_functions().at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-            eval.data(),
-            dvpsi->at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
-            &ld, &num_spin_comp, &alpha_pv, &spin, &num_bands, tol);
+                           dpsi->at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+                           kp.spinor_wave_functions().at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)),
+                           eval.data(), dvpsi->at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)), &ld,
+                           &num_spin_comp, &alpha_pv, &spin, &num_bands, tol);
 }
 
-void test_lr_solver(cmd_args const& args__)
+void
+test_lr_solver(cmd_args const& args__)
 {
-    auto pw_cutoff     = args__.value<double>("pw_cutoff", 30);
-    auto gk_cutoff     = args__.value<double>("gk_cutoff", 10);
-    auto N             = args__.value<int>("N", 1);
-    auto mpi_grid      = args__.value("mpi_grid", std::vector<int>({1, 1}));
-    //auto solver        = args__.value<std::string>("solver", "lapack");
-    //auto precision_wf  = args__.value<std::string>("precision_wf", "fp64");
-    //auto precision_hs  = args__.value<std::string>("precision_hs", "fp64");
-    //auto res_tol       = args__.value<double>("res_tol", 1e-5);
-    //auto eval_tol      = args__.value<double>("eval_tol", 1e-7);
-    auto only_kin      = args__.exist("only_kin");
-    //auto subspace_size = args__.value<int>("subspace_size", 2);
-    //auto estimate_eval = !args__.exist("use_res_norm");
-    //auto extra_ortho   = args__.exist("extra_ortho");
-    auto num_bands     = args__.value<int>("num_bands", -1);
-    auto tol           = args__.value<double>("tol", 1e-13);
-
+    auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
+    auto gk_cutoff = args__.value<double>("gk_cutoff", 10);
+    auto N         = args__.value<int>("N", 1);
+    auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
+    // auto solver        = args__.value<std::string>("solver", "lapack");
+    // auto precision_wf  = args__.value<std::string>("precision_wf", "fp64");
+    // auto precision_hs  = args__.value<std::string>("precision_hs", "fp64");
+    // auto res_tol       = args__.value<double>("res_tol", 1e-5);
+    // auto eval_tol      = args__.value<double>("eval_tol", 1e-7);
+    auto only_kin = args__.exist("only_kin");
+    // auto subspace_size = args__.value<int>("subspace_size", 2);
+    // auto estimate_eval = !args__.exist("use_res_norm");
+    // auto extra_ortho   = args__.exist("extra_ortho");
+    auto num_bands = args__.value<int>("num_bands", -1);
+    auto tol       = args__.value<double>("tol", 1e-13);
 
     bool add_dion{!only_kin};
     bool add_vloc{!only_kin};
@@ -281,17 +265,17 @@ void test_lr_solver(cmd_args const& args__)
     PROFILE_START("test_lr_solver|setup")
 
     /* create simulation context */
-    auto json_conf = R"({
+    auto json_conf                          = R"({
       "parameters" : {
         "electronic_structure_method" : "pseudopotential"
       }
     })"_json;
     json_conf["control"]["processing_unit"] = args__.value<std::string>("device", "CPU");
-    json_conf["control"]["mpi_grid_dims"] = mpi_grid;
-    //json_conf["control"]["std_evp_solver_name"] = solver;
-    //json_conf["control"]["gen_evp_solver_name"] = solver;
-    json_conf["parameters"]["pw_cutoff"] = pw_cutoff;
-    json_conf["parameters"]["gk_cutoff"] = gk_cutoff;
+    json_conf["control"]["mpi_grid_dims"]   = mpi_grid;
+    // json_conf["control"]["std_evp_solver_name"] = solver;
+    // json_conf["control"]["gen_evp_solver_name"] = solver;
+    json_conf["parameters"]["pw_cutoff"]   = pw_cutoff;
+    json_conf["parameters"]["gk_cutoff"]   = gk_cutoff;
     json_conf["parameters"]["gamma_point"] = false;
     if (num_bands >= 0) {
         json_conf["parameters"]["num_bands"] = num_bands;
@@ -309,7 +293,7 @@ void test_lr_solver(cmd_args const& args__)
 
     double a{5};
     auto sctx_ptr = sirius::create_simulation_context(json_conf, {{a * N, 0, 0}, {0, a * N, 0}, {0, 0, a * N}},
-            N * N * N, coord, add_vloc, add_dion);
+                                                      N * N * N, coord, add_vloc, add_dion);
 
     auto& ctx = *sctx_ptr;
     PROFILE_STOP("test_lr_solver|setup")
@@ -332,18 +316,19 @@ void test_lr_solver(cmd_args const& args__)
     }
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"device=",        "(string) CPU or GPU"},
-                               {"pw_cutoff=",     "(double) plane-wave cutoff for density and potential"},
-                               {"gk_cutoff=",     "(double) plane-wave cutoff for wave-functions"},
-                               {"num_bands=",     "(int) number of bands"},
-                               {"N=",             "(int) cell multiplicity"},
-                               {"mpi_grid=",      "(int[2]) dimensions of the MPI grid for band diagonalization"},
-                               {"tol=",           "(double) CG solver tolerance"},
-                               {"only_kin",       "use kinetic-operator only"},
-                               {"repeat=",        "{int} number of repetitions"}
-                              });
+    cmd_args args(argn, argv,
+                  {{"device=", "(string) CPU or GPU"},
+                   {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
+                   {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
+                   {"num_bands=", "(int) number of bands"},
+                   {"N=", "(int) cell multiplicity"},
+                   {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
+                   {"tol=", "(double) CG solver tolerance"},
+                   {"only_kin", "use kinetic-operator only"},
+                   {"repeat=", "{int} number of repetitions"}});
 
     if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);

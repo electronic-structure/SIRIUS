@@ -11,7 +11,9 @@ namespace sf {
 // compute the spherical bessel functions.
 // This implementation is faster than the one provided by GSL, but not necessarily as accurate. For small input, GSL is
 // used as a fallback.
-static void custom_bessel(int lmax, double x, double* result) {
+static void
+custom_bessel(int lmax, double x, double* result)
+{
     if (x == 0.0) {
         result[0] = 1.0;
         for (int l = 1; l <= lmax; ++l) {
@@ -23,7 +25,7 @@ static void custom_bessel(int lmax, double x, double* result) {
     } else {
         const double x_inv = 1.0 / x;
         const double sin_x = std::sin(x);
-        result[0] = sin_x * x_inv;
+        result[0]          = sin_x * x_inv;
 
         if (lmax > 0) {
             result[1] = sin_x * x_inv * x_inv - std::cos(x) * x_inv;
@@ -38,15 +40,13 @@ static void custom_bessel(int lmax, double x, double* result) {
 #ifndef NDEBUG
     std::vector<double> ref_result(lmax + 1);
     gsl_sf_bessel_jl_array(lmax, x, ref_result.data());
-    for(int l = 0; l <= lmax; ++l) {
+    for (int l = 0; l <= lmax; ++l) {
         assert(std::abs(result[l] - ref_result[l]) < 1e-6);
     }
 #endif
 }
 
-Spherical_Bessel_functions::Spherical_Bessel_functions(int lmax__,
-                                                       Radial_grid<double> const& rgrid__,
-                                                       double q__)
+Spherical_Bessel_functions::Spherical_Bessel_functions(int lmax__, Radial_grid<double> const& rgrid__, double q__)
     : q_(q__)
     , rgrid_(&rgrid__)
 {
@@ -125,4 +125,4 @@ Spherical_Bessel_functions::deriv_q(int l__)
 
 } // namespace sf
 
-}  // sirius
+} // namespace sirius

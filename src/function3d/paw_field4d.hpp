@@ -46,7 +46,9 @@ class PAW_field4D
     /* copy constructor is forbidden */
     PAW_field4D(PAW_field4D const& src__) = delete;
     /* copy assignment operator is forbidden */
-    PAW_field4D& operator=(PAW_field4D const& src__) = delete;
+    PAW_field4D&
+    operator=(PAW_field4D const& src__) = delete;
+
   public:
     /// Constructor
     PAW_field4D(std::string label__, Unit_cell const& uc__, bool is_global__)
@@ -60,14 +62,17 @@ class PAW_field4D
         auto ptr = (is_global__) ? nullptr : &uc__.spl_num_paw_atoms();
 
         for (int j = 0; j < uc__.parameters().num_mag_dims() + 1; j++) {
-            ae_components_[j] = Spheric_function_set<T, paw_atom_index_t>(label__ + std::to_string(j), uc__,
-                    uc__.paw_atoms(), [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
-            ps_components_[j] = Spheric_function_set<T, paw_atom_index_t>(label__ + std::to_string(j), uc__,
-                    uc__.paw_atoms(), [&uc__](int ia){return lmax_t(2 * uc__.atom(ia).type().indexr().lmax());}, ptr);
+            ae_components_[j] = Spheric_function_set<T, paw_atom_index_t>(
+                    label__ + std::to_string(j), uc__, uc__.paw_atoms(),
+                    [&uc__](int ia) { return lmax_t(2 * uc__.atom(ia).type().indexr().lmax()); }, ptr);
+            ps_components_[j] = Spheric_function_set<T, paw_atom_index_t>(
+                    label__ + std::to_string(j), uc__, uc__.paw_atoms(),
+                    [&uc__](int ia) { return lmax_t(2 * uc__.atom(ia).type().indexr().lmax()); }, ptr);
         }
     }
 
-    void sync()
+    void
+    sync()
     {
         for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
             ae_components_[j].sync(uc_.spl_num_paw_atoms());
@@ -75,7 +80,8 @@ class PAW_field4D
         }
     }
 
-    void zero(int ia__)
+    void
+    zero(int ia__)
     {
         for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
             ae_components_[j][ia__].zero(memory_t::host);
@@ -83,7 +89,8 @@ class PAW_field4D
         }
     }
 
-    void zero()
+    void
+    zero()
     {
         for (int j = 0; j < uc_.parameters().num_mag_dims() + 1; j++) {
             ae_components_[j].zero();
@@ -91,27 +98,32 @@ class PAW_field4D
         }
     }
 
-    auto& ae_component(int i__)
+    auto&
+    ae_component(int i__)
     {
         return ae_components_[i__];
     }
 
-    auto const& ae_component(int i__) const
+    auto const&
+    ae_component(int i__) const
     {
         return ae_components_[i__];
     }
 
-    auto& ps_component(int i__)
+    auto&
+    ps_component(int i__)
     {
         return ps_components_[i__];
     }
 
-    auto const& ps_component(int i__) const
+    auto const&
+    ps_component(int i__) const
     {
         return ps_components_[i__];
     }
 
-    auto const& unit_cell() const
+    auto const&
+    unit_cell() const
     {
         return uc_;
     }
@@ -132,7 +144,6 @@ inner(PAW_field4D<T> const& x__, PAW_field4D<T> const& y__)
     }
     return result;
 }
-
 
 } // namespace sirius
 

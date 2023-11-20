@@ -2,13 +2,14 @@
 
 using namespace sirius;
 
-void test_dmatrix(std::vector<int> mpi_grid_dims__)
+void
+test_dmatrix(std::vector<int> mpi_grid_dims__)
 {
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     int bs{16};
     int N{4};
-    
+
     dmatrix<double_complex> mtrx(4, 4, blacs_grid, bs, bs);
     mtrx.zero();
 
@@ -30,7 +31,8 @@ void test_dmatrix(std::vector<int> mpi_grid_dims__)
     mtrx.serialize("mtrx", N);
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");

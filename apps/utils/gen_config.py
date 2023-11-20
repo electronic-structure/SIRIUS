@@ -211,3 +211,7 @@ for e in data_t:
 
 print("\n}")
 
+with open('DOC.md', 'w') as f:
+    for e in data['properties']:
+        f.write(f'# {e} - {data["properties"][e]["title"]}')
+        f.write('\n')

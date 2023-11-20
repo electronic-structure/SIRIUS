@@ -64,17 +64,21 @@ class K_point_set
     K_point_set(K_point_set& src) = delete;
 
     /// Create regular grid of k-points.
-    void create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__);
+    void
+    create_k_mesh(r3::vector<int> k_grid__, r3::vector<int> k_shift__, int use_symmetry__);
 
     bool initialized_{false};
 
     /// Return sum of valence eigen-values store in Kpoint<T>.
     template <typename T>
-    double valence_eval_sum() const;
+    double
+    valence_eval_sum() const;
 
     /// Return entropy contribution from smearing store in Kpoint<T>.
     template <typename T>
-    double entropy_sum() const;
+    double
+    entropy_sum() const;
+
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)
@@ -106,58 +110,70 @@ class K_point_set
     }
 
     /// Initialize the k-point set
-    void initialize(std::vector<int> const& counts = {});
+    void
+    initialize(std::vector<int> const& counts = {});
 
     /// Sync band energies or occupancies between all MPI ranks.
     template <typename T, sync_band_t what>
-    void sync_band();
+    void
+    sync_band();
 
     /// Find Fermi energy and band occupation numbers.
     template <typename T>
-    void find_band_occupancies();
+    void
+    find_band_occupancies();
 
     /// Print basic info to the standard output.
-    void print_info();
+    void
+    print_info();
 
     /// Save k-point set to HDF5 file.
-    void save(std::string const& name__) const;
+    void
+    save(std::string const& name__) const;
 
-    void load();
+    void
+    load();
 
 #if defined (SIRIUS_WANNIER90)
     void generate_w90_coeffs();
 #endif
     /// Return sum of valence eigen-values.
-    double valence_eval_sum() const;
+    double
+    valence_eval_sum() const;
 
     /// Return entropy contribution from smearing.
-    double entropy_sum() const;
+    double
+    entropy_sum() const;
 
-    inline auto const& spl_num_kpoints() const
+    inline auto const&
+    spl_num_kpoints() const
     {
         return spl_num_kpoints_;
     }
 
-    inline auto const& comm() const
+    inline auto const&
+    comm() const
     {
         return ctx_.comm_k();
     }
 
     /// Update k-points after moving atoms or changing the lattice vectors.
-    void update()
+    void
+    update()
     {
         /* update k-points */
-      for (auto it : spl_num_kpoints_) {
-           kpoints_[it.i]->update();
+        for (auto it : spl_num_kpoints_) {
+            kpoints_[it.i]->update();
 #if defined(SIRIUS_USE_FP32)
-           kpoints_float_[it.i]->update();
+            kpoints_float_[it.i]->update();
 #endif
-      }
+        }
     }
 
     /// Get a list of band energies for a given k-point index.
     template <typename T>
-    auto get_band_energies(int ik__, int ispn__) const
+    auto
+    get_band_energies(int ik__, int ispn__) const
     {
         std::vector<double> bnd_e(ctx_.num_bands());
         for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -167,7 +183,8 @@ class K_point_set
     }
 
     /// Return maximum number of G+k vectors among all k-points.
-    int max_num_gkvec() const
+    int
+    max_num_gkvec() const
     {
         int max_num_gkvec{0};
         for (auto it : spl_num_kpoints_) {
@@ -178,7 +195,8 @@ class K_point_set
     }
 
     /// Add k-point to the set.
-    void add_kpoint(r3::vector<double> vk__, double weight__)
+    void
+    add_kpoint(r3::vector<double> vk__, double weight__)
     {
         kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__)));
 #ifdef SIRIUS_USE_FP32
@@ -187,7 +205,8 @@ class K_point_set
     }
 
     /// Add multiple k-points to the set.
-    void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
+    void
+    add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
     {
         for (int ik = 0; ik < (int)kpoints__.size(1); ik++) {
             add_kpoint(&kpoints__(0, ik), weights__[ik]);
@@ -195,42 +214,50 @@ class K_point_set
     }
 
     template <typename T>
-    inline K_point<T>* get(int ik__) const;
+    inline K_point<T>*
+    get(int ik__) const;
 
     template <typename T>
-    inline K_point<T>* get(int ik__)
+    inline K_point<T>*
+    get(int ik__)
     {
         return const_cast<K_point<T>*>(static_cast<K_point_set const&>(*this).get<T>(ik__));
     }
 
     /// Return total number of k-points.
-    inline int num_kpoints() const
+    inline int
+    num_kpoints() const
     {
         return static_cast<int>(kpoints_.size());
     }
 
-    inline auto spl_num_kpoints(kp_index_t::local ikloc__) const
+    inline auto
+    spl_num_kpoints(kp_index_t::local ikloc__) const
     {
         return spl_num_kpoints_.global_index(ikloc__);
     }
 
-    inline double energy_fermi() const
+    inline double
+    energy_fermi() const
     {
         return energy_fermi_;
     }
 
-    inline void set_energy_fermi(double energy_fermi__)
+    inline void
+    set_energy_fermi(double energy_fermi__)
     {
         this->energy_fermi_ = energy_fermi__;
     }
 
-    inline double band_gap() const
+    inline double
+    band_gap() const
     {
         return band_gap_;
     }
 
     /// Find index of k-point.
-    inline int find_kpoint(r3::vector<double> vk__)
+    inline int
+    find_kpoint(r3::vector<double> vk__)
     {
         for (int ik = 0; ik < num_kpoints(); ik++) {
             if ((kpoints_[ik]->vk() - vk__).length() < 1e-12) {
@@ -240,19 +267,22 @@ class K_point_set
         return -1;
     }
 
-    inline auto& ctx()
+    inline auto&
+    ctx()
     {
         return ctx_;
     }
 
-    const auto& unit_cell()
+    const auto&
+    unit_cell()
     {
         return ctx_.unit_cell();
     }
 
     /// Send G+k vectors of k-point jk to a given rank.
     /** Other ranks receive an empty Gvec placeholder */
-    inline fft::Gvec get_gkvec(kp_index_t::global jk__, int rank__)
+    inline fft::Gvec
+    get_gkvec(kp_index_t::global jk__, int rank__)
     {
         /* rank in the k-point communicator */
         int my_rank = comm().rank();
@@ -274,15 +304,17 @@ class K_point_set
     }
 };
 
-template<>
-inline K_point<double>* K_point_set::get<double>(int ik__) const
+template <>
+inline K_point<double>*
+K_point_set::get<double>(int ik__) const
 {
     RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_.size());
     return kpoints_[ik__].get();
 }
 
-template<>
-inline K_point<float>* K_point_set::get<float>(int ik__) const
+template <>
+inline K_point<float>*
+K_point_set::get<float>(int ik__) const
 {
 #if defined(SIRIUS_USE_FP32)
     RTE_ASSERT(ik__ >= 0 && ik__ < (int)kpoints_float_.size());

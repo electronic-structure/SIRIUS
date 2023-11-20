@@ -14,4 +14,4 @@ get_memory_pool(memory_t M__)
     return memory_pool_.at(M__);
 }
 
-} // namespace
+} // namespace sirius

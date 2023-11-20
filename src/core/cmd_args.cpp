@@ -27,7 +27,8 @@
 
 namespace sirius {
 
-void cmd_args::check_for_key(std::string const key__) const
+void
+cmd_args::check_for_key(std::string const key__) const
 {
     if (!exist(key__)) {
         std::stringstream s;
@@ -50,7 +51,8 @@ cmd_args::cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<st
     parse_args(argn__, argv__);
 }
 
-void cmd_args::register_key(std::string const key__, std::string const description__)
+void
+cmd_args::register_key(std::string const key__, std::string const description__)
 {
     key_desc_.push_back(std::pair<std::string, std::string>(key__, description__));
 
@@ -71,7 +73,8 @@ void cmd_args::register_key(std::string const key__, std::string const descripti
     known_keys_[key] = key_type;
 }
 
-void cmd_args::parse_args(int argn__, char** argv__)
+void
+cmd_args::parse_args(int argn__, char** argv__)
 {
     for (int i = 1; i < argn__; i++) {
         std::string str(argv__[i]);
@@ -120,7 +123,8 @@ void cmd_args::parse_args(int argn__, char** argv__)
     }
 }
 
-void cmd_args::print_help()
+void
+cmd_args::print_help()
 {
     int max_key_width = 0;
     for (int i = 0; i < (int)key_desc_.size(); i++) {

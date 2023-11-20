@@ -286,9 +286,9 @@ Q_operator<T>::initialize()
                                         if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
                                             result += this->ctx_.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
                                                       (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
-                                                           uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
+                                                               uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
                                                        uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 1) *
-                                                           uc.atom(ia).type().f_coefficients(xi2p, xi2, 1, si));
+                                                               uc.atom(ia).type().f_coefficients(xi2p, xi2, 1, si));
                                         }
                                     }
                                 }
@@ -308,7 +308,7 @@ Q_operator<T>::initialize()
                 } else {
                     for (int ispn = 0; ispn < this->ctx_.num_spins(); ispn++) {
                         this->op_(0, this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ispn) =
-                            this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
+                                this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
                     }
                 }
             }
@@ -370,7 +370,7 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
         if (mem == memory_t::device) {
             double_complex* out_ptr = O.at(memory_t::device, offset, offset);
             const double_complex* op_ptr =
-                reinterpret_cast<const double_complex*>(op_.at(memory_t::device, 0, packed_mtrx_offset_(ia), ispn));
+                    reinterpret_cast<const double_complex*>(op_.at(memory_t::device, 0, packed_mtrx_offset_(ia), ispn));
             // copy column by column
             for (int col = 0; col < lsize; ++col) {
                 acc::copy(out_ptr + col * O.ld(), op_ptr + col * lsize, lsize);
@@ -378,7 +378,7 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
         } else if (mem == memory_t::host) {
             double_complex* out_ptr = O.at(memory_t::host, offset, offset);
             const double_complex* op_ptr =
-                reinterpret_cast<const double_complex*>(op_.at(memory_t::host, 0, packed_mtrx_offset_(ia), ispn));
+                    reinterpret_cast<const double_complex*>(op_.at(memory_t::host, 0, packed_mtrx_offset_(ia), ispn));
             // copy column by column
             for (int col = 0; col < lsize; ++col) {
                 std::copy(op_ptr + col * lsize, op_ptr + col * lsize + lsize, out_ptr + col * O.ld());
@@ -390,7 +390,8 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
     return O;
 }
 
-template matrix<std::complex<double>> Non_local_operator<double>::get_matrix(int, memory_t) const;
+template matrix<std::complex<double>>
+Non_local_operator<double>::get_matrix(int, memory_t) const;
 
 template class Non_local_operator<double>;
 

@@ -98,7 +98,7 @@ is_device_memory(memory_t mem__)
 }
 
 /// Get a memory type from a string.
-inline memory_t
+inline auto
 get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -128,7 +128,7 @@ enum class device_t
 };
 
 /// Get type of device by memory type.
-inline device_t
+inline auto
 get_device_t(memory_t mem__)
 {
     switch (mem__) {
@@ -337,13 +337,13 @@ class memory_pool
             this->allocator_ = rm.getAllocator(mem_type);
 
             if (M_ == memory_t::host) {
-                this->memory_pool_allocator_ =
-                    rm.makeAllocator<umpire::strategy::AlignedAllocator>("aligned_allocator", this->allocator_, 256);
+                this->memory_pool_allocator_ = rm.makeAllocator<umpire::strategy::AlignedAllocator>(
+                        "aligned_allocator", this->allocator_, 256);
             } else {
                 std::transform(mem_type.begin(), mem_type.end(), mem_type.begin(),
                                [](unsigned char c) { return std::tolower(c); });
                 this->memory_pool_allocator_ =
-                    rm.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type + "_dynamic_pool", allocator_);
+                        rm.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type + "_dynamic_pool", allocator_);
             }
         }
 #endif
@@ -351,7 +351,8 @@ class memory_pool
 
     /// Return a pointer to a memory block for n elements of type T.
     template <typename T>
-    T* allocate(size_t num_elements__)
+    T*
+    allocate(size_t num_elements__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
         if (M_ == memory_t::none) {
@@ -365,7 +366,8 @@ class memory_pool
     }
 
     /// Delete a pointer and add its memory back to the pool.
-    void free(void* ptr__)
+    void
+    free(void* ptr__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
         if (M_ == memory_t::none) {
@@ -380,11 +382,12 @@ class memory_pool
 
     /// Return a unique pointer to the allocated memory.
     template <typename T>
-    auto get_unique_ptr(size_t n__)
+    auto
+    get_unique_ptr(size_t n__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
-        return std::unique_ptr<T, std::function<void(void*)>>(this->allocate<T>(n__), [&mp=*this](void* ptr) {
-            mp.free(ptr);});
+        return std::unique_ptr<T, std::function<void(void*)>>(this->allocate<T>(n__),
+                                                              [&mp = *this](void* ptr) { mp.free(ptr); });
 #else
         return sirius::get_unique_ptr<T>(n__, M_);
 #endif
@@ -392,12 +395,14 @@ class memory_pool
 
     /// Free all the allocated blocks. umpire does not support this
     /** All pointers and smart pointers, allocated by the pool are invalidated. */
-    void reset()
+    void
+    reset()
     {
     }
 
     /// shrink the memory pool and release all memory.
-    void clear()
+    void
+    clear()
     {
         if (M_ == memory_t::none) {
             return;
@@ -408,13 +413,15 @@ class memory_pool
     }
 
     /// Return the type of memory this pool is managing.
-    inline memory_t memory_type() const
+    inline memory_t
+    memory_type() const
     {
         return M_;
     }
 
     /// Return the total capacity of the memory pool.
-    size_t total_size() const
+    size_t
+    total_size() const
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
         if (M_ != memory_t::none) {
@@ -425,7 +432,8 @@ class memory_pool
     }
 
     /// Get the total free size of the memory pool.
-    size_t free_size() const
+    size_t
+    free_size() const
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
         if (M_ != memory_t::none) {
@@ -437,7 +445,8 @@ class memory_pool
     }
 
     /// Get the number of free memory blocks.
-    size_t num_blocks() const
+    size_t
+    num_blocks() const
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
         if (M_ != memory_t::none) {
@@ -451,7 +460,8 @@ class memory_pool
 
 /// Return a memory pool.
 /** A memory pool is created when this function called for the first time. */
-memory_pool& get_memory_pool(memory_t M__);
+memory_pool&
+get_memory_pool(memory_t M__);
 
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
@@ -516,24 +526,28 @@ class index_range
     };
 
     /// Return first index value.
-    inline index_type begin() const
+    inline index_type
+    begin() const
     {
         return begin_;
     }
 
     /// Return last index value.
-    inline index_type end() const
+    inline index_type
+    end() const
     {
         return end_;
     }
 
     /// Return index size.
-    inline size_t size() const
+    inline size_t
+    size() const
     {
         return size_;
     }
 
-    inline bool check_range([[maybe_unused]] index_type i__) const
+    inline bool
+    check_range([[maybe_unused]] index_type i__) const
     {
 #ifdef NDEBUG
         return true;
@@ -603,31 +617,38 @@ class mdarray
     std::array<index_type, N> offsets_;
 
     /// Initialize the offsets used to compute the index of the elements.
-    void init_dimensions(std::array<index_range, N> const dims__);
+    void
+    init_dimensions(std::array<index_range, N> const dims__);
 
     /// Return linear index in the range [0, size) by the N-dimensional indices (i0, i1, ...)
     template <typename... Args>
-    inline index_type idx(Args... args) const;
+    inline index_type
+    idx(Args... args) const;
 
     /// Return cosnt pointer to an element at a given index.
     template <bool check_assert = true>
-    inline T const* at_idx(memory_t mem__, index_type const idx__) const;
+    inline T const*
+    at_idx(memory_t mem__, index_type const idx__) const;
 
     /// Return pointer to an element at a given index.
     template <bool check_assert = true>
-    inline T* at_idx(memory_t mem__, index_type const idx__);
+    inline T*
+    at_idx(memory_t mem__, index_type const idx__);
 
     // Call constructor on non-trivial data. Complex numbers are treated as trivial.
-    inline void call_constructor();
+    inline void
+    call_constructor();
 
     // Call destructor on non-trivial data. Complex numbers are treated as trivial.
-    inline void call_destructor();
+    inline void
+    call_destructor();
 
     /// Copy constructor is forbidden
     mdarray(mdarray<T, N> const& src) = delete;
 
     /// Assignment operator is forbidden
-    mdarray<T, N>& operator=(mdarray<T, N> const& src) = delete;
+    mdarray<T, N>&
+    operator=(mdarray<T, N> const& src) = delete;
 
   public:
     /// Default constructor.
@@ -675,105 +696,143 @@ class mdarray
     mdarray(mdarray<T, N>&& src);
 
     /// Move assignment operator
-    inline mdarray<T, N>& operator=(mdarray<T, N>&& src);
+    inline mdarray<T, N>&
+    operator=(mdarray<T, N>&& src);
 
     /// Allocate heap memory for array.
-    inline auto& allocate(memory_t memory__);
+    inline auto&
+    allocate(memory_t memory__);
 
     /// Allocate memory from the pool.
-    inline auto& allocate(memory_pool& mp__);
+    inline auto&
+    allocate(memory_pool& mp__);
 
     /// Deallocate host or device memory.
-    inline void deallocate(memory_t memory__);
+    inline void
+    deallocate(memory_t memory__);
 
     /// Access operator() for the elements of multidimensional array.
     template <typename... Args>
-    inline T const& operator()(Args... args) const;
+    inline T const&
+    operator()(Args... args) const;
 
     /// Access operator() for the elements of multidimensional array.
     template <typename... Args>
-    inline T& operator()(Args... args);
+    inline T&
+    operator()(Args... args);
 
     /// Access operator[] for the elements of multidimensional array using a linear index in the range [0, size).
-    inline T const& operator[](size_t const idx__) const;
+    inline T const&
+    operator[](size_t const idx__) const;
 
     /// Access operator[] for the elements of multidimensional array using a linear index in the range [0, size).
-    inline T& operator[](size_t const idx__);
+    inline T&
+    operator[](size_t const idx__);
 
     template <typename... Args>
-    inline T const* at(memory_t mem__, Args... args) const;
+    inline T const*
+    at(memory_t mem__, Args... args) const;
 
     template <typename... Args>
-    inline T* at(memory_t mem__, Args... args);
+    inline T*
+    at(memory_t mem__, Args... args);
 
     /// Return pointer to the beginning of array.
-    inline T const* at(memory_t mem__) const;
+    inline T const*
+    at(memory_t mem__) const;
 
     /// Return pointer to the beginning of array.
-    inline T* at(memory_t mem__);
+    inline T*
+    at(memory_t mem__);
 
-    inline T* host_data();
+    inline T*
+    host_data();
 
-    inline T const* host_data() const;
+    inline T const*
+    host_data() const;
 
-    inline T* device_data();
+    inline T*
+    device_data();
 
-    inline T const* device_data() const;
+    inline T const*
+    device_data() const;
 
     /// Return total size (number of elements) of the array.
-    inline size_t size() const;
+    inline size_t
+    size() const;
 
     /// Return size of particular dimension.
-    inline size_t size(int i) const;
+    inline size_t
+    size(int i) const;
 
     /// Return leading dimension size.
-    inline int32_t ld() const;
+    inline int32_t
+    ld() const;
 
     /// Compute hash of the array
     /** Example: std::printf("hash(h) : %16llX\n", h.hash()); */
-    inline uint64_t hash(uint64_t h__ = 5381) const;
+    inline uint64_t
+    hash(uint64_t h__ = 5381) const;
 
     /// Compute weighted checksum.
-    inline T checksum_w(size_t idx0__, size_t size__) const;
+    inline T
+    checksum_w(size_t idx0__, size_t size__) const;
 
     /// Compute checksum.
-    inline T checksum(size_t idx0__, size_t size__) const;
+    inline T
+    checksum(size_t idx0__, size_t size__) const;
 
-    inline T checksum() const;
+    inline T
+    checksum() const;
 
-    inline T* begin();
+    inline T*
+    begin();
 
-    inline T const* begin() const;
+    inline T const*
+    begin() const;
 
-    inline T* end();
+    inline T*
+    end();
 
-    inline T const* end() const;
+    inline T const*
+    end() const;
 
     /// Zero n elements starting from idx0.
-    inline void zero(memory_t mem__, size_t idx0__, size_t n__);
+    inline void
+    zero(memory_t mem__, size_t idx0__, size_t n__);
 
     /// Zero the entire array.
-    inline void zero(memory_t mem__ = memory_t::host);
+    inline void
+    zero(memory_t mem__ = memory_t::host);
 
     /// Copy n elements starting from idx0 from one memory type to another.
-    inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, acc::stream_id sid = acc::stream_id(-1));
+    inline void
+    copy_to(memory_t mem__, size_t idx0__, size_t n__, acc::stream_id sid = acc::stream_id(-1));
     /// Copy entire array from one memory type to another.
-    inline void copy_to(memory_t mem__, acc::stream_id sid = acc::stream_id(-1));
+    inline void
+    copy_to(memory_t mem__, acc::stream_id sid = acc::stream_id(-1));
 
-    auto label() const;
+    auto
+    label() const;
 
-    auto dim(int idx__) const;
+    auto
+    dim(int idx__) const;
 
     /// Check if device pointer is available.
-    inline bool on_device() const;
+    inline bool
+    on_device() const;
 
-    inline bool on_host() const;
+    inline bool
+    on_host() const;
 
-    auto& operator=(std::function<T(void)> f__);
+    auto&
+    operator=(std::function<T(void)> f__);
 
-    auto& operator=(std::function<T(index_type)> f__);
+    auto&
+    operator=(std::function<T(index_type)> f__);
 
-    auto& operator=(std::function<T(index_type, index_type)> f__);
+    auto&
+    operator=(std::function<T(index_type, index_type)> f__);
 };
 
 template <typename T, int N>

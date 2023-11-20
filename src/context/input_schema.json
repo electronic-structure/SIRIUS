@@ -1,622 +1,725 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "type" : "object",
+    "type": "object",
     "properties": {
-        "mixer" : {
-            "type" : "object",
+        "mixer": {
+            "type": "object",
             "title": "Parameters of the mixer",
-            "properties" : {
-                "type" : {
-                    "type" : "string",
-                    "enum" : ["linear", "anderson", "anderson_stable", "broyden2"],
-                    "default" : "anderson",
-                    "title" : "Type of the mixer."
+            "description": "Control type and parameters of the mixer",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "linear",
+                        "anderson",
+                        "anderson_stable",
+                        "broyden2"
+                    ],
+                    "default": "anderson",
+                    "title": "Type of the mixer."
                 },
-                "beta" : {
-                    "type" : "number",
-                    "default" : 0.7,
+                "beta": {
+                    "type": "number",
+                    "default": 0.7,
                     "title": "Mixing parameter"
                 },
-                "beta0" : {
-                    "type" : "number",
-                    "default" : 0.15,
+                "beta0": {
+                    "type": "number",
+                    "default": 0.15,
                     "title": "Mixing ratio in case of initial linear mixing"
                 },
-                "linear_mix_rms_tol" : {
-                    "type" : "number",
-                    "default" : 1e6,
+                "linear_mix_rms_tol": {
+                    "type": "number",
+                    "default": 1E+6,
                     "title": "RMS tolerance above which the linear mixing is triggered"
                 },
-                "max_history" : {
-                    "type" : "integer",
-                    "default" : 8,
+                "max_history": {
+                    "type": "integer",
+                    "default": 8,
                     "title": "Number of history steps for Broyden-type mixers"
                 },
-                "beta_scaling_factor" : {
-                    "type" : "number",
-                     "default" : 1.0,
+                "beta_scaling_factor": {
+                    "type": "number",
+                    "default": 1.0,
                     "title": "Scaling factor for mixing parameter"
                 },
-                "use_hartree" : {
-                    "type" : "boolean",
-                    "default" : false,
+                "use_hartree": {
+                    "type": "boolean",
+                    "default": false,
                     "title": "Use Hartree potential in the inner() product for residuals"
                 }
             }
         },
-        "settings" : {
-            "type" : "object",
+        "settings": {
+            "type": "object",
             "title": "Settings control the internal parameters related to the numerical implementation.",
             "description": "Changing of setting parameters will have a small impact on the final result.",
             "properties": {
-                "nprii_vloc" : {
-                    "type" : "integer",
-                    "default" : 200,
-                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential"
+                "nprii_vloc": {
+                    "type": "integer",
+                    "default": 200,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential"
                 },
-                "nprii_beta" : {
-                    "type" : "integer",
-                    "default" : 20,
-                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors"
+                "nprii_beta": {
+                    "type": "integer",
+                    "default": 20,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors"
                 },
-                "nprii_aug" : {
-                    "type" : "integer",
-                    "default" : 20,
-                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator"
+                "nprii_aug": {
+                    "type": "integer",
+                    "default": 20,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator"
                 },
-                "nprii_rho_core" : {
-                    "type" : "integer",
-                    "default" : 20,
-                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
+                "nprii_rho_core": {
+                    "type": "integer",
+                    "default": 20,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
                 },
-                "always_update_wf" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
-                    "$comment" : "move to iterative solver section"
+                "always_update_wf": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
+                    "$comment": "move to iterative solver section"
                 },
-                "mixer_rms_min" : {
-                    "type" : "number",
-                    "default" : 1e-16,
-                    "title" : "Minimum value of allowed RMS for the mixer.",
-                    "description" : "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
+                "mixer_rms_min": {
+                    "type": "number",
+                    "default": 1E-16,
+                    "title": "Minimum value of allowed RMS for the mixer.",
+                    "description": "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
                 },
-                "itsol_tol_min" : {
-                    "type" : "number",
-                    "default" : 1e-13,
-                    "title" : "Minimum tolerance of the iterative solver."
+                "itsol_tol_min": {
+                    "type": "number",
+                    "default": 1E-13,
+                    "title": "Minimum tolerance of the iterative solver."
                 },
-                "min_occupancy" : {
-                    "type" : "number",
-                    "default" : 1e-14,
-                    "title" : "Minimum occupancy below which the band is treated as being 'empty'"
+                "min_occupancy": {
+                    "type": "number",
+                    "default": 1E-14,
+                    "title": "Minimum occupancy below which the band is treated as being 'empty'"
                 },
-                "itsol_tol_ratio" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Fine control of the empty states tolerance.",
-                    "description" : "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
+                "itsol_tol_ratio": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Fine control of the empty states tolerance.",
+                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
                 },
-                "itsol_tol_scale" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "number"
+                "itsol_tol_scale": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
                     },
-                    "minItems" : 2,
-                    "maxItems" : 2,
-                    "default" : [0.1, 0.5],
-                    "title" : "Scaling parameters of the iterative  solver tolerance.",
-                    "description" : "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver().energy_tolerance(tol);\\endcode"
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "default": [
+                        0.1,
+                        0.5
+                    ],
+                    "title": "Scaling parameters of the iterative  solver tolerance.",
+                    "description": "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver().energy_tolerance(tol);\\endcode"
                 },
-                "auto_enu_tol" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Tolerance to recompute the LAPW linearisation energies."
+                "auto_enu_tol": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Tolerance to recompute the LAPW linearisation energies."
                 },
-                "fft_grid_size" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "integer"
+                "fft_grid_size": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     },
-                    "minItems" : 3,
-                    "maxItems" : 3,
-                    "default" : [0, 0, 0],
-                    "title" : "Initial dimenstions for the fine-grain FFT grid"
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "default": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "title": "Initial dimenstions for the fine-grain FFT grid"
                 },
-                "radial_grid" : {
-                    "type" : "string",
-                    "default" : "exponential, 1.0",
-                    "title" : "Default radial grid for LAPW species."
+                "radial_grid": {
+                    "type": "string",
+                    "default": "exponential, 1.0",
+                    "title": "Default radial grid for LAPW species."
                 },
-                "sht_coverage" : {
-                    "type" : "integer",
-                    "default" : 0,
-                    "title" : "Coverage of sphere in case of spherical harmonics transformation",
-                    "description" : "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
+                "sht_coverage": {
+                    "type": "integer",
+                    "default": 0,
+                    "title": "Coverage of sphere in case of spherical harmonics transformation",
+                    "description": "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
                 },
-                "fp32_to_fp64_rms" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used."
+                "fp32_to_fp64_rms": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used."
                 }
             }
         },
-        "unit_cell" : {
-            "type" : "object",
-            "title" : "Unit cell representation",
+        "unit_cell": {
+            "type": "object",
+            "title": "Unit cell representation",
             "properties": {
-                "lattice_vectors" : {
-                    "type" : "array",
+                "lattice_vectors": {
+                    "type": "array",
                     "title": "Three non-collinear vectors of the primitive unit cell.",
-                    "minItems" : 3,
-                    "maxItems" : 3,
-                    "items" : {
-                        "type" : "array",
-                        "items" : {
-                            "type" : "number"
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
                         },
-                        "minItems" : 3,
-                        "maxItems" : 3
+                        "minItems": 3,
+                        "maxItems": 3
                     },
-                    "default" : [
-                        [1,0,0],
-                        [0,1,0],
-                        [0,0,1]
+                    "default": [
+                        [
+                            1,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            1,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            1
+                        ]
                     ]
                 },
-                "lattice_vectors_scale" : {
-                    "type" : "number",
-                    "default" : 1,
+                "lattice_vectors_scale": {
+                    "type": "number",
+                    "default": 1,
                     "title": "Scaling factor for the lattice vectors",
                     "description": "Lattice vectors are multiplied by this constant."
                 },
-                "atom_coordinate_units" : {
-                    "type" : "string",
-                    "default" : "lattice",
-                    "enum" : ["lattice", "au", "A"],
-                    "title" : "Type of atomic coordinates: lattice, atomic units or Angstroms"
+                "atom_coordinate_units": {
+                    "type": "string",
+                    "default": "lattice",
+                    "enum": [
+                        "lattice",
+                        "au",
+                        "A"
+                    ],
+                    "title": "Type of atomic coordinates: lattice, atomic units or Angstroms"
                 },
-                "atom_types" : {
-                    "type" : "array",
-                    "title" : "List of atom type labels",
-                    "default" : [],
-                    "items" : {
-                        "type" : "string"
+                "atom_types": {
+                    "type": "array",
+                    "title": "List of atom type labels",
+                    "default": [],
+                    "items": {
+                        "type": "string"
                     }
                 },
-                "atom_files" : {
-                    "type" : "object",
+                "atom_files": {
+                    "type": "object",
                     "title": "Mapping between atom type labels and atomic files",
-                    "default" : {},
-                    "patternProperties" : {
-                        ".*" : {
-                            "type" : "string"
+                    "default": {},
+                    "patternProperties": {
+                        ".*": {
+                            "type": "string"
                         }
                     },
-                    "additionalProperties" : false
+                    "additionalProperties": false
                 },
-                "atoms" : {
-                    "type" : "object",
-                    "title" : "Atomic coordinates",
-                    "default" : {},
-                    "patternProperties" : {
-                        ".*" : {
-                            "type" : "array",
-                            "items" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "number"
+                "atoms": {
+                    "type": "object",
+                    "title": "Atomic coordinates",
+                    "default": {},
+                    "patternProperties": {
+                        ".*": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
                                 },
-                                "minItems" : 3,
-                                "maxItems" : 6
+                                "minItems": 3,
+                                "maxItems": 6
                             }
                         }
                     },
-                    "additionalProperties":false
+                    "additionalProperties": false
                 }
             }
         },
-        "iterative_solver" : {
-            "type" : "object",
+        "iterative_solver": {
+            "type": "object",
             "title": "Parameters of the iterative solver.",
             "properties": {
-                "type" : {
-                    "type" : "string",
-                    "default" : "auto",
-                    "enum" : ["auto", "exact", "davidson"],
-                    "title" : "Type of the iterative solver."
+                "type": {
+                    "type": "string",
+                    "default": "auto",
+                    "enum": [
+                        "auto",
+                        "exact",
+                        "davidson"
+                    ],
+                    "title": "Type of the iterative solver."
                 },
-                "num_steps" : {
-                    "type" : "integer",
-                    "default" : 20,
-                    "title" : "Number of steps (iterations) of the solver."
+                "num_steps": {
+                    "type": "integer",
+                    "default": 20,
+                    "title": "Number of steps (iterations) of the solver."
                 },
-                "subspace_size" : {
-                    "type" : "integer",
-                    "default" : 2,
-                    "title" : "Size of the variational subspace is this number times the number of bands."
+                "subspace_size": {
+                    "type": "integer",
+                    "default": 2,
+                    "title": "Size of the variational subspace is this number times the number of bands."
                 },
-                "locking" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "Lock eigenvectors of the smallest eigenvalues when they have converged at restart."
+                "locking": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "Lock eigenvectors of the smallest eigenvalues when they have converged at restart."
                 },
-                "early_restart" : {
-                    "type" : "number",
-                    "default" : 0.5,
-                    "title" : "Restart early when the ratio unconverged vs lockable vectors drops below this threshold.",
-                    "description" : "When there's just a few vectors left unconverged, it can be more efficient to lock the converged ones,\nsuch that the dense eigenproblem solved in each Davidson iteration has lower dimension.\nRestarting has some overhead in that it requires updating wave functions."
+                "early_restart": {
+                    "type": "number",
+                    "default": 0.5,
+                    "title": "Restart early when the ratio unconverged vs lockable vectors drops below this threshold.",
+                    "description": "When there's just a few vectors left unconverged, it can be more efficient to lock the converged ones,\nsuch that the dense eigenproblem solved in each Davidson iteration has lower dimension.\nRestarting has some overhead in that it requires updating wave functions."
                 },
-                "energy_tolerance" : {
-                    "type" : "number",
-                    "default" : 1e-2,
-                    "title" : "Tolerance for the eigen-energy difference \\f$ |\\epsilon_i^{old} - \\epsilon_i^{new} | \\f$",
-                    "description" : "This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions."
+                "energy_tolerance": {
+                    "type": "number",
+                    "default": 0.01,
+                    "title": "Tolerance for the eigen-energy difference \\f$ |\\epsilon_i^{old} - \\epsilon_i^{new} | \\f$",
+                    "description": "This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions."
                 },
-                "residual_tolerance" : {
-                    "type" : "number",
-                    "default" : 1e-6,
-                    "title" : "Tolerance for the residual L2 norm."
+                "residual_tolerance": {
+                    "type": "number",
+                    "default": 0.000001,
+                    "title": "Tolerance for the residual L2 norm."
                 },
-                "relative_tolerance" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used."
+                "relative_tolerance": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used."
                 },
-                "empty_states_tolerance" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Additional tolerance for empty states.",
-                    "description" : "Setting this variable to 0 will treat empty states with the same tolerance as occupied states."
+                "empty_states_tolerance": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Additional tolerance for empty states.",
+                    "description": "Setting this variable to 0 will treat empty states with the same tolerance as occupied states."
                 },
-                "converge_by_energy" : {
-                    "type" : "integer",
-                    "default" : 1,
-                    "title" : "Defines the flavour of the iterative solver.",
-                    "description" : "If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy\nis set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the\nunconverged residuals and then compute only the unconverged ones.",
-                    "$comment" : "rename, this is meaningless; or remove completely and always converge by energy"
+                "converge_by_energy": {
+                    "type": "integer",
+                    "default": 1,
+                    "title": "Defines the flavour of the iterative solver.",
+                    "description": "If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy\nis set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the\nunconverged residuals and then compute only the unconverged ones.",
+                    "$comment": "rename, this is meaningless; or remove completely and always converge by energy"
                 },
-                "min_num_res" : {
-                    "type" : "integer",
-                    "default" : 0,
-                    "title" : "Minimum number of residuals to continue iterative diagonalization process."
+                "min_num_res": {
+                    "type": "integer",
+                    "default": 0,
+                    "title": "Minimum number of residuals to continue iterative diagonalization process."
                 },
-                "num_singular" : {
-                    "type" : "integer",
-                    "default" : -1,
-                    "title" : "Number of singular components for the LAPW Davidson solver.",
-                    "description" : "Singular components are the eigen-vectors of the APW-APW block of overlap matrix"
+                "num_singular": {
+                    "type": "integer",
+                    "default": -1,
+                    "title": "Number of singular components for the LAPW Davidson solver.",
+                    "description": "Singular components are the eigen-vectors of the APW-APW block of overlap matrix"
                 },
-                "init_eval_old" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "Initialize eigen-values with previous (old) values."
+                "init_eval_old": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "Initialize eigen-values with previous (old) values."
                 },
-                "init_subspace" : {
-                    "type" : "string",
-                    "default" : "lcao",
-                    "enum" : ["lcao", "random"],
-                    "title" : "Tell how to initialize the subspace.",
-                    "description" : "It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or\n'random'- start from the randomized wave functions."
+                "init_subspace": {
+                    "type": "string",
+                    "default": "lcao",
+                    "enum": [
+                        "lcao",
+                        "random"
+                    ],
+                    "title": "Tell how to initialize the subspace.",
+                    "description": "It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or\n'random'- start from the randomized wave functions."
                 },
-                "extra_ortho" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "Orthogonalize the new subspace basis functions one more time in order to improve the numerical stability."
+                "extra_ortho": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Orthogonalize the new subspace basis functions one more time in order to improve the numerical stability."
                 }
             }
         },
-        "control" : {
-            "type" : "object",
-            "title" : "Control parameters",
-            "description" : "Parameters of the control input sections do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
-            "properties" : {
-                "mpi_grid_dims" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "integer"
+        "control": {
+            "type": "object",
+            "title": "Control parameters",
+            "description": "Parameters of the control input sections do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
+            "properties": {
+                "mpi_grid_dims": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     },
-                    "title" : "the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.",
-                    "default" : [1, 1]
+                    "title": "the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.",
+                    "default": [
+                        1,
+                        1
+                    ]
                 },
-                "cyclic_block_size" : {
-                    "type" : "integer",
-                    "default" : -1,
-                    "title" : "Block size for ScaLAPACK, ELPA, and DLA-Future."
+                "cyclic_block_size": {
+                    "type": "integer",
+                    "default": -1,
+                    "title": "Block size for ScaLAPACK, ELPA, and DLA-Future."
                 },
-                "reduce_gvec" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "Reduce G-vectors by inversion symmetry.",
-                    "description" : "For real-valued functions like density and potential it is sufficient to store only\nhalf of the G-vectors and use the relation f(G) = f^{*}(-G) to recover second half\nof the plane-wave expansion coefficients."
+                "reduce_gvec": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "Reduce G-vectors by inversion symmetry.",
+                    "description": "For real-valued functions like density and potential it is sufficient to store only\nhalf of the G-vectors and use the relation f(G) = f^{*}(-G) to recover second half\nof the plane-wave expansion coefficients."
                 },
-                "std_evp_solver_name" : {
-                    "type" : "string",
-                    "default" : "auto",
-                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "dlaf", "magma", "magma_gpu", "cusolver"],
-                    "title" : "Standard eigen-value solver to use."
+                "std_evp_solver_name": {
+                    "type": "string",
+                    "default": "auto",
+                    "enum": [
+                        "auto",
+                        "lapack",
+                        "scalapack",
+                        "elpa1",
+                        "elpa2",
+                        "dlaf",
+                        "magma",
+                        "magma_gpu",
+                        "cusolver"
+                    ],
+                    "title": "Standard eigen-value solver to use."
                 },
-                "gen_evp_solver_name" : {
-                    "type" : "string",
-                    "default" : "auto",
-                    "enum" : ["auto", "lapack", "scalapack", "elpa1", "elpa2", "dlaf", "magma", "magma_gpu", "cusolver"],
-                    "title" : "Generalized eigen-value solver to use."
+                "gen_evp_solver_name": {
+                    "type": "string",
+                    "default": "auto",
+                    "enum": [
+                        "auto",
+                        "lapack",
+                        "scalapack",
+                        "elpa1",
+                        "elpa2",
+                        "dlaf",
+                        "magma",
+                        "magma_gpu",
+                        "cusolver"
+                    ],
+                    "title": "Generalized eigen-value solver to use."
                 },
-                "fft_mode" : {
-                    "type" : "string",
-                    "default" : "serial",
-                    "enum" : ["serial", "parallel"],
-                    "title" : "Coarse grid FFT mode (`serial` or `parallel`).",
+                "fft_mode": {
+                    "type": "string",
+                    "default": "serial",
+                    "enum": [
+                        "serial",
+                        "parallel"
+                    ],
+                    "title": "Coarse grid FFT mode (`serial` or `parallel`).",
                     "description": "Coarse FFT grid is used in application of the Hamiltonian to the wave-functions\nand also in the construction of the charge density from the wave-functions squared."
                 },
-                "processing_unit" : {
-                    "type" : "string",
-                    "default" : "auto",
-                    "enum" : ["auto", "cpu", "gpu"],
-                    "title" : "Main processing unit to use during the execution."
+                "processing_unit": {
+                    "type": "string",
+                    "default": "auto",
+                    "enum": [
+                        "auto",
+                        "cpu",
+                        "gpu"
+                    ],
+                    "title": "Main processing unit to use during the execution."
                 },
-                "rmt_max" : {
-                    "type" : "number",
-                    "default" : 2.2,
-                    "title" : "Maximum allowed muffin-tin radius in case of LAPW."
+                "rmt_max": {
+                    "type": "number",
+                    "default": 2.2,
+                    "title": "Maximum allowed muffin-tin radius in case of LAPW."
                 },
-                "spglib_tolerance" : {
-                    "type" : "number",
-                    "default" : 1e-6,
-                    "title" : "Tolerance of the spglib in finding crystal symmetries"
+                "spglib_tolerance": {
+                    "type": "number",
+                    "default": 0.000001,
+                    "title": "Tolerance of the spglib in finding crystal symmetries"
                 },
-                "verbosity" : {
-                    "type" : "integer",
-                    "default" : 0,
-                    "title" : "Level of verbosity.",
-                    "description" : "The following convention in proposed:\n  - 0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
+                "verbosity": {
+                    "type": "integer",
+                    "default": 0,
+                    "title": "Level of verbosity.",
+                    "description": "The following convention in proposed:\n  - 0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
                 },
-                "verification" : {
-                    "type" : "integer",
-                    "default" : 0,
-                    "title" : "Level of internal verification.",
-                    "description" : "Depending on the level, more expensive self-checks will be performed."
+                "verification": {
+                    "type": "integer",
+                    "default": 0,
+                    "title": "Level of internal verification.",
+                    "description": "Depending on the level, more expensive self-checks will be performed."
                 },
-                "num_bands_to_print" : {
-                    "type" : "integer",
-                    "default" : 10,
-                    "title" : "Number of eigen-values that are printed to the standard output."
+                "num_bands_to_print": {
+                    "type": "integer",
+                    "default": 10,
+                    "title": "Number of eigen-values that are printed to the standard output."
                 },
-                "print_stress" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then the stress tensor components are printed at the end of SCF run."
+                "print_stress": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true then the stress tensor components are printed at the end of SCF run."
                 },
-                "print_forces" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then the atomic forces are printed at the end of SCF run."
+                "print_forces": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true then the atomic forces are printed at the end of SCF run."
                 },
-                "print_neighbors" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true then the list of nearest neighbours for each atom is printed to the standard output."
+                "print_neighbors": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true then the list of nearest neighbours for each atom is printed to the standard output."
                 },
-                "use_second_variation" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "True if second-variational diagonalization is used in LAPW method."
+                "use_second_variation": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "True if second-variational diagonalization is used in LAPW method."
                 },
-                "beta_chunk_size" : {
-                    "type" : "integer",
-                    "default" : 256,
-                    "title" : "Number of atoms in a chunk of beta-projectors."
+                "beta_chunk_size": {
+                    "type": "integer",
+                    "default": 256,
+                    "title": "Number of atoms in a chunk of beta-projectors."
                 },
-                "ortho_rf" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "Orthogonalize LAPW radial functions."
+                "beta_on_device": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "True if whole set of beta-projectors can be allocated on device for the entire run."
                 },
-                "output" : {
-                    "type" : "string",
-                    "default" : "stdout:",
-                    "title" : "Type of the output stream (stdout:, file:name)"
+                "ortho_rf": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Orthogonalize LAPW radial functions."
                 },
-                "gvec_chunk_size" : {
-                    "type" : "integer",
-                    "default" : 500000,
-                    "title" : "Split local G-vectors in chunks to reduce the GPU memory consumption of augmentation operator."
+                "output": {
+                    "type": "string",
+                    "default": "stdout:",
+                    "title": "Type of the output stream (stdout:, file:name)"
+                },
+                "gvec_chunk_size": {
+                    "type": "integer",
+                    "default": 500000,
+                    "title": "Split local G-vectors in chunks to reduce the GPU memory consumption of augmentation operator."
                 }
             }
         },
-        "parameters" : {
-            "type" : "object",
-            "title" : "Parameters of the simulation.",
-            "description" : "Most of this parameters control the behavior of high-level classes\nlike sirius::DFT_ground_state.",
-            "properties" : {
-                "electronic_structure_method" : {
-                    "type" : "string",
-                    "default" : "pseudopotential",
-                    "enum" : ["full_potential_lapwlo", "pseudopotential"],
-                    "title" : "Type of electronic structure method."
+        "parameters": {
+            "type": "object",
+            "title": "Parameters of the simulation.",
+            "description": "Most of this parameters control the behavior of high-level classes\nlike sirius::DFT_ground_state.",
+            "properties": {
+                "electronic_structure_method": {
+                    "type": "string",
+                    "default": "pseudopotential",
+                    "enum": [
+                        "full_potential_lapwlo",
+                        "pseudopotential"
+                    ],
+                    "title": "Type of electronic structure method."
                 },
-                "xc_functionals" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "string"
+                "xc_functionals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     },
-                    "default" : [],
-                    "title" : "List of XC functionals (typically contains exchange term and correlation term).",
-                    "description" : "Naming convention of LibXC is used, names should be provided in capital letters.",
-                    "example" : ["XC_LDA_X", "XC_LDA_C_PZ"]
+                    "default": [],
+                    "title": "List of XC functionals (typically contains exchange term and correlation term).",
+                    "description": "Naming convention of LibXC is used, names should be provided in capital letters.",
+                    "example": [
+                        "XC_LDA_X",
+                        "XC_LDA_C_PZ"
+                    ]
                 },
-                "core_relativity" : {
-                    "type" : "string",
-                    "default" : "dirac",
-                    "enum" : ["none", "dirac"],
-                    "title" : "Type of core-states relativity in full-potential LAPW case."
+                "core_relativity": {
+                    "type": "string",
+                    "default": "dirac",
+                    "enum": [
+                        "none",
+                        "dirac"
+                    ],
+                    "title": "Type of core-states relativity in full-potential LAPW case."
                 },
-                "valence_relativity" : {
-                    "type" : "string",
-                    "default" : "zora",
-                    "enum" : ["none", "koelling_harmon", "zora", "iora"],
-                    "title" : "Type of valence states relativity in full-potential LAPW case."
+                "valence_relativity": {
+                    "type": "string",
+                    "default": "zora",
+                    "enum": [
+                        "none",
+                        "koelling_harmon",
+                        "zora",
+                        "iora"
+                    ],
+                    "title": "Type of valence states relativity in full-potential LAPW case."
                 },
-                "num_bands" : {
-                    "type" : "integer",
-                    "default" : -1,
-                    "title" : "Number of bands.",
-                    "description" : "In spin-collinear case this is the number of bands for each spin channel."
+                "num_bands": {
+                    "type": "integer",
+                    "default": -1,
+                    "title": "Number of bands.",
+                    "description": "In spin-collinear case this is the number of bands for each spin channel."
                 },
-                "num_fv_states" : {
-                    "type" : "integer",
-                    "default" : -1,
-                    "title" : "Number of first-variational states."
+                "num_fv_states": {
+                    "type": "integer",
+                    "default": -1,
+                    "title": "Number of first-variational states."
                 },
-                "smearing_width" : {
-                    "type" : "number",
-                    "default" : 0.01,
+                "smearing_width": {
+                    "type": "number",
+                    "default": 0.01,
                     "title": "Width of the smearing delta-function in the units of [Ha]."
                 },
-                "smearing" : {
-                    "type" : "string",
-                    "default" : "gaussian",
-                    "enum" : ["gaussian", "cold", "fermi_dirac", "gaussian_spline", "methfesel_paxton"],
-                    "title" : "Type of occupancy smearing."
+                "smearing": {
+                    "type": "string",
+                    "default": "gaussian",
+                    "enum": [
+                        "gaussian",
+                        "cold",
+                        "fermi_dirac",
+                        "gaussian_spline",
+                        "methfesel_paxton"
+                    ],
+                    "title": "Type of occupancy smearing."
                 },
-                "pw_cutoff" : {
-                    "type" : "number",
-                    "default" : 0.0,
-                    "title" : "Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1]"
+                "pw_cutoff": {
+                    "type": "number",
+                    "default": 0.0,
+                    "title": "Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1]"
                 },
-                "aw_cutoff" : {
-                    "type" : "number",
-                    "default" : 0.0,
-                    "title" : "Cutoff for augmented-wave functions.",
-                    "description" : "This value is equal to R_{MT} * |G+k|_{max}"
+                "aw_cutoff": {
+                    "type": "number",
+                    "default": 0.0,
+                    "title": "Cutoff for augmented-wave functions.",
+                    "description": "This value is equal to R_{MT} * |G+k|_{max}"
                 },
-                "gk_cutoff" : {
-                    "type" : "number",
-                    "default" : 0.0,
-                    "title" : "Cutoff for |G+k| plane-waves in the units of [a.u.^-1]."
+                "gk_cutoff": {
+                    "type": "number",
+                    "default": 0.0,
+                    "title": "Cutoff for |G+k| plane-waves in the units of [a.u.^-1]."
                 },
-                "lmax_apw" : {
-                    "type" : "integer",
-                    "default" : 8,
-                    "title" : "Maximum l for APW functions."
+                "lmax_apw": {
+                    "type": "integer",
+                    "default": 8,
+                    "title": "Maximum l for APW functions."
                 },
-                "lmax_rho" : {
-                    "type" : "integer",
-                    "default" : 8,
+                "lmax_rho": {
+                    "type": "integer",
+                    "default": 8,
                     "title": "Maximum l for density expansion in real spherical harmonics."
                 },
-                "lmax_pot" : {
-                    "type" : "integer",
-                    "default" : 8,
+                "lmax_pot": {
+                    "type": "integer",
+                    "default": 8,
                     "title": "Maximum l for potential expansion in real spherical harmonics."
                 },
-                "num_mag_dims" : {
-                    "type" : "integer",
-                    "default" : 0,
-                    "enum" : [0, 1, 3],
-                    "title" : "Number of dimensions of the magnetization and effective magnetic field vector."
+                "num_mag_dims": {
+                    "type": "integer",
+                    "default": 0,
+                    "enum": [
+                        0,
+                        1,
+                        3
+                    ],
+                    "title": "Number of dimensions of the magnetization and effective magnetic field vector."
                 },
-                "auto_rmt" : {
-                    "type" : "integer",
-                    "default" : 1,
-                    "title" : "A choice of scaleing muffin-tin radii automatically."
+                "auto_rmt": {
+                    "type": "integer",
+                    "default": 1,
+                    "title": "A choice of scaleing muffin-tin radii automatically."
                 },
-                "ngridk" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "integer"
+                "ngridk": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     },
-                    "minItems" : 3,
-                    "maxItems" : 3,
-                    "default" : [1, 1, 1],
-                    "title" : "Regular k-point grid for the SCF ground state."
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "default": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "title": "Regular k-point grid for the SCF ground state."
                 },
-                "shiftk" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "integer"
+                "shiftk": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     },
-                    "minItems" : 3,
-                    "maxItems" : 3,
-                    "default" : [0, 0, 0],
-                    "title" : "Shift in the k-point grid."
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "default": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "title": "Shift in the k-point grid."
                 },
-                "vk" : {
-                    "type" : "array",
-                    "items" : {
-                        "type" : "array",
-                        "items" : {
-                            "type" : "number"
+                "vk": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
                         },
-                        "minItems" : 3,
-                        "maxItems" : 3
+                        "minItems": 3,
+                        "maxItems": 3
                     },
-                    "default" : [],
-                    "title" : "Specific list of k-point coordinates."
+                    "default": [],
+                    "title": "Specific list of k-point coordinates."
                 },
-                "num_dft_iter" : {
-                    "type" : "integer",
-                    "default" : 100,
-                    "title" : "Number of SCF iterations."
+                "num_dft_iter": {
+                    "type": "integer",
+                    "default": 100,
+                    "title": "Number of SCF iterations."
                 },
-                "energy_tol" : {
-                    "type" : "number",
-                    "default" : 1e-6,
-                    "title" : "Tolerance in total energy change (in units of [Ha])."
+                "energy_tol": {
+                    "type": "number",
+                    "default": 0.000001,
+                    "title": "Tolerance in total energy change (in units of [Ha])."
                 },
-                "density_tol" : {
-                    "type" : "number",
-                    "default" : 1e-6,
-                    "title" : "Tolerance for the density mixing."
+                "density_tol": {
+                    "type": "number",
+                    "default": 0.000001,
+                    "title": "Tolerance for the density mixing."
                 },
-                "molecule" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : " True if this is a molecule calculation."
+                "molecule": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": " True if this is a molecule calculation."
                 },
-                "gamma_point" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "True if gamma-point (real) version of the PW code is used."
+                "gamma_point": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "True if gamma-point (real) version of the PW code is used."
                 },
-                "so_correction" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "True if spin-orbit correction is applied."
+                "so_correction": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "True if spin-orbit correction is applied."
                 },
-                "hubbard_correction" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "True if Hubbard U correction is applied."
+                "hubbard_correction": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "True if Hubbard U correction is applied."
                 },
-                "use_symmetry" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "True if symmetry is used."
+                "use_symmetry": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "True if symmetry is used."
                 },
-                "use_ibz" : {
-                    "type" : "boolean",
-                    "default" : true,
-                    "title" : "Use irreducible Brillouin zone."
+                "use_ibz": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "Use irreducible Brillouin zone."
                 },
-                "nn_radius" : {
-                    "type" : "number",
-                    "default" : -1,
-                    "title" : "Radius of atom nearest-neighbour cluster."
+                "nn_radius": {
+                    "type": "number",
+                    "default": -1,
+                    "title": "Radius of atom nearest-neighbour cluster."
                 },
-                "reduce_aux_bf" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Reduction of the auxiliary magnetic field at each SCF step."
+                "reduce_aux_bf": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Reduction of the auxiliary magnetic field at each SCF step."
                 },
-                "extra_charge" : {
-                    "type" : "number",
-                    "default" : 0,
-                    "title" : "Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons."
+                "extra_charge": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons."
                 },
-                "xc_dens_tre" : {
-                    "type" : "number",
-                    "default" : -1,
+                "xc_dens_tre": {
+                    "type": "number",
+                    "default": -1,
                     "title": "XC density threshold (debug purposes).",
                     "$comment" : "subject to removal or moving to `settings` section."
                 },
@@ -650,39 +753,39 @@
                 }
             }
         },
-        "nlcg" : {
-            "type" : "object",
-            "title" : "Non-linear conjugate gradient minimisation",
+        "nlcg": {
+            "type": "object",
+            "title": "Non-linear conjugate gradient minimisation",
             "properties": {
-                "maxiter" : {
-                    "type" : "integer",
-                    "default" : 300,
-                    "title" : "Maximum number of CG iterations"
+                "maxiter": {
+                    "type": "integer",
+                    "default": 300,
+                    "title": "Maximum number of CG iterations"
                 },
-                "restart" : {
-                    "type" : "integer",
-                    "default" : 10,
-                    "title" : "CG restart"
+                "restart": {
+                    "type": "integer",
+                    "default": 10,
+                    "title": "CG restart"
                 },
-                "tau" : {
-                    "type" : "number",
-                    "default" : 0.1,
-                    "title" : "Backtracking search, step parameter"
+                "tau": {
+                    "type": "number",
+                    "default": 0.1,
+                    "title": "Backtracking search, step parameter"
                 },
-                "T" : {
-                    "type" : "number",
-                    "default" : 300.0,
-                    "title" : "Temperature in Kelvin"
+                "T": {
+                    "type": "number",
+                    "default": 300.0,
+                    "title": "Temperature in Kelvin"
                 },
-                "kappa" : {
-                    "type" : "number",
-                    "default" : 0.3,
-                    "title" : "Scalar preconditioning of pseudo Hamiltonian"
+                "kappa": {
+                    "type": "number",
+                    "default": 0.3,
+                    "title": "Scalar preconditioning of pseudo Hamiltonian"
                 },
-                "tol" : {
-                    "type" : "number",
-                    "default" : 1e-9,
-                    "title" : "CG tolerance"
+                "tol": {
+                    "type": "number",
+                    "default": 1E-9,
+                    "title": "CG tolerance"
                 },
                 "processing_unit": {
                     "type": "string",
@@ -696,171 +799,250 @@
                 }
             }
         },
-        "vcsqnm" : {
-            "type" : "object",
-            "title" : "Variable cell shape stabilized quasi Newton method (VC-SQNM)",
+        "vcsqnm": {
+            "type": "object",
+            "title": "Variable cell shape stabilized quasi Newton method (VC-SQNM)",
             "properties": {
-                "initial_step_size" : {
-                    "type" : "number",
-                    "default" : -0.1,
-                    "title" : "Initial step size"
+                "initial_step_size": {
+                    "type": "number",
+                    "default": -0.1,
+                    "title": "Initial step size"
                 },
-                "nhist_max" : {
-                    "type" : "integer",
-                    "default" : 10,
-                    "title" : "Maximal number of steps that will be stored in the history list"
+                "nhist_max": {
+                    "type": "integer",
+                    "default": 10,
+                    "title": "Maximal number of steps that will be stored in the history list"
                 },
-                "lattice_weight" : {
-                    "type" : "number",
-                    "default" : 2.0,
-                    "title" : "Weight / size of the supercell that is used to transform lattice derivatives. Use a value between 1 and 2."
+                "lattice_weight": {
+                    "type": "number",
+                    "default": 2.0,
+                    "title": "Weight / size of the supercell that is used to transform lattice derivatives. Use a value between 1 and 2."
                 },
                 "alpha0": {
-                    "type" : "number",
-                    "default" : 1e-2,
-                    "title" : "Lower limit on the step size"
+                    "type": "number",
+                    "default": 0.01,
+                    "title": "Lower limit on the step size"
                 },
-                "eps_subsp" : {
-                    "type" : "number",
-                    "default" : 1e-3,
-                    "title" : "Lower limit on linear dependencies of basis vectors in history list"
+                "eps_subsp": {
+                    "type": "number",
+                    "default": 0.001,
+                    "title": "Lower limit on linear dependencies of basis vectors in history list"
                 },
-                "forces_tol" : {
-                    "type" : "number",
-                    "default" : 1e-4,
-                    "title" : "Total error tolerance on the atomic forces"
+                "forces_tol": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "title": "Total error tolerance on the atomic forces"
                 },
-                "stress_tol" : {
-                    "type" : "number",
-                    "default" : 1e-5,
-                    "title" : "Total error tolerance on the lattice stress"
+                "stress_tol": {
+                    "type": "number",
+                    "default": 0.00001,
+                    "title": "Total error tolerance on the lattice stress"
                 },
-                "num_steps" : {
-                    "type" : "integer",
-                    "default" : 300,
-                    "title" : "Number of lattice relaxation steps"
+                "num_steps": {
+                    "type": "integer",
+                    "default": 300,
+                    "title": "Number of lattice relaxation steps"
                 }
             }
         },
-        "hubbard" : {
-            "type" : "object",
-            "title" : "Hubbard U correction",
+        "hubbard": {
+            "type": "object",
+            "title": "Hubbard U correction",
             "properties": {
-                "orthogonalize" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true, orthogonalization is applied to Hubbard orbitals."
+                "orthogonalize": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true, orthogonalization is applied to Hubbard orbitals."
                 },
-                "full_orthogonalization" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace"
+                "full_orthogonalization": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace"
                 },
-                "normalize" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true, normalization is applied to Hubbard orbitals."
+                "normalize": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true, normalization is applied to Hubbard orbitals."
                 },
-                "simplified" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "If true, simplified version of Hubbard correction is used."
+                "simplified": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "If true, simplified version of Hubbard correction is used."
                 },
-                "local" : {
-                    "type" : "array",
+                "constrained_calculation": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Use constrained hubbard occupations number. Occupation matrices should be given"
+                },
+                "constraint_error": {
+                    "type": "number",
+                    "default": 0.000001,
+                    "title": "Error between the actual and requested occupation numbers"
+                },
+                "constraint_max_iteration": {
+                    "type": "integer",
+                    "default": 10,
+                    "title": "Maximum number of constrained iterations before returning to the normal Hubbard scheme"
+                },
+                "constraint_beta_mixing": {
+                    "type": "number",
+                    "default": 0.4,
+                    "title": "Mixing parameters for the constrained hubbard"
+                },
+                "constraint_strength": {
+                    "type": "number",
+                    "default": 1.0,
+                    "title": "Amplitude of the constrained potential"
+                },
+                "constraint_method": {
+                    "type": "string",
+                    "default": "energy",
+                    "enum": [
+                        "energy",
+                        "occupation"
+                    ],
+                    "title": "criteria used during the constraining process"
+                },
+                "local_constraint": {
+                    "type": "array",
                     "items": {
-                        "type" : "object",
+                        "type": "object",
                         "properties": {
-                            "atom_type" : {
-                                "type" : "string"
+                            "atom_index": {
+                                "type": "integer",
+                                "default": -1
                             },
-                            "n" : {
-                                "type" : "integer"
+                            "n": {
+                                "type": "integer",
+                                "default": -1,
+                                "title": "principal quantum number"
                             },
-                            "l" : {
-                                "type" : "integer"
+                            "l": {
+                                "type": "integer",
+                                "default": -1,
+                                "title": "angular momentum"
                             },
-                            "U" : {
-                                "type" : "number",
-                                "default" : 0
+                            "lm_order" : {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "title": "Ordering of the Ylm (0,-1,1,-2,2). By default it will consider the (-1,0,1) order (example l = 1)"
                             },
-                            "J" : {
-                                "type" : "number",
-                                "default" : 0
-                            },
-                            "BE2" : {
-                                "type" : "number",
-                                "default" : 0
-                            },
-                            "E3" : {
-                                "type" : "number",
-                                "default" : 0
-                            },
-                            "alpha" : {
-                                "type" : "number",
-                                "default" : 0
-                            },
-                            "beta" : {
-                                "type" : "number",
-                                "default" : 0
-                            },
-                            "initial_occupancy" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "number"
-                                }
-                            },
-                            "total_initial_occupancy" : {
-                                "type" : "number",
-                                "default" : 0
+                            "occupancy": {
+                                "type": "array",
+                                "items": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        }
+                                    }
+                                },
+                                "default": []
                             }
                         }
                     },
-                    "default" : [],
-                    "title" : "Description of the on-site (local) Hubbard interaction"
+                    "default": [],
+                    "title": "set of matrices containing the occupation numbers a given atomic level"
                 },
-                "nonlocal" : {
-                    "type" : "array",
-                    "default" : [],
-                    "title" : "Description of the off-site (nonlocal) Hubbard interaction",
-                    "items" : {
-                        "type" : "object",
+                "local": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
                         "properties": {
-                            "atom_pair" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "integer"
-                                },
-                                "minItems" : 2,
-                                "maxItems" : 2
+                            "atom_type": {
+                                "type": "string"
                             },
-                            "T" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "integer"
-                                },
-                                "minItems" : 3,
-                                "maxItems" : 3
+                            "n": {
+                                "type": "integer"
                             },
-                            "n" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "integer"
-                                },
-                                "minItems" : 2,
-                                "maxItems" : 2
+                            "l": {
+                                "type": "integer"
                             },
-                            "l" : {
-                                "type" : "array",
-                                "items" : {
-                                    "type" : "integer"
-                                },
-                                "minItems" : 2,
-                                "maxItems" : 2
+                            "U": {
+                                "type": "number",
+                                "default": 0
                             },
-                            "V" : {
-                                "type" : "number",
-                                "default" : 0
+                            "J": {
+                                "type": "number",
+                                "default": 0
+                            },
+                            "BE2": {
+                                "type": "number",
+                                "default": 0
+                            },
+                            "E3": {
+                                "type": "number",
+                                "default": 0
+                            },
+                            "alpha": {
+                                "type": "number",
+                                "default": 0
+                            },
+                            "beta": {
+                                "type": "number",
+                                "default": 0
+                            },
+                            "initial_occupancy": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            },
+                            "total_initial_occupancy": {
+                                "type": "number",
+                                "default": 0
+                            }
+                        }
+                    },
+                    "default": [],
+                    "title": "Description of the on-site (local) Hubbard interaction"
+                },
+                "nonlocal": {
+                    "type": "array",
+                    "default": [],
+                    "title": "Description of the off-site (nonlocal) Hubbard interaction",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "atom_pair": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 2,
+                                "maxItems": 2
+                            },
+                            "T": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 3,
+                                "maxItems": 3
+                            },
+                            "n": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 2,
+                                "maxItems": 2
+                            },
+                            "l": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 2,
+                                "maxItems": 2
+                            },
+                            "V": {
+                                "type": "number",
+                                "default": 0
                             }
                         }
                     }

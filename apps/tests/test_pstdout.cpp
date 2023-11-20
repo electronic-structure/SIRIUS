@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(1);
     mpi::pstdout pout(mpi::Communicator::world());

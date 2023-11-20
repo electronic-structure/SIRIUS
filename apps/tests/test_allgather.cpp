@@ -2,7 +2,8 @@
 
 using namespace sirius;
 
-void test_allgather()
+void
+test_allgather()
 {
     int N = 11;
     std::vector<double> vec(N, 0.0);
@@ -40,7 +41,8 @@ void test_allgather()
     mpi::Communicator::world().barrier();
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize(true);
 
