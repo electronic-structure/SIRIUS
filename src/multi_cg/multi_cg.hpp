@@ -58,7 +58,7 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
     PROFILE("sirius::multi_cg");
 
-    auto n = X.cols();
+    auto const n = X.cols();
 
     U.zero();
 
@@ -67,8 +67,9 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
     // Use B effectively as the residual block-vector
     // R = B - A * X -- don't multiply when initial guess is zero.
-    if (!initial_guess_is_zero)
+    if (!initial_guess_is_zero) {
         A.multiply(-1.0, X, 1.0, R, n);
+    }
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
@@ -81,6 +82,8 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     std::iota(ids.begin(), ids.end(), 0);
 
     size_t num_unconverged = n;
+
+    double niter_eff{0};
 
     auto residual_history = std::vector<std::vector<typename StateVec::value_type>>(n);
     int niter{0};
@@ -112,6 +115,8 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         }
 
         num_unconverged = not_converged.size();
+
+        niter_eff += static_cast<double>(num_unconverged) / n;
 
         if (not_converged.empty()) {
             break;
@@ -175,7 +180,8 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     {
         std::vector<std::vector<typename StateVec::value_type>> residual_history;
         int niter;
-    } result{residual_history, niter};
+        int niter_eff;
+    } result{residual_history, niter, static_cast<int>(niter_eff)};
     return result;
 }
 } // namespace cg

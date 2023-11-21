@@ -6042,6 +6042,14 @@ sirius_linear_solver:
       type: int
       attr: in, required
       doc: Number of occupied bands.
+    tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+    niter:
+      type: int
+      attr: out, optional
+      doc: Average number of iterations.
     error_code:
       type: int
       attr: out, optional
@@ -6052,7 +6060,8 @@ void
 sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num_gvec_kq_loc__,
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
-                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ__, int* error_code__)
+                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ__, double const* tol__,
+                     int* niter__, int* error_code__)
 {
     using namespace sirius;
     PROFILE("sirius_api::sirius_linear_solver");
@@ -6193,11 +6202,15 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
 
                 // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
+                auto tol = get_value(tol__, 1e-13);
+
                 auto result = sirius::cg::multi_cg(linear_operator, preconditioner, X_wrap, B_wrap, U_wrap,
                                                    C_wrap, // state vectors
                                                    100,    // iters
-                                                   1e-13   // tol
-                );
+                                                   tol);
+                if (niter__) {
+                    *niter__ = result.niter_eff;
+                }
                 mg.clear();
 
                 /* bring wave functions back in order of QE */
