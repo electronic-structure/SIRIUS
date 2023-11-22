@@ -851,7 +851,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                 }
                 if (hubbard_full_orthogonalization__ != nullptr) {
                     if (*hubbard_full_orthogonalization__) {
-                        sim_ctx.cfg().hubbard().full_orthogonalization(true);
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method("full_orthogonalization");
                     }
                 }
 
@@ -862,12 +862,17 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                 if (hubbard_orbitals__ != nullptr) {
                     std::string s(hubbard_orbitals__);
                     std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+                    bool jump = false;
                     if (s == "ortho-atomic") {
-                        sim_ctx.cfg().hubbard().orthogonalize(true);
-                        sim_ctx.cfg().hubbard().full_orthogonalization(true);
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method("full_orthogonalization");
+                        jump = true;
                     }
                     if (s == "norm-atomic") {
-                        sim_ctx.cfg().hubbard().normalize(true);
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method("normalize");
+                        jump = true;
+                    }
+                    if (!jump) {
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method(s);
                     }
                 }
                 if (fft_grid_size__ != nullptr) {
@@ -2240,8 +2245,29 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
                 auto& sim_ctx = get_sim_ctx(handler__);
                 auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
                 type.hubbard_correction(true);
-                type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
-                                         std::vector<double>(), true);
+                if (type.file_name().empty()) {
+                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
+                                             std::vector<double>(), true);
+                } else {
+                    // we use a an external file containing the potential
+                    // information which means that we do not have all information
+                    // yet.
+                    //
+                    // let's build the local hubbard section instead
+                    //
+
+                    json elem;
+
+                    elem["atom_type"]               = label__;
+                    elem["n"]                       = *n__;
+                    elem["l"]                       = *l__;
+                    elem["total_initial_occupancy"] = *occ__;
+                    elem["U"]                       = *U__;
+                    elem["J"]                       = *J__;
+                    elem["alpha"]                   = *alpha__;
+                    elem["beta"]                    = *beta__;
+                    sim_ctx.cfg().hubbard().local().append(elem);
+                }
             },
             error_code__);
 }

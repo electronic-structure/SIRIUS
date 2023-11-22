@@ -854,20 +854,16 @@
             "type": "object",
             "title": "Hubbard U correction",
             "properties": {
-                "orthogonalize": {
-                    "type": "boolean",
-                    "default": false,
-                    "title": "If true, orthogonalization is applied to Hubbard orbitals."
-                },
-                "full_orthogonalization": {
-                    "type": "boolean",
-                    "default": false,
-                    "title": "If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace"
-                },
-                "normalize": {
-                    "type": "boolean",
-                    "default": false,
-                    "title": "If true, normalization is applied to Hubbard orbitals."
+                "hubbard_subspace_method": {
+                    "type": "string",
+                    "default": "none",
+                    "enum": [
+                        "none",
+                        "full_orthogonalization",
+                        "normalize",
+                        "orthogonalize"
+                    ],
+                    "title": "Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions"
                 },
                 "simplified": {
                     "type": "boolean",

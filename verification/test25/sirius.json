@@ -1,13 +1,12 @@
 {
     "control": {
         "gen_evp_solver_name": "lapack",
-        "print_checksum": false,
         "print_forces": true,
         "processing_unit": "cpu",
         "verbosity": 2
     },
     "hubbard": {
-        "full_orthogonalization": true,
+        "hubbard_subspace_method": "full_orthogonalization",
         "local": [
             {
                 "atom_type": "Ni",

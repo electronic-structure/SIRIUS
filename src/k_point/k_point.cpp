@@ -238,7 +238,7 @@ K_point<T>::generate_hubbard_orbitals()
         sirius::apply_S_operator<T, std::complex<T>>(mem, wf::spin_range(0), wf::band_range(0, nwf), bp_gen, bp_coeffs,
                                                      *atomic_wave_functions_, q_op.get(), *atomic_wave_functions_S_);
 
-        if (ctx_.cfg().hubbard().full_orthogonalization()) {
+        if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
             /* save phi and sphi */
 
             wf_tmp  = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf),
@@ -319,7 +319,7 @@ K_point<T>::generate_hubbard_orbitals()
         }
     }
     /* restore phi and sphi */
-    if (ctx_.cfg().hubbard().full_orthogonalization()) {
+    if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
 
         wf::copy(memory_t::host, *wf_tmp, wf::spin_index(0), wf::band_range(0, nwf), *atomic_wave_functions_,
                  wf::spin_index(0), wf::band_range(0, nwf));
