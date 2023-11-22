@@ -20,17 +20,13 @@ read_nnkp(const int& num_kpts, int& num_wann, int& nntot, mdarray<int, 2>& nnlis
           mdarray<int32_t, 1>& exclude_bands)
 {
     std::ifstream readNNKP;
-    readNNKP.open("silicon.nnkp");
+    readNNKP.open("sirius.nnkp");
     std::string line;
     // read file
     std::vector<std::string> file_content;
     while (std::getline(readNNKP, line)) {
         file_content.push_back(line);
-        for (auto ch : line) {
-            std::cout << ch << std::endl;
-        }
     }
-    std::cout << "endl!\n";
 
     // read num_wann
     std::string string_to_check = "begin projections";
@@ -38,14 +34,15 @@ read_nnkp(const int& num_kpts, int& num_wann, int& nntot, mdarray<int, 2>& nnlis
             std::find_if(file_content.begin(), file_content.end(),
                          [&, string_to_check](std::string& iter_file) { return (string_to_check == iter_file); });
     num_wann = std::atoi((*(iterator + 1)).c_str());
-    std::cout << "num_wann:" << num_wann;
+    //std::cout << "num_wann:" << num_wann;
+    
     // read nnlist and nncell
     string_to_check = "begin nnkpts";
     iterator        = std::find_if(file_content.begin(), file_content.end(),
                                    [&, string_to_check](std::string& iter_file) { return (string_to_check == iter_file); });
     iterator++;
     nntot = std::atoi((*(iterator)).c_str());
-    std::cout << "nntot:" << nntot;
+    //std::cout << "nntot:" << nntot;
     iterator++;
     int aux_int;
     std::cout << std::endl;
@@ -53,19 +50,11 @@ read_nnkp(const int& num_kpts, int& num_wann, int& nntot, mdarray<int, 2>& nnlis
         for (int ib = 0; ib < nntot; ib++) {
             std::stringstream split_line;
             split_line << *iterator;
-            std::cout << split_line.str() << std::endl;
             split_line >> aux_int;
             assert(aux_int == ik + 1);
             split_line >> nnlist(ik, ib);
             split_line >> nncell(0, ik, ib) >> nncell(1, ik, ib) >> nncell(2, ik, ib);
             iterator++;
-            // std::cout << std::setw(6) << ik+1;
-            // std::cout << std::setw(6) <<  nnlist(ik,ib);
-            // std::cout << std::setw(7) << nncell(0,ik,ib);
-            // std::cout << std::setw(4) << nncell(1,ik,ib);
-            // std::cout << std::setw(4) << nncell(2,ik,ib);
-            // std::cout << std::endl;
-            // std::cout << std::endl;
         }
     }
 }
@@ -705,7 +694,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     mdarray<double, 2> proj_s_qaxis({3, num_bands_tot});  // output - optional
 
     // non-scalar variables initialization
-    std::string aux = "silicon";
+    std::string aux = "sirius";
     strcpy(seedname, aux.c_str());
     length_seedname = aux.length();
 
@@ -741,7 +730,6 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      * to the first Brillouin zone. Eq. to hold:
      *             kpoints_[nnlist(ik,ib)] = kpoints_[ik] + (neighbor b) - nncell(.,ik,ib)
      */
-    std::cout << "I am process " << ctx().comm().rank() << " and I go inside the wannier_setup\n";
 
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
     if (ctx().comm().rank() == 0) {
@@ -776,21 +764,15 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                                length_seedname,                                // aux-length of a string
                                length_atomic_symbol);                          // aux-length of a string
         */
-        // TODO: Giovanni, please check what are this two lines - tgey were uncommented.
-        // read_nnkp(const int& num_kpts, int& num_wann, int& nntot, mdarray<int, 2>& nnlist,
-        // mdarray<int32_t, 3>& nncell, mdarray<int32_t, 1>& exclude_bands)
+        read_nnkp(num_kpts, num_wann, nntot, nnlist, nncell, exclude_bands);
     }
     ctx().comm().bcast(&nntot, 1, 0);
     ctx().comm().bcast(nnlist.at(memory_t::host), num_kpts * num_nnmax, 0);
     ctx().comm().bcast(nncell.at(memory_t::host), 3 * num_kpts * num_nnmax, 0);
-    ctx().comm().bcast(&num_bands, 1, 0);
     ctx().comm().bcast(&num_wann, 1, 0);
     ctx().comm().bcast(exclude_bands.at(memory_t::host), num_bands_tot, 0);
 
-    std::cout << "\n\n\n\n\n\n";
-    std::cout << "wannier_setup succeeded. rank " << ctx().comm().rank() << "\n";
 
-    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
 
     std::vector<int> band_index_tot; // band_index_tot[iband] gives the index of iband in the full band vector
     for (int iband = 0; iband < exclude_bands.size(); iband++) {
@@ -812,8 +794,10 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         }
     }
 
-    rotate_wavefunctions(*this, kset_fbz, k_temp, num_bands, band_index_tot);
+    num_bands = band_index_tot.size();
+    PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
 
+    rotate_wavefunctions(*this, kset_fbz, k_temp, num_bands, band_index_tot);
     num_wann = ctx_.unit_cell().num_ps_atomic_wf().first;
 
     mdarray<std::complex<double>, 3> A({num_bands, num_wann, kset_fbz.num_kpoints()});
@@ -854,6 +838,10 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             }
         }
         kset_fbz.ctx().comm_k().bcast(eigval.at(memory_t::host, 0, ik), num_bands, local_rank); // TODO: remove
+    }
+
+    if(ctx().comm().rank() == 0){
+        write_eig(eigval, num_bands, num_kpts);
     }
     /*
         if (kset_fbz.ctx().comm_k().rank() == 0) {
