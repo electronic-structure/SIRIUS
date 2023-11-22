@@ -1587,41 +1587,17 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// If true, orthogonalization is applied to Hubbard orbitals.
-        inline auto orthogonalize() const
+        /// Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions
+        inline auto hubbard_subspace_method() const
         {
-            return dict_.at("/hubbard/orthogonalize"_json_pointer).get<bool>();
+            return dict_.at("/hubbard/hubbard_subspace_method"_json_pointer).get<std::string>();
         }
-        inline void orthogonalize(bool orthogonalize__)
+        inline void hubbard_subspace_method(std::string hubbard_subspace_method__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/hubbard/orthogonalize"_json_pointer] = orthogonalize__;
-        }
-        /// If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace
-        inline auto full_orthogonalization() const
-        {
-            return dict_.at("/hubbard/full_orthogonalization"_json_pointer).get<bool>();
-        }
-        inline void full_orthogonalization(bool full_orthogonalization__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/full_orthogonalization"_json_pointer] = full_orthogonalization__;
-        }
-        /// If true, normalization is applied to Hubbard orbitals.
-        inline auto normalize() const
-        {
-            return dict_.at("/hubbard/normalize"_json_pointer).get<bool>();
-        }
-        inline void normalize(bool normalize__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/normalize"_json_pointer] = normalize__;
+            dict_["/hubbard/hubbard_subspace_method"_json_pointer] = hubbard_subspace_method__;
         }
         /// If true, simplified version of Hubbard correction is used.
         inline auto simplified() const

@@ -78,7 +78,7 @@ build_phi_hub_s_psi_deriv(Simulation_context const& ctx__, int nbnd__, int nawf_
                 int offset_in_wf  = atomic_wf_offset__[ia] + type.indexb_wfs().index_of(rf_index(idxr_wf));
                 int offset_in_hwf = hubbard_wf_offset__[ia] + type.indexb_hub().index_of(e.idxrf);
 
-                if (ctx__.cfg().hubbard().full_orthogonalization()) {
+                if (ctx__.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
                     /* compute \sum_{m} d/d r_{alpha} O^{-1/2}_{m,i} <phi_atomic_{m} | S | psi_{jk} > */
                     la::wrap(la::lib_t::blas)
                             .gemm('C', 'N', mmax, nbnd__, nawf__, &la::constant<std::complex<double>>::one(),
@@ -174,7 +174,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
     std::unique_ptr<la::dmatrix<std::complex<double>>> inv_sqrt_O;
     std::unique_ptr<la::dmatrix<std::complex<double>>> evec_O;
     std::vector<double> eval_O;
-    if (ctx_.cfg().hubbard().full_orthogonalization()) {
+    if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
         ovlp = la::dmatrix<std::complex<double>>(nawf, nawf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf), phi_atomic_S,
                   wf::band_range(0, nawf), ovlp, 0, 0);
@@ -231,7 +231,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
 
         /* compute < d phi_atomic / d r_{alpha} | S | phi_atomic >
          * used to compute derivative of the inverse square root of the overlap matrix */
-        if (ctx_.cfg().hubbard().full_orthogonalization()) {
+        if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
             grad_phi_atomic_s_phi_atomic[x] = la::dmatrix<std::complex<double>>(nawf, nawf);
             wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), *s_phi_atomic_tmp, wf::band_range(0, nawf),
                       phi_atomic, wf::band_range(0, nawf), grad_phi_atomic_s_phi_atomic[x], 0, 0);
@@ -249,7 +249,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
 
     /* compute <phi_atomic | S | psi_{ik} > */
     std::array<la::dmatrix<std::complex<double>>, 2> phi_atomic_s_psi;
-    if (ctx_.cfg().hubbard().full_orthogonalization()) {
+    if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             phi_atomic_s_psi[ispn] = la::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < phi_atomic | S | psi_{ik} > for all atoms */
@@ -312,7 +312,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
                 /* from O = <phi | S | phi > we get
                  * O' = <phi' | S | phi> + <phi | S' |phi> + <phi | S | phi'> */
 
-                if (ctx_.cfg().hubbard().full_orthogonalization()) {
+                if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
                     /* <phi | S' | phi> */
                     wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf),
                               *phi_atomic_tmp, wf::band_range(0, nawf), ovlp, 0, 0);
@@ -463,7 +463,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     std::unique_ptr<la::dmatrix<std::complex<double>>> inv_sqrt_O;
     std::unique_ptr<la::dmatrix<std::complex<double>>> evec_O;
     std::vector<double> eval_O;
-    if (ctx_.cfg().hubbard().full_orthogonalization()) {
+    if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
         ovlp = la::dmatrix<std::complex<double>>(nawf, nawf);
         wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf), phi_atomic_S,
                   wf::band_range(0, nawf), ovlp, 0, 0);
@@ -477,7 +477,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
 
     /* compute <phi_atomic | S | psi_{ik} > */
     std::array<la::dmatrix<std::complex<double>>, 2> phi_atomic_s_psi;
-    if (ctx_.cfg().hubbard().full_orthogonalization()) {
+    if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             phi_atomic_s_psi[ispn] = la::dmatrix<std::complex<double>>(nawf, kp__.num_occupied_bands(ispn));
             /* compute < phi_atomic | S | psi_{ik} > for all atoms */
@@ -508,7 +508,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
             sirius::apply_S_operator_strain_deriv(mt, 3 * nu + mu, bp_gen, bp_coeffs, bp_strain_gen, bp_strain_coeffs,
                                                   phi_atomic, q_op__, *ds_phi_atomic);
 
-            if (ctx_.cfg().hubbard().full_orthogonalization()) {
+            if (ctx_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
                 /* compute <phi_atomic | ds/d epsilon | phi_atomic> */
                 wf::inner(ctx_.spla_context(), mt, wf::spin_range(0), phi_atomic, wf::band_range(0, nawf),
                           *ds_phi_atomic, wf::band_range(0, nawf), ovlp, 0, 0);

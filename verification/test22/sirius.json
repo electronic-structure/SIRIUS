@@ -68,7 +68,6 @@
                   }
     },
     "hubbard" : {
-        "full_orthogonalization": false,
         "simplified" : true,
         "local" : [
             {
