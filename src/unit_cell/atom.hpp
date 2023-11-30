@@ -479,49 +479,6 @@ class Atom
         }
         return std::complex<double>(0, 0); // make compiler happy
     }
-    //template <spin_block_t sblock>
-    //inline std::complex<double>
-    //radial_integrals_sum_L3(int idxrf1__, int idxrf2__, std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
-    //{
-    //    std::complex<double> zsum(0, 0);
-
-    //    for (size_t i = 0; i < gnt__.size(); i++) {
-    //        switch (sblock) {
-    //            case spin_block_t::nm: {
-    //                /* just the Hamiltonian */
-    //                zsum += gnt__[i].coef * h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__);
-    //                break;
-    //            }
-    //            case spin_block_t::uu: {
-    //                /* h + Bz */
-    //                zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) +
-    //                                         b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
-    //                break;
-    //            }
-    //            case spin_block_t::dd: {
-    //                /* h - Bz */
-    //                zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) -
-    //                                         b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
-    //                break;
-    //            }
-    //            case spin_block_t::ud: {
-    //                /* Bx - i By */
-    //                zsum += gnt__[i].coef *
-    //                        std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-    //                                             -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
-    //                break;
-    //            }
-    //            case spin_block_t::du: {
-    //                /* Bx + i By */
-    //                zsum += gnt__[i].coef *
-    //                        std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-    //                                             b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
-    //                break;
-    //            }
-    //        }
-    //    }
-    //    return zsum;
-    //}
 
     inline int
     num_mt_points() const

@@ -157,9 +157,8 @@ class Hamiltonian0
      *      \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
      *  \f]
      */
-    template <spin_block_t sblock>
     void
-    apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
+    apply_hmt_to_apw(Atom const& atom__, spin_block_t sblock__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
                      mdarray<std::complex<T>, 2>& halm__) const;
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
