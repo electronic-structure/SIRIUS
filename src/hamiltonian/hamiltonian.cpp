@@ -74,7 +74,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
                     for (int j1 = 0; j1 <= j2; j1++) {
                         int lm1          = type.indexb(j1).lm;
                         int idxrf1       = type.indexb(j1).idxrf;
-                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3<spin_block_t::nm>(
+                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3(spin_block_t::nm,
                                 idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                         hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
                     }
@@ -115,7 +115,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::co
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) =
-                    atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                    atom__.radial_integrals_sum_L3(sblock, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
     la::wrap(la::lib_t::blas)

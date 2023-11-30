@@ -540,8 +540,8 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(idxrf, idxrf1,
-                                                                         type.gaunt_coefs().gaunt_vector(lm1, lm));
+            auto zsum = atom__.radial_integrals_sum_L3(spin_block_t::nm, idxrf, idxrf1,
+                                                       type.gaunt_coefs().gaunt_vector(lm1, lm));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_row(); igkloc++) {
@@ -582,8 +582,8 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3<spin_block_t::nm>(idxrf1, idxrf,
-                                                                         type.gaunt_coefs().gaunt_vector(lm, lm1));
+            auto zsum = atom__.radial_integrals_sum_L3(spin_block_t::nm, idxrf1, idxrf,
+                                                       type.gaunt_coefs().gaunt_vector(lm, lm1));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_col(); igkloc++) {
@@ -634,7 +634,7 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
                 int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
 
                 h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
-                        atom.template radial_integrals_sum_L3<spin_block_t::nm>(
+                        atom.radial_integrals_sum_L3(spin_block_t::nm,
                                 idxrf1, idxrf2, atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
 
                 if (lm1 == lm2) {
