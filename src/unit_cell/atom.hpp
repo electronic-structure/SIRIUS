@@ -440,9 +440,7 @@ class Atom
             return this->b_radial_integrals_(lm3, idxrf1__, idxrf2__, i);
         };
         /* just the Hamiltonian */
-        auto nm = [h_int](const auto& gaunt_l3) {
-            return gaunt_l3.coef * h_int(gaunt_l3.lm3);
-        };
+        auto nm = [h_int](const auto& gaunt_l3) { return gaunt_l3.coef * h_int(gaunt_l3.lm3); };
         /* h + Bz */
         auto uu = [h_int, b_int](const auto& gaunt_l3) {
             return gaunt_l3.coef * (h_int(gaunt_l3.lm3) + b_int(gaunt_l3.lm3, 0));
