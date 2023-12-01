@@ -439,45 +439,49 @@ class Atom
         auto b_int = [this, idxrf1__, idxrf2__](int lm3, int i) {
             return this->b_radial_integrals_(lm3, idxrf1__, idxrf2__, i);
         };
-
+        /* just the Hamiltonian */
         auto nm = [h_int](const auto& gaunt_l3) {
-            /* just the Hamiltonian */
             return gaunt_l3.coef * h_int(gaunt_l3.lm3);
         };
-
         /* h + Bz */
         auto uu = [h_int, b_int](const auto& gaunt_l3) {
             return gaunt_l3.coef * (h_int(gaunt_l3.lm3) + b_int(gaunt_l3.lm3, 0));
         };
-
         /* h - Bz */
         auto dd = [h_int, b_int](const auto& gaunt_l3) {
             return gaunt_l3.coef * (h_int(gaunt_l3.lm3) - b_int(gaunt_l3.lm3, 0));
         };
-
         /* Bx - i By */
         auto ud = [b_int](const auto& gaunt_l3) {
             return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), -b_int(gaunt_l3.lm3, 2));
         };
-
         /* Bx + i By */
         auto du = [b_int](const auto& gaunt_l3) {
             return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), b_int(gaunt_l3.lm3, 2));
         };
 
+        std::complex<double> res{0};
         switch (sblock) {
             case spin_block_t::nm:
-                return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
+                break;
             case spin_block_t::uu:
-                return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
+                break;
             case spin_block_t::dd:
-                return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
+                break;
             case spin_block_t::ud:
-                return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
+                break;
             case spin_block_t::du:
-                return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
+                break;
+            default:
+                RTE_THROW("unknown value for spin_block_t" + std::to_string(sblock));
         }
-        return std::complex<double>(0, 0); // make compiler happy
+
+        return res;
     }
 
     inline int
