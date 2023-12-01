@@ -462,23 +462,29 @@ class Atom
 
         std::complex<double> res{0};
         switch (sblock) {
-            case spin_block_t::nm:
+            case spin_block_t::nm: {
                 res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
                 break;
-            case spin_block_t::uu:
+            }
+            case spin_block_t::uu: {
                 res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
                 break;
-            case spin_block_t::dd:
+            }
+            case spin_block_t::dd: {
                 res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
                 break;
-            case spin_block_t::ud:
+            }
+            case spin_block_t::ud: {
                 res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
                 break;
-            case spin_block_t::du:
+            }
+            case spin_block_t::du: {
                 res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
                 break;
-            default:
-                RTE_THROW("unknown value for spin_block_t" + std::to_string(sblock));
+            }
+            default: {
+                RTE_THROW("unknown value for spin_block_t");
+            }
         }
 
         return res;
