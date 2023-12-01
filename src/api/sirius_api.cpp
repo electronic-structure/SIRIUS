@@ -1961,7 +1961,6 @@ sirius_add_atom_type(void* const* handler__, char const* label__, char const* fn
                 std::string label = std::string(label__);
                 std::string fname = (fname__ == nullptr) ? std::string("") : std::string(fname__);
                 sim_ctx.unit_cell().add_atom_type(label, fname);
-
                 auto& type = sim_ctx.unit_cell().atom_type(label);
                 if (zn__ != nullptr) {
                     type.set_zn(*zn__);
@@ -5795,50 +5794,40 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
 {
     call_sirius(
             [&]() {
-                auto& sim_ctx  = get_sim_ctx(handler__);
-                auto conf_dict = sim_ctx.cfg().hubbard();
+                auto& sim_ctx = get_sim_ctx(handler__);
+                sirius::add_hubbard_atom_pair(sim_ctx, atom_pair__, translation__, n__, l__, *coupling__);
+            },
+            error_code__);
+}
 
-                json elem;
-                std::vector<int> atom_pair(atom_pair__, atom_pair__ + 2);
-                /* Fortran indices start from 1 */
-                atom_pair[0] -= 1;
-                atom_pair[1] -= 1;
-                std::vector<int> n(n__, n__ + 2);
-                std::vector<int> l(l__, l__ + 2);
-                std::vector<int> translation(translation__, translation__ + 3);
+/*
+@api_begin
+sirius_add_hubbard_file:
+  doc: Read all information for the hubbard correction from a QE file
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    file_name:
+      type: string
+      attr: in, required
+      doc: name of the file containing the information
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 
-                elem["atom_pair"] = atom_pair;
-                elem["T"]         = translation;
-                elem["n"]         = n;
-                elem["l"]         = l;
-                elem["V"]         = *coupling__;
-
-                bool test{false};
-
-                for (int idx = 0; idx < conf_dict.nonlocal().size(); idx++) {
-                    auto v     = conf_dict.nonlocal(idx);
-                    auto at_pr = v.atom_pair();
-                    /* search if the pair is already present */
-                    if ((at_pr[0] == atom_pair[0]) && (at_pr[1] == atom_pair[1])) {
-                        auto tr = v.T();
-                        if ((tr[0] = translation[0]) && (tr[1] = translation[1]) && (tr[2] = translation[2])) {
-                            auto lvl = v.n();
-                            if ((lvl[0] == n[0]) && (lvl[0] == n[1])) {
-                                auto li = v.l();
-                                if ((li[0] == l[0]) && (li[1] == l[1])) {
-                                    test = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!test) {
-                    conf_dict.nonlocal().append(elem);
-                } else {
-                    RTE_THROW("Atom pair for hubbard correction is already present");
-                }
+void
+sirius_parse_hubbard_file(void* const* handler__, char* const file_name__, int* const error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& sim_ctx = get_sim_ctx(handler__);
+                std::string file_name(file_name__);
+                sirius::parse_hubbard_file(sim_ctx, file_name);
             },
             error_code__);
 }
@@ -5876,7 +5865,7 @@ sirius_set_hubbard_contrained_parameters:
        type: int
        attr: out, optional
        doc: Error code.
-  @api end
+@api end
 */
 void
 sirius_set_hubbard_contrained_parameters(void* const* handler__, double const* hubbard_conv_thr__,
@@ -5946,7 +5935,7 @@ sirius_add_hubbard_atom_constraint:
       type: int
       attr: out, optional
       doc: Error code.
-  @api end
+@api end
 */
 void
 sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__, int* const n__, int* const l__,

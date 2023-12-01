@@ -854,6 +854,12 @@
             "type": "object",
             "title": "Hubbard U correction",
             "properties": {
+                "input_file": {
+                    "type": "string",
+                    "default": "",
+                    "title": "Name of the input file containing all information about hubbard orbital for U and V contributions.",
+                    "description": "Name of the input file containing all information about hubbard orbital for U and V contribution. The schema should follow QE standard"
+                },
                 "hubbard_subspace_method": {
                     "type": "string",
                     "default": "none",
@@ -923,7 +929,7 @@
                                 "default": -1,
                                 "title": "angular momentum"
                             },
-                            "lm_order" : {
+                            "lm_order": {
                                 "type": "array",
                                 "default": [],
                                 "items": {

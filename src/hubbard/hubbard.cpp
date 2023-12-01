@@ -10,5 +10,4 @@ Hubbard::Hubbard(Simulation_context& ctx__)
         return;
     }
 }
-
 } // namespace sirius
