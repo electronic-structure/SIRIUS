@@ -146,15 +146,6 @@ if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")
   endif()
 endif()
 
-find_package(Filesystem COMPONENTS Final Experimental)
-
-add_library(sirius::filesystem INTERFACE IMPORTED)
-  target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
-  target_compile_definitions(sirius::filesystem INTERFACE
-    $<$<BOOL:${Filesystem_FOUND}>:SIRIUS_STD_FILESYSTEM>
-    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:SIRIUS_STD_FILESYSTEM_EXPERIMENTAL>
-  )
-
 if (SIRIUS_USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
