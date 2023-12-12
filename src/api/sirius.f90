@@ -6060,6 +6060,101 @@ call sirius_linear_solver_aux(handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,gvec_kq_lo
 end subroutine sirius_linear_solver
 
 !
+!> @brief Generate augmentation charge in case of complex density (linear response)
+!> @param [in] handler DFT ground state handler.
+!> @param [in] iat Index of atom type.
+!> @param [in] num_atoms Total number of atoms.
+!> @param [in] num_gvec_loc Local number of G-vectors
+!> @param [in] num_spin_comp Number of spin components.
+!> @param [in] qpw Augmentation operator for a givem atom type.
+!> @param [in] phase_factors_q Phase factors exp(i*q*r_alpha)
+!> @param [in] mill Miller indices (G-vectors in lattice coordinates)
+!> @param [in] dens_mtrx Density matrix
+!> @param [in] ld Leading dimension of density matrix.
+!> @param [inout] rho_aug Resulting augmentation charge.
+!> @param [out] error_code Error code
+subroutine sirius_generate_rhoaug_q(handler,iat,num_atoms,num_gvec_loc,num_spin_comp,&
+&qpw,phase_factors_q,mill,dens_mtrx,ld,rho_aug,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+integer, target, intent(in) :: iat
+integer, target, intent(in) :: num_atoms
+integer, target, intent(in) :: num_gvec_loc
+integer, target, intent(in) :: num_spin_comp
+complex(8), target, intent(in) :: qpw(num_gvec_loc, *)
+complex(8), target, intent(in) :: phase_factors_q(num_atoms)
+integer, target, intent(in) :: mill(3, num_gvec_loc)
+complex(8), target, intent(in) :: dens_mtrx(ld, num_atoms, num_spin_comp)
+integer, target, intent(in) :: ld
+complex(8), target, intent(inout) :: rho_aug(num_gvec_loc, num_spin_comp)
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: iat_ptr
+type(C_PTR) :: num_atoms_ptr
+type(C_PTR) :: num_gvec_loc_ptr
+type(C_PTR) :: num_spin_comp_ptr
+type(C_PTR) :: qpw_ptr
+type(C_PTR) :: phase_factors_q_ptr
+type(C_PTR) :: mill_ptr
+type(C_PTR) :: dens_mtrx_ptr
+type(C_PTR) :: ld_ptr
+type(C_PTR) :: rho_aug_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_generate_rhoaug_q_aux(handler,iat,num_atoms,num_gvec_loc,num_spin_comp,&
+&qpw,phase_factors_q,mill,dens_mtrx,ld,rho_aug,error_code)&
+&bind(C, name="sirius_generate_rhoaug_q")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: iat
+type(C_PTR), value :: num_atoms
+type(C_PTR), value :: num_gvec_loc
+type(C_PTR), value :: num_spin_comp
+type(C_PTR), value :: qpw
+type(C_PTR), value :: phase_factors_q
+type(C_PTR), value :: mill
+type(C_PTR), value :: dens_mtrx
+type(C_PTR), value :: ld
+type(C_PTR), value :: rho_aug
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+iat_ptr = C_NULL_PTR
+iat_ptr = C_LOC(iat)
+num_atoms_ptr = C_NULL_PTR
+num_atoms_ptr = C_LOC(num_atoms)
+num_gvec_loc_ptr = C_NULL_PTR
+num_gvec_loc_ptr = C_LOC(num_gvec_loc)
+num_spin_comp_ptr = C_NULL_PTR
+num_spin_comp_ptr = C_LOC(num_spin_comp)
+qpw_ptr = C_NULL_PTR
+qpw_ptr = C_LOC(qpw)
+phase_factors_q_ptr = C_NULL_PTR
+phase_factors_q_ptr = C_LOC(phase_factors_q)
+mill_ptr = C_NULL_PTR
+mill_ptr = C_LOC(mill)
+dens_mtrx_ptr = C_NULL_PTR
+dens_mtrx_ptr = C_LOC(dens_mtrx)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+rho_aug_ptr = C_NULL_PTR
+rho_aug_ptr = C_LOC(rho_aug)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_rhoaug_q_aux(handler_ptr,iat_ptr,num_atoms_ptr,num_gvec_loc_ptr,&
+&num_spin_comp_ptr,qpw_ptr,phase_factors_q_ptr,mill_ptr,dens_mtrx_ptr,ld_ptr,rho_aug_ptr,&
+&error_code_ptr)
+end subroutine sirius_generate_rhoaug_q
+
+!
 !> @brief Generate D-operator matrix.
 !> @param [in] handler Ground state handler.
 !> @param [out] error_code Error code

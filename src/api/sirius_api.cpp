@@ -6251,10 +6251,67 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
             error_code__);
 }
 
+/*
+@api begin
+sirius_generate_rhoaug_q:
+  doc: Generate augmentation charge in case of complex density (linear response)
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT ground state handler.
+    iat:
+      type: int
+      attr: in, required
+      doc: Index of atom type.
+    num_atoms:
+      type: int
+      attr: in, required
+      doc: Total number of atoms.
+    num_gvec_loc:
+      type: int
+      attr: in, required
+      doc: Local number of G-vectors
+    num_spin_comp:
+      type: int
+      attr: in, required
+      doc: Number of spin components.
+    qpw:
+      type: complex
+      attr: in, required, dimension(num_gvec_loc, *)
+      doc: Augmentation operator for a givem atom type.
+    phase_factors_q:
+      type: complex
+      attr: in, required, dimension(num_atoms)
+      doc: Phase factors exp(i*q*r_alpha)
+    mill:
+      type: int
+      attr: in, required, dimension(3, num_gvec_loc)
+      doc: Miller indices (G-vectors in lattice coordinates)
+    dens_mtrx:
+      type: complex
+      attr: in, required, dimension(ld, num_atoms, num_spin_comp)
+      doc: Density matrix
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of density matrix.
+    rho_aug:
+      type: complex
+      attr: inout, required, dimension(num_gvec_loc, num_spin_comp)
+      doc: Resulting augmentation charge.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
 void
-sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* num_atoms__, int const* num_beta__, int const* num_gvec_loc__,
-        int const* num_spin_comp__, std::complex<double> const* qpw__, std::complex<double> const* phase_factors_q__,
-        int const* mill__, std::complex<double> const* dens_mtrx__, int const* ld__, std::complex<double>* rho_aug__, int* error_code__)
+sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* num_atoms__, int const* num_gvec_loc__,
+                         int const* num_spin_comp__, std::complex<double> const* qpw__,
+                         std::complex<double> const* phase_factors_q__, int const* mill__,
+                         std::complex<double> const* dens_mtrx__, int const* ld__, std::complex<double>* rho_aug__,
+                         int* error_code__)
 {
     using namespace sirius;
     PROFILE("sirius_api::sirius_generate_rhoaug_q");
@@ -6263,26 +6320,34 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                 auto& gs   = get_gs(handler__);
                 auto& sctx = gs.ctx();
                 /* index of atom type */
-                int iat = *iat__ - 1;
-                int num_beta = *num_beta__;
-                int num_gvec_loc = *num_gvec_loc__;
+                int iat           = *iat__ - 1;
+                int num_beta      = sctx.unit_cell().atom_type(iat).mt_basis_size();
+                int num_gvec_loc  = *num_gvec_loc__;
                 int num_spin_comp = *num_spin_comp__;
 
-                mdarray<std::complex<double>, 2> qpw(const_cast<std::complex<double>*>(qpw__), num_gvec_loc, num_beta * (num_beta + 1) / 2);
-                mdarray<int, 2> mill(const_cast<int*>(mill__), 3, num_gvec_loc);
-                mdarray<std::complex<double>, 3> dens_mtrx(const_cast<std::complex<double>*>(dens_mtrx__), *ld__, *num_atoms__, num_spin_comp);
-                mdarray<std::complex<double>, 2> rho_aug(rho_aug__, num_gvec_loc, num_spin_comp);
+                mdarray<std::complex<double>, 2> qpw({num_gvec_loc, num_beta * (num_beta + 1) / 2},
+                                                     const_cast<std::complex<double>*>(qpw__));
+                mdarray<int, 2> mill({3, num_gvec_loc}, const_cast<int*>(mill__));
+                mdarray<std::complex<double>, 3> dens_mtrx({*ld__, *num_atoms__, num_spin_comp},
+                                                           const_cast<std::complex<double>*>(dens_mtrx__));
+                mdarray<std::complex<double>, 2> rho_aug({num_gvec_loc, num_spin_comp}, rho_aug__);
 
                 for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
                     int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
                     for (int is = 0; is < num_spin_comp; is++) {
 
                         for (int xi1 = 0; xi1 < num_beta; xi1++) {
-                            for (int xi2 = 0; xi2 < num_beta; xi2++) {
-                                for (int ig = 0; ig < num_gvec_loc; ig++) {
-
+                            for (int xi2 = xi1; xi2 < num_beta; xi2++) {
+                                auto i = packed_index(xi1, xi2);
+                                for (int is = 0; is < num_spin_comp; is++) {
+                                    for (int ig = 0; ig < num_gvec_loc; ig++) {
+                                        auto z = phase_factors_q__[ia] *
+                                                 sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia);
+                                        rho_aug(ig, is) += z * 2.0 * qpw(ig, i) * dens_mtrx(i, ia, is);
+                                    }
                                 }
-
+                            }
+                        }
                     }
                 }
             },
