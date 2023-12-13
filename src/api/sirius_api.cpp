@@ -6278,8 +6278,12 @@ sirius_generate_rhoaug_q:
       doc: Number of spin components.
     qpw:
       type: complex
-      attr: in, required, dimension(num_gvec_loc, *)
+      attr: in, required, dimension(ld1, num_gvec_loc)
       doc: Augmentation operator for a givem atom type.
+    ld1:
+      type: int
+      attr: in, required
+      doc: Leading dimension of qpw array.
     phase_factors_q:
       type: complex
       attr: in, required, dimension(num_atoms)
@@ -6308,7 +6312,7 @@ sirius_generate_rhoaug_q:
 */
 void
 sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* num_atoms__, int const* num_gvec_loc__,
-                         int const* num_spin_comp__, std::complex<double> const* qpw__,
+                         int const* num_spin_comp__, std::complex<double> const* qpw__, int const* ld1__,
                          std::complex<double> const* phase_factors_q__, int const* mill__,
                          std::complex<double> const* dens_mtrx__, int const* ld__, std::complex<double>* rho_aug__,
                          int* error_code__)
@@ -6325,31 +6329,75 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                 int num_gvec_loc  = *num_gvec_loc__;
                 int num_spin_comp = *num_spin_comp__;
 
-                mdarray<std::complex<double>, 2> qpw({num_gvec_loc, num_beta * (num_beta + 1) / 2},
+                mdarray<std::complex<double>, 2> qpw({*ld1__, num_gvec_loc},
                                                      const_cast<std::complex<double>*>(qpw__));
                 mdarray<int, 2> mill({3, num_gvec_loc}, const_cast<int*>(mill__));
                 mdarray<std::complex<double>, 3> dens_mtrx({*ld__, *num_atoms__, num_spin_comp},
                                                            const_cast<std::complex<double>*>(dens_mtrx__));
                 mdarray<std::complex<double>, 2> rho_aug({num_gvec_loc, num_spin_comp}, rho_aug__);
 
+                mdarray<std::complex<double>, 2> tmp1({num_gvec_loc, sctx.unit_cell().atom_type(iat).num_atoms()},
+                        get_memory_pool(memory_t::host));
+                /* build matrix of phase factors */
                 for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
                     int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
-                    for (int is = 0; is < num_spin_comp; is++) {
+                    #pragma omp parallel for
+                    for (int ig = 0; ig < num_gvec_loc; ig++) {
+                        tmp1(ig, i) = phase_factors_q__[ia] *
+                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
+                    }
+                }
+                /* density matrix for all atoms of a given type */
+                mdarray<std::complex<double>, 2> tmp2({num_beta * (num_beta + 1) / 2, sctx.unit_cell().atom_type(iat).num_atoms()},
+                        get_memory_pool(memory_t::host));
 
+                /* density matrix multiplied by phase factors */
+                mdarray<std::complex<double>, 2> tmp3({num_beta * (num_beta + 1) / 2, num_gvec_loc},
+                        get_memory_pool(memory_t::host));
+
+                for (int is = 0; is < num_spin_comp; is++) {
+                    for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
+                        int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
+                        for (int j = 0; j < num_beta * (num_beta + 1) / 2; j++) {
+                            tmp2(j, i) = dens_mtrx(j, ia, is);
+                        }
+                    }
+                    la::wrap(la::lib_t::blas).gemm('N', 'T', num_beta * (num_beta + 1) / 2, num_gvec_loc, sctx.unit_cell().atom_type(iat).num_atoms(),
+                            &la::constant<std::complex<double>>::one(), tmp2.at(memory_t::host), tmp2.ld(),
+                            tmp1.at(memory_t::host), tmp1.ld(), &la::constant<std::complex<double>>::zero(),
+                            tmp3.at(memory_t::host), tmp3.ld());
+
+                    #pragma omp parallel for
+                    for (int ig = 0; ig < num_gvec_loc; ig++) {
+                        std::complex<double> z(0, 0);
                         for (int xi1 = 0; xi1 < num_beta; xi1++) {
                             for (int xi2 = xi1; xi2 < num_beta; xi2++) {
                                 auto i = packed_index(xi1, xi2);
-                                for (int is = 0; is < num_spin_comp; is++) {
-                                    for (int ig = 0; ig < num_gvec_loc; ig++) {
-                                        auto z = phase_factors_q__[ia] *
-                                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
-                                        rho_aug(ig, is) += z * 2.0 * qpw(ig, i) * dens_mtrx(i, ia, is);
-                                    }
-                                }
+                                z += qpw(i, ig) * tmp3(i, ig);
                             }
                         }
+                        rho_aug(ig, is) += z * 2.0;
                     }
                 }
+
+                //for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
+                //    int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
+                //    for (int is = 0; is < num_spin_comp; is++) {
+
+                //        for (int xi1 = 0; xi1 < num_beta; xi1++) {
+                //            for (int xi2 = xi1; xi2 < num_beta; xi2++) {
+                //                auto i = packed_index(xi1, xi2);
+                //                for (int is = 0; is < num_spin_comp; is++) {
+                //                    for (int ig = 0; ig < num_gvec_loc; ig++) {
+                //                        auto z = phase_factors_q__[ia] *
+                //                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
+                //                        rho_aug(ig, is) += z * 2.0 * qpw(ig, i) * dens_mtrx(i, ia, is);
+                //                    }
+                //                }
+                //            }
+                //        }
+                //    }
+                //}
             },
             error_code__);
 }
