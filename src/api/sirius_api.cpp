@@ -6278,9 +6278,9 @@ sirius_generate_rhoaug_q:
       doc: Number of spin components.
     qpw:
       type: complex
-      attr: in, required, dimension(ld1, num_gvec_loc)
+      attr: in, required, dimension(ldq, num_gvec_loc)
       doc: Augmentation operator for a givem atom type.
-    ld1:
+    ldq:
       type: int
       attr: in, required
       doc: Leading dimension of qpw array.
@@ -6296,7 +6296,7 @@ sirius_generate_rhoaug_q:
       type: complex
       attr: in, required, dimension(ld, num_atoms, num_spin_comp)
       doc: Density matrix
-    ld:
+    ldd:
       type: int
       attr: in, required
       doc: Leading dimension of density matrix.
@@ -6312,9 +6312,9 @@ sirius_generate_rhoaug_q:
 */
 void
 sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* num_atoms__, int const* num_gvec_loc__,
-                         int const* num_spin_comp__, std::complex<double> const* qpw__, int const* ld1__,
+                         int const* num_spin_comp__, std::complex<double> const* qpw__, int const* ldq__,
                          std::complex<double> const* phase_factors_q__, int const* mill__,
-                         std::complex<double> const* dens_mtrx__, int const* ld__, std::complex<double>* rho_aug__,
+                         std::complex<double> const* dens_mtrx__, int const* ldd__, std::complex<double>* rho_aug__,
                          int* error_code__)
 {
     using namespace sirius;
@@ -6329,9 +6329,9 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                 int num_gvec_loc  = *num_gvec_loc__;
                 int num_spin_comp = *num_spin_comp__;
 
-                mdarray<std::complex<double>, 2> qpw({*ld1__, num_gvec_loc}, const_cast<std::complex<double>*>(qpw__));
+                mdarray<std::complex<double>, 2> qpw({*ldq__, num_gvec_loc}, const_cast<std::complex<double>*>(qpw__));
                 mdarray<int, 2> mill({3, num_gvec_loc}, const_cast<int*>(mill__));
-                mdarray<std::complex<double>, 3> dens_mtrx({*ld__, *num_atoms__, num_spin_comp},
+                mdarray<std::complex<double>, 3> dens_mtrx({*ldd__, *num_atoms__, num_spin_comp},
                                                            const_cast<std::complex<double>*>(dens_mtrx__));
                 mdarray<std::complex<double>, 2> rho_aug({num_gvec_loc, num_spin_comp}, rho_aug__);
 
