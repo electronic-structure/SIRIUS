@@ -6342,7 +6342,7 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                                 for (int is = 0; is < num_spin_comp; is++) {
                                     for (int ig = 0; ig < num_gvec_loc; ig++) {
                                         auto z = phase_factors_q__[ia] *
-                                                 sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia);
+                                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
                                         rho_aug(ig, is) += z * 2.0 * qpw(ig, i) * dens_mtrx(i, ia, is);
                                     }
                                 }
