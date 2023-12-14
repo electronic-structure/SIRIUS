@@ -531,8 +531,7 @@ Simulation_context::print_info(std::ostream& out__) const
         char buf[100];
         strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
-        os << "SIRIUS version : " << major_version() << "." << minor_version() << "."
-           << revision() << std::endl
+        os << "SIRIUS version : " << major_version() << "." << minor_version() << "." << revision() << std::endl
            << "git hash       : " << git_hash() << std::endl
            << "git branch     : " << git_branchname() << std::endl
            << "build time     : " << build_date() << std::endl

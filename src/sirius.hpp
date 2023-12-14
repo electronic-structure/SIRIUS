@@ -102,8 +102,8 @@ initialize(bool call_mpi_init__ = true)
 #endif
 
     if (mpi::Communicator::world().rank() == 0) {
-        std::printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version(), minor_version(),
-                    revision(), git_hash().c_str());
+        std::printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version(), minor_version(), revision(),
+                    git_hash().c_str());
 #if !defined(NDEBUG)
         std::printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif
