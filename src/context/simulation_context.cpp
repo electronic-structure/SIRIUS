@@ -27,6 +27,7 @@
 #include "core/env/env.hpp"
 #include "core/omp.hpp"
 #include "core/sirius_version.hpp"
+#include "core/ostream_tools.hpp"
 #include "simulation_context.hpp"
 #include "symmetry/lattice.hpp"
 #include "symmetry/crystal_symmetry.hpp"
@@ -390,8 +391,8 @@ Simulation_context::initialize()
         is_magma = false;
     }
 
-    int npr = cfg().control().mpi_grid_dims()[0];
-    int npc = cfg().control().mpi_grid_dims()[1];
+    int npr = mpi_grid_dims()[0];
+    int npc = mpi_grid_dims()[1];
 
     /* deduce the default eigen-value solver */
     for (int i : {0, 1}) {
@@ -491,7 +492,7 @@ Simulation_context::initialize()
     /* create G-vectors on the first call to update() */
     update();
 
-    ::sirius::print_memory_usage(this->out(), FILE_LINE);
+    print_memory_usage(this->out(), FILE_LINE);
 
     if (verbosity() >= 1 && comm().rank() == 0) {
         print_info(this->out());
@@ -530,11 +531,11 @@ Simulation_context::print_info(std::ostream& out__) const
         char buf[100];
         strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
-        os << "SIRIUS version : " << sirius::major_version() << "." << sirius::minor_version() << "."
-           << sirius::revision() << std::endl
-           << "git hash       : " << sirius::git_hash() << std::endl
-           << "git branch     : " << sirius::git_branchname() << std::endl
-           << "build time     : " << sirius::build_date() << std::endl
+        os << "SIRIUS version : " << major_version() << "." << minor_version() << "."
+           << revision() << std::endl
+           << "git hash       : " << git_hash() << std::endl
+           << "git branch     : " << git_branchname() << std::endl
+           << "build time     : " << build_date() << std::endl
            << "start time     : " << std::string(buf) << std::endl
            << std::endl
            << "number of MPI ranks           : " << this->comm().size() << std::endl;
@@ -1273,15 +1274,18 @@ Simulation_context::init_comm()
     PROFILE("sirius::Simulation_context::init_comm");
 
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!cfg().control().mpi_grid_dims().size()) {
+    if (!mpi_grid_dims().size()) {
         mpi_grid_dims({1, 1});
     }
-    if (cfg().control().mpi_grid_dims().size() != 2) {
-        RTE_THROW("wrong MPI grid");
+    if (mpi_grid_dims().size() != 2) {
+        std::stringstream s;
+        auto g = mpi_grid_dims();
+        s << "MPI grid for band parallelization " << g << " is not 2D";
+        RTE_THROW(s);
     }
 
-    const int npr = cfg().control().mpi_grid_dims()[0];
-    const int npc = cfg().control().mpi_grid_dims()[1];
+    const int npr = mpi_grid_dims()[0];
+    const int npc = mpi_grid_dims()[1];
     const int npb = npr * npc;
     if (npb <= 0) {
         std::stringstream s;
