@@ -361,7 +361,7 @@ class memory_pool
 
         return static_cast<T*>(memory_pool_allocator_.allocate(num_elements__ * sizeof(T)));
 #else
-        return allocate<T>(num_elements__, M_);
+        return sirius::allocate<T>(num_elements__, M_);
 #endif
     }
 
