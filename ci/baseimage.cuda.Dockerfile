@@ -76,9 +76,14 @@ RUN spack env create -d /sirius-env-clang && \
     spack -e /sirius-env-clang install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda && \
-    spack -e /sirius-env-cuda add  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas" && \
+    spack -e /sirius-env-cuda add  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas threads=openmp" && \
     spack -e /sirius-env-cuda develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-cuda install --only=dependencies --fail-fast
+
+RUN spack env create -d /sirius-env-cuda-mkl-mpich && \
+    spack -e /sirius-env-cuda-mkl-mpich add  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +magma ^mpich ^intel-oneapi-mkl+cluster" && \
+    spack -e /sirius-env-cuda-mkl-mpich develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-cuda-mkl-mpich install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-elpa && \
     spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^openblas ^elpa+cuda" && \
