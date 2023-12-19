@@ -54,7 +54,7 @@ build elpa cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    ENVPATH: "sirius-env-elpa"
+    ENVPATH: "/sirius-env-elpa"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build sequential eigen-solver cuda image:
