@@ -421,6 +421,17 @@ class Radial_solver
             }
         }
 
+        /* normalize solution */
+        Spline<double> s(radial_grid_);
+        for (int i = 0; i < nr; i++) {
+            s(i) = std::pow(p__[i], 2);
+        }
+        auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+        for (int i = 0; i < nr; i++) {
+            p__[i] *= norm;
+            q__[i] *= norm;
+        }
+
         for (int i = 0; i < nr; i++) {
             if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
                 double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
@@ -674,7 +685,6 @@ class Radial_solver
                     for (int i = 0; i < nr; i++) {
                         chi_q(i) = -j * p[j - 1][i];
                     }
-                    chi_q.interpolate();
                 } else if (rel__ == relativity_t::koelling_harmon) {
                     double sq_alpha = std::pow(speed_of_light, -2);
                     double ll_half  = l__ * (l__ + 1) / 2.0;

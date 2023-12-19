@@ -545,7 +545,23 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
         }
         RTE_OUT(out__) << pout.flush(0);
     }
-    if (parameters_.verbosity() >= 4 && comm_.rank() == 0) {
+    if (parameters_.verbosity() >= 3) {
+        std::stringstream s;
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            s << "Atom symmetry class : " << ic << std::endl;
+            for (int l = 0; l < this->lmax_apw(); l++) {
+                for (int o = 0; o < atom_symmetry_class(ic).atom_type().aw_order(l); o++) {
+                    s << "l = " << l << ", o = " << o << ", deriv =";
+                    for (int m = 0; m <= 2; m++) {
+                        s << " " << atom_symmetry_class(ic).aw_surface_deriv(l, o, m);
+                    }
+                    s << std::endl;
+                }
+            }
+        }
+        RTE_OUT(out__) << s.str();
+    }
+    if (parameters_.cfg().control().save_rf() && comm_.rank() == 0) {
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
             atom_symmetry_class(ic).dump_lo();
         }

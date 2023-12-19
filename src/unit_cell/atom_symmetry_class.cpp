@@ -523,8 +523,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
         auto rsd       = rs_with_auto_enu[i];
         double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
-                                    spherical_potential_, rsd->enu)
-                                 .enu();
+                                    spherical_potential_, rsd->enu).enu();
         /* update linearization energy only if its change is above a threshold */
         if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
             rsd->enu           = new_enu;
@@ -552,24 +551,21 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
         orthogonalize_radial_functions();
     }
 
-    //** if (true)
-    //** {
-    //**     std::stringstream s;
-    //**     s << "radial_functions_" << id_ << ".dat";
-    //**     FILE* fout = fopen(s.str().c_str(), "w");
+    if (atom_type().parameters().cfg().control().save_rf()) {
+        std::stringstream s;
+        s << "radial_functions_" << id_ << ".dat";
+        FILE* fout = fopen(s.str().c_str(), "w");
 
-    //**     for (int ir = 0; ir <atom_type_.num_mt_points(); ir++)
-    //**     {
-    //**         fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-    //**         for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++)
-    //**         {
-    //**             fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
-    //**         }
-    //**         fprintf(fout, "\n");
-    //**     }
-    //**     fclose(fout);
-    //** }
-    //** STOP();
+        for (int ir = 0; ir <atom_type_.num_mt_points(); ir++) {
+            fprintf(fout, "%20.15f ", atom_type_.radial_grid(ir));
+            for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
+                fprintf(fout, "%20.15f ", radial_functions_(ir, idxrf, 0));
+                fprintf(fout, "%20.15f ", radial_functions_(ir, idxrf, 1));
+            }
+            fprintf(fout, "\n");
+        }
+        fclose(fout);
+    }
 }
 
 void
@@ -579,7 +575,6 @@ Atom_symmetry_class::sync_radial_functions(mpi::Communicator const& comm__, int 
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
     comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
     comm__.bcast(surface_derivatives_.at(memory_t::host), (int)surface_derivatives_.size(), rank__);
-    // TODO: sync enu to pass to Exciting / Elk
 }
 
 void
