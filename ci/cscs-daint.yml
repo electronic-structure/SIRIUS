@@ -35,7 +35,7 @@ build cuda image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
     ENVPATH: "/sirius-env-cuda"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build rocm image:
   extends: .container-builder
@@ -45,7 +45,7 @@ build rocm image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-rocm"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build elpa cuda image:
   extends: .container-builder
@@ -55,7 +55,7 @@ build elpa cuda image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "sirius-env-elpa"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build sequential eigen-solver cuda image:
   extends: .container-builder
@@ -65,7 +65,7 @@ build sequential eigen-solver cuda image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-cuda-sequential"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build fp32 cuda image:
   extends: .container-builder
@@ -75,7 +75,7 @@ build fp32 cuda image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-fp32"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build vdwxc cuda image:
   extends: .container-builder
@@ -86,7 +86,7 @@ build vdwxc cuda image:
     PERSIST_IMAGE_NAME: discard
     # we can't use MKL here because vdwxc needs parallel FFT and MKL doesn't provide it
     ENVPATH: "/sirius-env-vdwxc-cuda"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build nlcg image:
   extends: .container-builder
@@ -96,7 +96,7 @@ build nlcg image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-nclg"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build clang image:
   extends: .container-builder
@@ -107,7 +107,7 @@ build clang image:
     PERSIST_IMAGE_NAME: discard
     # reuse openblas, libxc and spfft from gcc build
     ENVPATH: "/sirius-env-nlcg"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build openmpi image:
   extends: .container-builder
@@ -117,7 +117,7 @@ build openmpi image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-openmpi"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 .run_tests:
   extends: .container-runner-daint-gpu
