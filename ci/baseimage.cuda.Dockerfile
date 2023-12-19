@@ -71,50 +71,41 @@ RUN ldconfig
 
 # create environments for several configurations and install dependencies
 RUN spack env create -d /sirius-env-clang && \
-    spack env activate /sirius-env-clang && \
-    spack add "sirius@develop %clang build_type=RelWithDebInfo ~cuda ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc " && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-clang add "sirius@develop %clang build_type=RelWithDebInfo ~cuda ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc " && \
+    spack -e /sirius-env-clang develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-clang install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda && \
-    spack env activate /sirius-env-cuda && \
-    spack add  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-cuda add  "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas" && \
+    spack -e /sirius-env-cuda develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-cuda install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-elpa && \
-    spack env activate /sirius-env-elpa && \
-    spack add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^openblas ^elpa+cuda" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^openblas ^elpa+cuda" && \
+    spack -e /sirius-env-elpa develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-elpa install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-fp32 && \
-    spack env activate /sirius-env-fp32 && \
-    spack add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda ^mpich ^openblas ^elpa+cuda ^spfft+single_precision+cuda ^umpire+cuda~device_alloc" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-fp32 add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda ^mpich ^openblas ^elpa+cuda ^spfft+single_precision+cuda ^umpire+cuda~device_alloc" && \
+    spack -e /sirius-env-fp32 develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-fp32 install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-nlcg && \
-    spack env activate /sirius-env-nlcg && \
-    spack add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +nlcglib ^openblas ^mpich" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-nlcg add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +nlcglib ^openblas ^mpich" && \
+    spack -e /sirius-env-nlcg develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-nlcg install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-openmpi && \
-    spack env activate /sirius-env-openmpi && \
-    spack add "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-openmpi add "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc" && \
+    spack -e /sirius-env-openmpidevelop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-openmpi install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda-sequential && \
-    spack env activate /sirius-env-cuda-sequential && \
-    spack add "sirius@develop %gcc +cuda +tests +apps +fortran build_type=RelWithDebInfo ^openblas ^openmpi" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
+    spack -e /sirius-env-cuda-sequential add "sirius@develop %gcc +cuda +tests +apps +fortran build_type=RelWithDebInfo ^openblas ^openmpi" && \
+    spack -e /sirius-env-cuda-sequential develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-cuda-sequential install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-vdwxc-cuda && \
-    spack env activate /sirius-env-vdwxc-cuda && \
-    spack add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda" && \
-    spack develop -p /sirius-src sirius@develop && \
-    spack install --only=dependencies --fail-fast
-
+    spack -e /sirius-env-vdwxc-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda" && \
+    spack -e /sirius-env-vdwxc-cuda develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-vdwxc-cuda install --only=dependencies --fail-fast
