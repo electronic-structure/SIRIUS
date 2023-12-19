@@ -30,9 +30,9 @@ test_enu(cmd_args const& args__)
 
     int dme{0};
 
-    solver.solve(rel, dme, l__, e.ebot(), p1, rdudr, uderiv);
-    solver.solve(rel, dme, l__, e.etop(), p2, rdudr, uderiv);
-    solver.solve(rel, dme, l__, e.enu(), p3, rdudr, uderiv);
+    solver.solve(rel, dme, l, e.ebot(), p1, rdudr, uderiv);
+    solver.solve(rel, dme, l, e.etop(), p2, rdudr, uderiv);
+    solver.solve(rel, dme, l, e.enu(), p3, rdudr, uderiv);
 
     printf("uderiv: %12.6f %12.6f\n", uderiv[0], uderiv[1]);
 
