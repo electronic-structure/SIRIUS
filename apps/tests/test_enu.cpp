@@ -7,10 +7,10 @@ int
 test_enu(cmd_args const& args__)
 {
     auto rel = get_relativity_t(args__.value<std::string>("rel", "none"));
-    auto zn = args__.value<int>("zn", 1);
-    auto l = args__.value<int>("l", 0);
-    auto n = args__.value<int>("n", 1);
-    auto R = args__.value<double>("R", 2.2);
+    auto zn  = args__.value<int>("zn", 1);
+    auto l   = args__.value<int>("l", 0);
+    auto n   = args__.value<int>("n", 1);
+    auto R   = args__.value<double>("R", 2.2);
 
     auto rgrid = Radial_grid_factory<double>(radial_grid_t::lin_exp, 1500, 1e-7, R, 6.0);
     std::vector<double> v(rgrid.num_points());
@@ -20,8 +20,8 @@ test_enu(cmd_args const& args__)
 
     Enu_finder e(rel, zn, n, l, rgrid, v, -0.1);
 
-    printf("Z: %i n: %i l: %i band energies (bottom, top, enu): %12.6f %12.6f %12.6f\n", zn, n, l, e.ebot(),
-           e.etop(), e.enu());
+    printf("Z: %i n: %i l: %i band energies (bottom, top, enu): %12.6f %12.6f %12.6f\n", zn, n, l, e.ebot(), e.etop(),
+           e.enu());
 
     Radial_solver solver(zn, v, rgrid);
 
@@ -49,11 +49,11 @@ int
 main(int argn, char** argv)
 {
     cmd_args args(argn, argv,
-            {{"rel=", "(string) type of scalar-relativistic equation"},
-             {"zn=", "(int) nuclear charge"},
-             {"l=", "(int) orbital quantum number"},
-             {"n=", "(int) principal quantum number"},
-             {"R=", "(double) muffin-tin radius"}});
+                  {{"rel=", "(string) type of scalar-relativistic equation"},
+                   {"zn=", "(int) nuclear charge"},
+                   {"l=", "(int) orbital quantum number"},
+                   {"n=", "(int) principal quantum number"},
+                   {"R=", "(double) muffin-tin radius"}});
 
     sirius::initialize(1);
     call_test("test_enu", test_enu, args);
