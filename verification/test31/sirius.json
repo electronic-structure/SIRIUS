@@ -3,7 +3,7 @@
         "processing_unit" : "cpu",
         "std_evp_solver_name" : "lapack",
         "gen_evp_solver_name" : "lapack",
-        "verbosity" : 3,
+        "verbosity" : 2,
         "verification" : 0,
         "rmt_max": 2.0
     },
@@ -11,14 +11,11 @@
         "electronic_structure_method" : "full_potential_lapwlo",
         "smearing_width" : 0.001,
         "valence_relativity" : "koelling_harmon",
-        "!valence_relativity" : "zora",
         "xc_functionals": ["XC_LDA_X", "XC_LDA_C_PW"],
         "num_fv_states" : 4,
-        "num_mag_dims": 0,
         "pw_cutoff" : 12.00,
         "aw_cutoff":  7.00,
         "use_symmetry": true,
-        "molecule" : true,
         "ngridk" : [2,2,2],
         "density_tol" : 1e-7,
         "energy_tol" : 1e-10,
@@ -32,7 +29,7 @@
                               [0, 1, 0],
                               [0, 0, 1]
                             ],
-        "lattice_vectors_scale" : 14,
+        "lattice_vectors_scale" : 10,
 
         "atom_types" : ["H"],
 
