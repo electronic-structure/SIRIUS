@@ -102,7 +102,7 @@ RUN spack env create -d /sirius-env-nlcg && \
 
 RUN spack env create -d /sirius-env-openmpi && \
     spack -e /sirius-env-openmpi add "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc" && \
-    spack -e /sirius-env-openmpidevelop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-openmpi develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-openmpi install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda-sequential && \
