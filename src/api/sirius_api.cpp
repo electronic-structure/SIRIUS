@@ -6335,71 +6335,46 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                                                            const_cast<std::complex<double>*>(dens_mtrx__));
                 mdarray<std::complex<double>, 2> rho_aug({num_gvec_loc, num_spin_comp}, rho_aug__);
 
-                mdarray<std::complex<double>, 2> tmp1({num_gvec_loc, sctx.unit_cell().atom_type(iat).num_atoms()},
-                                                      get_memory_pool(memory_t::host));
-                /* build matrix of phase factors */
-                for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
-                    int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
-                    #pragma omp parallel for
-                    for (int ig = 0; ig < num_gvec_loc; ig++) {
-                        tmp1(ig, i) = phase_factors_q__[ia] *
-                                      std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
-                    }
-                }
                 /* density matrix for all atoms of a given type */
                 mdarray<std::complex<double>, 2> tmp2(
                         {num_beta * (num_beta + 1) / 2, sctx.unit_cell().atom_type(iat).num_atoms()},
                         get_memory_pool(memory_t::host));
 
-                /* density matrix multiplied by phase factors */
-                mdarray<std::complex<double>, 2> tmp3({num_beta * (num_beta + 1) / 2, num_gvec_loc},
+                mdarray<std::complex<double>, 2> tmp1({sctx.unit_cell().atom_type(iat).num_atoms(), num_gvec_loc},
                                                       get_memory_pool(memory_t::host));
-
                 for (int is = 0; is < num_spin_comp; is++) {
+                    PROFILE_START("sirius_generate_rhoaug_q:tmp2")
                     for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
                         int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
                         for (int j = 0; j < num_beta * (num_beta + 1) / 2; j++) {
                             tmp2(j, i) = dens_mtrx(j, ia, is);
                         }
                     }
-                    la::wrap(la::lib_t::blas)
-                            .gemm('N', 'T', num_beta * (num_beta + 1) / 2, num_gvec_loc,
-                                  sctx.unit_cell().atom_type(iat).num_atoms(),
-                                  &la::constant<std::complex<double>>::one(), tmp2.at(memory_t::host), tmp2.ld(),
-                                  tmp1.at(memory_t::host), tmp1.ld(), &la::constant<std::complex<double>>::zero(),
-                                  tmp3.at(memory_t::host), tmp3.ld());
+                    PROFILE_STOP("sirius_generate_rhoaug_q:tmp2")
 
+                    PROFILE_START("sirius_generate_rhoaug_q:gemm")
+                    la::wrap(la::lib_t::blas)
+                            .gemm('T', 'N', sctx.unit_cell().atom_type(iat).num_atoms(), num_gvec_loc,
+                                  num_beta * (num_beta + 1) / 2,
+                                  &la::constant<std::complex<double>>::one(), tmp2.at(memory_t::host), tmp2.ld(),
+                                  qpw.at(memory_t::host), qpw.ld(),
+                                  &la::constant<std::complex<double>>::zero(),
+                                  tmp1.at(memory_t::host), tmp1.ld());
+                    PROFILE_STOP("sirius_generate_rhoaug_q:gemm")
+
+                    PROFILE_START("sirius_generate_rhoaug_q:sum")
                     #pragma omp parallel for
                     for (int ig = 0; ig < num_gvec_loc; ig++) {
                         std::complex<double> z(0, 0);
-                        for (int xi1 = 0; xi1 < num_beta; xi1++) {
-                            for (int xi2 = xi1; xi2 < num_beta; xi2++) {
-                                auto i = packed_index(xi1, xi2);
-                                z += qpw(i, ig) * tmp3(i, ig);
-                            }
+                        for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
+                            int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
+                            z += tmp1(i, ig) * phase_factors_q__[ia] *
+                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
                         }
                         rho_aug(ig, is) += z * 2.0;
                     }
+                    PROFILE_STOP("sirius_generate_rhoaug_q:sum")
                 }
-
-                // for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
-                //     int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
-                //     for (int is = 0; is < num_spin_comp; is++) {
-
-                //        for (int xi1 = 0; xi1 < num_beta; xi1++) {
-                //            for (int xi2 = xi1; xi2 < num_beta; xi2++) {
-                //                auto i = packed_index(xi1, xi2);
-                //                for (int is = 0; is < num_spin_comp; is++) {
-                //                    for (int ig = 0; ig < num_gvec_loc; ig++) {
-                //                        auto z = phase_factors_q__[ia] *
-                //                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
-                //                        rho_aug(ig, is) += z * 2.0 * qpw(ig, i) * dens_mtrx(i, ia, is);
-                //                    }
-                //                }
-                //            }
-                //        }
-                //    }
-                //}
             },
             error_code__);
 }
