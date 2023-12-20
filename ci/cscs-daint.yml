@@ -27,14 +27,14 @@ build base rocm image:
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base/sirius-ci
     DOCKER_BUILD_ARGS: '["ROCM_ARCH=gfx90a"]'
 
-build cuda image openblas:
+build cuda image mkl:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-cuda"
+    ENVPATH: "/sirius-env-cuda-mkl"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build cuda image:
@@ -45,7 +45,7 @@ build cuda image:
     CSCS_REBUILD_POLICY: always
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    ENVPATH: "/sirius-env-cuda-mkl-mpich"
+    ENVPATH: "/sirius-env-cuda"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build rocm image:
