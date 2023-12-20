@@ -33,7 +33,7 @@ build cuda image openblas:
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-cuda"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
@@ -161,7 +161,7 @@ gpu serial:
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 12
     SLURM_NTASKS: 1
-    SLURM_TIMELIMIT: "30:00"
+    SLURM_TIMELIMIT: "60:00"
     TEST_COMMAND: ctest -L gpu_serial
 
 gpu band parallel:
@@ -194,7 +194,7 @@ cpu single:
     SLURM_CPU_BIND: sockets
     SLURM_CPUS_PER_TASK: 12
     SLURM_NTASKS: 1
-    SLURM_TIMELIMIT: "30:00"
+    SLURM_TIMELIMIT: "60:00"
     TEST_COMMAND: ctest -L cpu_serial
 
 cpu band parallel:
