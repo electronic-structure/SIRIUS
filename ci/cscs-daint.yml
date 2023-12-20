@@ -34,7 +34,7 @@ build cuda image mkl:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-cuda-mkl"
+    ENVPATH: "/sirius-env-cuda-mkl-mpich"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build cuda image:
