@@ -86,7 +86,7 @@ RUN spack env create -d /sirius-env-cuda-mkl-mpich && \
     spack -e /sirius-env-cuda-mkl-mpich install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-elpa && \
-    spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^netlib-scalapck ^mpich ^openblas ^elpa+cuda" && \
+    spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^netlib-scalapack ^mpich ^openblas ^elpa+cuda" && \
     spack -e /sirius-env-elpa develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-elpa install --only=dependencies --fail-fast
 
