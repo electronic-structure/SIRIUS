@@ -42,6 +42,7 @@ build cuda image:
   needs: ["build base cuda image"]
   stage: build
   variables:
+    CSCS_REBUILD_POLICY: always
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
     ENVPATH: "/sirius-env-cuda-mkl-mpich"
