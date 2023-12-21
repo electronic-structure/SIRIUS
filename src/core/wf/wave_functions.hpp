@@ -655,8 +655,8 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
         int nlocal_blocks = this->num_mt_ ? 1 : 0;
 
-        return costa::custom_layout<std::complex<T>>(rowsplit.size()-1, 1, rowsplit.data(), colsplit.data(), owners.data(),
-                                                     nlocal_blocks, &localblock, 'C');
+        return costa::custom_layout<std::complex<T>>(rowsplit.size() - 1, 1, rowsplit.data(), colsplit.data(),
+                                                     owners.data(), nlocal_blocks, &localblock, 'C');
     }
 
     /// Compute checksum of the muffin-tin coefficients.
