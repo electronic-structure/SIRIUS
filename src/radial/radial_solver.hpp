@@ -422,14 +422,16 @@ class Radial_solver
         }
 
         /* normalize solution */
-        Spline<double> s(radial_grid_);
-        for (int i = 0; i < nr; i++) {
-            s(i) = std::pow(p__[i], 2);
-        }
-        auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
-        for (int i = 0; i < nr; i++) {
-            p__[i] *= norm;
-            q__[i] *= norm;
+        if (false) {
+            Spline<double> s(radial_grid_);
+            for (int i = 0; i < nr; i++) {
+                s(i) = std::pow(p__[i], 2);
+            }
+            auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+            for (int i = 0; i < nr; i++) {
+                p__[i] *= norm;
+                q__[i] *= norm;
+            }
         }
 
         for (int i = 0; i < nr; i++) {
