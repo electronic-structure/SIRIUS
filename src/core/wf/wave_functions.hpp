@@ -634,7 +634,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Return COSTA layout for the muffin-tin part for a given spin index and band range.
     auto
-    grid_layout_mt(spin_index ispn__, band_range b__)
+    grid_layout_mt(spin_index ispn__, band_range b__) -> costa::grid_layout<std::complex<T>>
     {
         std::vector<int> rowsplit(comm_.size() + 1);
         rowsplit[0] = 0;
