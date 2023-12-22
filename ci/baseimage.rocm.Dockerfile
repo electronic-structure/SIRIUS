@@ -34,7 +34,7 @@ RUN spack config add packages:all:target:x86_64
 
 # find gcc and clang compilers
 RUN spack compiler find
-RUN spack external find autoconf automake bash binutils bzip2 cmake coreutils cpio curl diffutils findutils gcc git gmake llvm llvm-doe m4 meson ninja openssh openssl perl pkg-config python sed tar xz
+RUN spack external find --all --exclude ncurses
 # workaround hip wants to call /usr/bin/llvm-config, but ubuntu renamed it to /usr/bin/llvm-config-14
 RUN ln -s /usr/bin/llvm-config-14 /usr/bin/llvm-config
 
