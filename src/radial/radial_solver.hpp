@@ -422,14 +422,16 @@ class Radial_solver
         }
 
         /* normalize solution */
-        Spline<double> s(radial_grid_);
-        for (int i = 0; i < nr; i++) {
-            s(i) = std::pow(p__[i], 2);
-        }
-        auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
-        for (int i = 0; i < nr; i++) {
-            p__[i] *= norm;
-            q__[i] *= norm;
+        if (false) {
+            Spline<double> s(radial_grid_);
+            for (int i = 0; i < nr; i++) {
+                s(i) = std::pow(p__[i], 2);
+            }
+            auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+            for (int i = 0; i < nr; i++) {
+                p__[i] *= norm;
+                q__[i] *= norm;
+            }
         }
 
         for (int i = 0; i < nr; i++) {
@@ -703,7 +705,7 @@ class Radial_solver
                             double M = 1 + 0.5 * sq_alpha * (enu__ - V);
                             chi_p(i) = 2 * sq_alpha * q[j - 1][i];
                             chi_q(i) = -2 * p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2)) +
-                                p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / std::pow(M * x, 2) / M);
+                                       p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / std::pow(M * x, 2) / M);
                         }
                     } else {
                         throw std::runtime_error("not implemented");

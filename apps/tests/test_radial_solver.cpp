@@ -7,8 +7,8 @@ int
 test_radial_solver(cmd_args const& args__)
 {
     auto rel = get_relativity_t(args__.value<std::string>("rel", "none"));
-    auto zn = args__.value<int>("zn", 1);
-    auto l = args__.value<int>("l", 0);
+    auto zn  = args__.value<int>("zn", 1);
+    auto l   = args__.value<int>("l", 0);
     auto dme = args__.value<int>("dme", 0);
     auto enu = args__.value<double>("enu", -0.5);
 
@@ -42,11 +42,11 @@ int
 main(int argn, char** argv)
 {
     cmd_args args(argn, argv,
-            {{"rel=", "(string) type of scalar-relativistic equation"},
-             {"zn=", "(int) nuclear charge"},
-             {"l=", "(int) orbital quantum number"},
-             {"enu=", "(double) energy of the equation"},
-             {"dme=", "(int) energy derivative"}});
+                  {{"rel=", "(string) type of scalar-relativistic equation"},
+                   {"zn=", "(int) nuclear charge"},
+                   {"l=", "(int) orbital quantum number"},
+                   {"enu=", "(double) energy of the equation"},
+                   {"dme=", "(int) energy derivative"}});
 
     sirius::initialize(1);
     call_test("test_radial_solver", test_radial_solver, args);
