@@ -23,7 +23,7 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
     tar zxvf cmake.tar.gz --strip-components=1 -C /usr
 
 # get latest version of spack
-RUN git clone https://github.com/spack/spack.git
+RUN git clone -b v0.21.0 https://github.com/spack/spack.git
 
 # set the location of packages built by spack
 RUN spack config add config:install_tree:root:/opt/local
@@ -34,7 +34,9 @@ RUN spack config add packages:all:target:x86_64
 
 # find gcc and clang compilers
 RUN spack compiler find
-RUN spack external find --all
+RUN spack external find --all --exclude ncurses
+# workaround hip wants to call /usr/bin/llvm-config, but ubuntu renamed it to /usr/bin/llvm-config-14
+RUN ln -s /usr/bin/llvm-config-14 /usr/bin/llvm-config
 
 # install big packages
 RUN spack install --fail-fast hip%gcc
@@ -42,8 +44,7 @@ RUN spack install --fail-fast rocblas%gcc
 RUN spack install --fail-fast rocsolver%gcc
 RUN spack install --fail-fast hipfft%gcc
 
-ENV SPEC="sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc"
-
-RUN spack spec $SPEC
-
-RUN spack install --fail-fast --only=dependencies $SPEC
+RUN spack env create -d /sirius-env-rocm && \
+    spack -e /sirius-env-rocm add "sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc" && \
+    spack -e /sirius-env-rocm develop -p /sirius-src sirius@develop && \
+    spack -e /sirius-env-rocm install --only=dependencies --fail-fast
