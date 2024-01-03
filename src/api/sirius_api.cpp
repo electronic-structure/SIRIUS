@@ -6355,11 +6355,9 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                     PROFILE_START("sirius_generate_rhoaug_q:gemm")
                     la::wrap(la::lib_t::blas)
                             .gemm('T', 'N', sctx.unit_cell().atom_type(iat).num_atoms(), num_gvec_loc,
-                                  num_beta * (num_beta + 1) / 2,
-                                  &la::constant<std::complex<double>>::one(), tmp2.at(memory_t::host), tmp2.ld(),
-                                  qpw.at(memory_t::host), qpw.ld(),
-                                  &la::constant<std::complex<double>>::zero(),
-                                  tmp1.at(memory_t::host), tmp1.ld());
+                                  num_beta * (num_beta + 1) / 2, &la::constant<std::complex<double>>::one(),
+                                  tmp2.at(memory_t::host), tmp2.ld(), qpw.at(memory_t::host), qpw.ld(),
+                                  &la::constant<std::complex<double>>::zero(), tmp1.at(memory_t::host), tmp1.ld());
                     PROFILE_STOP("sirius_generate_rhoaug_q:gemm")
 
                     PROFILE_START("sirius_generate_rhoaug_q:sum")
