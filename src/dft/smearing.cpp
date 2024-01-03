@@ -74,11 +74,8 @@ cold::occupancy(double x__, double width__)
     double x  = x__ / width__ - 1.0 / sqrt2;
     double x2 = x * x;
     double f  = std::erf(x) / 2.0 + 0.5;
-
-    if (x2 > 700)
+    if (x2 > 200)
         return f;
-
-    // std::erf(x) / 2.0 + std::exp(-x2) / std::sqrt(2 * pi) + 0.5;
     return f + std::exp(-x2) / std::sqrt(2 * pi);
 }
 
@@ -139,10 +136,12 @@ methfessel_paxton::occupancy(double x__, double width__, int n__)
     double z = -x__ / width__;
     double result{0};
     result = 0.5 * (1 - std::erf(z));
-    // todo s0 is missing
     for (int i = 1; i <= n__; ++i) {
         double A = mp_coefficients(i);
         result += A * sf::hermiteh(2 * i - 1, z) * std::exp(-z * z);
+    }
+    if (result < 1e-30) {
+        return 0;
     }
     return result;
 }
