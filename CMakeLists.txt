@@ -206,7 +206,7 @@ if(SIRIUS_USE_ROCM)
 endif()
 
 if(SIRIUS_USE_MEMORY_POOL)
-  find_package(umpire)
+  find_package(umpire REQUIRED)
 endif()
 
 # check if git command exists
