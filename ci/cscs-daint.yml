@@ -117,7 +117,7 @@ build clang image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     # reuse openblas, libxc and spfft from gcc build
-    ENVPATH: "/sirius-env-nlcg"
+    ENVPATH: "/sirius-env-clang"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build openmpi image:
