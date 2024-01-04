@@ -190,7 +190,7 @@ inline auto
 create_simulation_context(nlohmann::json const& conf__, r3::matrix<double> L__, int num_atoms__,
                           std::vector<r3::vector<double>> coord__, bool add_vloc__, bool add_dion__)
 {
-    auto ctx = std::make_unique<sirius::Simulation_context>(conf__);
+    auto ctx = std::make_unique<Simulation_context>(conf__);
 
     ctx->unit_cell().set_lattice_vectors(L__);
     if (num_atoms__) {

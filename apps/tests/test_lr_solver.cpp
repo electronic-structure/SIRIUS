@@ -209,7 +209,7 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
     Hamiltonian0<T> H0(pot__, true);
     auto Hk = H0(kp);
     /* initialize kp.spinor_wave_functions */
-    sirius::initialize_subspace<T, F>(Hk, kp, ctx__.unit_cell().num_ps_atomic_wf().first);
+    sirius::initialize_subspace<T, std::complex<F>>(Hk, kp, ctx__.unit_cell().num_ps_atomic_wf().first);
 
     /* create auxiliary wave-functions */
     auto dpsi = wave_function_factory(ctx__, kp, wf::num_bands(ctx__.num_bands()), wf::num_mag_dims(0), false);

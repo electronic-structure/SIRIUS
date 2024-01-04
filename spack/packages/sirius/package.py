@@ -21,6 +21,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     version("develop", branch="develop")
     version("master", branch="master")
 
+    version("7.5.0", sha256="c583f88ffc02e9acac24e786bc35c7c32066882d2f70a1e0c14b5780b510365d")
     version("7.4.3", sha256="015679a60a39fa750c5d1bd8fb1ce73945524bef561270d8a171ea2fd4687fec")
     version("7.4.0", sha256="f9360a695a1e786d8cb9d6702c82dd95144a530c4fa7e8115791c7d1e92b020b")
     version("7.3.2", sha256="a256508de6b344345c295ad8642dbb260c4753cd87cc3dd192605c33542955d7")
@@ -83,7 +84,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("python", default=False, description="Build Python bindings")
     variant("memory_pool", default=True, description="Build with memory pool")
     variant("elpa", default=False, description="Use ELPA")
-    variant("dlaf", default=False, when="@develop", description="Use DLA-Future")
+    variant("dlaf", default=False, when="@7.5.0:", description="Use DLA-Future")
     variant("vdwxc", default=False, description="Enable libvdwxc support")
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
@@ -101,9 +102,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
-    variant(
-        "nvtx", default=False, description="Use NVTX profiler"
-    )
+    variant("nvtx", default=False, description="Use NVTX profiler")
 
     depends_on("cmake@3.23:", type="build")
     depends_on("mpi")
@@ -188,6 +187,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         depends_on("umpire+rocm~device_alloc", when="+rocm")
 
     patch("mpi_datatypes.patch", when="@:7.2.6")
+    patch("fj.patch", when="@7.3.2: %fj")
 
     def cmake_args(self):
         spec = self.spec

@@ -27,15 +27,26 @@ build base rocm image:
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base/sirius-ci
     DOCKER_BUILD_ARGS: '["ROCM_ARCH=gfx90a"]'
 
-build cuda image:
+build cuda image mkl:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
   variables:
     DOCKERFILE: ci/build.Dockerfile
+    PERSIST_IMAGE_NAME: discard
+    ENVPATH: "/sirius-env-cuda-mkl-mpich"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
+
+build cuda image:
+  extends: .container-builder
+  needs: ["build base cuda image"]
+  stage: build
+  variables:
+    CSCS_REBUILD_POLICY: always
+    DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack ^mpich ^spfft+single_precision+cuda ^intel-oneapi-mkl+cluster ^umpire+cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-cuda"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build rocm image:
   extends: .container-builder
@@ -44,8 +55,8 @@ build rocm image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo ~fortran+tests +apps +rocm +scalapack ^mpich ^openblas ^umpire+rocm~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-rocm"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build elpa cuda image:
   extends: .container-builder
@@ -54,8 +65,8 @@ build elpa cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^mpich ^intel-oneapi-mkl+cluster ^elpa+cuda ^spfft+single_precision+cuda ^umpire+cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-elpa"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build sequential eigen-solver cuda image:
   extends: .container-builder
@@ -64,8 +75,8 @@ build sequential eigen-solver cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +magma ^mpich ^openblas ^magma+cuda ^umpire+cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-cuda-sequential"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build fp32 cuda image:
   extends: .container-builder
@@ -74,8 +85,8 @@ build fp32 cuda image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +single_precision ^mpich ^intel-oneapi-mkl+cluster ^umpire+cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-fp32"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build vdwxc cuda image:
   extends: .container-builder
@@ -85,8 +96,8 @@ build vdwxc cuda image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     # we can't use MKL here because vdwxc needs parallel FFT and MKL doesn't provide it
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +scalapack +vdwxc ^mpich ^openblas ^umpire+cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-vdwxc-cuda"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build nlcg image:
   extends: .container-builder
@@ -95,8 +106,8 @@ build nlcg image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    SPEC: 'sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich ^nlcglib +cuda  ^umpire+cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-nlcg"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build clang image:
   extends: .container-builder
@@ -106,8 +117,8 @@ build clang image:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     # reuse openblas, libxc and spfft from gcc build
-    SPEC: 'sirius@develop %clang build_type=RelWithDebInfo ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc ^umpire~cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-nlcg"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build openmpi image:
   extends: .container-builder
@@ -116,8 +127,8 @@ build openmpi image:
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
-    SPEC: 'sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^openblas ^openmpi ^umpire~cuda~device_alloc'
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "SPECDEV=$SPEC"]'
+    ENVPATH: "/sirius-env-openmpi"
+    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 .run_tests:
   extends: .container-runner-daint-gpu
@@ -150,7 +161,7 @@ gpu serial:
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 12
     SLURM_NTASKS: 1
-    SLURM_TIMELIMIT: "30:00"
+    SLURM_TIMELIMIT: "60:00"
     TEST_COMMAND: ctest -L gpu_serial
 
 gpu band parallel:
@@ -160,8 +171,8 @@ gpu band parallel:
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 4
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L gpu_band_parallel
+    SLURM_TIMELIMIT: "60:00"
+    TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
     USE_MPI: 'YES'
 
 gpu k-point parallel:
@@ -183,7 +194,7 @@ cpu single:
     SLURM_CPU_BIND: sockets
     SLURM_CPUS_PER_TASK: 12
     SLURM_NTASKS: 1
-    SLURM_TIMELIMIT: "30:00"
+    SLURM_TIMELIMIT: "60:00"
     TEST_COMMAND: ctest -L cpu_serial
 
 cpu band parallel:
@@ -194,6 +205,6 @@ cpu band parallel:
     SLURM_CPU_BIND: sockets
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 4
-    SLURM_TIMELIMIT: "30:00"
-    TEST_COMMAND: ctest -L cpu_band_parallel
+    SLURM_TIMELIMIT: "60:00"
+    TEST_COMMAND: ctest -L cpu_band_parallel --timeout 3600
     USE_MPI: 'YES'

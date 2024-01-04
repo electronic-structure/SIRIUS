@@ -74,8 +74,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
                     for (int j1 = 0; j1 <= j2; j1++) {
                         int lm1          = type.indexb(j1).lm;
                         int idxrf1       = type.indexb(j1).idxrf;
-                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3<spin_block_t::nm>(
-                                idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3(spin_block_t::nm, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
                         hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
                     }
                 }
@@ -96,10 +96,9 @@ Hamiltonian0<T>::~Hamiltonian0()
 }
 
 template <typename T>
-template <spin_block_t sblock>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
-                                  mdarray<std::complex<T>, 2>& halm__) const
+Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, spin_block_t sblock__, int ngv__,
+                                  mdarray<std::complex<T>, 2>& alm__, mdarray<std::complex<T>, 2>& halm__) const
 {
     auto& type = atom__.type();
 
@@ -115,7 +114,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<std::co
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
             hmt(j1, j2) =
-                    atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                    atom__.radial_integrals_sum_L3(sblock__, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
         }
     }
     la::wrap(la::lib_t::blas)
@@ -269,19 +268,8 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
 }
 
 template class Hamiltonian0<double>;
-
-template void
-Hamiltonian0<double>::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__,
-                                                         mdarray<std::complex<double>, 2>& alm__,
-                                                         mdarray<std::complex<double>, 2>& halm__) const;
-
 #ifdef SIRIUS_USE_FP32
 template class Hamiltonian0<float>;
-
-template void
-Hamiltonian0<float>::apply_hmt_to_apw<spin_block_t::nm>(Atom const& atom__, int ngv__,
-                                                        mdarray<std::complex<float>, 2>& alm__,
-                                                        mdarray<std::complex<float>, 2>& halm__) const;
 #endif
 
 } // namespace sirius

@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.5.0
+  VERSION 7.5.1
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -146,15 +146,6 @@ if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")
   endif()
 endif()
 
-find_package(Filesystem COMPONENTS Final Experimental)
-
-add_library(sirius::filesystem INTERFACE IMPORTED)
-  target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
-  target_compile_definitions(sirius::filesystem INTERFACE
-    $<$<BOOL:${Filesystem_FOUND}>:SIRIUS_STD_FILESYSTEM>
-    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:SIRIUS_STD_FILESYSTEM_EXPERIMENTAL>
-  )
-
 if (SIRIUS_USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
@@ -215,7 +206,7 @@ if(SIRIUS_USE_ROCM)
 endif()
 
 if(SIRIUS_USE_MEMORY_POOL)
-  find_package(umpire)
+  find_package(umpire REQUIRED)
 endif()
 
 # check if git command exists

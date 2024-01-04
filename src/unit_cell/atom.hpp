@@ -431,48 +431,61 @@ class Atom
      *                 \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
      *  \f]
      */
-    template <spin_block_t sblock>
-    inline std::complex<double>
-    radial_integrals_sum_L3(int idxrf1__, int idxrf2__, std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
+    inline auto
+    radial_integrals_sum_L3(spin_block_t sblock, int idxrf1__, int idxrf2__,
+                            std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
     {
-        std::complex<double> zsum(0, 0);
+        auto h_int = [this, idxrf1__, idxrf2__](int lm3) { return this->h_radial_integrals_(lm3, idxrf1__, idxrf2__); };
+        auto b_int = [this, idxrf1__, idxrf2__](int lm3, int i) {
+            return this->b_radial_integrals_(lm3, idxrf1__, idxrf2__, i);
+        };
+        /* just the Hamiltonian */
+        auto nm = [h_int](const auto& gaunt_l3) { return gaunt_l3.coef * h_int(gaunt_l3.lm3); };
+        /* h + Bz */
+        auto uu = [h_int, b_int](const auto& gaunt_l3) {
+            return gaunt_l3.coef * (h_int(gaunt_l3.lm3) + b_int(gaunt_l3.lm3, 0));
+        };
+        /* h - Bz */
+        auto dd = [h_int, b_int](const auto& gaunt_l3) {
+            return gaunt_l3.coef * (h_int(gaunt_l3.lm3) - b_int(gaunt_l3.lm3, 0));
+        };
+        /* Bx - i By */
+        auto ud = [b_int](const auto& gaunt_l3) {
+            return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), -b_int(gaunt_l3.lm3, 2));
+        };
+        /* Bx + i By */
+        auto du = [b_int](const auto& gaunt_l3) {
+            return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), b_int(gaunt_l3.lm3, 2));
+        };
 
-        for (size_t i = 0; i < gnt__.size(); i++) {
-            switch (sblock) {
-                case spin_block_t::nm: {
-                    /* just the Hamiltonian */
-                    zsum += gnt__[i].coef * h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__);
-                    break;
-                }
-                case spin_block_t::uu: {
-                    /* h + Bz */
-                    zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) +
-                                             b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
-                    break;
-                }
-                case spin_block_t::dd: {
-                    /* h - Bz */
-                    zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) -
-                                             b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
-                    break;
-                }
-                case spin_block_t::ud: {
-                    /* Bx - i By */
-                    zsum += gnt__[i].coef *
-                            std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-                                                 -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
-                    break;
-                }
-                case spin_block_t::du: {
-                    /* Bx + i By */
-                    zsum += gnt__[i].coef *
-                            std::complex<double>(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1),
-                                                 b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
-                    break;
-                }
+        std::complex<double> res{0};
+        switch (sblock) {
+            case spin_block_t::nm: {
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
+                break;
+            }
+            case spin_block_t::uu: {
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
+                break;
+            }
+            case spin_block_t::dd: {
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
+                break;
+            }
+            case spin_block_t::ud: {
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
+                break;
+            }
+            case spin_block_t::du: {
+                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
+                break;
+            }
+            default: {
+                RTE_THROW("unknown value for spin_block_t");
             }
         }
-        return zsum;
+
+        return res;
     }
 
     inline int
