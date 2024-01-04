@@ -291,21 +291,21 @@ class Radial_solver
 
             if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
                 /* k0 = F(Y(x), x) */
-                pk[0] = 2 * M0 * q0 + p0 * xinv0;
+                pk[0] = 2 * M0 * q0 + p0 * xinv0 + chi_p0;
                 qk[0] = (v0 - enu__ + ll_half / M0 / std::pow(x0, 2)) * p0 - q0 * xinv0 + chi_q0;
 
                 /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
-                pk[1] = 2 * M1 * (q0 + qk[0] * h_half) + (p0 + pk[0] * h_half) * xinv1;
+                pk[1] = 2 * M1 * (q0 + qk[0] * h_half) + (p0 + pk[0] * h_half) * xinv1 + chi_p1;
                 qk[1] = (v1 - enu__ + ll_half / M1 / std::pow(x1, 2)) * (p0 + pk[0] * h_half) -
                         (q0 + qk[0] * h_half) * xinv1 + chi_q1;
 
                 /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
-                pk[2] = 2 * M1 * (q0 + qk[1] * h_half) + (p0 + pk[1] * h_half) * xinv1;
+                pk[2] = 2 * M1 * (q0 + qk[1] * h_half) + (p0 + pk[1] * h_half) * xinv1 + chi_p1;
                 qk[2] = (v1 - enu__ + ll_half / M1 / std::pow(x1, 2)) * (p0 + pk[1] * h_half) -
                         (q0 + qk[1] * h_half) * xinv1 + chi_q1;
 
                 /* k3 = F(Y(x) + k2 * h, x + h) */
-                pk[3] = 2 * M2 * (q0 + qk[2] * h) + (p0 + pk[2] * h) * xinv2;
+                pk[3] = 2 * M2 * (q0 + qk[2] * h) + (p0 + pk[2] * h) * xinv2 + chi_p2;
                 qk[3] = (v2 - enu__ + ll_half / M2 / std::pow(x2, 2)) * (p0 + pk[2] * h) - (q0 + qk[2] * h) * xinv2 +
                         chi_q2;
             }
@@ -421,6 +421,19 @@ class Radial_solver
             }
         }
 
+        /* normalize solution */
+        if (false) {
+            Spline<double> s(radial_grid_);
+            for (int i = 0; i < nr; i++) {
+                s(i) = std::pow(p__[i], 2);
+            }
+            auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+            for (int i = 0; i < nr; i++) {
+                p__[i] *= norm;
+                q__[i] *= norm;
+            }
+        }
+
         for (int i = 0; i < nr; i++) {
             if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
                 double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
@@ -428,7 +441,7 @@ class Radial_solver
                 double v1 = ll_half / M / std::pow(radial_grid_[i], 2);
 
                 /* P' = 2MQ + \frac{P}{r} */
-                dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
+                dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
 
                 /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
                 dqdr__[i] = (V - enu__ + v1) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
@@ -674,7 +687,6 @@ class Radial_solver
                     for (int i = 0; i < nr; i++) {
                         chi_q(i) = -j * p[j - 1][i];
                     }
-                    chi_q.interpolate();
                 } else if (rel__ == relativity_t::koelling_harmon) {
                     double sq_alpha = std::pow(speed_of_light, -2);
                     double ll_half  = l__ * (l__ + 1) / 2.0;
@@ -685,6 +697,15 @@ class Radial_solver
                             double M = 1 + 0.5 * sq_alpha * (enu__ - V);
                             chi_p(i) = sq_alpha * q[j - 1][i];
                             chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                        }
+                    } else if (j == 2) {
+                        for (int i = 0; i < nr; i++) {
+                            double x = radial_grid_[i];
+                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M = 1 + 0.5 * sq_alpha * (enu__ - V);
+                            chi_p(i) = 2 * sq_alpha * q[j - 1][i];
+                            chi_q(i) = -2 * p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2)) +
+                                       p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / std::pow(M * x, 2) / M);
                         }
                     } else {
                         throw std::runtime_error("not implemented");
@@ -714,11 +735,11 @@ class Radial_solver
                     } else {
                         throw std::runtime_error("not implemented");
                     }
-                    chi_p.interpolate();
-                    chi_q.interpolate();
                 } else {
                     throw std::runtime_error("not implemented");
                 }
+                chi_p.interpolate();
+                chi_q.interpolate();
             }
 
             switch (rel__) {

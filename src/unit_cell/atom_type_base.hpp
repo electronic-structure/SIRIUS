@@ -49,12 +49,6 @@ class Atom_type_base
     /// List of atomic levels.
     std::vector<atomic_level_descriptor> atomic_levels_;
 
-    ///// Number of core electrons.
-    // double num_core_electrons_{0};
-
-    ///// Number of valence electrons.
-    // double num_valence_electrons_{0};
-
     /* forbid copy constructor */
     Atom_type_base(Atom_type_base const& src) = delete;
 
@@ -93,15 +87,6 @@ class Atom_type_base
                 atomic_levels_.push_back(level);
             }
         }
-        ///* get the number of core electrons */
-        // for (auto& e : atomic_levels_) {
-        //     if (e.core) {
-        //         num_core_electrons_ += e.occupancy;
-        //     }
-        // }
-
-        ///* get number of valence electrons */
-        // num_valence_electrons_ = zn_ - num_core_electrons_;
 
         free_atom_radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn(), 1.0);
     }
@@ -188,16 +173,6 @@ class Atom_type_base
     {
         return atomic_levels_[idx];
     }
-
-    // inline double num_core_electrons() const
-    //{
-    //     return num_core_electrons_;
-    // }
-
-    // inline double num_valence_electrons() const
-    //{
-    //     return num_valence_electrons_;
-    // }
 };
 
 } // namespace sirius

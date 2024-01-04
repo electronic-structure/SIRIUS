@@ -690,12 +690,8 @@ Hamiltonian_k<T>::set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<s
                     h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
                     break;
                 }
-                case relativity_t::none: {
-                    h__(igk_row, igk_col) += t1 * H0().ctx().theta_pw(ig12);
-                    break;
-                }
                 default: {
-                    break;
+                    h__(igk_row, igk_col) += t1 * H0().ctx().theta_pw(ig12);
                 }
             }
         }

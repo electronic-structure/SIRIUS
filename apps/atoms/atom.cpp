@@ -25,7 +25,7 @@
 
 using namespace sirius;
 
-double const rmin{1e-5};
+double const rmin{1e-6};
 
 class Free_atom : public sirius::Atom_type
 {

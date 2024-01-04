@@ -483,6 +483,11 @@
                     "default": false,
                     "title": "Orthogonalize LAPW radial functions."
                 },
+                "save_rf": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Save LAPW radial functions in text file for inspection."
+                },
                 "output": {
                     "type": "string",
                     "default": "stdout:",

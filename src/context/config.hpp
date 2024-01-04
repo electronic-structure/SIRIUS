@@ -886,6 +886,18 @@ class config_t
             }
             dict_["/control/ortho_rf"_json_pointer] = ortho_rf__;
         }
+        /// Save LAPW radial functions in text file for inspection.
+        inline auto save_rf() const
+        {
+            return dict_.at("/control/save_rf"_json_pointer).get<bool>();
+        }
+        inline void save_rf(bool save_rf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/save_rf"_json_pointer] = save_rf__;
+        }
         /// Type of the output stream (stdout:, file:name)
         inline auto output() const
         {
