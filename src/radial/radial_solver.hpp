@@ -712,8 +712,8 @@ class Radial_solver
                         }
                     } else {
                         std::stringstream s;
-                        s << "energy derivative of the order " << j <<
-                             " is not implemented for Koelling-Harmon radial solver";
+                        s << "energy derivative of the order " << j
+                          << " is not implemented for Koelling-Harmon radial solver";
                         RTE_THROW(s);
                     }
                 } else if (rel__ == relativity_t::iora) {
@@ -740,8 +740,7 @@ class Radial_solver
                         }
                     } else {
                         std::stringstream s;
-                        s << "energy derivative of the order " << j <<
-                             " is not implemented for IORA radial solver";
+                        s << "energy derivative of the order " << j << " is not implemented for IORA radial solver";
                         RTE_THROW(s);
                     }
                 } else {
