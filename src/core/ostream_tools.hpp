@@ -29,6 +29,7 @@
 #include <iomanip>
 #include <vector>
 #include <cmath>
+#include <sstream>
 
 namespace sirius {
 
