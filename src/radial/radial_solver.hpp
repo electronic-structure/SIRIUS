@@ -29,6 +29,7 @@
 #include "spline.hpp"
 #include "core/constants.hpp"
 #include "core/typedefs.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 
@@ -174,7 +175,9 @@ class Radial_solver
             } else if (k__ == l__ + 1) {
                 kappa = -k__;
             } else {
-                throw std::runtime_error("wrong k");
+                std::stringstream s;
+                s << "wrong k : " << k__ << " for l = " << l__;
+                RTE_THROW(s);
             }
         }
 
@@ -708,7 +711,10 @@ class Radial_solver
                                        p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / std::pow(M * x, 2) / M);
                         }
                     } else {
-                        throw std::runtime_error("not implemented");
+                        std::stringstream s;
+                        s << "energy derivative of the order " << j
+                          << " is not implemented for Koelling-Harmon radial solver";
+                        RTE_THROW(s);
                     }
                 } else if (rel__ == relativity_t::iora) {
                     double sq_alpha = std::pow(speed_of_light, -2);
@@ -733,10 +739,12 @@ class Radial_solver
                             chi_q(i) = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
                         }
                     } else {
-                        throw std::runtime_error("not implemented");
+                        std::stringstream s;
+                        s << "energy derivative of the order " << j << " is not implemented for IORA radial solver";
+                        RTE_THROW(s);
                     }
                 } else {
-                    throw std::runtime_error("not implemented");
+                    RTE_THROW("unsupported relativity type");
                 }
                 chi_p.interpolate();
                 chi_q.interpolate();
@@ -764,7 +772,7 @@ class Radial_solver
                     break;
                 }
                 default: {
-                    throw std::runtime_error("not implemented");
+                    RTE_THROW("unsupported relativity type");
                 }
             }
         }
@@ -925,7 +933,7 @@ class Bound_state : public Radial_solver
                     break;
                 }
                 default: {
-                    throw std::runtime_error("not implemented");
+                    RTE_THROW("unsupported relativity type");
                 }
             }
 
@@ -944,7 +952,7 @@ class Bound_state : public Radial_solver
             std::stringstream s;
             s << "enu is not converged for n = " << n_ << " and l = " << l_ << std::endl
               << "enu = " << enu_ << ", denu = " << denu;
-            throw std::runtime_error(s.str());
+            RTE_THROW(s);
         }
 
         /* compute r * u'(r) */
@@ -1018,7 +1026,7 @@ class Bound_state : public Radial_solver
               << "l = " << l_ << std::endl
               << "enu = " << enu_ << std::endl
               << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1);
-            throw std::runtime_error(s.str());
+            RTE_THROW(s);
         }
 
         for (int i = 0; i < np - 1; i++) {
@@ -1135,7 +1143,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                    throw std::runtime_error("not implemented");
+                    RTE_THROW("unsupported relativity type");
                 }
             }
             nnd -= (n_ - l_ - 1);
@@ -1190,7 +1198,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                    throw std::runtime_error("not implemented");
+                    RTE_THROW("unsupported relativity type");
                 }
             }
             if (surface_deriv() * sd <= 0) {
@@ -1223,7 +1231,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                    throw std::runtime_error("not implemented");
+                    RTE_THROW("unsupported relativity type");
                 }
             }
             /* derivative at the boundary */
@@ -1260,7 +1268,7 @@ class Enu_finder : public Radial_solver
                 break;
             }
             default: {
-                throw std::runtime_error("not implemented");
+                RTE_THROW("unsupported relativity type");
             }
         }
 
@@ -1279,7 +1287,7 @@ class Enu_finder : public Radial_solver
               << "etop: " << etop_ << " ebot: " << ebot_ << std::endl
               << "initial surface derivative: " << sd;
 
-            throw std::runtime_error(s.str());
+            RTE_THROW(s);
         }
 
         enu_ = (ebot_ + etop_) / 2.0;
