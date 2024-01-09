@@ -3057,7 +3057,8 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
                         {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
                         {"paw", [&]() { return potential.PAW_total_energy(density); }},
                         {"fermi", [&]() { return kset.energy_fermi(); }},
-                        {"hubbard", [&]() { return sirius::hubbard_energy(density); }}};
+                        {"hubbard", [&]() { return sirius::hubbard_energy(density); }},
+                        {"band-gap", [&]() { return kset.band_gap(); }}};
 
                 if (!func.count(label)) {
                     RTE_THROW("wrong label: " + label);
