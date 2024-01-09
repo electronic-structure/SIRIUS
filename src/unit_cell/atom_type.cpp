@@ -143,7 +143,6 @@ Atom_type::init()
 
     if (!parameters_.full_potential()) {
         RTE_ASSERT(mt_radial_basis_size() == num_beta_radial_functions());
-        // RTE_ASSERT(lmax_beta() == indexr1().lmax());
     }
 
     /* get number of valence electrons */
@@ -725,6 +724,11 @@ Atom_type::read_input(std::string const& str__)
         zn_             = parser["number"].get<int>();
         double r0       = parser["rmin"].get<double>();
         double R        = parser["rmt"].get<double>();
+        try { /* overwrite the muffin-tin radius with the value from the inpupt */
+            R = parameters_.cfg().unit_cell().atom_type_rmt(label_);
+        } catch (...) {
+        }
+
         int nmtp        = parser["nrmt"].get<int>();
         this->lmax_apw_ = parser.value("lmax_apw", this->lmax_apw_);
 
