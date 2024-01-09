@@ -718,12 +718,12 @@ Atom_type::read_input(std::string const& str__)
     }
 
     if (parameters_.full_potential()) {
-        name_           = parser["name"].get<std::string>();
-        symbol_         = parser["symbol"].get<std::string>();
-        mass_           = parser["mass"].get<double>();
-        zn_             = parser["number"].get<int>();
-        double r0       = parser["rmin"].get<double>();
-        double R        = parser["rmt"].get<double>();
+        name_     = parser["name"].get<std::string>();
+        symbol_   = parser["symbol"].get<std::string>();
+        mass_     = parser["mass"].get<double>();
+        zn_       = parser["number"].get<int>();
+        double r0 = parser["rmin"].get<double>();
+        double R  = parser["rmt"].get<double>();
         try { /* overwrite the muffin-tin radius with the value from the inpupt */
             R = parameters_.cfg().unit_cell().atom_type_rmt(label_);
         } catch (...) {
