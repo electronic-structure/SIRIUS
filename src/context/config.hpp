@@ -399,6 +399,12 @@ class config_t
             nlohmann::json::json_pointer p("/unit_cell/atom_files");
             return dict_.at(p / label__).get<std::string>();
         }
+        /// Mapping between atom type labels and muffin-tin radii (LAPW only)
+        inline auto atom_type_rmt(std::string label__) const
+        {
+            nlohmann::json::json_pointer p("/unit_cell/atom_type_rmt");
+            return dict_.at(p / label__).get<double>();
+        }
         /// Atomic coordinates
         inline auto atoms(std::string label__) const
         {

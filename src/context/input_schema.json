@@ -224,6 +224,17 @@
                     },
                     "additionalProperties": false
                 },
+                "atom_type_rmt": {
+                    "type": "object",
+                    "title": "Mapping between atom type labels and muffin-tin radii (LAPW only)",
+                    "default": {},
+                    "patternProperties": {
+                        ".*": {
+                            "type": "number"
+                        }
+                    },
+                    "additionalProperties": false
+                },
                 "atoms": {
                     "type": "object",
                     "title": "Atomic coordinates",
