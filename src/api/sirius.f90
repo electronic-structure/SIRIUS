@@ -2831,9 +2831,10 @@ end subroutine sirius_initialize_subspace
 !> @param [in] precompute_rf Generate radial functions
 !> @param [in] precompute_ri Generate radial integrals
 !> @param [in] iter_solver_tol Iterative solver tolerance.
+!> @param [in] iter_solver_steps Iterative solver number of steps.
 !> @param [out] error_code Error code.
 subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute_pw,precompute_rf,&
-&precompute_ri,iter_solver_tol,error_code)
+&precompute_ri,iter_solver_tol,iter_solver_steps,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
@@ -2842,6 +2843,7 @@ logical, optional, target, intent(in) :: precompute_pw
 logical, optional, target, intent(in) :: precompute_rf
 logical, optional, target, intent(in) :: precompute_ri
 real(8), optional, target, intent(in) :: iter_solver_tol
+integer, optional, target, intent(in) :: iter_solver_steps
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -2853,11 +2855,12 @@ logical(C_BOOL), target :: precompute_rf_c_type
 type(C_PTR) :: precompute_ri_ptr
 logical(C_BOOL), target :: precompute_ri_c_type
 type(C_PTR) :: iter_solver_tol_ptr
+type(C_PTR) :: iter_solver_steps_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute_pw,precompute_rf,&
-&precompute_ri,iter_solver_tol,error_code)&
+&precompute_ri,iter_solver_tol,iter_solver_steps,error_code)&
 &bind(C, name="sirius_find_eigen_states")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
@@ -2866,6 +2869,7 @@ type(C_PTR), value :: precompute_pw
 type(C_PTR), value :: precompute_rf
 type(C_PTR), value :: precompute_ri
 type(C_PTR), value :: iter_solver_tol
+type(C_PTR), value :: iter_solver_steps
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -2893,12 +2897,16 @@ iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) then
 iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 endif
+iter_solver_steps_ptr = C_NULL_PTR
+if (present(iter_solver_steps)) then
+iter_solver_steps_ptr = C_LOC(iter_solver_steps)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_pw_ptr,&
-&precompute_rf_ptr,precompute_ri_ptr,iter_solver_tol_ptr,error_code_ptr)
+&precompute_rf_ptr,precompute_ri_ptr,iter_solver_tol_ptr,iter_solver_steps_ptr,error_code_ptr)
 if (present(precompute_pw)) then
 endif
 if (present(precompute_rf)) then
