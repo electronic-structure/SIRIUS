@@ -554,7 +554,9 @@ class Radial_solver
                 }
                 case relativity_t::iora: {
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
-                    dqdr__[i] = (V - enu__ + v1 / M0 - sq_alpha_half * ll_half * enu__ / M0 / M0 / x / x) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
+                    dqdr__[i] = (V - enu__ + v1 / M0 - radial_solver_local::sq_alpha_half *
+                            ll_half * enu__ / M0 / M0 / x / x) * p__[i] -
+                            q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
                 }
             }
