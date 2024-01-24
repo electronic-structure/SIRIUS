@@ -40,11 +40,13 @@ class Free_atom : public sirius::Atom_type
 
     Free_atom(Free_atom&& src) = default;
 
-    Free_atom(sirius::Simulation_parameters const& param__, const std::string symbol, const std::string name, int zn,
-              double mass, std::vector<atomic_level_descriptor> const& levels_nl)
+    Free_atom(sirius::Simulation_parameters const& param__, std::string const symbol, std::string const name, int zn,
+              double mass, std::vector<atomic_level_descriptor> const& levels_nl, int num_points, double rmax)
         : Atom_type(param__, symbol, name, zn, mass, levels_nl)
     {
-        radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, rmin, 20.0 + 0.25 * zn, 1.0);
+        //radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, rmin, 15.0 + 0.15 * zn, 1.0);
+        //radial_grid_ = sirius::Radial_grid_pow<double>(6000 + 50 * zn, rmin, 15.0 + 0.15 * zn, 3.0);
+        radial_grid_ = sirius::Radial_grid_pow<double>(num_points, rmin, rmax, 3.0);
     }
 
     double
@@ -148,6 +150,7 @@ class Free_atom : public sirius::Atom_type
         }
 
         for (int iter = 0; iter < 200; iter++) {
+            std::cout << "iteration : " << iter << std::endl;
             rho_old = rho.values();
 
             std::memset(&rho(0), 0, rho.num_points() * sizeof(double));
@@ -319,7 +322,8 @@ class Free_atom : public sirius::Atom_type
 };
 
 Free_atom
-init_atom_configuration(const std::string& label, sirius::Simulation_parameters const& param__)
+init_atom_configuration(const std::string& label, sirius::Simulation_parameters const& param__, int num_points,
+        double rmax)
 {
     atomic_level_descriptor nlk;
     std::vector<atomic_level_descriptor> levels_nlk;
@@ -343,7 +347,7 @@ init_atom_configuration(const std::string& label, sirius::Simulation_parameters 
     double NIST_ScRLDA_Etot = 0.0;
     NIST_ScRLDA_Etot        = atomic_conf_dictionary_[label].value("NIST_ScRLDA_Etot", NIST_ScRLDA_Etot);
 
-    Free_atom a(param__, label, name, zn, mass, levels_nlk);
+    Free_atom a(param__, label, name, zn, mass, levels_nlk, num_points, rmax);
     a.NIST_LDA_Etot    = NIST_LDA_Etot;
     a.NIST_ScRLDA_Etot = NIST_ScRLDA_Etot;
     return a;
@@ -922,6 +926,8 @@ main(int argn, char** argv)
     args.register_key("--auto_enu", "allow search of APW linearization energies");
     args.register_key("--xml", "xml output for Exciting code");
     args.register_key("--rel", "use scalar-relativistic solver");
+    args.register_key("--num_points=", "{int} number of radial grid points");
+    args.register_key("--rmax=", "{double} maximum value of radial grid");
     args.parse_args(argn, argv);
 
     if (argn == 1 || args.exist("help")) {
@@ -969,11 +975,19 @@ main(int argn, char** argv)
 
     bool rel = args.exist("rel");
 
+    int num_points = args.value<int>("num_points", 6000);
+    double rmax = args.value<double>("rmax", 30);
+
     sirius::Simulation_parameters param;
     param.lmax_apw(-1);
-    Free_atom a = init_atom_configuration(symbol, param);
+    Free_atom a = init_atom_configuration(symbol, param, num_points, rmax);
 
     generate_atom_file(a, core_cutoff, lo_type, apw_order, apw_enu, auto_enu, write_to_xml, rel);
 
     sirius::finalize();
+
+    auto timing_result = global_rtgraph_timer.process();
+    std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                      rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
+                                      rt_graph::Stat::Max});
 }
