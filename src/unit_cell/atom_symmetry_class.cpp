@@ -550,31 +550,38 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     }
 
     if (atom_type().parameters().cfg().control().save_rf()) {
-        std::stringstream s;
-        s << "radial_functions_" << id_ << ".dat";
-        FILE* fout = fopen(s.str().c_str(), "w");
+        static int count{0};
 
-        for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-            fprintf(fout, "%20.15f ", atom_type_.radial_grid(ir));
-            for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
-                fprintf(fout, "%20.15f ", radial_functions_(ir, idxrf, 0));
-                fprintf(fout, "%20.15f ", radial_functions_(ir, idxrf, 1));
+        if (true) {
+            std::stringstream s;
+            s << "radial_functions_class_" << id_ << "_step_" << count << ".dat";
+            std::ofstream ofs(s.str(), std::ofstream::out | std::ofstream::trunc);
+
+            for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+                ofs << std::setprecision(12) << atom_type_.radial_grid(ir) << " ";
+                for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
+                    ofs << std::setprecision(12)
+                        << radial_functions_(ir, idxrf, 0) << " "
+                        << radial_functions_(ir, idxrf, 1) << " ";
+                }
+                ofs << std::endl;
             }
-            fprintf(fout, "\n");
         }
-        fclose(fout);
 
-        s.str("");
-        s << "radial_potential_" << id_ << ".dat";
-        fout = fopen(s.str().c_str(), "w");
+        if (true) {
+            std::stringstream s;
+            s << "radial_potential_class_" << id_ << "_step_" << count << ".dat";
+            std::ofstream ofs(s.str(), std::ofstream::out | std::ofstream::trunc);
 
-        for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-            fprintf(fout, "%20.15f ", atom_type_.radial_grid(ir));
-            fprintf(fout, "%20.15f ", spherical_potential_[ir]);
-            fprintf(fout, "%20.15f ", spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir));
-            fprintf(fout, "\n");
+            for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+                ofs << std::setprecision(12)
+                    << atom_type_.radial_grid(ir) << " "
+                    << spherical_potential_[ir] << " "
+                    << spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir) << std::endl;
+            }
         }
-        fclose(fout);
+
+        count++;
     }
 }
 
