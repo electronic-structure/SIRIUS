@@ -92,12 +92,12 @@ class Atom_symmetry_class
     mutable std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Generate radial functions for augmented waves
-    void
-    generate_aw_radial_functions(relativity_t rel__);
+    int
+    generate_aw_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__, mdarray<double, 2>& sd__) const;
 
     /// Generate local orbital raidal functions
-    void
-    generate_lo_radial_functions(relativity_t rel__);
+    int
+    generate_lo_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__) const;
 
     /// Orthogonalize the radial functions.
     void
@@ -127,7 +127,7 @@ class Atom_symmetry_class
 
     /// Check if local orbitals are linearly independent
     std::vector<int>
-    check_lo_linear_independence(double etol__);
+    check_lo_linear_independence(double etol__) const;
 
     /// Dump local orbitals to the file for debug purposes
     void
