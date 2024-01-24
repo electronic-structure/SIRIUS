@@ -228,11 +228,11 @@ class Spline : public Radial_grid<U>
         int j = this->index_of(x);
         if (j == -1) {
             std::stringstream s;
-            s << "spline::at_point() index of point is not found\n"
+            s << "index of point is not found\n"
               << "  x           : " << x << "\n"
               << "  first point : " << this->first() << "\n"
               << "  last point  : " << this->last();
-            throw std::runtime_error(s.str());
+            RTE_THROW(s);
         }
         U dx = x - (*this)[j];
         return (*this)(j, dx);
@@ -264,7 +264,7 @@ class Spline : public Radial_grid<U>
                 break;
             }
             default: {
-                throw std::runtime_error("wrong order of derivative");
+                RTE_THROW("wrong order of derivative");
                 break;
             }
         }
@@ -345,8 +345,8 @@ class Spline : public Radial_grid<U>
 
         if (info) {
             std::stringstream s;
-            s << "[sirius::Spline::interpolate] error in tridiagonal solver: " << info;
-            throw std::runtime_error(s.str());
+            s << "error in tridiagonal solver: " << info;
+            RTE_THROW(s);
         }
 
         for (int i = 0; i < ns - 1; i++) {
@@ -809,7 +809,7 @@ inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
             }*/
 
         default: {
-            throw std::runtime_error("wrong r^m prefactor");
+            RTE_THROW("wrong r^m prefactor");
         }
     }
     return result;
