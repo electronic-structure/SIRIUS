@@ -71,7 +71,8 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
 }
 
 int
-Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__, mdarray<double, 2>& sd__) const
+Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__,
+                                                  mdarray<double, 2>& sd__) const
 {
     int nmtp = atom_type_.num_mt_points();
 
@@ -138,13 +139,14 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
                 norm = s.interpolate().integrate(0);
 
                 if (std::abs(norm) < 1e-10) {
-                    //std::stringstream s;
-                    //s << "AW radial function for atom " << atom_type_.label() << " is linearly dependent" << std::endl
-                    //  << "  order: " << order << std::endl
-                    //  << "      l: " << l << std::endl
-                    //  << "    dme: " << rsd.dme << std::endl
-                    //  << "    enu: " << rsd.enu;
-                    //RTE_THROW(s);
+                    // std::stringstream s;
+                    // s << "AW radial function for atom " << atom_type_.label() << " is linearly dependent" <<
+                    // std::endl
+                    //   << "  order: " << order << std::endl
+                    //   << "      l: " << l << std::endl
+                    //   << "    dme: " << rsd.dme << std::endl
+                    //   << "    enu: " << rsd.enu;
+                    // RTE_THROW(s);
                     found = false;
                     break;
                 }
@@ -560,8 +562,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
             for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
                 ofs << std::setprecision(12) << atom_type_.radial_grid(ir) << " ";
                 for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
-                    ofs << std::setprecision(12)
-                        << radial_functions_(ir, idxrf, 0) << " "
+                    ofs << std::setprecision(12) << radial_functions_(ir, idxrf, 0) << " "
                         << radial_functions_(ir, idxrf, 1) << " ";
                 }
                 ofs << std::endl;
@@ -574,9 +575,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
             std::ofstream ofs(s.str(), std::ofstream::out | std::ofstream::trunc);
 
             for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-                ofs << std::setprecision(12)
-                    << atom_type_.radial_grid(ir) << " "
-                    << spherical_potential_[ir] << " "
+                ofs << std::setprecision(12) << atom_type_.radial_grid(ir) << " " << spherical_potential_[ir] << " "
                     << spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir) << std::endl;
             }
         }
