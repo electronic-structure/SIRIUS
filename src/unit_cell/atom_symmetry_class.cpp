@@ -536,6 +536,8 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
 
     mdarray<double, 2> sd({3, atom_type_.mt_radial_basis_size() - atom_type_.num_lo_descriptors()});
     mdarray<double, 3> rf({atom_type_.num_mt_points(), atom_type_.mt_radial_basis_size(), 2});
+    sd.zero();
+    rf.zero();
 
     find_enu(rel__);
 
