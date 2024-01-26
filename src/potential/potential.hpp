@@ -919,6 +919,17 @@ class Potential : public Field4D
     }
 };
 
+inline void
+copy(Potential const& src__, Potential& dest__)
+{
+    for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
+        copy(src__.component(j).rg(), dest__.component(j).rg());
+        if (src__.ctx().full_potential()) {
+            copy(src__.component(j).mt(), dest__.component(j).mt());
+        }
+    }
+}
+
 }; // namespace sirius
 
 #endif // __POTENTIAL_HPP__
