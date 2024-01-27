@@ -58,9 +58,8 @@ Potential::generate_pw_coefs()
             ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
         }
         default: {
-            fft::spfft_input<double>(fft, [&](int ir) -> double {
-                return effective_potential().rg().value(ir) * ctx_.theta(ir);
-            });
+            fft::spfft_input<double>(
+                    fft, [&](int ir) -> double { return effective_potential().rg().value(ir) * ctx_.theta(ir); });
             fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);
         }

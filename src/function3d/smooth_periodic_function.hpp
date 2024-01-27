@@ -153,11 +153,11 @@ class Smooth_periodic_function
         f_rg_.zero();
 
         f_pw_local_ = mdarray<std::complex<real_type<T>>, 1>({gvecp_->gvec().count()}, mp,
-                                                  mdarray_label("Smooth_periodic_function.f_pw_local_"));
+                                                             mdarray_label("Smooth_periodic_function.f_pw_local_"));
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
             f_pw_fft_ = mdarray<std::complex<real_type<T>>, 1>({gvecp_->count()}, mp,
-                                                    mdarray_label("Smooth_periodic_function.f_pw_fft_"));
+                                                               mdarray_label("Smooth_periodic_function.f_pw_fft_"));
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
