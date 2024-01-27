@@ -90,10 +90,10 @@ class Smooth_periodic_function
     mdarray<T, 1> f_rg_;
 
     /// Local set of plane-wave expansion coefficients.
-    mdarray<std::complex<T>, 1> f_pw_local_;
+    mdarray<std::complex<real_type<T>>, 1> f_pw_local_;
 
     /// Storage of the PW coefficients for the FFT transformation.
-    mdarray<std::complex<T>, 1> f_pw_fft_;
+    mdarray<std::complex<real_type<T>>, 1> f_pw_fft_;
 
     /// Gather plane-wave coefficients for the subsequent FFT call.
     inline void
@@ -152,16 +152,16 @@ class Smooth_periodic_function
         }
         f_rg_.zero();
 
-        f_pw_local_ = mdarray<std::complex<T>, 1>({gvecp_->gvec().count()}, mp,
+        f_pw_local_ = mdarray<std::complex<real_type<T>>, 1>({gvecp_->gvec().count()}, mp,
                                                   mdarray_label("Smooth_periodic_function.f_pw_local_"));
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
-            f_pw_fft_ = mdarray<std::complex<T>, 1>({gvecp_->count()}, mp,
+            f_pw_fft_ = mdarray<std::complex<real_type<T>>, 1>({gvecp_->count()}, mp,
                                                     mdarray_label("Smooth_periodic_function.f_pw_fft_"));
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
-            f_pw_fft_ = mdarray<std::complex<T>, 1>({gvecp_->gvec().count()}, &f_pw_local_[0]);
+            f_pw_fft_ = mdarray<std::complex<real_type<T>>, 1>({gvecp_->gvec().count()}, &f_pw_local_[0]);
         }
     }
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
@@ -201,25 +201,25 @@ class Smooth_periodic_function
     }
 
     inline auto
-    f_pw_local(int ig__) -> std::complex<T>&
+    f_pw_local(int ig__) -> std::complex<real_type<T>>&
     {
         return f_pw_local_(ig__);
     }
 
     inline auto
-    f_pw_local(int ig__) const -> const std::complex<T>&
+    f_pw_local(int ig__) const -> const std::complex<real_type<T>>&
     {
         return f_pw_local_(ig__);
     }
 
     inline auto
-    f_pw_local() -> mdarray<std::complex<T>, 1>&
+    f_pw_local() -> mdarray<std::complex<real_type<T>>, 1>&
     {
         return f_pw_local_;
     }
 
     inline auto
-    f_pw_local() const -> const mdarray<std::complex<T>, 1>&
+    f_pw_local() const -> const mdarray<std::complex<real_type<T>>, 1>&
     {
         return f_pw_local_;
     }
@@ -234,7 +234,7 @@ class Smooth_periodic_function
     inline auto
     f_0() const
     {
-        std::complex<T> z;
+        std::complex<real_type<T>> z;
         if (gvecp_->gvec().comm().rank() == 0) {
             z = f_pw_local_(0);
         }
@@ -295,7 +295,7 @@ class Smooth_periodic_function
                     int count  = gvecp_->gvec_slab().counts[gvecp_->comm_ortho_fft().rank()];
                     int offset = gvecp_->gvec_slab().offsets[gvecp_->comm_ortho_fft().rank()];
                     std::memcpy(f_pw_local_.at(memory_t::host), f_pw_fft_.at(memory_t::host, offset),
-                                count * sizeof(std::complex<T>));
+                                count * sizeof(std::complex<real_type<T>>));
                 }
                 break;
             }
@@ -310,14 +310,14 @@ class Smooth_periodic_function
     {
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
-        std::vector<std::complex<T>> fpw(gvecp_->gvec().num_gvec());
+        std::vector<std::complex<real_type<T>>> fpw(gvecp_->gvec().num_gvec());
         gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().count(), gvec().offset());
 
         return fpw;
     }
 
     inline void
-    scatter_f_pw(std::vector<std::complex<T>> const& f_pw__)
+    scatter_f_pw(std::vector<std::complex<real_type<T>>> const& f_pw__)
     {
         std::copy(&f_pw__[gvecp_->gvec().offset()], &f_pw__[gvecp_->gvec().offset()] + gvecp_->gvec().count(),
                   &f_pw_local_(0));
@@ -466,7 +466,7 @@ gradient(Smooth_periodic_function<T>& f__)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
         auto G = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
         for (int x : {0, 1, 2}) {
-            g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<T>(0, G[x]);
+            g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
     return g;
@@ -486,7 +486,7 @@ divergence(Smooth_periodic_vector_function<T>& g__)
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
             auto G = f.gvec().template gvec_cart<index_domain_t::local>(igloc);
-            f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * std::complex<T>(0, G[x]);
+            f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
 
@@ -505,7 +505,7 @@ laplacian(Smooth_periodic_function<T>& f__)
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
         auto G              = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
-        g.f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<T>(-std::pow(G.length(), 2), 0);
+        g.f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(-std::pow(G.length(), 2), 0);
     }
 
     return g;
