@@ -95,10 +95,81 @@ int test_vector_calculus(cmd_args const& args__)
     //    }
 
     //}
+    //
+    if (true) {
+        Smooth_periodic_function<f_type> f(spfft, gvp);
+        Smooth_periodic_function<f_type> g(spfft, gvp);
+
+        auto f1d = [](double t) -> double {
+            return std::exp(std::cos(2 * twopi * t) + sin(twopi * t));
+        };
+
+        for (int ix = 0; ix < fft_grid[0]; ix++) {
+            double x = static_cast<double>(ix) / fft_grid[0];
+            for (int iy = 0; iy < fft_grid[1]; iy++) {
+                double y = static_cast<double>(iy) / fft_grid[1];
+                for (int iz = 0; iz < fft_grid[2]; iz++) {
+                    double z = static_cast<double>(iz) / fft_grid[2];
+                    int idx = fft_grid.index_by_coord(ix, iy, iz);
+                    f.value(idx) = f1d(x) * f1d(y) * f1d(z);
+                    g.value(idx) = std::pow(f.value(idx), 1.0 / 3);
+                }
+            }
+        }
+        f.fft_transform(-1);
+        g.fft_transform(-1);
+
+        auto grad_g = gradient(g);
+        /* transform to real space */
+        for (int x : {0, 1, 2}) {
+            grad_g[x].fft_transform(1);
+        }
+
+        Smooth_periodic_vector_function<f_type> f_grad_g(spfft, gvp);
+        for (int x : {0, 1, 2}) {
+            for (int i = 0; i < num_points; i++) {
+                f_grad_g[x].value(i) = grad_g[x].value(i) * f.value(i);
+            }
+            /* transform to reciprocal space */
+            f_grad_g[x].fft_transform(-1);
+        }
+        auto div_f_grad_g = divergence(f_grad_g);
+        /* transform to real space */
+        div_f_grad_g.fft_transform(1);
+
+        auto grad_f = gradient(f);
+        for (int x : {0, 1, 2}) {
+            /* transform to real space */
+            grad_f[x].fft_transform(1);
+        }
+
+        auto grad_f_grad_g = dot(grad_f, grad_g);
+        auto lapl_g = laplacian(g);
+        lapl_g.fft_transform(1);
+
+        double abs_diff{0};
+        for (int i = 0; i < num_points; i++) {
+            auto v1 = div_f_grad_g.value(i);
+            auto v2 = grad_f_grad_g.value(i) + f.value(i) * lapl_g.value(i);
+            abs_diff += std::abs(v1 - v2);
+        }
+        std::cout << " difference: " << abs_diff << std::endl;
+
+        std::cout << "values along z" << std::endl;
+        for (int z = 0; z < fft_grid[2]; z++) {
+            int idx = fft_grid.index_by_coord(0, 0, z);
+            std::cout << "z: " << static_cast<double>(z) / fft_grid[2]
+                      << std::setprecision(12)
+                      << "  ∇(f * ∇g) = " << div_f_grad_g.value(idx)
+                      << "  ∇f * ∇g + f ∆g = " << grad_f_grad_g.value(idx) + f.value(idx) * lapl_g.value(idx)
+                      << std::endl;
+        }
+    }
 
 
 
-    for (int iv = 0; iv < 10; iv++) { //gvec.count(); iv++) {
+
+    for (int iv = 0; iv < 0; iv++) { //gvec.count(); iv++) {
         std::cout << "Gvec: lattice: " << gvec.gvec<index_domain_t::local>(iv)
                   <<" Cartesian: " << gvec.gvec_cart<index_domain_t::local>(iv)
                   << std::endl;
