@@ -5,7 +5,8 @@ using namespace sirius;
 
 using f_type = double;
 
-int test_vector_calculus(cmd_args const& args__)
+int
+test_vector_calculus(cmd_args const& args__)
 {
     /* matrix of reciprocal vectors */
     r3::matrix<double> M({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
@@ -32,11 +33,11 @@ int test_vector_calculus(cmd_args const& args__)
 
     /* create SpFFT grid object */
     int const maxNumThreads{-1};
-    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp->zcol_count(),
-            spl_z.local_size(), spfft_pu, maxNumThreads, mpi::Communicator::world().native(), SPFFT_EXCH_DEFAULT);
+    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp->zcol_count(), spl_z.local_size(), spfft_pu,
+                           maxNumThreads, mpi::Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
-    //fft::spfft_grid_type<f_type> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp->zcol_count(),
-    //        spl_z.local_size(), spfft_pu, maxNumThreads, mpi::Communicator::world().native(), SPFFT_EXCH_DEFAULT);
+    // fft::spfft_grid_type<f_type> spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp->zcol_count(),
+    //         spl_z.local_size(), spfft_pu, maxNumThreads, mpi::Communicator::world().native(), SPFFT_EXCH_DEFAULT);
 
     /* transform type: complex to real */
     const auto fft_type = SPFFT_TRANS_R2C;
@@ -44,27 +45,27 @@ int test_vector_calculus(cmd_args const& args__)
     /* G-vector triplets in the FFT storage format */
     auto const& gv = gvp->gvec_array();
     /* create the FFT transform object */
-    auto spfft = spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1],
-                                                                   fft_grid[2], spl_z.local_size(), gvp->count(),
-                                                                   SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host));
-    //fft::spfft_transform_type<f_type> spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1],
-    //                                                               fft_grid[2], spl_z.local_size(), gvp->count(),
-    //                                                               SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
+    auto spfft =
+            spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2], spl_z.local_size(),
+                                        gvp->count(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host));
+    // fft::spfft_transform_type<f_type> spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1],
+    //                                                                fft_grid[2], spl_z.local_size(), gvp->count(),
+    //                                                                SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
     int num_points = spfft.local_slice_size();
 
-    //mdarray<std::complex<double>, 1> fpw({gvp->count()});
-    //mdarray<std::complex<double>, 1> frg({num_points});
-    //mdarray<std::complex<double>, 1> gpw({gvp->count()});
-    //mdarray<std::complex<double>, 1> grg({num_points});
+    // mdarray<std::complex<double>, 1> fpw({gvp->count()});
+    // mdarray<std::complex<double>, 1> frg({num_points});
+    // mdarray<std::complex<double>, 1> gpw({gvp->count()});
+    // mdarray<std::complex<double>, 1> grg({num_points});
 
-    //double* fft_buf = spfft.space_domain_data(SPFFT_PU_HOST);
+    // double* fft_buf = spfft.space_domain_data(SPFFT_PU_HOST);
 
-    //for (int iv = 0; iv < 10; iv++) {
-    //    fpw.zero();
-    //    fpw(iv) = std::complex<double>(1, 0);
-    //    spfft.backward(reinterpret_cast<double const*>(fpw.at(memory_t::host)), SPFFT_PU_HOST);
-    //    fft::spfft_output(spfft, frg.at(memory_t::host));
+    // for (int iv = 0; iv < 10; iv++) {
+    //     fpw.zero();
+    //     fpw(iv) = std::complex<double>(1, 0);
+    //     spfft.backward(reinterpret_cast<double const*>(fpw.at(memory_t::host)), SPFFT_PU_HOST);
+    //     fft::spfft_output(spfft, frg.at(memory_t::host));
 
     //    double* ptr = reinterpret_cast<double*>(frg.at(memory_t::host));
     //    for (int i = 0; i < 2 * num_points; i++) {
@@ -166,21 +167,18 @@ int test_vector_calculus(cmd_args const& args__)
         }
     }
 
-
-
-
-    for (int iv = 0; iv < 0; iv++) { //gvec.count(); iv++) {
+    for (int iv = 0; iv < 10; iv++) { // gvec.count(); iv++) {
         std::cout << "Gvec: lattice: " << gvec.gvec<index_domain_t::local>(iv)
-                  <<" Cartesian: " << gvec.gvec_cart<index_domain_t::local>(iv)
-                  << std::endl;
+                  << " Cartesian: " << gvec.gvec_cart<index_domain_t::local>(iv) << std::endl;
 
         Smooth_periodic_function<f_type> f(spfft, gvp);
         Smooth_periodic_function<f_type> g(spfft, gvp);
         f.zero();
         f.f_pw_local(iv) = std::complex<double>(1, 0);
-        //for (int ig = 0; ig < 10; ig++) {
-        //    f.f_pw_local(ig) = random<std::complex<double>>() / std::pow(gvec.gvec_len<index_domain_t::local>(ig) + 1, 2);
-        //}
+        // for (int ig = 0; ig < 10; ig++) {
+        //     f.f_pw_local(ig) = random<std::complex<double>>() / std::pow(gvec.gvec_len<index_domain_t::local>(ig) +
+        //     1, 2);
+        // }
         f.fft_transform(1);
         if (true) {
             std::cout << " testing ∇(∇f) == ∆f identity;";
@@ -237,7 +235,7 @@ int test_vector_calculus(cmd_args const& args__)
         }
 
         auto grad_f_grad_g = dot(grad_f, grad_g);
-        auto lapl_g = laplacian(g);
+        auto lapl_g        = laplacian(g);
         lapl_g.fft_transform(1);
 
         double abs_diff{0};
@@ -255,21 +253,21 @@ int test_vector_calculus(cmd_args const& args__)
         std::cout << "values along z" << std::endl;
         for (int z = 0; z < fft_grid[2]; z++) {
             int idx = fft_grid.index_by_coord(0, 0, z);
-            std::cout << "z: " << static_cast<double>(z) / fft_grid[2]
-                      << "  ∇(f * ∇g) = " << div_f_grad_g.value(idx)
+            std::cout << "z: " << static_cast<double>(z) / fft_grid[2] << "  ∇(f * ∇g) = " << div_f_grad_g.value(idx)
                       << "  ∇f * ∇g + f ∆g = " << grad_f_grad_g.value(idx) + f.value(idx) * lapl_g.value(idx)
                       << std::endl;
         }
-        //if (abs_diff > 1e-6) {
-        //    //std::cout << "pw=" << iv <<"   ∇(f * ∇g) = " << v1 << "    ∇f * ∇g + f ∆g = " << v2 << "    diff=" << abs_diff << std::endl;
-        //    std::cout << "pw=" << iv <<"  diff=" << abs_diff << std::endl;
-        //}
+        // if (abs_diff > 1e-6) {
+        //     //std::cout << "pw=" << iv <<"   ∇(f * ∇g) = " << v1 << "    ∇f * ∇g + f ∆g = " << v2 << "    diff=" <<
+        //     abs_diff << std::endl; std::cout << "pw=" << iv <<"  diff=" << abs_diff << std::endl;
+        // }
     }
 
     return 0;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     cmd_args args(argn, argv,
                   {
