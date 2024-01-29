@@ -164,7 +164,7 @@ xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_d
         vxc.push_back(&vxc__[j]);
     }
 
-    sirius::xc_mt(rgrid__, sht__, xc_func__, num_mag_dims__, rho, vxc, &exclm__);
+    sirius::xc_mt(rgrid__, sht__, xc_func__, num_mag_dims__, rho, vxc, &exclm__, false);
     return inner(exclm__, rho0);
 }
 

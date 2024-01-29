@@ -34,11 +34,9 @@ namespace sirius {
 
 template <bool add_pseudo_core__>
 void
-Potential::xc_rg_nonmagnetic(Density const& density__)
+Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
 {
     PROFILE("sirius::Potential::xc_rg_nonmagnetic");
-
-    bool const use_2nd_deriv{false};
 
     auto gvp = ctx_.gvec_fft_sptr();
 
@@ -92,13 +90,13 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
     Smooth_periodic_function<double> div_vsigma_grad_rho;
 
     if (is_gga) {
-        /* use fft_transfrom of the base class (Smooth_periodic_function) */
+        /* transform to reciprocal space */
         rho.fft_transform(-1);
 
         /* generate pw coeffs of the gradient */
         grad_rho = gradient(rho);
         /* generate pw coeffs of the laplacian */
-        if (use_2nd_deriv) {
+        if (use_lapl__) {
             lapl_rho = laplacian(rho);
             /* Laplacian in real space */
             lapl_rho.fft_transform(1);
@@ -191,7 +189,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
                 vsigma_[0]->value(ir) += vsigma.value(ir);
             }
 
-            if (use_2nd_deriv) {
+            if (use_lapl__) {
                 /* forward transform vsigma to plane-wave domain */
                 vsigma.fft_transform(-1);
 
@@ -244,7 +242,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
 
 template <bool add_pseudo_core__>
 void
-Potential::xc_rg_magnetic(Density const& density__)
+Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
 {
     PROFILE("sirius::Potential::xc_rg_magnetic");
 
@@ -449,14 +447,16 @@ Potential::xc(Density const& density__)
         return;
     }
 
+    auto use_lapl = this->ctx_.cfg().settings().xc_use_lapl();
+
     if (ctx_.full_potential()) {
-        xc_mt(density__);
+        xc_mt(density__, use_lapl);
     }
 
     if (ctx_.num_spins() == 1) {
-        xc_rg_nonmagnetic<add_pseudo_core__>(density__);
+        xc_rg_nonmagnetic<add_pseudo_core__>(density__, use_lapl);
     } else {
-        xc_rg_magnetic<add_pseudo_core__>(density__);
+        xc_rg_magnetic<add_pseudo_core__>(density__, use_lapl);
     }
 
     if (env::print_hash()) {
@@ -467,13 +467,13 @@ Potential::xc(Density const& density__)
 
 // explicit instantiation
 template void
-Potential::xc_rg_nonmagnetic<true>(Density const&);
+Potential::xc_rg_nonmagnetic<true>(Density const&, bool);
 template void
-Potential::xc_rg_nonmagnetic<false>(Density const&);
+Potential::xc_rg_nonmagnetic<false>(Density const&, bool);
 template void
-Potential::xc_rg_magnetic<true>(Density const&);
+Potential::xc_rg_magnetic<true>(Density const&, bool);
 template void
-Potential::xc_rg_magnetic<false>(Density const&);
+Potential::xc_rg_magnetic<false>(Density const&, bool);
 template void
 Potential::xc<true>(Density const&);
 template void

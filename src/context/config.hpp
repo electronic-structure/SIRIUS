@@ -329,6 +329,18 @@ class config_t
             }
             dict_["/settings/fp32_to_fp64_rms"_json_pointer] = fp32_to_fp64_rms__;
         }
+        /// When true, use Laplacian in the expression for GGA; otherwise use divergence of gradient.
+        inline auto xc_use_lapl() const
+        {
+            return dict_.at("/settings/xc_use_lapl"_json_pointer).get<bool>();
+        }
+        inline void xc_use_lapl(bool xc_use_lapl__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/xc_use_lapl"_json_pointer] = xc_use_lapl__;
+        }
       private:
         nlohmann::json& dict_;
     };

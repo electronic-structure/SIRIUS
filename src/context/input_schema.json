@@ -151,6 +151,11 @@
                     "type": "number",
                     "default": 0,
                     "title": "Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used."
+                },
+                "xc_use_lapl": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "When true, use Laplacian in the expression for GGA; otherwise use divergence of gradient."
                 }
             }
         },
