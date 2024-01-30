@@ -101,17 +101,15 @@ test_vector_calculus(cmd_args const& args__)
         Smooth_periodic_function<f_type> f(spfft, gvp);
         Smooth_periodic_function<f_type> g(spfft, gvp);
 
-        auto f1d = [](double t) -> double {
-            return std::exp(std::cos(2 * twopi * t) + sin(twopi * t));
-        };
+        auto f1d = [](double t) -> double { return std::exp(std::cos(2 * twopi * t) + sin(twopi * t)); };
 
         for (int ix = 0; ix < fft_grid[0]; ix++) {
             double x = static_cast<double>(ix) / fft_grid[0];
             for (int iy = 0; iy < fft_grid[1]; iy++) {
                 double y = static_cast<double>(iy) / fft_grid[1];
                 for (int iz = 0; iz < fft_grid[2]; iz++) {
-                    double z = static_cast<double>(iz) / fft_grid[2];
-                    int idx = fft_grid.index_by_coord(ix, iy, iz);
+                    double z     = static_cast<double>(iz) / fft_grid[2];
+                    int idx      = fft_grid.index_by_coord(ix, iy, iz);
                     f.value(idx) = f1d(x) * f1d(y) * f1d(z);
                     g.value(idx) = std::pow(f.value(idx), 1.0 / 3);
                 }
@@ -145,7 +143,7 @@ test_vector_calculus(cmd_args const& args__)
         }
 
         auto grad_f_grad_g = dot(grad_f, grad_g);
-        auto lapl_g = laplacian(g);
+        auto lapl_g        = laplacian(g);
         lapl_g.fft_transform(1);
 
         double abs_diff{0};
@@ -159,8 +157,7 @@ test_vector_calculus(cmd_args const& args__)
         std::cout << "values along z" << std::endl;
         for (int z = 0; z < fft_grid[2]; z++) {
             int idx = fft_grid.index_by_coord(0, 0, z);
-            std::cout << "z: " << static_cast<double>(z) / fft_grid[2]
-                      << std::setprecision(12)
+            std::cout << "z: " << static_cast<double>(z) / fft_grid[2] << std::setprecision(12)
                       << "  ∇(f * ∇g) = " << div_f_grad_g.value(idx)
                       << "  ∇f * ∇g + f ∆g = " << grad_f_grad_g.value(idx) + f.value(idx) * lapl_g.value(idx)
                       << std::endl;
