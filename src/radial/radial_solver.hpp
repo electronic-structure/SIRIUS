@@ -805,7 +805,7 @@ class Bound_state : public Radial_solver
     std::vector<double> dpdr_;
 
     void
-    solve(relativity_t rel__, double enu_start__)
+    solve(relativity_t rel__, double enu_start__, double alpha0__, double alpha1__)
     {
         int np = num_points();
 
@@ -851,22 +851,20 @@ class Bound_state : public Radial_solver
                 }
             }
 
-            if (std::abs(denu) < enu_tolerance_ && nn == (n_ - l_ - 1)) {
+            if (denu < enu_tolerance_ && nn == (n_ - l_ - 1)) {
                 break;
             }
 
             sp   = s;
             s    = (nn > (n_ - l_ - 1)) ? -1 : 1;
-            denu = s * std::abs(denu);
-            denu = (s != sp) ? denu * 0.5 : denu * 1.25;
-            enu_ += denu;
-
+            denu = (s != sp) ? denu * alpha0__ : denu * alpha1__;
+            enu_ += s * denu;
         }
 
         if (std::abs(denu) >= enu_tolerance_) {
             std::stringstream s;
-            s << "enu is not converged for n = " << n_ << " and l = " << l_ << std::endl
-              << "enu = " << enu_ << ", denu = " << denu;
+            s << "enu is not found for n = " << n_ << " and l = " << l_ << std::endl
+              << "last value of enu: " << enu_ << ", denu: " << denu;
             RTE_THROW(s);
         }
 
@@ -932,7 +930,7 @@ class Bound_state : public Radial_solver
 
   public:
     Bound_state(relativity_t rel__, int zn__, int n__, int l__, int k__, Radial_grid<double> const& radial_grid__,
-                std::vector<double> const& v__, double enu_start__)
+                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.5, double alpha1__ = 1.25)
         : Radial_solver(zn__, v__, radial_grid__)
         , n_(n__)
         , l_(l__)
@@ -944,7 +942,7 @@ class Bound_state : public Radial_solver
         , rdudr_(radial_grid__)
         , rho_(radial_grid__)
     {
-        solve(rel__, enu_start__);
+        solve(rel__, enu_start__, alpha0__, alpha1__);
     }
 
     inline double
@@ -1011,34 +1009,39 @@ class Enu_finder : public Radial_solver
         bool found = false;
         int nndp   = 0;
 
-        /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
-         * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
-         * of the band. */
-        for (int i = 0; i < 1000; i++) {
-            int nnd{0};
-
+        auto integrate_forward = [&](double enu__) -> int
+        {
+            int nn{0};
             switch (rel__) {
                 case relativity_t::none: {
-                    nnd = integrate_forward_gsl<relativity_t::none>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
+                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
                     break;
                 }
                 case relativity_t::koelling_harmon: {
-                    nnd = integrate_forward_gsl<relativity_t::koelling_harmon>(enu, l_, 0, chi_p, chi_q, p, dpdr,
+                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l_, 0, chi_p, chi_q, p, dpdr,
                                                                                       q, dqdr, false);
                     break;
                 }
                 case relativity_t::zora: {
-                    nnd = integrate_forward_gsl<relativity_t::zora>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
+                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
                     break;
                 }
                 case relativity_t::iora: {
-                    nnd = integrate_forward_gsl<relativity_t::iora>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
+                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
                     break;
                 }
                 default: {
                     RTE_THROW("unsupported relativity type");
                 }
             }
+            return nn;
+        };
+
+        /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
+         * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
+         * of the band. */
+        for (int i = 0; i < 1000; i++) {
+            int nnd = integrate_forward(enu);
             nnd -= (n_ - l_ - 1);
 
             enu = (nnd > 0) ? enu - de : enu + de;
@@ -1073,28 +1076,7 @@ class Enu_finder : public Radial_solver
         for (int i = 0; i < 1000; i++) {
             de *= 1.1;
             enu -= de;
-            switch (rel__) {
-                case relativity_t::none: {
-                    integrate_forward_gsl<relativity_t::none>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-                    break;
-                }
-                case relativity_t::koelling_harmon: {
-                    integrate_forward_gsl<relativity_t::koelling_harmon>(enu, l_, 0, chi_p, chi_q, p, dpdr, q,
-                                                                                dqdr, false);
-                    break;
-                }
-                case relativity_t::zora: {
-                    integrate_forward_gsl<relativity_t::zora>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-                    break;
-                }
-                case relativity_t::iora: {
-                    integrate_forward_gsl<relativity_t::iora>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-                    break;
-                }
-                default: {
-                    RTE_THROW("unsupported relativity type");
-                }
-            }
+            integrate_forward(enu);
             if (surface_deriv() * sd <= 0) {
                 break;
             }
