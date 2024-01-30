@@ -456,7 +456,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 /** Input functions is expected in the plane wave domain, output function is also in the plane-wave domain */
 template <typename T>
 inline Smooth_periodic_vector_function<T>
-gradient(Smooth_periodic_function<T>& f__)
+gradient(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
 {
     PROFILE("sirius::gradient");
 
@@ -469,6 +469,11 @@ gradient(Smooth_periodic_function<T>& f__)
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
+    if (transform_to_rg__) {
+        for (int x : {0, 1, 2}) {
+            g[x].fft_transform(1);
+        }
+    }
     return g;
 }
 
@@ -476,7 +481,7 @@ gradient(Smooth_periodic_function<T>& f__)
 /** Input and output functions are in plane-wave domain */
 template <typename T>
 inline Smooth_periodic_function<T>
-divergence(Smooth_periodic_vector_function<T>& g__)
+divergence(Smooth_periodic_vector_function<T>& g__, bool transform_to_rg__ = false)
 {
     PROFILE("sirius::divergence");
 
@@ -489,6 +494,9 @@ divergence(Smooth_periodic_vector_function<T>& g__)
             f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
+    if (transform_to_rg__) {
+        f.fft_transform(1);
+    }
 
     return f;
 }
@@ -496,7 +504,7 @@ divergence(Smooth_periodic_vector_function<T>& g__)
 /// Laplacian of the function in the plane-wave domain.
 template <typename T>
 inline Smooth_periodic_function<T>
-laplacian(Smooth_periodic_function<T>& f__)
+laplacian(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
 {
     PROFILE("sirius::laplacian");
 
@@ -506,6 +514,9 @@ laplacian(Smooth_periodic_function<T>& f__)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
         auto G              = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(-std::pow(G.length(), 2), 0);
+    }
+    if (transform_to_rg__) {
+        g.fft_transform(1);
     }
 
     return g;
