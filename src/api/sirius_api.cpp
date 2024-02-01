@@ -2762,7 +2762,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 auto& ks = get_ks(ks_handler__);
                 double tol =
                         (iter_solver_tol__) ? *iter_solver_tol__ : ks.ctx().cfg().iterative_solver().energy_tolerance();
-                int steps = 
+                int steps =
                         (iter_solver_steps__) ? *iter_solver_steps__ : ks.ctx().cfg().iterative_solver().num_steps();
                 if (precompute_pw__ && *precompute_pw__) {
                     gs.potential().generate_pw_coefs();

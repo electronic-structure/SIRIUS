@@ -292,7 +292,8 @@ diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 
 template <typename T, typename F>
 inline auto
-diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol__, double empy_tol__, int itsol_num_steps__)
+diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol__, double empy_tol__,
+               int itsol_num_steps__)
 {
     auto& ctx = Hk__.H0().ctx();
     print_memory_usage(ctx.out(), FILE_LINE);
@@ -315,8 +316,8 @@ diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
 
         std::stringstream s;
         std::ostream* out = (kp__.comm().rank() == 0) ? &std::cout : &s;
-        int num_steps = itsol_num_steps__;
-        result = davidson<T, F, davidson_evp_t::hamiltonian>(
+        int num_steps     = itsol_num_steps__;
+        result            = davidson<T, F, davidson_evp_t::hamiltonian>(
                 Hk__, kp__, wf::num_bands(ctx.num_bands()), wf::num_mag_dims(ctx.num_mag_dims()),
                 kp__.spinor_wave_functions(), tolerance, itso.residual_tolerance(), num_steps, itso.locking(),
                 itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, 0);
