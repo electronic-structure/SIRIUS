@@ -414,7 +414,8 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
 }
 
 template <typename T>
-inline void remove_high_pw(Simulation_context const& ctx__, Smooth_periodic_function<T>& f__)
+inline void
+remove_high_pw(Simulation_context const& ctx__, Smooth_periodic_function<T>& f__)
 {
     f__.fft_transform(-1);
     #pragma omp parallel for
