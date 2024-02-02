@@ -44,7 +44,7 @@ struct diagonalize_result_t
  */
 template <typename T, typename F>
 inline auto
-diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__)
+diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__, int itsol_num_steps__)
 {
     PROFILE("sirius::diagonalize");
 
@@ -81,9 +81,10 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
                 }
             } else {
                 if (ctx.gamma_point() && (ctx.so_correction() == false)) {
-                    result.davidson_result = diagonalize_pp<T, F>(Hk, *kp, itsol_tol__, empy_tol);
+                    result.davidson_result = diagonalize_pp<T, F>(Hk, *kp, itsol_tol__, empy_tol, itsol_num_steps__);
                 } else {
-                    result.davidson_result = diagonalize_pp<T, std::complex<F>>(Hk, *kp, itsol_tol__, empy_tol);
+                    result.davidson_result =
+                            diagonalize_pp<T, std::complex<F>>(Hk, *kp, itsol_tol__, empy_tol, itsol_num_steps__);
                 }
                 num_dav_iter += result.davidson_result.niter;
                 converged = converged & result.davidson_result.converged;

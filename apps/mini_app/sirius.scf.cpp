@@ -471,7 +471,8 @@ run_tasks(cmd_args const& args)
                 // saved file potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
-        sirius::diagonalize<double, double>(H0, ks, ctx->cfg().iterative_solver().energy_tolerance());
+        sirius::diagonalize<double, double>(H0, ks, ctx->cfg().iterative_solver().energy_tolerance(),
+                                            ctx->cfg().iterative_solver().num_steps());
 
         ks.sync_band<double, sync_band_t::energy>();
         if (mpi::Communicator::world().rank() == 0) {

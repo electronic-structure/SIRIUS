@@ -2741,6 +2741,10 @@ sirius_find_eigen_states:
       type: double
       attr: in, optional
       doc: Iterative solver tolerance.
+    iter_solver_tol:
+      type: int
+      attr: in, optional
+      doc: Iterative solver number of steps.
     error_code:
       type: int
       attr: out, optional
@@ -2750,7 +2754,7 @@ sirius_find_eigen_states:
 void
 sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, bool const* precompute_pw__,
                          bool const* precompute_rf__, bool const* precompute_ri__, double const* iter_solver_tol__,
-                         int* error_code__)
+                         int const* iter_solver_steps__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -2758,6 +2762,8 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 auto& ks = get_ks(ks_handler__);
                 double tol =
                         (iter_solver_tol__) ? *iter_solver_tol__ : ks.ctx().cfg().iterative_solver().energy_tolerance();
+                int steps =
+                        (iter_solver_steps__) ? *iter_solver_steps__ : ks.ctx().cfg().iterative_solver().num_steps();
                 if (precompute_pw__ && *precompute_pw__) {
                     gs.potential().generate_pw_coefs();
                 }
@@ -2771,7 +2777,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                     const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
                 }
                 Hamiltonian0<double> H0(gs.potential(), false);
-                diagonalize<double, double>(H0, ks, tol);
+                diagonalize<double, double>(H0, ks, tol, steps);
             },
             error_code__);
 }
