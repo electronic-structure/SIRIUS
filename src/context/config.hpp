@@ -111,7 +111,7 @@ class config_t
     };
     inline auto const& mixer() const {return mixer_;}
     inline auto& mixer() {return mixer_;}
-    /// Settings control the internal parameters related to the numerical implementation.
+    /// Parameters of the 'settings' section influence the numerical implementation.
     /**
         Changing of setting parameters will have a small impact on the final result.
     */
@@ -646,7 +646,7 @@ class config_t
     inline auto& iterative_solver() {return iterative_solver_;}
     /// Control parameters
     /**
-        Parameters of the control input sections do not in general change the numerics,
+        Parameters of the 'control' input sections do not in general change the numerics,
         but instead control how the results are obtained. Changing parameters in control section should
         not change the significant digits in final results.
     */
@@ -1070,6 +1070,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/parameters/pw_cutoff"_json_pointer] = pw_cutoff__;
+        }
+        /// Second cutoff for effective potential expansion in the units of [a.u.^-1]
+        inline auto veff_pw_cutoff() const
+        {
+            return dict_.at("/parameters/veff_pw_cutoff"_json_pointer).get<double>();
+        }
+        inline void veff_pw_cutoff(double veff_pw_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/veff_pw_cutoff"_json_pointer] = veff_pw_cutoff__;
         }
         /// Cutoff for augmented-wave functions.
         /**

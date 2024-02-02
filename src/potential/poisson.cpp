@@ -279,6 +279,13 @@ Potential::poisson(Periodic_function<double> const& rho)
         ctx_.comm().allgather(vh_el_.at(memory_t::host), unit_cell_.spl_num_atoms().local_size(),
                               unit_cell_.spl_num_atoms().global_offset());
     }
+    if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            if (ctx_.gvec().gvec_len<index_domain_t::local>(ig) > ctx_.cfg().parameters().veff_pw_cutoff()) {
+                hartree_potential_->rg().f_pw_local(ig) = 0;
+            }
+        }
+    }
 
     /* transform Hartree potential to real space */
     hartree_potential_->rg().fft_transform(1);

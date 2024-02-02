@@ -189,12 +189,26 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
                 }
             }
         }
+
         #pragma omp parallel for
         for (int ir = 0; ir < num_points; ir++) {
             xc_energy_density_->rg().value(ir) += exc(ir);
             xc_potential_->rg().value(ir) += vxc(ir);
         }
     } // for loop over xc functionals
+
+    if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
+        xc_potential_->rg().fft_transform(-1);
+        xc_energy_density_->rg().fft_transform(-1);
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            if (ctx_.gvec().gvec_len<index_domain_t::local>(ig) > ctx_.cfg().parameters().veff_pw_cutoff()) {
+                xc_potential_->rg().f_pw_local(ig) = 0;
+                xc_energy_density_->rg().f_pw_local(ig) = 0;
+            }
+        }
+        xc_potential_->rg().fft_transform(1);
+        xc_energy_density_->rg().fft_transform(1);
+    }
 
     if (env::print_checksum()) {
         auto cs = xc_potential_->rg().checksum_rg();
