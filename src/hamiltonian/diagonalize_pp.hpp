@@ -316,10 +316,9 @@ diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
 
         std::stringstream s;
         std::ostream* out = (kp__.comm().rank() == 0) ? &std::cout : &s;
-        int num_steps     = itsol_num_steps__;
         result            = davidson<T, F, davidson_evp_t::hamiltonian>(
                 Hk__, kp__, wf::num_bands(ctx.num_bands()), wf::num_mag_dims(ctx.num_mag_dims()),
-                kp__.spinor_wave_functions(), tolerance, itso.residual_tolerance(), num_steps, itso.locking(),
+                kp__.spinor_wave_functions(), tolerance, itso.residual_tolerance(), itsol_num_steps__, itso.locking(),
                 itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, 0);
         for (int ispn = 0; ispn < ctx.num_spinors(); ispn++) {
             for (int j = 0; j < ctx.num_bands(); j++) {
