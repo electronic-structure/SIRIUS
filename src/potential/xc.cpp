@@ -197,19 +197,6 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
         }
     } // for loop over xc functionals
 
-    if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
-        xc_potential_->rg().fft_transform(-1);
-        xc_energy_density_->rg().fft_transform(-1);
-        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-            if (ctx_.gvec().gvec_len<index_domain_t::local>(ig) > ctx_.cfg().parameters().veff_pw_cutoff()) {
-                xc_potential_->rg().f_pw_local(ig) = 0;
-                xc_energy_density_->rg().f_pw_local(ig) = 0;
-            }
-        }
-        xc_potential_->rg().fft_transform(1);
-        xc_energy_density_->rg().fft_transform(1);
-    }
-
     if (env::print_checksum()) {
         auto cs = xc_potential_->rg().checksum_rg();
         print_checksum("exc", cs, ctx_.out());
@@ -426,6 +413,19 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
     } // for loop over XC functionals
 }
 
+template <typename T>
+inline void remove_high_pw(Simulation_context const& ctx__, Smooth_periodic_function<T>& f__)
+{
+    f__.fft_transform(-1);
+    #pragma omp parallel for
+    for (int ig = 0; ig < ctx__.gvec().count(); ig++) {
+        if (ctx__.gvec().gvec_len<index_domain_t::local>(ig) > ctx__.cfg().parameters().veff_pw_cutoff()) {
+            f__.f_pw_local(ig) = 0;
+        }
+    }
+    f__.fft_transform(1);
+}
+
 template <bool add_pseudo_core__>
 void
 Potential::xc(Density const& density__)
@@ -453,6 +453,14 @@ Potential::xc(Density const& density__)
         xc_rg_nonmagnetic<add_pseudo_core__>(density__, use_lapl);
     } else {
         xc_rg_magnetic<add_pseudo_core__>(density__, use_lapl);
+    }
+
+    if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            remove_high_pw(ctx_, effective_magnetic_field(j).rg());
+        }
+        remove_high_pw(ctx_, xc_potential_->rg());
+        remove_high_pw(ctx_, xc_energy_density_->rg());
     }
 
     if (env::print_hash()) {
