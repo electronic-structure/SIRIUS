@@ -235,9 +235,12 @@ xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag
                 auto grad_vsigma_dd_lm = gradient(transform(sht__, vsigma_dd_tp));
 
                 /* backward transform gradient from Rlm to (theta, phi) */
-                Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_uu_tp(sht__.num_points(), rgrid__);
-                Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_ud_tp(sht__.num_points(), rgrid__);
-                Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_dd_tp(sht__.num_points(), rgrid__);
+                Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_uu_tp(sht__.num_points(),
+                                                                                              rgrid__);
+                Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_ud_tp(sht__.num_points(),
+                                                                                              rgrid__);
+                Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_dd_tp(sht__.num_points(),
+                                                                                              rgrid__);
                 for (int x = 0; x < 3; x++) {
                     transform(sht__, grad_vsigma_uu_lm[x], grad_vsigma_uu_tp[x]);
                     transform(sht__, grad_vsigma_ud_lm[x], grad_vsigma_ud_tp[x]);
@@ -256,12 +259,16 @@ xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag
             } else {
 
                 for (int x : {0, 1, 2}) {
-                    grad_rho_up_vsigma_tp[x] = (2.0 * vsigma_uu_tp * grad_rho_up_tp[x] + vsigma_ud_tp * grad_rho_dn_tp[x]);
-                    grad_rho_dn_vsigma_tp[x] = (2.0 * vsigma_dd_tp * grad_rho_dn_tp[x] + vsigma_ud_tp * grad_rho_up_tp[x]);
+                    grad_rho_up_vsigma_tp[x] =
+                            (2.0 * vsigma_uu_tp * grad_rho_up_tp[x] + vsigma_ud_tp * grad_rho_dn_tp[x]);
+                    grad_rho_dn_vsigma_tp[x] =
+                            (2.0 * vsigma_dd_tp * grad_rho_dn_tp[x] + vsigma_ud_tp * grad_rho_up_tp[x]);
                 }
 
-                Spheric_vector_function<function_domain_t::spectral, double> grad_rho_up_vsigma_lm(sht__.lmmax(), rgrid__);
-                Spheric_vector_function<function_domain_t::spectral, double> grad_rho_dn_vsigma_lm(sht__.lmmax(), rgrid__);
+                Spheric_vector_function<function_domain_t::spectral, double> grad_rho_up_vsigma_lm(sht__.lmmax(),
+                                                                                                   rgrid__);
+                Spheric_vector_function<function_domain_t::spectral, double> grad_rho_dn_vsigma_lm(sht__.lmmax(),
+                                                                                                   rgrid__);
 
                 for (int x : {0, 1, 2}) {
                     grad_rho_up_vsigma_lm[x] = transform(sht__, grad_rho_up_vsigma_tp[x]);
@@ -368,8 +375,8 @@ Potential::xc_mt(Density const& density__, bool use_lapl__)
             vxc[j + 1] = &effective_magnetic_field(j).mt()[it.i];
         }
 
-        auto rhomin =
-                sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc, &xc_energy_density_->mt()[it.i], use_lapl__);
+        auto rhomin = sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc,
+                                    &xc_energy_density_->mt()[it.i], use_lapl__);
         if (rhomin < 0.0) {
             std::stringstream s;
             s << "[xc_mt] negative charge density " << rhomin << " for atom " << it.i << std::endl

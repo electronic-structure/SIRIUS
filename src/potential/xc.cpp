@@ -145,7 +145,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
                                     exc.at(memory_t::host, spl_t.global_offset()));
                     }
                 } // omp parallel region
-            } // num_points != 0
+            }     // num_points != 0
         }
         PROFILE_STOP("sirius::Potential::xc_rg_nonmagnetic|libxc");
         if (ixc.is_gga()) { /* generic for gga and vdw */
@@ -364,11 +364,13 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
 
                 #pragma omp parallel for
                 for (int ir = 0; ir < num_points; ir++) {
-                    vxc_up(ir) -= 2 * (vsigma_uu.value(ir) * lapl_rho_up.value(ir) + grad_vsigma_uu_grad_rho_up.value(ir)) +
-                        grad_vsigma_ud_grad_rho_dn.value(ir) + vsigma_ud.value(ir) * lapl_rho_dn.value(ir);
+                    vxc_up(ir) -=
+                            2 * (vsigma_uu.value(ir) * lapl_rho_up.value(ir) + grad_vsigma_uu_grad_rho_up.value(ir)) +
+                            grad_vsigma_ud_grad_rho_dn.value(ir) + vsigma_ud.value(ir) * lapl_rho_dn.value(ir);
 
-                    vxc_dn(ir) -= 2 * (vsigma_dd.value(ir) * lapl_rho_dn.value(ir) + grad_vsigma_dd_grad_rho_dn.value(ir)) +
-                        grad_vsigma_ud_grad_rho_up.value(ir) + vsigma_ud.value(ir) * lapl_rho_up.value(ir);
+                    vxc_dn(ir) -=
+                            2 * (vsigma_dd.value(ir) * lapl_rho_dn.value(ir) + grad_vsigma_dd_grad_rho_dn.value(ir)) +
+                            grad_vsigma_ud_grad_rho_up.value(ir) + vsigma_ud.value(ir) * lapl_rho_up.value(ir);
                 }
             } else {
                 Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
