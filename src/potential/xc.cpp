@@ -92,7 +92,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
         rho.fft_transform(-1);
 
         /* generate pw coeffs of the gradient and transform to real space */
-        grad_rho = gradient(rho, true);
+        grad_rho = to_rg(gradient(rho));
 
         /* product of gradients */
         grad_rho_grad_rho = dot(grad_rho, grad_rho);
@@ -157,13 +157,13 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
 
             if (use_lapl__) {
                 /* generate pw coeffs of the laplacian */
-                auto lapl_rho = laplacian(rho, true);
+                auto lapl_rho = to_rg(laplacian(rho));
 
                 /* forward transform vsigma to plane-wave domain */
                 vsigma.fft_transform(-1);
 
                 /* gradient of vsigma in plane-wave domain */
-                auto grad_vsigma = gradient(vsigma, true);
+                auto grad_vsigma = to_rg(gradient(vsigma));
 
                 /* compute scalar product of two gradients */
                 auto grad_vsigma_grad_rho = dot(grad_vsigma, grad_rho);
@@ -183,7 +183,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
                     /* transform to plane wave domain */
                     vsigma_grad_rho[x].fft_transform(-1);
                 }
-                auto div_vsigma_grad_rho = divergence(vsigma_grad_rho, true);
+                auto div_vsigma_grad_rho = to_rg(divergence(vsigma_grad_rho));
                 for (int ir = 0; ir < num_points; ir++) {
                     vxc(ir) -= 2 * div_vsigma_grad_rho.value(ir);
                 }
@@ -244,8 +244,8 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
         rho_dn.fft_transform(-1);
 
         /* generate pw coeffs of the gradient and laplacian */
-        grad_rho_up = gradient(rho_up, true);
-        grad_rho_dn = gradient(rho_dn, true);
+        grad_rho_up = to_rg(gradient(rho_up));
+        grad_rho_dn = to_rg(gradient(rho_dn));
 
         /* product of gradients */
         grad_rho_up_grad_rho_up = dot(grad_rho_up, grad_rho_up);
@@ -331,17 +331,17 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
             }
 
             if (use_lapl__) {
-                auto lapl_rho_up = laplacian(rho_up, true);
-                auto lapl_rho_dn = laplacian(rho_dn, true);
+                auto lapl_rho_up = to_rg(laplacian(rho_up));
+                auto lapl_rho_dn = to_rg(laplacian(rho_dn));
                 /* forward transform vsigma to plane-wave domain */
                 vsigma_uu.fft_transform(-1);
                 vsigma_ud.fft_transform(-1);
                 vsigma_dd.fft_transform(-1);
 
                 /* gradients of vsigmas in plane-wave domain */
-                auto grad_vsigma_uu = gradient(vsigma_uu, true);
-                auto grad_vsigma_ud = gradient(vsigma_ud, true);
-                auto grad_vsigma_dd = gradient(vsigma_dd, true);
+                auto grad_vsigma_uu = to_rg(gradient(vsigma_uu));
+                auto grad_vsigma_ud = to_rg(gradient(vsigma_ud));
+                auto grad_vsigma_dd = to_rg(gradient(vsigma_dd));
 
                 auto grad_vsigma_uu_grad_rho_up = dot(grad_vsigma_uu, grad_rho_up);
                 auto grad_vsigma_ud_grad_rho_dn = dot(grad_vsigma_ud, grad_rho_dn);
@@ -374,8 +374,8 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
                     dn_gradrho_vsigma[x].fft_transform(-1);
                 }
 
-                auto div_up_gradrho_vsigma = divergence(up_gradrho_vsigma, true);
-                auto div_dn_gradrho_vsigma = divergence(dn_gradrho_vsigma, true);
+                auto div_up_gradrho_vsigma = to_rg(divergence(up_gradrho_vsigma));
+                auto div_dn_gradrho_vsigma = to_rg(divergence(dn_gradrho_vsigma));
 
                 /* add remaining term to Vxc */
                 #pragma omp parallel for

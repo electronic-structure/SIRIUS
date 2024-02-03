@@ -452,11 +452,29 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     }
 };
 
+template <typename T>
+inline Smooth_periodic_function<T>
+to_rg(Smooth_periodic_function<T>&& f__)
+{
+    f__.fft_transform(1);
+    return std::move(f__);
+}
+
+template <typename T>
+inline Smooth_periodic_vector_function<T>
+to_rg(Smooth_periodic_vector_function<T>&& f__)
+{
+    for (int x : {0, 1, 2}) {
+        f__[x].fft_transform(1);
+    }
+    return std::move(f__);
+}
+
 /// Gradient of the function in the plane-wave domain.
 /** Input functions is expected in the plane wave domain, output function is also in the plane-wave domain */
 template <typename T>
 inline Smooth_periodic_vector_function<T>
-gradient(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
+gradient(Smooth_periodic_function<T>& f__)
 {
     PROFILE("sirius::gradient");
 
@@ -469,11 +487,6 @@ gradient(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
-    if (transform_to_rg__) {
-        for (int x : {0, 1, 2}) {
-            g[x].fft_transform(1);
-        }
-    }
     return g;
 }
 
@@ -481,7 +494,7 @@ gradient(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
 /** Input and output functions are in plane-wave domain */
 template <typename T>
 inline Smooth_periodic_function<T>
-divergence(Smooth_periodic_vector_function<T>& g__, bool transform_to_rg__ = false)
+divergence(Smooth_periodic_vector_function<T>& g__)
 {
     PROFILE("sirius::divergence");
 
@@ -494,17 +507,13 @@ divergence(Smooth_periodic_vector_function<T>& g__, bool transform_to_rg__ = fal
             f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
-    if (transform_to_rg__) {
-        f.fft_transform(1);
-    }
-
     return f;
 }
 
 /// Laplacian of the function in the plane-wave domain.
 template <typename T>
 inline Smooth_periodic_function<T>
-laplacian(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
+laplacian(Smooth_periodic_function<T>& f__)
 {
     PROFILE("sirius::laplacian");
 
@@ -515,10 +524,6 @@ laplacian(Smooth_periodic_function<T>& f__, bool transform_to_rg__ = false)
         auto G              = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(-std::pow(G.length(), 2), 0);
     }
-    if (transform_to_rg__) {
-        g.fft_transform(1);
-    }
-
     return g;
 }
 
