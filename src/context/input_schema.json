@@ -52,7 +52,7 @@
         },
         "settings": {
             "type": "object",
-            "title": "Settings control the internal parameters related to the numerical implementation.",
+            "title": "Parameters of the 'settings' section influence the numerical implementation.",
             "description": "Changing of setting parameters will have a small impact on the final result.",
             "properties": {
                 "nprii_vloc": {
@@ -151,6 +151,11 @@
                     "type": "number",
                     "default": 0,
                     "title": "Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used."
+                },
+                "xc_use_lapl": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "When true, use Laplacian in the expression for GGA; otherwise use divergence of gradient."
                 }
             }
         },
@@ -356,7 +361,7 @@
         "control": {
             "type": "object",
             "title": "Control parameters",
-            "description": "Parameters of the control input sections do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
+            "description": "Parameters of the 'control' input sections do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
             "properties": {
                 "mpi_grid_dims": {
                     "type": "array",
@@ -590,6 +595,11 @@
                     "type": "number",
                     "default": 0.0,
                     "title": "Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1]"
+                },
+                "veff_pw_cutoff": {
+                    "type": "number",
+                    "default": 0.0,
+                    "title": "Second cutoff for effective potential expansion in the units of [a.u.^-1]"
                 },
                 "aw_cutoff": {
                     "type": "number",

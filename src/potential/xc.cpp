@@ -34,11 +34,9 @@ namespace sirius {
 
 template <bool add_pseudo_core__>
 void
-Potential::xc_rg_nonmagnetic(Density const& density__)
+Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
 {
     PROFILE("sirius::Potential::xc_rg_nonmagnetic");
-
-    bool const use_2nd_deriv{false};
 
     auto gvp = ctx_.gvec_fft_sptr();
 
@@ -86,42 +84,24 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
     }
 
     Smooth_periodic_vector_function<double> grad_rho;
-    Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
-
-    Smooth_periodic_function<double> div_vsigma_grad_rho;
+    Smooth_periodic_function<double> vsigma;
 
     if (is_gga) {
-        /* use fft_transfrom of the base class (Smooth_periodic_function) */
+        /* transform to reciprocal space */
         rho.fft_transform(-1);
 
-        /* generate pw coeffs of the gradient */
-        grad_rho = gradient(rho);
-        /* generate pw coeffs of the laplacian */
-        if (use_2nd_deriv) {
-            lapl_rho = laplacian(rho);
-            /* Laplacian in real space */
-            lapl_rho.fft_transform(1);
-        }
-
-        /* gradient in real space */
-        for (int x : {0, 1, 2}) {
-            grad_rho[x].fft_transform(1);
-        }
+        /* generate pw coeffs of the gradient and transform to real space */
+        grad_rho = to_rg(gradient(rho));
 
         /* product of gradients */
         grad_rho_grad_rho = dot(grad_rho, grad_rho);
 
         if (env::print_hash()) {
-            // auto h1 = lapl_rho.hash_f_rg();
-            auto h2 = grad_rho_grad_rho.hash_f_rg();
-            // utils::print_hash("lapl_rho", h1);
-            print_hash("grad_rho_grad_rho", h2, ctx_.out());
+            auto h1 = grad_rho_grad_rho.hash_f_rg();
+            print_hash("grad_rho_grad_rho", h1, ctx_.out());
         }
-    }
 
-    Smooth_periodic_function<double> vsigma;
-    if (is_gga) {
         vsigma = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         vsigma_[0]->zero();
     }
@@ -165,23 +145,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
                                     exc.at(memory_t::host, spl_t.global_offset()));
                     }
                 } // omp parallel region
-                  ///* this is the same expression between gga and vdw corrections.
-                  // * The functionals are different that's all */
-                  // for (int i = 0; i < spl_np_t.local_size(); i++) {
-                  //    /* add Exc contribution */
-                  //    exc_tmp(spl_np_t[i]) += exc_t[i];
-
-                //    /* directly add to Vxc available contributions */
-                //    //if (use_2nd_deriv) {
-                //    //    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np_t[i]));
-                //    //} else {
-                //    //    vxc_tmp(spl_np_t[i]) += vrho_t[i];
-                //    //}
-                //    vxc_tmp(spl_np_t[i]) += vrho_t[i];
-
-                //    /* save the sigma derivative */
-                //    vsigma_tmp(spl_np_t[i]) += vsigma_t[i];
-            } // num_points != 0
+            }     // num_points != 0
         }
         PROFILE_STOP("sirius::Potential::xc_rg_nonmagnetic|libxc");
         if (ixc.is_gga()) { /* generic for gga and vdw */
@@ -191,17 +155,15 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
                 vsigma_[0]->value(ir) += vsigma.value(ir);
             }
 
-            if (use_2nd_deriv) {
+            if (use_lapl__) {
+                /* generate pw coeffs of the laplacian */
+                auto lapl_rho = to_rg(laplacian(rho));
+
                 /* forward transform vsigma to plane-wave domain */
                 vsigma.fft_transform(-1);
 
                 /* gradient of vsigma in plane-wave domain */
-                auto grad_vsigma = gradient(vsigma);
-
-                /* backward transform gradient from pw to real space */
-                for (int x : {0, 1, 2}) {
-                    grad_vsigma[x].fft_transform(1);
-                }
+                auto grad_vsigma = to_rg(gradient(vsigma));
 
                 /* compute scalar product of two gradients */
                 auto grad_vsigma_grad_rho = dot(grad_vsigma, grad_rho);
@@ -221,14 +183,13 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
                     /* transform to plane wave domain */
                     vsigma_grad_rho[x].fft_transform(-1);
                 }
-                div_vsigma_grad_rho = divergence(vsigma_grad_rho);
-                /* transform to real space domain */
-                div_vsigma_grad_rho.fft_transform(1);
+                auto div_vsigma_grad_rho = to_rg(divergence(vsigma_grad_rho));
                 for (int ir = 0; ir < num_points; ir++) {
                     vxc(ir) -= 2 * div_vsigma_grad_rho.value(ir);
                 }
             }
         }
+
         #pragma omp parallel for
         for (int ir = 0; ir < num_points; ir++) {
             xc_energy_density_->rg().value(ir) += exc(ir);
@@ -244,7 +205,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__)
 
 template <bool add_pseudo_core__>
 void
-Potential::xc_rg_magnetic(Density const& density__)
+Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
 {
     PROFILE("sirius::Potential::xc_rg_magnetic");
 
@@ -270,38 +231,6 @@ Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> grad_rho_up_grad_rho_dn;
     Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
 
-    if (is_gga) {
-        PROFILE("sirius::Potential::xc_rg_magnetic|grad1");
-        /* get plane-wave coefficients of densities */
-        rho_up.fft_transform(-1);
-        rho_dn.fft_transform(-1);
-
-        /* generate pw coeffs of the gradient and laplacian */
-        grad_rho_up = gradient(rho_up);
-        grad_rho_dn = gradient(rho_dn);
-
-        /* gradient in real space */
-        for (int x : {0, 1, 2}) {
-            grad_rho_up[x].fft_transform(1);
-            grad_rho_dn[x].fft_transform(1);
-        }
-
-        /* product of gradients */
-        grad_rho_up_grad_rho_up = dot(grad_rho_up, grad_rho_up);
-        grad_rho_up_grad_rho_dn = dot(grad_rho_up, grad_rho_dn);
-        grad_rho_dn_grad_rho_dn = dot(grad_rho_dn, grad_rho_dn);
-
-        if (env::print_hash()) {
-            auto h3 = grad_rho_up_grad_rho_up.hash_f_rg();
-            auto h4 = grad_rho_up_grad_rho_dn.hash_f_rg();
-            auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
-
-            print_hash("grad_rho_up_grad_rho_up", h3, ctx_.out());
-            print_hash("grad_rho_up_grad_rho_dn", h4, ctx_.out());
-            print_hash("grad_rho_dn_grad_rho_dn", h5, ctx_.out());
-        }
-    }
-
     /* vsigma_uu: dϵ/dσ↑↑ */
     Smooth_periodic_function<double> vsigma_uu;
     /* vsigma_ud: dϵ/dσ↑↓ */
@@ -310,6 +239,29 @@ Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> vsigma_dd;
 
     if (is_gga) {
+        /* get plane-wave coefficients of densities */
+        rho_up.fft_transform(-1);
+        rho_dn.fft_transform(-1);
+
+        /* generate pw coeffs of the gradient and laplacian */
+        grad_rho_up = to_rg(gradient(rho_up));
+        grad_rho_dn = to_rg(gradient(rho_dn));
+
+        /* product of gradients */
+        grad_rho_up_grad_rho_up = dot(grad_rho_up, grad_rho_up);
+        grad_rho_up_grad_rho_dn = dot(grad_rho_up, grad_rho_dn);
+        grad_rho_dn_grad_rho_dn = dot(grad_rho_dn, grad_rho_dn);
+
+        if (env::print_hash()) {
+            auto h1 = grad_rho_up_grad_rho_up.hash_f_rg();
+            auto h2 = grad_rho_up_grad_rho_dn.hash_f_rg();
+            auto h3 = grad_rho_dn_grad_rho_dn.hash_f_rg();
+
+            print_hash("grad_rho_up_grad_rho_up", h1, ctx_.out());
+            print_hash("grad_rho_up_grad_rho_dn", h2, ctx_.out());
+            print_hash("grad_rho_dn_grad_rho_dn", h3, ctx_.out());
+        }
+
         vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
@@ -378,30 +330,59 @@ Potential::xc_rg_magnetic(Density const& density__)
                 vsigma_[2]->value(ir) += vsigma_dd.value(ir);
             }
 
-            Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
-            Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
-            for (int x : {0, 1, 2}) {
+            if (use_lapl__) {
+                auto lapl_rho_up = to_rg(laplacian(rho_up));
+                auto lapl_rho_dn = to_rg(laplacian(rho_dn));
+                /* forward transform vsigma to plane-wave domain */
+                vsigma_uu.fft_transform(-1);
+                vsigma_ud.fft_transform(-1);
+                vsigma_dd.fft_transform(-1);
+
+                /* gradients of vsigmas in plane-wave domain */
+                auto grad_vsigma_uu = to_rg(gradient(vsigma_uu));
+                auto grad_vsigma_ud = to_rg(gradient(vsigma_ud));
+                auto grad_vsigma_dd = to_rg(gradient(vsigma_dd));
+
+                auto grad_vsigma_uu_grad_rho_up = dot(grad_vsigma_uu, grad_rho_up);
+                auto grad_vsigma_ud_grad_rho_dn = dot(grad_vsigma_ud, grad_rho_dn);
+
+                auto grad_vsigma_dd_grad_rho_dn = dot(grad_vsigma_dd, grad_rho_dn);
+                auto grad_vsigma_ud_grad_rho_up = dot(grad_vsigma_ud, grad_rho_up);
+
+                #pragma omp parallel for
                 for (int ir = 0; ir < num_points; ir++) {
-                    up_gradrho_vsigma[x].value(ir) = 2 * grad_rho_up[x].value(ir) * vsigma_uu.value(ir) +
-                                                     grad_rho_dn[x].value(ir) * vsigma_ud.value(ir);
-                    dn_gradrho_vsigma[x].value(ir) = 2 * grad_rho_dn[x].value(ir) * vsigma_dd.value(ir) +
-                                                     grad_rho_up[x].value(ir) * vsigma_ud.value(ir);
+                    vxc_up(ir) -=
+                            2 * (vsigma_uu.value(ir) * lapl_rho_up.value(ir) + grad_vsigma_uu_grad_rho_up.value(ir)) +
+                            grad_vsigma_ud_grad_rho_dn.value(ir) + vsigma_ud.value(ir) * lapl_rho_dn.value(ir);
+
+                    vxc_dn(ir) -=
+                            2 * (vsigma_dd.value(ir) * lapl_rho_dn.value(ir) + grad_vsigma_dd_grad_rho_dn.value(ir)) +
+                            grad_vsigma_ud_grad_rho_up.value(ir) + vsigma_ud.value(ir) * lapl_rho_up.value(ir);
                 }
-                /* transform to plane wave domain */
-                up_gradrho_vsigma[x].fft_transform(-1);
-                dn_gradrho_vsigma[x].fft_transform(-1);
-            }
+            } else {
+                Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+                Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+                for (int x : {0, 1, 2}) {
+                    for (int ir = 0; ir < num_points; ir++) {
+                        up_gradrho_vsigma[x].value(ir) = 2 * grad_rho_up[x].value(ir) * vsigma_uu.value(ir) +
+                                                         grad_rho_dn[x].value(ir) * vsigma_ud.value(ir);
+                        dn_gradrho_vsigma[x].value(ir) = 2 * grad_rho_dn[x].value(ir) * vsigma_dd.value(ir) +
+                                                         grad_rho_up[x].value(ir) * vsigma_ud.value(ir);
+                    }
+                    /* transform to plane wave domain */
+                    up_gradrho_vsigma[x].fft_transform(-1);
+                    dn_gradrho_vsigma[x].fft_transform(-1);
+                }
 
-            auto div_up_gradrho_vsigma = divergence(up_gradrho_vsigma);
-            div_up_gradrho_vsigma.fft_transform(1);
-            auto div_dn_gradrho_vsigma = divergence(dn_gradrho_vsigma);
-            div_dn_gradrho_vsigma.fft_transform(1);
+                auto div_up_gradrho_vsigma = to_rg(divergence(up_gradrho_vsigma));
+                auto div_dn_gradrho_vsigma = to_rg(divergence(dn_gradrho_vsigma));
 
-            /* add remaining term to Vxc */
-            #pragma omp parallel for
-            for (int ir = 0; ir < num_points; ir++) {
-                vxc_up(ir) -= div_up_gradrho_vsigma.value(ir);
-                vxc_dn(ir) -= div_dn_gradrho_vsigma.value(ir);
+                /* add remaining term to Vxc */
+                #pragma omp parallel for
+                for (int ir = 0; ir < num_points; ir++) {
+                    vxc_up(ir) -= div_up_gradrho_vsigma.value(ir);
+                    vxc_dn(ir) -= div_dn_gradrho_vsigma.value(ir);
+                }
             }
         }
 
@@ -432,6 +413,20 @@ Potential::xc_rg_magnetic(Density const& density__)
     } // for loop over XC functionals
 }
 
+template <typename T>
+inline void
+remove_high_pw(Simulation_context const& ctx__, Smooth_periodic_function<T>& f__)
+{
+    f__.fft_transform(-1);
+    #pragma omp parallel for
+    for (int ig = 0; ig < ctx__.gvec().count(); ig++) {
+        if (ctx__.gvec().gvec_len<index_domain_t::local>(ig) > ctx__.cfg().parameters().veff_pw_cutoff()) {
+            f__.f_pw_local(ig) = 0;
+        }
+    }
+    f__.fft_transform(1);
+}
+
 template <bool add_pseudo_core__>
 void
 Potential::xc(Density const& density__)
@@ -449,14 +444,24 @@ Potential::xc(Density const& density__)
         return;
     }
 
+    auto use_lapl = this->ctx_.cfg().settings().xc_use_lapl();
+
     if (ctx_.full_potential()) {
-        xc_mt(density__);
+        xc_mt(density__, use_lapl);
     }
 
     if (ctx_.num_spins() == 1) {
-        xc_rg_nonmagnetic<add_pseudo_core__>(density__);
+        xc_rg_nonmagnetic<add_pseudo_core__>(density__, use_lapl);
     } else {
-        xc_rg_magnetic<add_pseudo_core__>(density__);
+        xc_rg_magnetic<add_pseudo_core__>(density__, use_lapl);
+    }
+
+    if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            remove_high_pw(ctx_, effective_magnetic_field(j).rg());
+        }
+        remove_high_pw(ctx_, xc_potential_->rg());
+        remove_high_pw(ctx_, xc_energy_density_->rg());
     }
 
     if (env::print_hash()) {
@@ -467,13 +472,13 @@ Potential::xc(Density const& density__)
 
 // explicit instantiation
 template void
-Potential::xc_rg_nonmagnetic<true>(Density const&);
+Potential::xc_rg_nonmagnetic<true>(Density const&, bool);
 template void
-Potential::xc_rg_nonmagnetic<false>(Density const&);
+Potential::xc_rg_nonmagnetic<false>(Density const&, bool);
 template void
-Potential::xc_rg_magnetic<true>(Density const&);
+Potential::xc_rg_magnetic<true>(Density const&, bool);
 template void
-Potential::xc_rg_magnetic<false>(Density const&);
+Potential::xc_rg_magnetic<false>(Density const&, bool);
 template void
 Potential::xc<true>(Density const&);
 template void
