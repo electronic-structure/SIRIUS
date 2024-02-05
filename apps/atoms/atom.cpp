@@ -44,8 +44,8 @@ class Free_atom : public sirius::Atom_type
               double mass, std::vector<atomic_level_descriptor> const& levels_nl, int num_points, double rmax)
         : Atom_type(param__, symbol, name, zn, mass, levels_nl)
     {
-        //radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, rmin, 15.0 + 0.15 * zn, 1.0);
-        //radial_grid_ = sirius::Radial_grid_pow<double>(6000 + 50 * zn, rmin, 15.0 + 0.15 * zn, 3.0);
+        // radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, rmin, 15.0 + 0.15 * zn, 1.0);
+        // radial_grid_ = sirius::Radial_grid_pow<double>(6000 + 50 * zn, rmin, 15.0 + 0.15 * zn, 3.0);
         radial_grid_ = sirius::Radial_grid_pow<double>(num_points, rmin, rmax, 3.0);
     }
 
@@ -323,7 +323,7 @@ class Free_atom : public sirius::Atom_type
 
 Free_atom
 init_atom_configuration(const std::string& label, sirius::Simulation_parameters const& param__, int num_points,
-        double rmax)
+                        double rmax)
 {
     atomic_level_descriptor nlk;
     std::vector<atomic_level_descriptor> levels_nlk;
@@ -976,7 +976,7 @@ main(int argn, char** argv)
     bool rel = args.exist("rel");
 
     int num_points = args.value<int>("num_points", 6000);
-    double rmax = args.value<double>("rmax", 30);
+    double rmax    = args.value<double>("rmax", 30);
 
     sirius::Simulation_parameters param;
     param.lmax_apw(-1);

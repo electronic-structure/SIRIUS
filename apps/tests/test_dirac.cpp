@@ -62,7 +62,8 @@ main(int argn, char** argv)
         double b = std::sqrt(std::pow(kappa, 2) - std::pow(zn / speed_of_light, 2));
 
         double enu_exact = std::pow(speed_of_light, 2) / std::sqrt(1 + std::pow(zn / speed_of_light, 2) /
-                           std::pow(n - std::abs(kappa) + b, 2)) - std::pow(speed_of_light, 2);
+                                                                               std::pow(n - std::abs(kappa) + b, 2)) -
+                           std::pow(speed_of_light, 2);
 
         Bound_state bound_state(relativity_t::dirac, zn, n, l, k, radial_grid, v, enu_exact);
 

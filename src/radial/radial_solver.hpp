@@ -46,7 +46,8 @@ double const alpha = 1.0 / speed_of_light;
 double const sq_alpha_half = 0.5 / rest_energy;
 
 template <relativity_t rel>
-inline double rel_mass(double enu__, double v__) 
+inline double
+rel_mass(double enu__, double v__)
 {
     switch (rel) {
         case relativity_t::none: {
@@ -68,7 +69,7 @@ inline double rel_mass(double enu__, double v__)
     }
 };
 
-}
+} // namespace radial_solver_local
 
 /// Finds a solution to radial Schrodinger, Koelling-Harmon or Dirac equation.
 /** Non-relativistic radial Schrodinger equation:
@@ -145,9 +146,9 @@ inline double rel_mass(double enu__, double v__)
  *    \displaystyle p'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} q(r) + \frac{p(r)}{r} \\
  *    \displaystyle q'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2r^2} \big(\frac{1}{M_0} - \frac{\alpha^2}{2}
  *                           \frac{E}{M_0^2} \big) \Big) p(r) - \frac{q(r)}{r}
- *                        = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - 
- *                           \frac{\alpha^2}{2} \frac{\ell(\ell+1) E}{2 M_0^2 r^2} \Big) p(r) - 
- *                           \frac{q(r)}{r} \end{array} \right. 
+ *                        = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} -
+ *                           \frac{\alpha^2}{2} \frac{\ell(\ell+1) E}{2 M_0^2 r^2} \Big) p(r) -
+ *                           \frac{q(r)}{r} \end{array} \right.
  *  \f]
  *  The first energy derivatives are then:
  *  \f[
@@ -192,9 +193,10 @@ class Radial_solver
 
     /// Integrate system of two first-order differential equations forward starting from the origin.
     template <relativity_t rel>
-    int integrate_forward_gsl(double enu__, int l__, int k__, Spline<double> const& chi_p__,
-                              Spline<double> const& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
-                              std::vector<double>& q__, std::vector<double>& dqdr__, bool bound_state__) const
+    int
+    integrate_forward_gsl(double enu__, int l__, int k__, Spline<double> const& chi_p__, Spline<double> const& chi_q__,
+                          std::vector<double>& p__, std::vector<double>& dpdr__, std::vector<double>& q__,
+                          std::vector<double>& dqdr__, bool bound_state__) const
     {
         struct params
         {
@@ -209,14 +211,13 @@ class Radial_solver
             Spline<double> const* chi_q;
         };
 
-        auto func = [](double x, double const* y, double* f, void *params__) -> int
-        {
+        auto func = [](double x, double const* y, double* f, void* params__) -> int {
             using namespace radial_solver_local;
 
             params* p = static_cast<params*>(params__);
             double dx = x - p->x0;
             /* reconstruct V(x) = -z/x + Vel(x) */
-            double V = p->ve->operator()(p->ir, dx) - p->zn / x;
+            double V     = p->ve->operator()(p->ir, dx) - p->zn / x;
             double chi_p = p->chi_p->operator()(p->ir, dx);
             double chi_q = p->chi_q->operator()(p->ir, dx);
             /* system of two coupled equations
@@ -245,7 +246,7 @@ class Radial_solver
                 case relativity_t::koelling_harmon:
                 case relativity_t::zora: {
                     double ll_half = p->l * (p->l + 1) / 2.0;
-                    double M = rel_mass<rel>(p->enu, V);
+                    double M       = rel_mass<rel>(p->enu, V);
                     /* p'(x) = 2 * M(x) * q(x) + p(x) / x + chi_p(x) */
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
                     /* q'(x) = (V(x) - enu + l * (l + 1) / 2 / M(x) / x^2) * p(x) - q(x) / x + chi_q(x) */
@@ -254,12 +255,13 @@ class Radial_solver
                 }
                 case relativity_t::iora: {
                     double ll_half = p->l * (p->l + 1) / 2.0;
-                    double M = rel_mass<rel>(p->enu, V);
-                    double M0 = rel_mass<relativity_t::zora>(p->enu, V);
+                    double M       = rel_mass<rel>(p->enu, V);
+                    double M0      = rel_mass<relativity_t::zora>(p->enu, V);
 
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
-                    f[1] = (V - p->enu + ll_half / x / x / M0 -
-                            ll_half * sq_alpha_half * p->enu / x / x / M0 / M0) * y[0] - y[1] / x + chi_q;
+                    f[1] = (V - p->enu + ll_half / x / x / M0 - ll_half * sq_alpha_half * p->enu / x / x / M0 / M0) *
+                                   y[0] -
+                           y[1] / x + chi_q;
                     break;
                 }
                 case relativity_t::dirac: {
@@ -271,23 +273,22 @@ class Radial_solver
             return GSL_SUCCESS;
         };
 
-        auto jac = [](double x, double const* y, double *dfdy, double* dfdx, void *params__) -> int
-        {
+        auto jac = [](double x, double const* y, double* dfdy, double* dfdx, void* params__) -> int {
             using namespace radial_solver_local;
 
-            params* p = static_cast<params*>(params__);
-            double dx = x - p->x0;
+            params* p      = static_cast<params*>(params__);
+            double dx      = x - p->x0;
             double ll_half = p->l * (p->l + 1) / 2.0;
-            double V = p->ve->operator()(p->ir, dx) - p->zn / x;
-            double M = rel_mass<rel>(p->enu, V);
-            double M0 = rel_mass<relativity_t::zora>(p->enu, V);
+            double V       = p->ve->operator()(p->ir, dx) - p->zn / x;
+            double M       = rel_mass<rel>(p->enu, V);
+            double M0      = rel_mass<relativity_t::zora>(p->enu, V);
 
             double ve_deriv    = p->ve->deriv(1, p->ir, dx);
             double chi_p_deriv = p->chi_p->deriv(1, p->ir, dx);
             double chi_q_deriv = p->chi_q->deriv(1, p->ir, dx);
 
             auto dfdy_mat = gsl_matrix_view_array(dfdy, 2, 2);
-            auto m = &dfdy_mat.matrix;
+            auto m        = &dfdy_mat.matrix;
             /* derivatives of right hand side of coupled radial equations
              * ----------------------------------------------------------
              *
@@ -326,8 +327,8 @@ class Radial_solver
                     gsl_matrix_set(m, 1, 1, -1.0 / x);
 
                     dfdx[0] = -y[0] / x / x;
-                    dfdx[1] = y[0] * (ve_deriv + p->zn / x / x - ll_half * 2.0 / x / x / x) +
-                              y[1] / x / x + chi_q_deriv;
+                    dfdx[1] =
+                            y[0] * (ve_deriv + p->zn / x / x - ll_half * 2.0 / x / x / x) + y[1] / x / x + chi_q_deriv;
                     break;
                 }
                 case relativity_t::koelling_harmon:
@@ -340,21 +341,25 @@ class Radial_solver
                     double M_deriv = sq_alpha_half * (-p->zn / x / x - ve_deriv);
 
                     dfdx[0] = 2 * y[1] * sq_alpha_half * M_deriv - y[0] / x / x + chi_p_deriv;
-                    dfdx[1] = (ve_deriv + p->zn / x / x - 2 * ll_half / x / x / x / M - 
-                               M_deriv * ll_half / x / x / M / M ) * y[0] + y[1] / x / x + chi_q_deriv;
+                    dfdx[1] = (ve_deriv + p->zn / x / x - 2 * ll_half / x / x / x / M -
+                               M_deriv * ll_half / x / x / M / M) *
+                                      y[0] +
+                              y[1] / x / x + chi_q_deriv;
                     break;
                 }
                 case relativity_t::iora: {
                     gsl_matrix_set(m, 0, 0, 1.0 / x);
                     gsl_matrix_set(m, 0, 1, 2.0 * M);
-                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half / M0 / x / x -
-                                            ll_half * sq_alpha_half * p->enu / x / x / M0 / M0);
+                    gsl_matrix_set(m, 1, 0,
+                                   V - p->enu + ll_half / M0 / x / x -
+                                           ll_half * sq_alpha_half * p->enu / x / x / M0 / M0);
                     gsl_matrix_set(m, 1, 1, -1.0 / x);
 
                     dfdx[0] = -y[0] / x / x + chi_p_deriv;
                     dfdx[1] = (ve_deriv + p->zn / x / x - 2 * ll_half / x / x / x / M0 +
-                            2 * sq_alpha_half * ll_half * p->enu / x / x / x / M0 / M0) * y[0] +
-                            y[1] / x / x + chi_q_deriv;
+                               2 * sq_alpha_half * ll_half * p->enu / x / x / x / M0 / M0) *
+                                      y[0] +
+                              y[1] / x / x + chi_q_deriv;
                     break;
                 }
                 case relativity_t::dirac: {
@@ -363,7 +368,7 @@ class Radial_solver
                     gsl_matrix_set(m, 1, 0, -alpha * (p->enu - V));
                     gsl_matrix_set(m, 1, 1, p->kappa / x);
 
-                    dfdx[0] =  alpha * y[1] * (-ve_deriv - p->zn / x / x) + y[0] * p->kappa / x / x;
+                    dfdx[0] = alpha * y[1] * (-ve_deriv - p->zn / x / x) + y[0] * p->kappa / x / x;
                     dfdx[1] = -alpha * y[0] * (-ve_deriv - p->zn / x / x) - y[1] * p->kappa / x / x;
 
                     break;
@@ -377,14 +382,13 @@ class Radial_solver
 
         int last_point{radial_grid_.num_points() - 1};
 
-        auto integrate_forward = [&](int last_point) -> std::vector<int>
-        {
+        auto integrate_forward = [&](int last_point) -> std::vector<int> {
             params p;
-            p.enu = enu__;
-            p.l = l__;
+            p.enu   = enu__;
+            p.l     = l__;
             p.kappa = 0;
-            p.zn = zn_;
-            p.ve = &ve_;
+            p.zn    = zn_;
+            p.ve    = &ve_;
             p.chi_p = &chi_p__;
             p.chi_q = &chi_q__;
             if (rel == relativity_t::dirac) {
@@ -417,15 +421,15 @@ class Radial_solver
                 case relativity_t::zora:
                 case relativity_t::iora: {
                     double a = l__ * (l__ + 1) + 1 - std::pow(radial_solver_local::alpha * zn_, 2);
-                    double b =  0.5 * (1 + std::sqrt(1 + 4 * a));
-                    y[0] = std::pow(x, b);
-                    y[1] = (x * b * std::pow(x, b - 1) - y[0]) / zn_ / std::pow(radial_solver_local::alpha, 2);
+                    double b = 0.5 * (1 + std::sqrt(1 + 4 * a));
+                    y[0]     = std::pow(x, b);
+                    y[1]     = (x * b * std::pow(x, b - 1) - y[0]) / zn_ / std::pow(radial_solver_local::alpha, 2);
                     break;
                 }
                 case relativity_t::dirac: {
                     double b = std::sqrt(std::pow(p.kappa, 2) - std::pow(zn_ / speed_of_light, 2));
-                    y[0] = std::pow(x, b);
-                    y[1] = std::pow(x, b - 1) * (b + p.kappa) * x / radial_solver_local::alpha / zn_;
+                    y[0]     = std::pow(x, b);
+                    y[1]     = std::pow(x, b - 1) * (b + p.kappa) * x / radial_solver_local::alpha / zn_;
                     break;
                 }
             }
@@ -435,20 +439,20 @@ class Radial_solver
 
             gsl_odeiv2_system sys = {func, jac, 2, &p};
 
-            const double epsabs = 1e-3;
-            const double epsrel = 1e-3;
+            const double epsabs           = 1e-3;
+            const double epsrel           = 1e-3;
             const gsl_odeiv2_step_type* T = gsl_odeiv2_step_rk8pd;
-            gsl_odeiv2_step*    s = gsl_odeiv2_step_alloc(T, 2);
-            gsl_odeiv2_control* c = gsl_odeiv2_control_y_new(epsabs, epsrel);
-            gsl_odeiv2_evolve*  e = gsl_odeiv2_evolve_alloc(2);
+            gsl_odeiv2_step* s            = gsl_odeiv2_step_alloc(T, 2);
+            gsl_odeiv2_control* c         = gsl_odeiv2_control_y_new(epsabs, epsrel);
+            gsl_odeiv2_evolve* e          = gsl_odeiv2_evolve_alloc(2);
 
             std::vector<int> ridx;
 
             for (p.ir = 0; p.ir < last_point; p.ir++) {
                 double x0 = radial_grid_[p.ir];
                 double x1 = radial_grid_[p.ir + 1];
-                double h = radial_grid_.dx(p.ir);
-                p.x0 = x0;
+                double h  = radial_grid_.dx(p.ir);
+                p.x0      = x0;
                 while (x0 < x1) {
                     int status = gsl_odeiv2_evolve_apply(e, c, s, &sys, &x0, x1, &h, y);
                     if (status != GSL_SUCCESS) {
@@ -528,7 +532,7 @@ class Radial_solver
             s(i) = std::pow(p__[i], 2);
         }
         auto norm = s.interpolate().integrate(0);
-        norm = 1.0 / std::sqrt(norm);
+        norm      = 1.0 / std::sqrt(norm);
         for (int i = 0; i < radial_grid_.num_points(); i++) {
             p__[i] = norm * p__[i];
             q__[i] = norm * q__[i];
@@ -537,13 +541,13 @@ class Radial_solver
         double ll_half = l__ * (l__ + 1) / 2.0;
 
         for (int i = 0; i < radial_grid_.num_points(); i++) {
-            double x = radial_grid_.x(i);
-            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+            double x  = radial_grid_.x(i);
+            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
             double M  = radial_solver_local::rel_mass<rel>(enu__, V);
             double M0 = radial_solver_local::rel_mass<relativity_t::zora>(enu__, V);
             double v1 = ll_half / std::pow(radial_grid_[i], 2);
 
-            switch(rel) {
+            switch (rel) {
                 case relativity_t::none:
                 case relativity_t::koelling_harmon:
                 case relativity_t::zora: {
@@ -555,9 +559,10 @@ class Radial_solver
                 }
                 case relativity_t::iora: {
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
-                    dqdr__[i] = (V - enu__ + v1 / M0 - radial_solver_local::sq_alpha_half *
-                            ll_half * enu__ / M0 / M0 / x / x) * p__[i] -
-                            q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
+                    dqdr__[i] = (V - enu__ + v1 / M0 -
+                                 radial_solver_local::sq_alpha_half * ll_half * enu__ / M0 / M0 / x / x) *
+                                        p__[i] -
+                                q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
                 }
                 case relativity_t::dirac: {
@@ -669,23 +674,23 @@ class Radial_solver
 
             switch (rel__) {
                 case relativity_t::none: {
-                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j],
-                                                                          q[j], dqdr[j], false);
+                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j],
+                                                                   dqdr[j], false);
                     break;
                 }
                 case relativity_t::koelling_harmon: {
                     nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, 0, chi_p, chi_q, p[j],
-                                                                                     dpdr[j], q[j], dqdr[j], false);
+                                                                              dpdr[j], q[j], dqdr[j], false);
                     break;
                 }
                 case relativity_t::zora: {
-                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j],
-                                                                          q[j], dqdr[j], false);
+                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j],
+                                                                   dqdr[j], false);
                     break;
                 }
                 case relativity_t::iora: {
-                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j],
-                                                                          q[j], dqdr[j], false);
+                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j],
+                                                                   dqdr[j], false);
                     break;
                 }
                 default: {
@@ -836,8 +841,8 @@ class Bound_state : public Radial_solver
                     break;
                 }
                 case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu_, l_, k_, chi_p, chi_q, p,
-                                                                                    dpdr_, q, dqdr, true);
+                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q,
+                                                                              dqdr, true);
                     break;
                 }
                 case relativity_t::zora: {
@@ -845,8 +850,8 @@ class Bound_state : public Radial_solver
                     break;
                 }
                 case relativity_t::dirac: {
-                    nn = integrate_forward_gsl<relativity_t::dirac>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q,
-                                                                          dqdr, true);
+                    nn = integrate_forward_gsl<relativity_t::dirac>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr,
+                                                                    true);
                     break;
                 }
                 default: {
@@ -1012,8 +1017,7 @@ class Enu_finder : public Radial_solver
         bool found = false;
         int nndp   = 0;
 
-        auto integrate_forward = [&](double enu__) -> int
-        {
+        auto integrate_forward = [&](double enu__) -> int {
             int nn{0};
             switch (rel__) {
                 case relativity_t::none: {
@@ -1021,8 +1025,8 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l_, 0, chi_p, chi_q, p, dpdr,
-                                                                                      q, dqdr, false);
+                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q,
+                                                                              dqdr, false);
                     break;
                 }
                 case relativity_t::zora: {

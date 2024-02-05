@@ -4,7 +4,8 @@
 
 using namespace sirius;
 
-int get_nmax(int zn)
+int
+get_nmax(int zn)
 {
     int N{0};
     for (int n = 1; n < 20; n++) {
@@ -18,7 +19,8 @@ int get_nmax(int zn)
     return 20;
 }
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     int N{10000};
 
@@ -45,8 +47,8 @@ int main(int argn, char** argv)
             for (int l = 0; l < n; l++) {
 
                 double enu1 = sirius::Bound_state(relativity_t::none, zn, n, l, 0, r, v, -0.15, 0.5, 1.25).enu();
-                std::cout << "zn : " << zn << ", n : " << n << ", l : " << l << " |enu-enu0| :  "
-                          << std::abs(enu - enu1) << std::endl;
+                std::cout << "zn : " << zn << ", n : " << n << ", l : " << l
+                          << " |enu-enu0| :  " << std::abs(enu - enu1) << std::endl;
             }
         }
     }

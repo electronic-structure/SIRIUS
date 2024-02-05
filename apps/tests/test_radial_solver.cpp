@@ -38,17 +38,17 @@ test_radial_solver(cmd_args const& args__)
         }
     }
 
-    //std::stringstream s;
-    //s << "radial_functions_" << args__.value<std::string>("rel", "none") << ".dat";
-    //FILE* fout = fopen(s.str().c_str(), "w");
+    // std::stringstream s;
+    // s << "radial_functions_" << args__.value<std::string>("rel", "none") << ".dat";
+    // FILE* fout = fopen(s.str().c_str(), "w");
 
-    //for (int ir = 0; ir < rgrid.num_points(); ir++) {
-    //    fprintf(fout, "%f ", rgrid[ir]);
-    //    fprintf(fout, "%f ", p[ir]);
-    //    fprintf(fout, "%f ", rdudr[ir]);
-    //    fprintf(fout, "\n");
-    //}
-    //fclose(fout);
+    // for (int ir = 0; ir < rgrid.num_points(); ir++) {
+    //     fprintf(fout, "%f ", rgrid[ir]);
+    //     fprintf(fout, "%f ", p[ir]);
+    //     fprintf(fout, "%f ", rdudr[ir]);
+    //     fprintf(fout, "\n");
+    // }
+    // fclose(fout);
 
     return 0;
 }
