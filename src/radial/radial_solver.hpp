@@ -259,7 +259,7 @@ class Radial_solver
 
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
                     f[1] = (V - p->enu + ll_half / x / x / M0 -
-                            ll_half * sq_alpha_half * p->enu / x / x / M0 / M0) * y[0] - y[1] / x + chi_p;
+                            ll_half * sq_alpha_half * p->enu / x / x / M0 / M0) * y[0] - y[1] / x + chi_q;
                     break;
                 }
                 case relativity_t::dirac: {
@@ -387,7 +387,6 @@ class Radial_solver
             p.ve = &ve_;
             p.chi_p = &chi_p__;
             p.chi_q = &chi_q__;
-            double kappa{0};
             if (rel == relativity_t::dirac) {
                 if (k__ == l__) {
                     p.kappa = k__;
@@ -541,7 +540,7 @@ class Radial_solver
             double x = radial_grid_.x(i);
             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
             double M  = radial_solver_local::rel_mass<rel>(enu__, V);
-            double M0 = radial_solver_local::rel_mass<rel>(enu__, V);
+            double M0 = radial_solver_local::rel_mass<relativity_t::zora>(enu__, V);
             double v1 = ll_half / std::pow(radial_grid_[i], 2);
 
             switch(rel) {
@@ -1084,47 +1083,27 @@ class Enu_finder : public Radial_solver
 
         ebot_ = enu + de / 2.0;
 
-        ///* refine bottom energy */
-        //double e1 = enu;
-        //double e0 = enu + de;
+        /* refine bottom energy */
+        double e1 = enu;
+        double e0 = enu + de;
 
-        //for (int i = 0; i < 100; i++) {
-        //    enu = (e1 + e0) / 2.0;
-        //    switch (rel__) {
-        //        case relativity_t::none: {
-        //            integrate_forward_gsl<relativity_t::none>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-        //            break;
-        //        }
-        //        case relativity_t::koelling_harmon: {
-        //            integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q,
-        //                                                                        dqdr);
-        //            break;
-        //        }
-        //        case relativity_t::zora: {
-        //            integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-        //            break;
-        //        }
-        //        case relativity_t::iora: {
-        //            integrate_forward_rk4<relativity_t::iora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-        //            break;
-        //        }
-        //        default: {
-        //            RTE_THROW("unsupported relativity type");
-        //        }
-        //    }
-        //    /* derivative at the boundary */
-        //    if (std::abs(surface_deriv()) < 1e-10) {
-        //        break;
-        //    }
+        for (int i = 0; i < 100; i++) {
+            enu = (e1 + e0) / 2.0;
+            integrate_forward(enu);
+            /* derivative at the boundary */
+            if (std::abs(surface_deriv()) < 1e-10) {
+                break;
+            }
 
-        //    if (surface_deriv() * sd > 0) {
-        //        e0 = enu;
-        //    } else {
-        //        e1 = enu;
-        //    }
-        //}
+            if (surface_deriv() * sd > 0) {
+                e0 = enu;
+            } else {
+                e1 = enu;
+            }
+        }
 
-        //ebot_ = enu;
+        ebot_ = enu;
+
         ///* last check */
         //int nn{0};
         //switch (rel__) {
