@@ -560,6 +560,10 @@ class Radial_solver
                             q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
                 }
+                case relativity_t::dirac: {
+                    /* Dirac equatio is only solved for core states and p' and q' are not needed */
+                    break;
+                }
             }
         }
         return nn;
@@ -1103,49 +1107,6 @@ class Enu_finder : public Radial_solver
         }
 
         ebot_ = enu;
-
-        ///* last check */
-        //int nn{0};
-        //switch (rel__) {
-        //    case relativity_t::none: {
-        //        nn = integrate_forward_gsl<relativity_t::none>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-        //        break;
-        //    }
-        //    case relativity_t::koelling_harmon: {
-        //        nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q,
-        //                                                                         dqdr);
-        //        break;
-        //    }
-        //    case relativity_t::zora: {
-        //        nn = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-        //        break;
-        //    }
-        //    case relativity_t::iora: {
-        //        nn = integrate_forward_rk4<relativity_t::iora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-        //        break;
-        //    }
-        //    default: {
-        //        RTE_THROW("unsupported relativity type");
-        //    }
-        //}
-
-        //if (nn != n_ - l_ - 1) {
-        //    FILE* fout = fopen("p.dat", "w");
-        //    for (int ir = 0; ir < np; ir++) {
-        //        double x = radial_grid(ir);
-        //        fprintf(fout, "%16.8f %16.8f %16.8f\n", x, p[ir], q[ir]);
-        //    }
-        //    fclose(fout);
-
-        //    // printf("n: %i, l: %i, nn: %i", n_, l_, nn);
-        //    std::stringstream s;
-        //    s << "wrong number of nodes: " << nn << " instead of " << n_ - l_ - 1 << std::endl
-        //      << "n: " << n_ << ", l: " << l_ << std::endl
-        //      << "etop: " << etop_ << " ebot: " << ebot_ << std::endl
-        //      << "initial surface derivative: " << sd;
-
-        //    RTE_THROW(s);
-        //}
 
         enu_ = (ebot_ + etop_) / 2.0;
     }
