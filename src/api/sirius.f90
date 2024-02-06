@@ -6095,7 +6095,7 @@ complex(8), target, intent(in) :: qpw(ldq, num_gvec_loc)
 integer, target, intent(in) :: ldq
 complex(8), target, intent(in) :: phase_factors_q(num_atoms)
 integer, target, intent(in) :: mill(3, num_gvec_loc)
-complex(8), target, intent(in) :: dens_mtrx(ld, num_atoms, num_spin_comp)
+complex(8), target, intent(in) :: dens_mtrx(ldd, num_atoms, num_spin_comp)
 integer, target, intent(in) :: ldd
 complex(8), target, intent(inout) :: rho_aug(num_gvec_loc, num_spin_comp)
 integer, optional, target, intent(out) :: error_code
