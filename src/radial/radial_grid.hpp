@@ -197,7 +197,7 @@ class Radial_grid
         return dx_;
     }
 
-    Radial_grid<T>
+    auto
     segment(int num_points__) const
     {
         assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
@@ -214,7 +214,7 @@ class Radial_grid
         return r;
     }
 
-    std::vector<real_type<T>>
+    auto
     values() const
     {
         std::vector<real_type<T>> v(num_points());

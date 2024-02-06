@@ -428,6 +428,12 @@ class Atom_type
         free_atom_radial_grid_ = std::move(rgrid__);
     }
 
+    inline auto const&
+    atomic_level(int idx) const
+    {
+        return atomic_levels_[idx];
+    }
+
     /// Add augmented-wave descriptor.
     inline void
     add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
@@ -800,12 +806,6 @@ class Atom_type
     num_atomic_levels() const
     {
         return static_cast<int>(atomic_levels_.size());
-    }
-
-    inline atomic_level_descriptor const&
-    atomic_level(int idx) const
-    {
-        return atomic_levels_[idx];
     }
 
     inline double

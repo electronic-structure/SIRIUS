@@ -1,7 +1,0 @@
-1. Run 'pyton atoms.py' to generate 'atoms.json' and the batch script 'run.x' from 'atoms.in'
-
-2. Run './atom' to generate json input file for a specific atom
-
-3. Run batch script './run.x' to generate default json inpit file for all atoms. Optionaly, redirect the
-   stderr stream to a file ('./run.x 2> err.dat') to save the absoule total energy error with respect to the NIST data.    
-   WARNING! NIST total energy is computed with Vosko-Wilk-Nusair correlation energy (availbale from LibXC as XC_LDA_C_VWN).
