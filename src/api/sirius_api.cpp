@@ -2741,7 +2741,7 @@ sirius_find_eigen_states:
       type: double
       attr: in, optional
       doc: Iterative solver tolerance.
-    iter_solver_tol:
+    iter_solver_steps:
       type: int
       attr: in, optional
       doc: Iterative solver number of steps.
@@ -6301,7 +6301,7 @@ sirius_generate_rhoaug_q:
       doc: Miller indices (G-vectors in lattice coordinates)
     dens_mtrx:
       type: complex
-      attr: in, required, dimension(ld, num_atoms, num_spin_comp)
+      attr: in, required, dimension(ldd, num_atoms, num_spin_comp)
       doc: Density matrix
     ldd:
       type: int
