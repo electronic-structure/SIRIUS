@@ -2741,7 +2741,7 @@ sirius_find_eigen_states:
       type: double
       attr: in, optional
       doc: Iterative solver tolerance.
-    iter_solver_tol:
+    iter_solver_steps:
       type: int
       attr: in, optional
       doc: Iterative solver number of steps.
