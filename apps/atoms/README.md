@@ -15,7 +15,7 @@ stderr stream to a file ('./run.x 2> err.dat') to save the absoule total energy 
 WARNING! NIST total energy is computed with Vosko-Wilk-Nusair correlation energy (availbale from LibXC as XC_LDA_C_VWN).
 
 # Other files in this directory
- - 'atoms.in' file with atomic configurations for each of the elements
- - 'atoms.py' Python script that takes 'atoms.in' and generates `atomic_data.hpp` header file
-   and 'atoms.json' JSON dictionary
- - 'atomic_conf.hpp.in' template for CMake to read `atoms.json` and create 'atomic_conf.hpp' header file
+ - `atoms.in` file with atomic configurations for each of the elements
+ - `atoms.py` Python script that takes `atoms.in` and generates `atomic_data.hpp` header file
+   and `atoms.json` JSON dictionary
+ - `atomic_conf.hpp.in` template for CMake to read `atoms.json` and create `atomic_conf.hpp` header file
