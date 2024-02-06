@@ -5,12 +5,12 @@ Utility is doing the following steps:
   - split atomic states into "core" and "valence"
   - generate atomic JSON file containing description of the (L)APW+lo bassis
 
-Run 'pyton atoms.py' to generate 'atoms.json' and the batch script 'run.x'.
+Run `pyton atoms.py` to generate `atoms.json` and the batch script `run.x`.
 
-Run './atom' to generate json input file for a specific atom.
+Run `./atom` to generate json input file for a specific atom.
 
-Run batch script './run.x' to generate species files for all atoms. Optionaly, redirect the
-stderr stream to a file ('./run.x 2> err.dat') to save the absoule total energy error with respect to the NIST data.
+Run batch script `./run.x` to generate species files for all atoms. Optionaly, redirect the
+stderr stream to a file (`./run.x 2> err.dat`) to save the absoule total energy error with respect to NIST data.
 
 WARNING! NIST total energy is computed with Vosko-Wilk-Nusair correlation energy (availbale from LibXC as XC_LDA_C_VWN).
 

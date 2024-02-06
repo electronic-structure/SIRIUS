@@ -305,17 +305,17 @@ class Free_atom : public sirius::Atom_type
                   << hbar(11, '-') << std::endl
                   << "type             : " << radial_grid().name() << std::endl
                   << "number of points : " << np << std::endl
-                  << "origin           : " << std::setprecision(8) << radial_grid(0) << std::endl
-                  << "infinity         : " << std::setprecision(8) << radial_grid(np - 1) << std::endl
+                  << "origin           : " << ffmt(14, 8) << radial_grid(0) << std::endl
+                  << "infinity         : " << ffmt(14, 8) << radial_grid(np - 1) << std::endl
                   << std::endl
                   << "Energy" << std::endl
                   << hbar(6, '-') << std::endl
-                  << "Ekin  : " << std::setprecision(8) << energy_kin << std::endl
-                  << "Ecoul : " << std::setprecision(8) << energy_coul << std::endl
-                  << "Eenuc : " << std::setprecision(8) << energy_enuc << std::endl
-                  << "Eexc  : " << std::setprecision(8) << energy_xc << std::endl
-                  << "Total : " << std::setprecision(8) << energy_tot << std::endl
-                  << "NIST  : " << std::setprecision(8) << Eref << std::endl;
+                  << "Ekin  : " << ffmt(16, 8) << energy_kin << std::endl
+                  << "Ecoul : " << ffmt(16, 8) << energy_coul << std::endl
+                  << "Eenuc : " << ffmt(16, 8) << energy_enuc << std::endl
+                  << "Eexc  : " << ffmt(16, 8) << energy_xc << std::endl
+                  << "Total : " << ffmt(16, 8) << energy_tot << std::endl
+                  << "NIST  : " << ffmt(16, 8) << Eref << std::endl;
 
         /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
         double dE = (round(energy_tot, 6) - Eref);
