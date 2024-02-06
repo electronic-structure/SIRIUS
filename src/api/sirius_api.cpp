@@ -6301,7 +6301,7 @@ sirius_generate_rhoaug_q:
       doc: Miller indices (G-vectors in lattice coordinates)
     dens_mtrx:
       type: complex
-      attr: in, required, dimension(ld, num_atoms, num_spin_comp)
+      attr: in, required, dimension(ldd, num_atoms, num_spin_comp)
       doc: Density matrix
     ldd:
       type: int
