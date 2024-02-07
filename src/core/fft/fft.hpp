@@ -167,7 +167,14 @@ template <typename T>
 inline void
 spfft_input(spfft_transform_type<T>& spfft__, T const* data__)
 {
-    spfft_input<T>(spfft__, [&](int ir) { return data__[ir]; });
+    spfft_input<T>(spfft__, [&](int ir) -> T { return data__[ir]; });
+}
+
+template <typename T>
+inline void
+spfft_input(spfft_transform_type<T>& spfft__, std::complex<T> const* data__)
+{
+    spfft_input<T>(spfft__, [&](int ir) -> std::complex<T> { return data__[ir]; });
 }
 
 template <typename T, typename F>

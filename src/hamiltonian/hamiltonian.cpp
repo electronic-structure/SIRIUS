@@ -32,7 +32,7 @@ namespace sirius {
 //       externally by the host code
 
 template <typename T>
-Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
+Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
@@ -50,7 +50,9 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__)
         if (precompute_lapw__) {
             potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
-            ctx_.unit_cell().generate_radial_functions(ctx_.out());
+            if (update_lapw_rf__) {
+                ctx_.unit_cell().generate_radial_functions(ctx_.out());
+            }
             ctx_.unit_cell().generate_radial_integrals();
         }
         hmt_    = std::vector<mdarray<std::complex<T>, 2>>(ctx_.unit_cell().num_atoms());

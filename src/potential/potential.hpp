@@ -36,7 +36,7 @@ check_xc_potential(Density const& rho__);
 
 double
 xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
-      int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
+      int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__, bool use_lalp__);
 
 double
 density_residual_hartree_energy(Density const& rho1__, Density const& rho2__);
@@ -283,17 +283,17 @@ class Potential : public Field4D
 
     /// Generate XC potential in the muffin-tins.
     void
-    xc_mt(Density const& density__);
+    xc_mt(Density const& density__, bool use_lapl);
 
     /// Generate non-magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
     void
-    xc_rg_nonmagnetic(Density const& density__);
+    xc_rg_nonmagnetic(Density const& density__, bool use_lapl);
 
     /// Generate magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
     void
-    xc_rg_magnetic(Density const& density__);
+    xc_rg_magnetic(Density const& density__, bool use_lapl);
 
   public:
     /// Constructor
@@ -918,6 +918,17 @@ class Potential : public Field4D
         return hubbard_potential_;
     }
 };
+
+inline void
+copy(Potential const& src__, Potential& dest__)
+{
+    for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
+        copy(src__.component(j).rg(), dest__.component(j).rg());
+        if (src__.ctx().full_potential()) {
+            copy(src__.component(j).mt(), dest__.component(j).mt());
+        }
+    }
+}
 
 }; // namespace sirius
 

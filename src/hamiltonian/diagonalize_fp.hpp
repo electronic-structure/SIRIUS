@@ -128,7 +128,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
         costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
                          la::constant<std::complex<double>>::zero(), kp__.comm().native());
     }
-    {
+    if (ctx.unit_cell().mt_lo_basis_size()) {
         /* muffin-tin part */
         auto layout_in = kp__.fv_eigen_vectors().grid_layout(kp__.gkvec().num_gvec(), 0,
                                                              ctx.unit_cell().mt_lo_basis_size(), ctx.num_fv_states());

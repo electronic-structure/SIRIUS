@@ -125,13 +125,13 @@ class Periodic_function
     Periodic_function<T>&
     operator*=(T alpha__)
     {
-        PROFILE("sirius::Periodic_function::add");
+        PROFILE("sirius::Periodic_function::scale");
         /* add regular-grid part */
         this->rg_component_ *= alpha__;
         /* add muffin-tin part */
         if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                this->f_mt_local_(ialoc) *= alpha__;
+            for (auto it : unit_cell_.spl_num_atoms()) {
+                this->mt_component_[it.i] *= alpha__;
             }
         }
         return *this;

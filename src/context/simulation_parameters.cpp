@@ -60,7 +60,7 @@ compose_default_json(nlohmann::json const& schema__, nlohmann::json& output__)
             if (it.value().contains("default")) {
                 output__[key] = it.value()["default"];
             }
-        } else { /* otherwise continue to traverse the shcema */
+        } else { /* otherwise continue to traverse the schema */
             if (!output__.contains(key)) {
                 output__[key] = nlohmann::json{};
             }
@@ -98,12 +98,13 @@ compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohman
                 /* copy the new input */
                 inout__[key] = in__[key];
             }
-        } else { /* otherwise continue to traverse the shcema */
+        } else { /* otherwise continue to traverse the schema */
+            /* not simple data type : a section with parameter, a dictionary map, etc.*/
             if (it.value().contains("properties")) {
                 compose_json(it.value()["properties"], in__.contains(key) ? in__[key] : nlohmann::json{}, inout__[key]);
             } else if (in__.contains(key)) {
                 inout__[key] = in__[key];
-            } else {
+            } else if (!inout__.contains(key)) {
                 inout__[key] = nlohmann::json();
             }
         }
@@ -136,7 +137,7 @@ nlohmann::json const&
 get_options_dictionary()
 {
     if (input_schema.size() == 0) {
-        throw std::runtime_error("Dictionary not initialized\n");
+        RTE_THROW("Dictionary not initialized");
     }
     return input_schema;
 }
@@ -146,7 +147,7 @@ nlohmann::json const&
 get_section_options(std::string const& section__)
 {
     if (input_schema.size() == 0) {
-        throw std::runtime_error("Dictionary not initialized\n");
+        RTE_THROW("Dictionary not initialized");
     }
     return input_schema["properties"][section__]["properties"];
 }
