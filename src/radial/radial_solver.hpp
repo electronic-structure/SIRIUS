@@ -191,6 +191,9 @@ class Radial_solver
     /// Electronic part of potential.
     Spline<double> ve_;
 
+    double epsabs_{1e-3};
+    double epsrel_{1e-3};
+
     /// Integrate system of two first-order differential equations forward starting from the origin.
     template <relativity_t rel>
     int
@@ -439,11 +442,9 @@ class Radial_solver
 
             gsl_odeiv2_system sys = {func, jac, 2, &p};
 
-            const double epsabs           = 1e-3;
-            const double epsrel           = 1e-3;
             const gsl_odeiv2_step_type* T = gsl_odeiv2_step_rk8pd;
             gsl_odeiv2_step* s            = gsl_odeiv2_step_alloc(T, 2);
-            gsl_odeiv2_control* c         = gsl_odeiv2_control_y_new(epsabs, epsrel);
+            gsl_odeiv2_control* c         = gsl_odeiv2_control_y_new(epsabs_, epsrel_);
             gsl_odeiv2_evolve* e          = gsl_odeiv2_evolve_alloc(2);
 
             std::vector<int> ridx;
@@ -575,9 +576,12 @@ class Radial_solver
     }
 
   public:
-    Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid<double> const& radial_grid__)
+    Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid<double> const& radial_grid__,
+            double epsabs__ = 1e-3, double epsrel__ = 1e-3)
         : zn_(zn__)
         , radial_grid_(radial_grid__)
+        , epsabs_{epsabs__}
+        , epsrel_{epsrel__}
     {
         ve_ = Spline<double>(radial_grid__);
 
@@ -938,8 +942,9 @@ class Bound_state : public Radial_solver
 
   public:
     Bound_state(relativity_t rel__, int zn__, int n__, int l__, int k__, Radial_grid<double> const& radial_grid__,
-                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.5, double alpha1__ = 1.25)
-        : Radial_solver(zn__, v__, radial_grid__)
+                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.5, double alpha1__ = 1.25,
+                double epsabs__ = 1e-3, double epsrel__ = 1e-3)
+        : Radial_solver(zn__, v__, radial_grid__, epsabs__, epsrel__)
         , n_(n__)
         , l_(l__)
         , k_(k__)
