@@ -841,6 +841,12 @@ class Atom_type
         free_atom_density_ = rho__;
     }
 
+    inline void
+    aw_default_l(radial_solution_descriptor_set aw_default_l__)
+    {
+        aw_default_l_ = aw_default_l__;
+    }
+
     inline int
     num_aw_descriptors() const
     {
