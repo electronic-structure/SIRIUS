@@ -79,7 +79,6 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
     Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
 
     auto compute_all_orders = [&](int l, double enu_shift) -> bool {
-
         Spline<double> s(atom_type_.radial_grid());
         std::vector<double> p;
         std::vector<double> rdudr;

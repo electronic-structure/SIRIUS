@@ -577,7 +577,7 @@ class Radial_solver
 
   public:
     Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid<double> const& radial_grid__,
-            double epsabs__ = 1e-3, double epsrel__ = 1e-3)
+                  double epsabs__ = 1e-3, double epsrel__ = 1e-3)
         : zn_(zn__)
         , radial_grid_(radial_grid__)
         , epsabs_{epsabs__}
