@@ -2,7 +2,6 @@
 #define __SPHERIC_FUNCTION_SET_HPP__
 
 #include "unit_cell/unit_cell.hpp"
-// #include "core/strong_type.hpp"
 
 namespace sirius {
 
