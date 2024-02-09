@@ -423,10 +423,13 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     auto lo_type = args.value<std::string>("type", "lo1");
 
     int apw_order = args.value<int>("order", 2);
+    if (!(apw_order == 1 || apw_order == 2)) {
+        RTE_THROW("wrong apw_order");
+    }
 
     double apw_enu = args.value<double>("apw_enu", 0.15);
 
-    bool auto_apw_enu = args.exist("auto_apw_enu");
+    int auto_apw_enu = args.value<int>("auto_apw_enu", 1);
 
     // JSON_write jw(fname);
     json dict;
@@ -574,6 +577,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
             }
         }
     }
+    core_radius = args.value<double>("rmt", core_radius);
 
     /* good number of MT points */
     int nrmt{500};
@@ -596,12 +600,15 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     std::cout << "core states : " << core_str << std::endl;
     dict["core"] = core_str;
 
+    radial_solution_descriptor_set rsds;
+
     dict["valence"] = json::array();
     dict["valence"].push_back(json::object({{"basis", json::array({})}}));
-    dict["valence"][0]["basis"].push_back({{"enu", apw_enu}, {"dme", 0}, {"auto", 0}});
-    if (apw_order == 2) {
-        dict["valence"][0]["basis"].push_back({{"enu", apw_enu}, {"dme", 1}, {"auto", 0}});
+    for (int o = 0; o < apw_order; o++) {
+        dict["valence"][0]["basis"].push_back({{"enu", apw_enu}, {"dme", o}, {"auto", 0}});
+        rsds.push_back({0, 0, o, apw_enu, 0});
     }
+    a.aw_default_l(rsds);
 
     if (auto_apw_enu) {
         for (int l = 0; l <= lmax; l++) {
@@ -613,9 +620,8 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                 }
             }
             dict["valence"].push_back(json::object({{"n", n}, {"l", l}, {"basis", json::array({})}}));
-            dict["valence"].back()["basis"].push_back({{"enu", apw_enu}, {"dme", 0}, {"auto", 1}});
-            if (apw_order == 2) {
-                dict["valence"].back()["basis"].push_back({{"enu", apw_enu}, {"dme", 1}, {"auto", 1}});
+            for (int o = 0; o < apw_order; o++) {
+                dict["valence"].back()["basis"].push_back({{"enu", apw_enu}, {"dme", o}, {"auto", 1}});
             }
         }
     }
@@ -628,17 +634,43 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                 /* add 2nd order local orbital composed of u_l(r, E_l) and \dot u_l(r, E_l)
                    linearization energy E_l is searched automatically */
                 if (lo_type.find("lo1") != std::string::npos) {
-                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), 0, 1);
-                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), 1, 1);
+                    for (int dme : {0, 1}) {
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, 1);
+                    }
                     idxlo++;
+
+                    if (lo_type.find("lo11") != std::string::npos) {
+                        for (int dme : {0, 1}) {
+                            a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 0.25, dme, 1);
+                        }
+                        idxlo++;
+
+                        for (int dme : {0, 1}) {
+                            a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                        }
+                        idxlo++;
+                    }
                 }
 
                 /* add 2nd order local orbital composed of \dot u_l(r, E_l) and \ddot u_l(r, E_l)
                    linearization energy E_l is searched automatically */
                 if (lo_type.find("lo2") != std::string::npos) {
-                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), 1, 1);
-                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), 2, 1);
+                    for (int dme : {1, 2}) {
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, 1);
+                    }
                     idxlo++;
+
+                    if (lo_type.find("lo22") != std::string::npos) {
+                        for (int dme : {1, 2}) {
+                            a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 0.25, dme, 1);
+                        }
+                        idxlo++;
+
+                        for (int dme : {1, 2}) {
+                            a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                        }
+                        idxlo++;
+                    }
                 }
 
                 /* add 3rd order local orbital composed of u_l(r, E=0.15), \dot u_l(r, E=0.15) and u_l(r, E_l)
@@ -665,12 +697,14 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     /* add high angular momentum 2nd order local orbitals with fixed linearisation energies */
     if (lo_type.find("lo3") != std::string::npos) {
         for (int l = lmax + 1; l < lmax + 4; l++) {
-            a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
-            a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
+            for (int dme : {0, 1}) {
+                a.add_lo_descriptor(idxlo, 0, l, 0.15, dme, 0);
+            }
             idxlo++;
 
-            a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
-            a.add_lo_descriptor(idxlo, 0, l, 0.15, 2, 0);
+            for (int dme : {1, 2}) {
+                a.add_lo_descriptor(idxlo, 0, l, 0.15, dme, 0);
+            }
             idxlo++;
         }
     }
@@ -695,13 +729,24 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     dict["free_atom"]["density"]     = fa_rho;
     dict["free_atom"]["radial_grid"] = a.radial_grid().values();
 
-    Radial_grid_pow<double> rg(nrmt, a.radial_grid(0), 1.8, 3);
-    auto x = rg.values();
     std::vector<double> veff;
-    for (int ir = 0; ir < rg.num_points(); ir++) {
-        veff.push_back(a.potential(rg[ir]) - a.zn() * rg.x_inv(ir));
+    if (true) {
+        Radial_grid_pow<double> rg(nrmt, a.radial_grid(0), 1.8, 3);
+        auto x = rg.values();
+        for (int ir = 0; ir < rg.num_points(); ir++) {
+            veff.push_back(a.potential(rg[ir]) - a.zn() * rg.x_inv(ir));
+        }
+        a.set_radial_grid(nrmt, x.data());
+    } else { /* this is intended for internal debug purposes */
+        std::ifstream ifs("vsph.dat", std::ifstream::in);
+        std::vector<double> x;
+        double x0, v0, v1;
+        while (ifs >> x0 >> v0 >> v1) {
+            x.push_back(x0);
+            veff.push_back(v0);
+        }
+        a.set_radial_grid(static_cast<int>(x.size()), x.data());
     }
-    a.set_radial_grid(nrmt, x.data());
 
     std::cout << "=== initializing atom ===" << std::endl;
     a.init();
@@ -904,10 +949,11 @@ main(int argn, char** argv)
     args.register_key("--core=", "{double} cutoff for core states: energy (in Ha, if <0), radius (in a.u. if >0)");
     args.register_key("--order=", "{int} order of augmentation; 1: APW, 2: LAPW");
     args.register_key("--apw_enu=", "{double} default value for APW linearization energies");
-    args.register_key("--auto_apw_enu", "allow search of APW linearization energies of valence states");
+    args.register_key("--auto_apw_enu=", "{int} allow search of APW linearization energies of valence states");
     args.register_key("--rel", "use scalar-relativistic solver");
     args.register_key("--num_points=", "{int} number of radial grid points");
     args.register_key("--rmax=", "{double} maximum value of radial grid");
+    args.register_key("--rmt=", "{double} set specific MT radius");
     args.parse_args(argn, argv);
 
     if (argn == 1 || args.exist("help")) {
@@ -918,18 +964,20 @@ main(int argn, char** argv)
         args.print_help();
         std::cout << std::endl;
         std::cout << "Definition of the local orbital types:" << std::endl;
-        std::cout << "  lo1 : 2nd order valence local orbitals composed of {u_l(r, E_l), \\dot u_l(e, E_l)}"
+        std::cout << "  lo1  : 2nd order valence local orbitals composed of {u_l(r, E_l), \\dot u_l(e, E_l)}"
                   << std::endl;
-        std::cout << "  lo2 : 2nd order valence local orbitals composed of {\\dot u_l(r, E_l), \\ddot u_l(e, E_l)}"
+        std::cout << "  lo11 : same as lo1 but for {n+1,l} and {n+1,l+1} states" << std::endl;
+        std::cout << "  lo2  : 2nd order valence local orbitals composed of {\\dot u_l(r, E_l), \\ddot u_l(e, E_l)}"
                   << std::endl;
-        std::cout << "  lo3 : two 2nd order high angular momentum local orbitals composed of {u_l(r, E=0.15), \\dot "
+        std::cout << "  lo22 : same as lo2 but for {n+1,l} and {n+1,l+1} states" << std::endl;
+        std::cout << "  lo3  : two 2nd order high angular momentum local orbitals composed of {u_l(r, E=0.15), \\dot "
                      "u_l(e, E=0.15)}"
                   << std::endl;
-        std::cout << "        and {\\dot u_l(r, E=0.15), \\ddot u_l(e, E=0.15)}" << std::endl;
-        std::cout << "  LO1 : 3rd order valence local orbital composed of {u_l(r, E=0.15), \\dot u_l(r, E=0.15), "
+        std::cout << "         and {\\dot u_l(r, E=0.15), \\ddot u_l(e, E=0.15)}" << std::endl;
+        std::cout << "  LO1  : 3rd order valence local orbital composed of {u_l(r, E=0.15), \\dot u_l(r, E=0.15), "
                      "u_l(r, E_l)}"
                   << std::endl;
-        std::cout << "  LO2 : 3rd order high-energy local orbital composed of {u_l(r, E=1.15), \\dot u_l(r, E=1.15), "
+        std::cout << "  LO2  : 3rd order high-energy local orbital composed of {u_l(r, E=1.15), \\dot u_l(r, E=1.15), "
                      "u_l(r, E_l)}"
                   << std::endl;
         std::cout << std::endl;
@@ -941,7 +989,7 @@ main(int argn, char** argv)
         std::cout << "    ./atom --symbol=Li" << std::endl;
         std::cout << std::endl;
         std::cout << "  generate high precision basis for titanium:" << std::endl;
-        std::cout << "    ./atom --type=lo+LO --symbol=Ti" << std::endl;
+        std::cout << "    ./atom --type=lo11+lo22 --symbol=Ti" << std::endl;
         std::cout << std::endl;
         std::cout << "  make all states of iron to be valence:" << std::endl;
         std::cout << "    ./atom --core=-1000 --symbol=Fe" << std::endl;
@@ -952,7 +1000,7 @@ main(int argn, char** argv)
     sirius::initialize(true);
 
     sirius::Simulation_parameters param;
-    param.lmax_apw(-1);
+    param.lmax_apw(15);
 
     auto symbol = args.value<std::string>("symbol");
     auto zn     = atomic_conf_dictionary_[symbol]["zn"].get<int>();

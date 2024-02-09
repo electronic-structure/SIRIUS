@@ -27,7 +27,7 @@ while True:
         s1 = line.split()
         mass = float(s1[0]) # mass
         
-        t = sys.argv[1] if len(sys.argv) >= 2 else " --type=lo1"
+        t = sys.argv[1] if len(sys.argv) >= 2 else " --type=lo1+lo2"
         fout.write("./atom --symbol=" + symbol + t + "\n")
         
         atom["symbol"] = symbol

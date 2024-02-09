@@ -527,10 +527,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
                                  .enu();
         /* update linearization energy only if its change is above a threshold */
         if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
-            rsd->enu           = new_enu;
-            rsd->new_enu_found = true;
-        } else {
-            rsd->new_enu_found = false;
+            rsd->enu = new_enu;
         }
     }
 }
@@ -769,11 +766,7 @@ Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
         for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
             auto& rsd = aw_descriptor(l)[order];
             if (rsd.auto_enu) {
-                pout << rsd; // printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
-                if (rsd.new_enu_found) {
-                    pout << "  +";
-                }
-                pout << std::endl;
+                pout << rsd << std::endl;
             }
         }
     }
@@ -783,12 +776,7 @@ Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
         for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
             auto& rsd = lo_descriptor(idxlo).rsd_set[order];
             if (rsd.auto_enu) {
-                // pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
-                pout << rsd;
-                if (rsd.new_enu_found) {
-                    pout << "  +";
-                }
-                pout << std::endl;
+                pout << rsd << std::endl;
             }
         }
     }

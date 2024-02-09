@@ -145,8 +145,6 @@ struct radial_solution_descriptor
 
     /// Automatically determine energy.
     int auto_enu;
-
-    bool new_enu_found{false};
 };
 
 inline std::ostream&
