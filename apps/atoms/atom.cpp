@@ -580,7 +580,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     core_radius = args.value<double>("rmt", core_radius);
 
     /* good number of MT points */
-    int nrmt{500};
+    int nrmt = args.value<int>("nrmt", 600);
 
     std::cout << "minimum MT radius : " << ffmt(12, 6) << core_radius << std::endl;
 
@@ -954,6 +954,7 @@ main(int argn, char** argv)
     args.register_key("--num_points=", "{int} number of radial grid points");
     args.register_key("--rmax=", "{double} maximum value of radial grid");
     args.register_key("--rmt=", "{double} set specific MT radius");
+    args.register_key("--nrmt=", "{int} number of radial grid points");
     args.parse_args(argn, argv);
 
     if (argn == 1 || args.exist("help")) {
