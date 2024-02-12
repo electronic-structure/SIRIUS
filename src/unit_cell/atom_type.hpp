@@ -428,6 +428,12 @@ class Atom_type
         free_atom_radial_grid_ = std::move(rgrid__);
     }
 
+    inline auto const&
+    atomic_level(int idx) const
+    {
+        return atomic_levels_[idx];
+    }
+
     /// Add augmented-wave descriptor.
     inline void
     add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
@@ -802,12 +808,6 @@ class Atom_type
         return static_cast<int>(atomic_levels_.size());
     }
 
-    inline atomic_level_descriptor const&
-    atomic_level(int idx) const
-    {
-        return atomic_levels_[idx];
-    }
-
     inline double
     num_core_electrons() const
     {
@@ -839,6 +839,12 @@ class Atom_type
     free_atom_density(std::vector<double> rho__)
     {
         free_atom_density_ = rho__;
+    }
+
+    inline void
+    aw_default_l(radial_solution_descriptor_set aw_default_l__)
+    {
+        aw_default_l_ = aw_default_l__;
     }
 
     inline int

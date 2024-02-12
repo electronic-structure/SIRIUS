@@ -19,21 +19,36 @@ test_radial_solver(cmd_args const& args__)
     }
 
     Radial_solver rsolver(zn, v, rgrid);
-    std::vector<double> p, rdudr;
-    std::array<double, 2> uderiv;
-    rsolver.solve(rel, dme, l, enu, p, rdudr, uderiv);
+    std::vector<double> p_ref, rdudr_ref;
+    std::array<double, 2> uderiv_ref;
+    rsolver.solve(rel, dme, l, enu, p_ref, rdudr_ref, uderiv_ref);
 
-    std::stringstream s;
-    s << "radial_functions_" << args__.value<std::string>("rel", "none") << ".dat";
-    FILE* fout = fopen(s.str().c_str(), "w");
-
-    for (int ir = 0; ir < rgrid.num_points(); ir++) {
-        fprintf(fout, "%f ", rgrid[ir]);
-        fprintf(fout, "%f ", p[ir]);
-        fprintf(fout, "%f ", rdudr[ir]);
-        fprintf(fout, "\n");
+    #pragma omp parallel for
+    for (int i = 0; i < 1000; i++) {
+        std::vector<double> p, rdudr;
+        std::array<double, 2> uderiv;
+        rsolver.solve(rel, dme, l, enu, p, rdudr, uderiv);
+        if ((uderiv[0] != uderiv_ref[0]) || (uderiv[1] != uderiv_ref[1])) {
+            std::cout << "wrong uderiv" << std::endl;
+        }
+        for (int j = 0; j < rgrid.num_points(); j++) {
+            if (p[j] != p_ref[j]) {
+                std::cout << "wrong p" << std::endl;
+            }
+        }
     }
-    fclose(fout);
+
+    // std::stringstream s;
+    // s << "radial_functions_" << args__.value<std::string>("rel", "none") << ".dat";
+    // FILE* fout = fopen(s.str().c_str(), "w");
+
+    // for (int ir = 0; ir < rgrid.num_points(); ir++) {
+    //     fprintf(fout, "%f ", rgrid[ir]);
+    //     fprintf(fout, "%f ", p[ir]);
+    //     fprintf(fout, "%f ", rdudr[ir]);
+    //     fprintf(fout, "\n");
+    // }
+    // fclose(fout);
 
     return 0;
 }

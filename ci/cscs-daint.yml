@@ -182,7 +182,7 @@ gpu k-point parallel:
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 4
-    SLURM_TIMELIMIT: "30:00"
+    SLURM_TIMELIMIT: "60:00"
     TEST_COMMAND: ctest -L gpu_k_point_parallel
     USE_MPI: 'YES'
 

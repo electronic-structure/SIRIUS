@@ -43,3 +43,5 @@ salloc -N4 -C gpu --time=60:00 -A csstaff
 | test27 | LiCoO2  | \[2, 2, 2\] | USPP <br> Hubbard correction | GGA (PBE-sol) | non-magnetic | - Hubbard U+V correction <br> - full orthogonalization of atomic orbitals <br> - full treatment of Hubbard correction |
 | test28 | LiCoO2  | \[2, 2, 2\] | USPP <br> Hubbard correction | GGA (PBE-sol) | non-magnetic | - Hubbard U+V correction <br> - full orthogonalization of atomic orbitals <br> - simplified treatment of Hubbard correction |
 | test29 | NiO     | \[2, 2, 2\] | - Ni: USPP <br> - O: PAW <br> Hubbard correction |  GGA (PBE-sol) | AFM collinear | - Hubbard U+V correction |
+| test30 | NiO     | \[2, 2, 2\] | USPP <br> Hubbard correction | GGA (PBE) | non-magnetic | - Constrained Hubbard potential <br> - full orthogonalization of atomic orbitals |
+| test31 | H       | \[2, 2, 2\] | full-potential | LDA (PZ) | non-magnetic | - test of Koelling-Harmon radial solver |

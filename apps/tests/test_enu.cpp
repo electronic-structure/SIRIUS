@@ -19,6 +19,15 @@ test_enu(cmd_args const& args__)
     }
 
     Enu_finder e(rel, zn, n, l, rgrid, v, -0.1);
+    auto enu_ref = e.enu();
+
+    #pragma omp parallel for
+    for (int i = 0; i < 100; i++) {
+        auto enu1 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1).enu();
+        if (enu1 != enu_ref) {
+            std::cout << "wrong enu : " << enu1 << " " << enu_ref << std::endl;
+        }
+    }
 
     printf("Z: %i n: %i l: %i band energies (bottom, top, enu): %12.6f %12.6f %12.6f\n", zn, n, l, e.ebot(), e.etop(),
            e.enu());
