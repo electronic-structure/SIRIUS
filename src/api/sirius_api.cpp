@@ -5389,7 +5389,7 @@ sirius_get_total_magnetization(void* const* handler__, double* mag__, int* error
                 total_mag.zero();
                 for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
                     auto result  = gs.density().mag(j).integrate();
-                    total_mag[j] = std::get<0>(result);
+                    total_mag[j] = result.total;
                 }
                 if (gs.ctx().num_mag_dims() == 3) {
                     /* swap z and x and change order from z,x,y to x,z,y */

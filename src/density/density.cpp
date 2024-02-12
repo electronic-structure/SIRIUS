@@ -1027,7 +1027,7 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__, de
 void
 Density::normalize()
 {
-    double nel   = std::get<0>(rho().integrate());
+    double nel   = rho().integrate().total;
     double scale = unit_cell_.num_electrons() / nel;
 
     /* renormalize interstitial part */
@@ -1051,7 +1051,7 @@ Density::check_num_electrons() const
 {
     double nel{0};
     if (ctx_.full_potential()) {
-        nel = std::get<0>(rho().integrate());
+        nel = rho().integrate().total;
     } else {
         nel = rho().rg().f_0().real() * unit_cell_.omega();
     }
@@ -1752,10 +1752,10 @@ Density::get_magnetisation() const
 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         auto result       = this->mag(j).integrate();
-        total_mag[idx[j]] = std::get<0>(result);
-        it_mag[idx[j]]    = std::get<1>(result);
+        total_mag[idx[j]] = result.total;
+        it_mag[idx[j]]    = result.rg;
         if (ctx_.full_potential()) {
-            auto v = std::get<2>(result);
+            auto v = result.mt;
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 mt_mag[ia][idx[j]] = v[ia];
             }
@@ -1947,9 +1947,9 @@ Density::print_info(std::ostream& out__) const
 {
     auto result = this->rho().integrate();
 
-    auto total_charge = std::get<0>(result);
-    auto it_charge    = std::get<1>(result);
-    auto mt_charge    = std::get<2>(result);
+    auto total_charge = result.total;
+    auto it_charge    = result.rg;
+    auto mt_charge    = result.mt;
 
     auto result_mag = this->get_magnetisation();
     auto total_mag  = std::get<0>(result_mag);
