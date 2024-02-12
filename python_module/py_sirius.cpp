@@ -167,7 +167,7 @@ PYBIND11_MODULE(py_sirius, m)
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) {
             std::cout << "loading SIRIUS python module, initialize MPI\n";
-       }
+        }
     }
     auto atexit = py::module::import("atexit");
     atexit.attr("register")(py::cpp_function([]() {
@@ -362,7 +362,8 @@ PYBIND11_MODULE(py_sirius, m)
                 return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
             },
             py::return_value_policy::reference_internal)
-        // .def(py::self * py::self, [](const r3::matrix<double>& m1, const r3::matrix<double>& m2) { return dot(m1, m2); })
+        // .def(py::self * py::self, [](const r3::matrix<double>& m1, const r3::matrix<double>& m2) { return dot(m1,
+        // m2); })
         .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
         .def("__mul__",
              [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
@@ -534,7 +535,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
         .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
         .def("weight", &K_point<double>::weight)
-        .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions), py::return_value_policy::reference_internal);
+        .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
+             py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -616,7 +618,8 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Force>(m, "Force")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
-        .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal, "add_scf_corr"_a)
+        .def("calc_forces_total", py::overload_cast<bool>(&Force::calc_forces_total),
+             py::return_value_policy::reference_internal, "add_scf_corr"_a)
         .def_property_readonly("ewald", &Force::forces_ewald)
         .def_property_readonly("hubbard", &Force::forces_hubbard)
         .def_property_readonly("vloc", &Force::forces_vloc)
@@ -680,18 +683,21 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<sddk::mdarray<double, 2>>(m, "mdarray2")
         .def("on_device", &sddk::mdarray<double, 2>::on_device)
-        .def("copy_to_host", [](sddk::mdarray<double, 2>& mdarray) { mdarray.copy_to(sddk::memory_t::host, 0, mdarray.size(1));
-        }) .def("__array__", [](py::object& obj) {
+        .def("copy_to_host",
+             [](sddk::mdarray<double, 2>& mdarray) { mdarray.copy_to(sddk::memory_t::host, 0, mdarray.size(1)); })
+        .def("__array__", [](py::object& obj) {
             sddk::mdarray<double, 2>& arr = obj.cast<sddk::mdarray<double, 2>&>();
-            int nrows               = arr.size(0);
-            int ncols               = arr.size(1);
+            int nrows                     = arr.size(0);
+            int ncols                     = arr.size(1);
             return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
                                        arr.at(sddk::memory_t::host), obj);
         });
 
     py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
 
-    py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", sddk::memory_t::device).value("host", sddk::memory_t::host);
+    py::enum_<sddk::memory_t>(m, "MemoryEnum")
+        .value("device", sddk::memory_t::device)
+        .value("host", sddk::memory_t::host);
     py::enum_<wf::copy_to>(m, "CopyEnum")
         .value("none", wf::copy_to::none)
         .value("device", wf::copy_to::device)
@@ -705,13 +711,15 @@ PYBIND11_MODULE(py_sirius, m)
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::device_memory_guard>(m, "device_memory_guard");
 
-    py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m, "Wave_functions_base")
+    py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m,
+                                                                                                  "Wave_functions_base")
         .def("copy_to", &wf::Wave_functions_base<double>::copy_to)
         .def("allocate", &wf::Wave_functions_base<double>::allocate)
         .def("memory_guard", &wf::Wave_functions<double>::memory_guard, "mem"_a, "copy_to"_a)
         .def("deallocate", &wf::Wave_functions_base<double>::deallocate);
 
-    py::class_<wf::Wave_functions<double>, wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
+    py::class_<wf::Wave_functions<double>, wf::Wave_functions_base<double>,
+               std::shared_ptr<wf::Wave_functions<double>>>(m, "Wave_functions")
         .def(py::init<std::shared_ptr<fft::Gvec>, wf::num_mag_dims, wf::num_bands, sddk::memory_t>(), "gvecp"_a,
              "num_mag_dims"_a, "mum_bands"_a, "memory_t"_a)
         .def("num_sc", &wf::Wave_functions<double>::num_sc)

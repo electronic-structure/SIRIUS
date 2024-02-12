@@ -182,7 +182,11 @@ class Force
         return forces_ibs_;
     }
 
-    sddk::mdarray<double, 2> const& calc_forces_total(bool add_scf_corr=true);
+    sddk::mdarray<double, 2> const& calc_forces_total(bool add_scf_corr);
+
+    sddk::mdarray<double, 2> const& calc_forces_total() {
+        return calc_forces_total(true);
+    }
 
     inline sddk::mdarray<double, 2> const& forces_total() const
     {
