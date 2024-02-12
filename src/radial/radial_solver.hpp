@@ -263,7 +263,9 @@ class Radial_solver
 
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
                     f[1] = (V - p->enu + ll_half / (M0 * std::pow(x, 2)) -
-                           ll_half * sq_alpha_half * p->enu / std::pow(x * M0, 2)) * y[0] - y[1] / x + chi_q;
+                            ll_half * sq_alpha_half * p->enu / std::pow(x * M0, 2)) *
+                                   y[0] -
+                           y[1] / x + chi_q;
                     break;
                 }
                 case relativity_t::dirac: {
@@ -321,7 +323,7 @@ class Radial_solver
              *   ZORA case:
              *     same as scalar-relativistic with M(x) = 1 - 0.5 * alpha^2 * V(x)
              */
-            double xinv = std::pow(x, -1);
+            double xinv  = std::pow(x, -1);
             double x2inv = std::pow(x, -2);
             switch (rel) {
                 case relativity_t::none: {
@@ -331,7 +333,8 @@ class Radial_solver
                     gsl_matrix_set(m, 1, 1, -xinv);
 
                     dfdx[0] = -y[0] * x2inv;
-                    dfdx[1] = y[0] * (ve_deriv + p->zn * x2inv - ll_half * 2.0 * xinv * x2inv) + y[1] * x2inv + chi_q_deriv;
+                    dfdx[1] = y[0] * (ve_deriv + p->zn * x2inv - ll_half * 2.0 * xinv * x2inv) + y[1] * x2inv +
+                              chi_q_deriv;
                     break;
                 }
                 case relativity_t::koelling_harmon:
@@ -345,7 +348,9 @@ class Radial_solver
 
                     dfdx[0] = 2 * y[1] * sq_alpha_half * M_deriv - y[0] * x2inv + chi_p_deriv;
                     dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M * std::pow(x, 3)) -
-                               M_deriv * ll_half / std::pow(x * M, 2)) * y[0] + y[1] * x2inv + chi_q_deriv;
+                               M_deriv * ll_half / std::pow(x * M, 2)) *
+                                      y[0] +
+                              y[1] * x2inv + chi_q_deriv;
                     break;
                 }
                 case relativity_t::iora: {
@@ -358,7 +363,8 @@ class Radial_solver
 
                     dfdx[0] = -y[0] * x2inv + chi_p_deriv;
                     dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M0 * std::pow(x, 3)) +
-                               2 * sq_alpha_half * ll_half * p->enu / (std::pow(x * M0, 2) * x)) * y[0] +
+                               2 * sq_alpha_half * ll_half * p->enu / (std::pow(x * M0, 2) * x)) *
+                                      y[0] +
                               y[1] * x2inv + chi_q_deriv;
                     break;
                 }
