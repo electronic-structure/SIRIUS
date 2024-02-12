@@ -709,15 +709,16 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
         }
     }
 
-    // if (lo_type.find("lo4") != std::string::npos) {
-    //     for (int n = 1; n <= 6; n++) {
-    //         for (int l = 0; l < n; l++) {
-    //             a.add_lo_descriptor(idxlo, n, l, 0.15, 0, 1);
-    //             a.add_lo_descriptor(idxlo, n, l, 0.15, 1, 1);
-    //             idxlo++;
-    //         }
-    //     }
-    // }
+    if (lo_type.find("lo4") != std::string::npos) {
+        for (int n = 1; n <= 6; n++) {
+            for (int l = 0; l < n; l++) {
+                for (int dme : {0, 1}) {
+                    a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                }
+                idxlo++;
+            }
+        }
+    }
 
     std::vector<double> fa_rho(a.radial_grid().num_points());
 
@@ -786,157 +787,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
         std::cout << "l: " << a1.lo_descriptor(j).am.l() << ", basis: " << s << std::endl;
     }
 
-    std::ofstream ofs(a.symbol() + std::string(".json"), std::ofstream::out | std::ofstream::trunc);
-    ofs << dict.dump(4);
-    ofs.close();
-
-    // if (write_to_xml)
-    //{
-    //     std::string fname = a.symbol() + std::string(".xml");
-    //     FILE* fout = fopen(fname.c_str(), "w");
-    //     fprintf(fout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    //     fprintf(fout, "<spdb>\n");
-    //     fprintf(fout, "  <sp chemicalSymbol=\"%s\" name=\"%s\" z=\"%f\" mass=\"%f\">\n", a.symbol().c_str(),
-    //     a.name().c_str(), -1.0 * a.zn(), a.mass()); fprintf(fout, "    <muffinTin rmin=\"%e\" radius=\"%f\"
-    //     rinf=\"%f\" radialmeshPoints=\"%i\"/>\n", 1e-6, 2.0, rinf, 1000);
-
-    //    for (int ist = 0; ist < a.num_atomic_levels(); ist++)
-    //    {
-    //        std::string str_core = (enu[ist] < core_cutoff_energy) ? "true" : "false";
-
-    //        fprintf(fout, "      <atomicState n=\"%i\" l=\"%i\" kappa=\"%i\" occ=\"%f\" core=\"%s\"/>\n",
-    //                a.atomic_level(ist).n,
-    //                a.atomic_level(ist).l,
-    //                a.atomic_level(ist).k,
-    //                a.atomic_level(ist).occupancy,
-    //                str_core.c_str());
-    //    }
-    //    fprintf(fout, "      <basis>\n");
-    //    fprintf(fout, "        <default type=\"lapw\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-    //    for (int l = 0; l < 4; l++)
-    //    {
-    //        if (n_v[l].size() == 1)
-    //        {
-    //            int n = n_v[l][0];
-
-    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //            fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //            e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\"
-    //            searchE=\"false\"/>\n", e_nl_v(n, l)); fprintf(fout, "        </lo>\n");
-
-    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //            e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\"
-    //            searchE=\"false\"/>\n", e_nl_v(n, l)); fprintf(fout, "        </lo>\n");
-    //
-    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //            e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\"
-    //            searchE=\"false\"/>\n", e_nl_v(n, l)); fprintf(fout, "        </lo>\n");
-    //        }
-    //        if (n_v[l].size() > 1)
-    //        {
-    //            for (size_t i = 0; i < n_v[l].size() - 1; i++)
-    //            {
-    //                int n = n_v[l][i];
-    //                int n1 = n_v[l][i + 1];
-
-    //                fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //                e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\"
-    //                searchE=\"false\"/>\n", e_nl_v(n, l)); fprintf(fout, "        </lo>\n");
-
-    //                fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //                e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\"
-    //                searchE=\"false\"/>\n", e_nl_v(n, l)); fprintf(fout, "        </lo>\n");
-    //
-    //                fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //                e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\"
-    //                searchE=\"false\"/>\n", e_nl_v[n1][l]); fprintf(fout, "        </lo>\n");
-    //            }
-    //            int n = n_v[l].back();
-    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //            fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //            e_nl_v(n, l)); fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\"
-    //            searchE=\"false\"/>\n", e_nl_v(n, l)); fprintf(fout, "        </lo>\n");
-    //        }
-
-    //        //if (n_v[l].size())
-    //        //    fprintf(fout, "        <custom l=\"%i\" type=\"lapw\" trialEnergy=\"%f\" searchE=\"false\"/>\n", l,
-    //        e_nl_v[n_v[l].front()][l]);
-
-    //        //for (int n = 1; n <= 7; n++)
-    //        //{
-    //        //    if (nl_v[n][l])
-    //        //    {
-    //        //        fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        //        fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //        e_nl_v(n, l));
-    //        //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //        e_nl_v(n, l));
-    //        //        fprintf(fout, "        </lo>\n");
-
-    //        //        //if (e_nl_v(n, l) > -5.0)
-    //        //        //{
-    //        //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //        e_nl_v(n, l));
-    //        //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //        e_nl_v(n, l));
-    //        //            fprintf(fout, "        </lo>\n");
-    //        //        //}
-    //        //
-    //        //        //if (e_nl_v(n, l) > -1.0)
-    //        //        //{
-    //        //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //        e_nl_v(n, l));
-    //        //            fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n",
-    //        e_nl_v(n, l));
-    //        //            fprintf(fout, "        </lo>\n");
-    //        //        //}
-
-    //        //        //fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        //        //fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n",
-    //        e_nl_v(n, l));
-    //        //        //fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"true\"/>\n",
-    //        e_nl_v(n, l));
-    //        //        //fprintf(fout, "        </lo>\n");
-    //        //        //
-    //        //        //if (e_nl_v(n, l) < -1.0)
-    //        //        //{
-    //        //        //    fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\"
-    //        searchE=\"false\"/>\n");
-    //        //        //    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\"
-    //        searchE=\"false\"/>\n");
-    //        //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n",
-    //        e_nl_v(n, l));
-    //        //        //    fprintf(fout, "        </lo>\n");
-    //        //        //}
-    //        //    }
-    //        //}
-    //    }
-    //    for (int l = lmax + 1; l <= lmax + 3; l++)
-    //    {
-    //        fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-    //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-    //        fprintf(fout, "        </lo>\n");
-
-    //        fprintf(fout, "        <lo l=\"%i\">\n", l);
-    //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-    //        fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-    //        fprintf(fout, "        </lo>\n");
-    //    }
-    //    fprintf(fout, "      </basis>\n");
-    //    fprintf(fout, "  </sp>\n");
-    //    fprintf(fout, "</spdb>\n");
-
-    //    fclose(fout);
-    //}
+    std::ofstream(a.symbol() + std::string(".json"), std::ofstream::out | std::ofstream::trunc) << dict.dump(4);
 }
 
 int
@@ -974,6 +825,7 @@ main(int argn, char** argv)
         std::cout << "  lo3  : two 2nd order high angular momentum local orbitals composed of {u_l(r, E=0.15), \\dot "
                      "u_l(e, E=0.15)}"
                   << std::endl;
+        std::cout << "  lo4  : same as lo1 for n <= 6" << std::endl;
         std::cout << "         and {\\dot u_l(r, E=0.15), \\ddot u_l(e, E=0.15)}" << std::endl;
         std::cout << "  LO1  : 3rd order valence local orbital composed of {u_l(r, E=0.15), \\dot u_l(r, E=0.15), "
                      "u_l(r, E_l)}"

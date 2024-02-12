@@ -253,7 +253,7 @@ class Radial_solver
                     /* p'(x) = 2 * M(x) * q(x) + p(x) / x + chi_p(x) */
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
                     /* q'(x) = (V(x) - enu + l * (l + 1) / 2 / M(x) / x^2) * p(x) - q(x) / x + chi_q(x) */
-                    f[1] = (V - p->enu + ll_half / M / x / x) * y[0] - y[1] / x + chi_q;
+                    f[1] = (V - p->enu + ll_half / (M * std::pow(x, 2))) * y[0] - y[1] / x + chi_q;
                     break;
                 }
                 case relativity_t::iora: {
@@ -262,9 +262,8 @@ class Radial_solver
                     double M0      = rel_mass<relativity_t::zora>(p->enu, V);
 
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
-                    f[1] = (V - p->enu + ll_half / x / x / M0 - ll_half * sq_alpha_half * p->enu / x / x / M0 / M0) *
-                                   y[0] -
-                           y[1] / x + chi_q;
+                    f[1] = (V - p->enu + ll_half / (M0 * std::pow(x, 2)) -
+                           ll_half * sq_alpha_half * p->enu / std::pow(x * M0, 2)) * y[0] - y[1] / x + chi_q;
                     break;
                 }
                 case relativity_t::dirac: {
@@ -322,57 +321,55 @@ class Radial_solver
              *   ZORA case:
              *     same as scalar-relativistic with M(x) = 1 - 0.5 * alpha^2 * V(x)
              */
+            double xinv = std::pow(x, -1);
+            double x2inv = std::pow(x, -2);
             switch (rel) {
                 case relativity_t::none: {
-                    gsl_matrix_set(m, 0, 0, 1.0 / x);
+                    gsl_matrix_set(m, 0, 0, xinv);
                     gsl_matrix_set(m, 0, 1, 2.0);
-                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half / x / x);
-                    gsl_matrix_set(m, 1, 1, -1.0 / x);
+                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half * x2inv);
+                    gsl_matrix_set(m, 1, 1, -xinv);
 
-                    dfdx[0] = -y[0] / x / x;
-                    dfdx[1] =
-                            y[0] * (ve_deriv + p->zn / x / x - ll_half * 2.0 / x / x / x) + y[1] / x / x + chi_q_deriv;
+                    dfdx[0] = -y[0] * x2inv;
+                    dfdx[1] = y[0] * (ve_deriv + p->zn * x2inv - ll_half * 2.0 * xinv * x2inv) + y[1] * x2inv + chi_q_deriv;
                     break;
                 }
                 case relativity_t::koelling_harmon:
                 case relativity_t::zora: {
-                    gsl_matrix_set(m, 0, 0, 1.0 / x);
+                    gsl_matrix_set(m, 0, 0, xinv);
                     gsl_matrix_set(m, 0, 1, 2.0 * M);
-                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half / M / x / x);
+                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half / (M * std::pow(x, 2)));
                     gsl_matrix_set(m, 1, 1, -1.0 / x);
 
-                    double M_deriv = sq_alpha_half * (-p->zn / x / x - ve_deriv);
+                    double M_deriv = sq_alpha_half * (-p->zn * x2inv - ve_deriv);
 
-                    dfdx[0] = 2 * y[1] * sq_alpha_half * M_deriv - y[0] / x / x + chi_p_deriv;
-                    dfdx[1] = (ve_deriv + p->zn / x / x - 2 * ll_half / x / x / x / M -
-                               M_deriv * ll_half / x / x / M / M) *
-                                      y[0] +
-                              y[1] / x / x + chi_q_deriv;
+                    dfdx[0] = 2 * y[1] * sq_alpha_half * M_deriv - y[0] * x2inv + chi_p_deriv;
+                    dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M * std::pow(x, 3)) -
+                               M_deriv * ll_half / std::pow(x * M, 2)) * y[0] + y[1] * x2inv + chi_q_deriv;
                     break;
                 }
                 case relativity_t::iora: {
-                    gsl_matrix_set(m, 0, 0, 1.0 / x);
+                    gsl_matrix_set(m, 0, 0, xinv);
                     gsl_matrix_set(m, 0, 1, 2.0 * M);
                     gsl_matrix_set(m, 1, 0,
-                                   V - p->enu + ll_half / M0 / x / x -
-                                           ll_half * sq_alpha_half * p->enu / x / x / M0 / M0);
-                    gsl_matrix_set(m, 1, 1, -1.0 / x);
+                                   V - p->enu + ll_half / (M0 * std::pow(x, 2)) -
+                                           ll_half * sq_alpha_half * p->enu / std::pow(x * M0, 2));
+                    gsl_matrix_set(m, 1, 1, -xinv);
 
-                    dfdx[0] = -y[0] / x / x + chi_p_deriv;
-                    dfdx[1] = (ve_deriv + p->zn / x / x - 2 * ll_half / x / x / x / M0 +
-                               2 * sq_alpha_half * ll_half * p->enu / x / x / x / M0 / M0) *
-                                      y[0] +
-                              y[1] / x / x + chi_q_deriv;
+                    dfdx[0] = -y[0] * x2inv + chi_p_deriv;
+                    dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M0 * std::pow(x, 3)) +
+                               2 * sq_alpha_half * ll_half * p->enu / (std::pow(x * M0, 2) * x)) * y[0] +
+                              y[1] * x2inv + chi_q_deriv;
                     break;
                 }
                 case relativity_t::dirac: {
-                    gsl_matrix_set(m, 0, 0, -p->kappa / x);
+                    gsl_matrix_set(m, 0, 0, -p->kappa * xinv);
                     gsl_matrix_set(m, 0, 1, alpha * (p->enu - V + 2 * rest_energy));
                     gsl_matrix_set(m, 1, 0, -alpha * (p->enu - V));
-                    gsl_matrix_set(m, 1, 1, p->kappa / x);
+                    gsl_matrix_set(m, 1, 1, p->kappa * xinv);
 
-                    dfdx[0] = alpha * y[1] * (-ve_deriv - p->zn / x / x) + y[0] * p->kappa / x / x;
-                    dfdx[1] = -alpha * y[0] * (-ve_deriv - p->zn / x / x) - y[1] * p->kappa / x / x;
+                    dfdx[0] = alpha * y[1] * (-ve_deriv - p->zn * x2inv) + y[0] * p->kappa * x2inv;
+                    dfdx[1] = -alpha * y[0] * (-ve_deriv - p->zn * x2inv) - y[1] * p->kappa * x2inv;
 
                     break;
                 }
@@ -561,7 +558,7 @@ class Radial_solver
                 case relativity_t::iora: {
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
                     dqdr__[i] = (V - enu__ + v1 / M0 -
-                                 radial_solver_local::sq_alpha_half * ll_half * enu__ / M0 / M0 / x / x) *
+                                 radial_solver_local::sq_alpha_half * ll_half * enu__ / std::pow(M0 * x, 2)) *
                                         p__[i] -
                                 q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
@@ -634,7 +631,7 @@ class Radial_solver
                             double M = 1 + 0.5 * sq_alpha * (enu__ - V);
                             chi_p(i) = 2 * sq_alpha * q[j - 1][i];
                             chi_q(i) = -2 * p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2)) +
-                                       p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / std::pow(M * x, 2) / M);
+                                       p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / (M * std::pow(M * x, 2)));
                         }
                     } else {
                         std::stringstream s;
