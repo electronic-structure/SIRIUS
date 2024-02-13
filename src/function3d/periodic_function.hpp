@@ -33,6 +33,13 @@
 
 namespace sirius {
 
+template <typename T>
+struct periodic_function_integrate_t {
+    T total{0};
+    T rg{0};
+    std::vector<T> mt;
+};
+
 /// Representation of the periodical function on the muffin-tin geometry.
 /** Inside each muffin-tin the spherical expansion is used:
  *   \f[
@@ -143,14 +150,7 @@ class Periodic_function
     {
         PROFILE("sirius::Periodic_function::integrate");
 
-        struct {
-            T total;
-            T rg;
-            std::vector<T> mt;
-        } result;
-
-
-        result.rg = 0;
+        periodic_function_integrate_t<T> result;
 
         if (!ctx_.full_potential()) {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
