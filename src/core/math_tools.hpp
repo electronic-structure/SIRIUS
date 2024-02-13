@@ -25,6 +25,11 @@
 #ifndef __MATH_TOOLS_HPP__
 #define __MATH_TOOLS_HPP__
 
+#include <cmath>
+#include <complex>
+#include <iomanip>
+#include "core/rte/rte.hpp"
+
 namespace sirius {
 
 inline auto
