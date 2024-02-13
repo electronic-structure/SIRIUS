@@ -34,7 +34,8 @@
 namespace sirius {
 
 template <typename T>
-struct periodic_function_integrate_t {
+struct periodic_function_integrate_t
+{
     T total{0};
     T rg{0};
     std::vector<T> mt;

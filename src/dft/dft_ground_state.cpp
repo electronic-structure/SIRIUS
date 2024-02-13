@@ -403,8 +403,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     auto dict = serialize();
     if (ctx_.num_mag_dims()) {
-        dict["magnetisation"] = {};
-        auto m = density_.get_magnetisation();
+        dict["magnetisation"]          = {};
+        auto m                         = density_.get_magnetisation();
         dict["magnetisation"]["total"] = std::vector<double>({m[0].total, m[1].total, m[2].total});
         std::vector<std::vector<double>> v;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {

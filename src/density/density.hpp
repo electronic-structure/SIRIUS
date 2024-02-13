@@ -815,7 +815,6 @@ copy(Density const& src__, Density& dest__)
 }
 
 template <bool add_pseudo_core__>
-//inline std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2>
 inline auto
 get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double add_delta_mag_xc__ = 0.0)
 {
