@@ -45,8 +45,10 @@ if(NOT TARGET sirius::sirius)
   endif()
 
   if(@SIRIUS_USE_MKL@)
-    set(SIRIUS_USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
-    find_package(MKL ${mode})
+    set(MKL_INTERFACE "@MKL_INTERFACE@")
+    set(MKL_THREADING "@MKL_THREADING@")
+    set(MKL_MPI "@MKL_MPI@")
+    find_dependency(MKL CONFIG)
   elseif(@SIRIUS_USE_CRAY_LIBSCI@)
     find_package(CRAY_LIBSCI ${mode})
   else()

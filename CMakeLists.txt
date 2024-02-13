@@ -150,9 +150,8 @@ if (SIRIUS_USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
 
-set(LINALG_LIB "")
+set(SIRIUS_LINALG_LIB "")
 if(SIRIUS_USE_MKL)
-  set(SIRIUS_USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   set(MKL_INTERFACE "lp64" CACHE STRING "")
   set(MKL_THREADING "sequential" CACHE STRING "")
   set(MKL_MPI "mpich" CACHE STRING "")
