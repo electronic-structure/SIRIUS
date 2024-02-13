@@ -120,6 +120,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
   $<TARGET_NAME_IF_EXISTS:CUDA::nvToolsExt>
   $<TARGET_NAME_IF_EXISTS:sirius::roctx>
+  $<TARGET_NAME_IF_EXISTS:sirius::roctracer>
   $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocsolver>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocblas>

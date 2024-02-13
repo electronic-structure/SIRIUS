@@ -207,6 +207,7 @@ if(SIRIUS_USE_ROCM)
   endif()
   if(SIRIUS_USE_NVTX)
     find_package(RocTX REQUIRED)
+    find_package(Roctracer REQUIRED)
   endif()
 
   enable_language(HIP)

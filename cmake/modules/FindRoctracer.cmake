@@ -12,7 +12,7 @@ find_path(SIRIUS_ROCTRACER_INCLUDE_DIR
   PATH_SUFFIXES include include/roctracer
 )
 
-find_package_handle_standard_args(Roctracer "DEFAULT_MSG" SIRIUS_ROCTRACER_LIBRARIES SIRIUS_ROCTRAVER_INCLUDE_DIR)
+find_package_handle_standard_args(Roctracer "DEFAULT_MSG" SIRIUS_ROCTRACER_LIBRARIES SIRIUS_ROCTRACER_INCLUDE_DIR)
 
 if(Roctracer_FOUND AND NOT TARGET sirius::roctracer)
   add_library(sirius::roctracer INTERFACE IMPORTED)
