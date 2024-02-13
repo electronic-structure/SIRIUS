@@ -176,7 +176,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("intel-mkl threads=openmp", when="+openmp ^intel-mkl")
     depends_on("intel-oneapi-mkl threads=openmp", when="+openmp ^intel-oneapi-mkl")
 
-    conflicts("intel-mkl", when="@develop:") # TODO: Change to @7.5.3
+    conflicts("intel-mkl", when="@develop") # TODO: Change to @7.5.3
     # MKLConfig.cmake introduced in 2021.3
     conflicts("intel-oneapi-mkl@:2021.2", when="^intel-oneapi-mkl") 
 
@@ -258,7 +258,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         if spec["blas"].name in INTEL_MATH_LIBRARIES:
             args.append(self.define(cm_label + "USE_MKL", "ON"))
 
-            if spec.satisfies("@develop:"): # TODO: Change to @7.5.3:
+            if spec.satisfies("@develop"): # TODO: Change to @7.5.3:
                 mkl_mapper = {
                     "threading": {
                         "none": "sequential",
