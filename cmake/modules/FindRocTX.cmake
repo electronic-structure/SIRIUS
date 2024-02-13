@@ -5,7 +5,7 @@ include(FindPackageHandleStandardArgs)
 find_library(SIRIUS_ROCTX_LIBRARIES
   NAMES roctx64 roctx
   PATH_SUFFIXES lib
-  DOC "roctracer/roctx libraries list")
+  DOC "roctx libraries list")
 
 find_path(SIRIUS_ROCTX_INCLUDE_DIR
   NAMES roctx.h
