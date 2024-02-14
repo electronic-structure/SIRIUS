@@ -78,89 +78,92 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
     Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
 
-    bool found{true};
-
-    #pragma omp parallel default(shared)
-    {
+    auto compute_all_orders = [&](int l, double enu_shift) -> bool {
         Spline<double> s(atom_type_.radial_grid());
-
         std::vector<double> p;
         std::vector<double> rdudr;
         std::array<double, 2> uderiv;
 
-        #pragma omp for schedule(dynamic, 1)
-        for (int l = 0; l < num_aw_descriptors(); l++) {
-            for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
-                auto rsd = aw_descriptor(l)[order];
+        for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
+            auto rsd = aw_descriptor(l)[order];
 
-                auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
+            auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
 
-                solver.solve(rel__, rsd.dme, rsd.l, rsd.enu, p, rdudr, uderiv);
+            /* integrate radial equation forward and find radial solution */
+            solver.solve(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift, p, rdudr, uderiv);
 
-                /* normalize */
-                for (int ir = 0; ir < nmtp; ir++) {
-                    s(ir) = std::pow(p[ir], 2);
-                }
-                double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+            /* normalize */
+            for (int ir = 0; ir < nmtp; ir++) {
+                s(ir) = std::pow(p[ir], 2);
+            }
+            double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
 
-                for (int ir = 0; ir < nmtp; ir++) {
-                    rf__(ir, idxrf, 0) = p[ir] * norm;
-                    rf__(ir, idxrf, 1) = rdudr[ir] * norm;
-                }
-                sd__(0, idxrf) = norm * p.back() / atom_type_.mt_radius();
-                for (int i : {0, 1}) {
-                    sd__(i + 1, idxrf) = uderiv[i] * norm;
-                }
+            for (int ir = 0; ir < nmtp; ir++) {
+                rf__(ir, idxrf, 0) = p[ir] * norm;
+                rf__(ir, idxrf, 1) = rdudr[ir] * norm;
+            }
+            sd__(0, idxrf) = norm * p.back() / atom_type_.mt_radius();
+            for (int i : {0, 1}) {
+                sd__(i + 1, idxrf) = uderiv[i] * norm;
+            }
 
-                /* orthogonalize to previous radial functions */
-                for (int order1 = 0; order1 < order; order1++) {
-                    auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
-
-                    for (int ir = 0; ir < nmtp; ir++) {
-                        s(ir) = rf__(ir, idxrf, 0) * rf__(ir, idxrf1, 0);
-                    }
-
-                    /* <u_{\nu'}|u_{\nu}> */
-                    double ovlp = s.interpolate().integrate(0);
-
-                    for (int ir = 0; ir < nmtp; ir++) {
-                        rf__(ir, idxrf, 0) -= rf__(ir, idxrf1, 0) * ovlp;
-                        rf__(ir, idxrf, 1) -= rf__(ir, idxrf1, 1) * ovlp;
-                    }
-                    for (int i : {0, 1, 2}) {
-                        sd__(i, idxrf) -= sd__(i, idxrf1) * ovlp;
-                    }
-                }
-
-                /* normalize again */
-                for (int ir = 0; ir < nmtp; ir++) {
-                    s(ir) = std::pow(rf__(ir, idxrf, 0), 2);
-                }
-                norm = s.interpolate().integrate(0);
-
-                if (std::abs(norm) < 1e-10) {
-                    // std::stringstream s;
-                    // s << "AW radial function for atom " << atom_type_.label() << " is linearly dependent" <<
-                    // std::endl
-                    //   << "  order: " << order << std::endl
-                    //   << "      l: " << l << std::endl
-                    //   << "    dme: " << rsd.dme << std::endl
-                    //   << "    enu: " << rsd.enu;
-                    // RTE_THROW(s);
-                    found = false;
-                    break;
-                }
-
-                norm = 1.0 / std::sqrt(norm);
+            /* orthogonalize to previous radial functions */
+            for (int order1 = 0; order1 < order; order1++) {
+                auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
 
                 for (int ir = 0; ir < nmtp; ir++) {
-                    rf__(ir, idxrf, 0) *= norm;
-                    rf__(ir, idxrf, 1) *= norm;
+                    s(ir) = rf__(ir, idxrf, 0) * rf__(ir, idxrf1, 0);
+                }
+
+                /* <u_{\nu'}|u_{\nu}> */
+                double ovlp = s.interpolate().integrate(0);
+
+                for (int ir = 0; ir < nmtp; ir++) {
+                    rf__(ir, idxrf, 0) -= rf__(ir, idxrf1, 0) * ovlp;
+                    rf__(ir, idxrf, 1) -= rf__(ir, idxrf1, 1) * ovlp;
                 }
                 for (int i : {0, 1, 2}) {
-                    sd__(i, idxrf) *= norm;
+                    sd__(i, idxrf) -= sd__(i, idxrf1) * ovlp;
                 }
-            } // order
+            }
+
+            /* normalize again */
+            for (int ir = 0; ir < nmtp; ir++) {
+                s(ir) = std::pow(rf__(ir, idxrf, 0), 2);
+            }
+            norm = s.interpolate().integrate(0);
+
+            /* in case of linear dependency continue to increase energy */
+            if (std::abs(norm) < 1e-8) {
+                return false;
+            }
+
+            norm = 1.0 / std::sqrt(norm);
+
+            for (int ir = 0; ir < nmtp; ir++) {
+                rf__(ir, idxrf, 0) *= norm;
+                rf__(ir, idxrf, 1) *= norm;
+            }
+            for (int i : {0, 1, 2}) {
+                sd__(i, idxrf) *= norm;
+            }
+        } // order
+        return true;
+    };
+
+    bool found{true};
+
+    #pragma omp parallel for schedule(dynamic, 1) default(shared)
+    for (int l = 0; l < num_aw_descriptors(); l++) {
+        /* try to increase linearisation energy several times in order to find linearly independent
+         * radial functions */
+        bool success{false};
+        for (int k = 0; k < 100; k++) {
+            if ((success = compute_all_orders(l, k * 0.5))) {
+                break;
+            }
+        }
+        if (success) {
             /* divide by r */
             for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
                 auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
@@ -168,8 +171,10 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
                     rf__(ir, idxrf, 0) *= atom_type_.radial_grid().x_inv(ir);
                 }
             }
-        } // l
-    }
+        } else {
+            found = false;
+        }
+    } // l
     return found ? 0 : 1;
 }
 
@@ -521,10 +526,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
                                  .enu();
         /* update linearization energy only if its change is above a threshold */
         if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
-            rsd->enu           = new_enu;
-            rsd->new_enu_found = true;
-        } else {
-            rsd->new_enu_found = false;
+            rsd->enu = new_enu;
         }
     }
 }
@@ -542,8 +544,20 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     find_enu(rel__);
 
     auto ierr = generate_aw_radial_functions(rel__, rf, sd);
+    if (ierr) {
+        std::stringstream s;
+        s << "generate_aw_radial_functions() failed for atom class " << id_;
+        RTE_WARNING(s);
+    }
 
-    ierr += generate_lo_radial_functions(rel__, rf);
+    auto ierr1 = generate_lo_radial_functions(rel__, rf);
+    if (ierr1) {
+        std::stringstream s;
+        s << "generate_lo_radial_functions() failed for atom class " << id_;
+        RTE_WARNING(s);
+    }
+
+    ierr += ierr1;
 
     if (!ierr) {
         copy(rf, radial_functions_);
@@ -751,11 +765,7 @@ Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
         for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
             auto& rsd = aw_descriptor(l)[order];
             if (rsd.auto_enu) {
-                pout << rsd; // printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
-                if (rsd.new_enu_found) {
-                    pout << "  +";
-                }
-                pout << std::endl;
+                pout << rsd << std::endl;
             }
         }
     }
@@ -765,12 +775,7 @@ Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
         for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
             auto& rsd = lo_descriptor(idxlo).rsd_set[order];
             if (rsd.auto_enu) {
-                // pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
-                pout << rsd;
-                if (rsd.new_enu_found) {
-                    pout << "  +";
-                }
-                pout << std::endl;
+                pout << rsd << std::endl;
             }
         }
     }

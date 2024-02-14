@@ -165,8 +165,8 @@ class Potential : public Field4D
                              mdarray<double, 3> const& paw_dij__) const;
 
     /// Compute MT part of the potential and MT multipole moments
-    auto
-    poisson_vmt(Periodic_function<double> const& rho__) const
+    inline auto
+    poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__)
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
@@ -176,9 +176,7 @@ class Potential : public Field4D
         for (auto it : unit_cell_.spl_num_atoms()) {
             auto ia = it.i;
 
-            auto qmt_re = poisson_vmt<false>(
-                    unit_cell_.atom(ia), rho__.mt()[ia],
-                    const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->mt()[ia]));
+            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rhomt__[ia], hartree_potential_->mt()[ia]);
 
             SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
         }
@@ -305,7 +303,7 @@ class Potential : public Field4D
 
     /// Solve Poisson equation for a single atom.
     template <bool free_atom, typename T>
-    inline std::vector<T>
+    std::vector<T>
     poisson_vmt(Atom const& atom__, Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
                 Spheric_function<function_domain_t::spectral, T>& vha_mt__) const
     {

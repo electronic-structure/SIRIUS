@@ -159,32 +159,41 @@ Potential::poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__, mdarra
 }
 
 void
-Potential::poisson(Periodic_function<double> const& rho)
+Potential::poisson(Periodic_function<double> const& rho__)
 {
     PROFILE("sirius::Potential::poisson");
+
+    /* pointer to plane-wave coefficients of density */
+    std::complex<double> const* rho_pw = &rho__.rg().f_pw_local(0);
+
+    std::vector<std::complex<double>> rho_pw_modified;
 
     /* in case of full potential we need to do pseudo-charge multipoles */
     if (ctx_.full_potential()) {
 
         /* true multipole moments */
-        auto qmt = poisson_vmt(rho);
+        auto qmt = poisson_vmt(rho__.mt());
 
         if (env::print_checksum()) {
             print_checksum("qmt", qmt.checksum(), ctx_.out());
         }
 
         /* compute multipoles of interstitial density in MT region */
-        auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
+        auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), rho_pw, sbessel_mom_, gvec_ylm_);
 
         if (env::print_checksum()) {
             print_checksum("qit", qit.checksum(), ctx_.out());
         }
 
+        /* copy original rho(G) into temporaty storage */
+        rho_pw_modified.resize(ctx_.gvec().count());
+        std::copy(rho_pw, rho_pw + ctx_.gvec().count(), rho_pw_modified.begin());
+
         /* add contribution from the pseudo-charge */
-        poisson_add_pseudo_pw(qmt, qit, const_cast<std::complex<double>*>(&rho.rg().f_pw_local(0)));
+        poisson_add_pseudo_pw(qmt, qit, rho_pw_modified.data());
 
         if (ctx_.cfg().control().verification() >= 2) {
-            auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), &rho.rg().f_pw_local(0), sbessel_mom_, gvec_ylm_);
+            auto qit = sum_fg_fl_yg(ctx_, ctx_.lmax_rho(), rho_pw_modified.data(), sbessel_mom_, gvec_ylm_);
 
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -196,6 +205,7 @@ Potential::poisson(Periodic_function<double> const& rho)
                 RTE_OUT(ctx_.out()) << "pseudocharge error: " << d << std::endl;
             }
         }
+        rho_pw = rho_pw_modified.data();
     }
 
     /* compute pw coefficients of Hartree potential */
@@ -206,8 +216,7 @@ Potential::poisson(Periodic_function<double> const& rho)
         #pragma omp parallel for
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
             hartree_potential_->rg().f_pw_local(igloc) =
-                    fourpi * rho.rg().f_pw_local(igloc) /
-                    std::pow(ctx_.gvec().gvec_len<index_domain_t::local>(igloc), 2);
+                    fourpi * rho_pw[igloc] / std::pow(ctx_.gvec().gvec_len<index_domain_t::local>(igloc), 2);
         }
     } else {
         /* reference paper:
@@ -222,16 +231,9 @@ Potential::poisson(Periodic_function<double> const& rho)
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
             auto glen = ctx_.gvec().gvec_len<index_domain_t::local>(igloc);
             hartree_potential_->rg().f_pw_local(igloc) =
-                    (fourpi * rho.rg().f_pw_local(igloc) / std::pow(glen, 2)) * (1.0 - std::cos(glen * R_cut));
+                    (fourpi * rho_pw[igloc] / std::pow(glen, 2)) * (1.0 - std::cos(glen * R_cut));
         }
     }
-
-    // if (ctx_.control().print_checksum_) {
-    //     auto z4 = mdarray<std::complex<double>, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-    //     if (ctx_.comm().rank() == 0) {
-    //         DUMP("checksum(vh_pw): %20.14f %20.14f", z4.real(), z4.imag());
-    //     }
-    // }
 
     /* boundary condition for muffin-tins */
     if (ctx_.full_potential()) {
@@ -298,7 +300,7 @@ Potential::poisson(Periodic_function<double> const& rho)
     }
 
     /* compute contribution from the smooth part of Hartree potential */
-    energy_vha_ = sirius::inner(rho, hartree_potential());
+    energy_vha_ = sirius::inner(rho__, hartree_potential());
 
 #ifndef __VHA_AUX
     /* add nucleus potential and contribution to Hartree energy */
@@ -310,7 +312,7 @@ Potential::poisson(Periodic_function<double> const& rho)
             for (int ir = 0; ir < atom.num_mt_points(); ir++) {
                 double r = atom.radial_grid(ir);
                 hartree_potential_->mt()[it.i](0, ir) -= atom.zn() / r / y00;
-                srho(ir) = rho.mt()[it.i](0, ir) * r;
+                srho(ir) = rho__.mt()[it.i](0, ir) * r;
             }
             evha_nuc -= atom.zn() * srho.interpolate().integrate(0) / y00;
         }
