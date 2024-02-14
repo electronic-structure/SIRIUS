@@ -174,6 +174,11 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("amdblis threads=openmp", when="+openmp ^amdblis")
     depends_on("blis threads=openmp", when="+openmp ^blis")
     depends_on("intel-mkl threads=openmp", when="+openmp ^intel-mkl")
+    depends_on("intel-oneapi-mkl threads=openmp", when="+openmp ^intel-oneapi-mkl")
+
+    conflicts("intel-mkl", when="@develop") # TODO: Change to @7.5.3
+    # MKLConfig.cmake introduced in 2021.3
+    conflicts("intel-oneapi-mkl@:2021.2", when="^intel-oneapi-mkl") 
 
     depends_on("wannier90", when="@7.5.0: +wannier90")
     depends_on("wannier90+shared", when="@7.5.0: +wannier90+shared")
@@ -250,8 +255,32 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         if "^cray-libsci" in spec:
             args.append(self.define(cm_label + "USE_CRAY_LIBSCI", "ON"))
 
-        if spec["blas"].name in ["intel-mkl", "intel-parallel-studio", "intel-oneapi-mkl"]:
+        if spec["blas"].name in INTEL_MATH_LIBRARIES:
             args.append(self.define(cm_label + "USE_MKL", "ON"))
+
+            if spec.satisfies("@develop"): # TODO: Change to @7.5.3:
+                mkl_mapper = {
+                    "threading": {
+                        "none": "sequential",
+                        "openmp": "gnu_thread",
+                        "tbb": "tbb_thread",
+                    },
+                    "mpi": {"intel-mpi": "intelmpi", "mpich": "mpich", "openmpi": "openmpi"},
+                }
+
+                mkl_threads = mkl_mapper["threading"][spec["intel-oneapi-mkl"].variants["threads"].value]
+
+                mpi_provider = spec["mpi"].name
+                if mpi_provider in ["mpich", "cray-mpich", "mvapich", "mvapich2"]:
+                    mkl_mpi = mkl_mapper["mpi"]["mpich"]
+                else:
+                    mkl_mpi = mkl_mapper["mpi"][mpi_provider]
+
+                args.extend([
+                    self.define("MKL_INTERFACE", "lp64"),
+                    self.define("MKL_THREADING", mkl_threads),
+                    self.define("MKL_MPI", mkl_mpi)
+                ])
 
         if "+elpa" in spec:
             elpa_incdir = os.path.join(spec["elpa"].headers.directories[0], "elpa")
