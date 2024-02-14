@@ -5,37 +5,47 @@
         "config": {
             "control": {
                 "beta_chunk_size": 256,
+                "beta_on_device": false,
                 "cyclic_block_size": 32,
-                "fft_mode": "serial",
+                "fft_mode": "parallel",
                 "gen_evp_solver_name": "lapack",
-                "memory_usage": "high",
-                "mpi_grid_dims": [
-                    1,
-                    1
-                ],
+                "gvec_chunk_size": 500000,
+                "mpi_grid_dims": [1,1],
                 "num_bands_to_print": 10,
-                "print_checksum": false,
+                "ortho_rf": false,
+                "output": "stdout:",
                 "print_forces": true,
-                "print_hash": false,
-                "print_memory_usage": false,
                 "print_neighbors": false,
-                "print_performance": false,
                 "print_stress": true,
-                "print_timers": true,
                 "processing_unit": "cpu",
                 "reduce_gvec": true,
                 "rmt_max": 2.2,
-                "spglib_tolerance": 0.0001,
+                "save_rf": false,
+                "spglib_tolerance": 1e-06,
                 "std_evp_solver_name": "lapack",
                 "use_second_variation": true,
                 "verbosity": 1,
                 "verification": 0
+            },
+            "hubbard": {
+                "constrained_calculation": false,
+                "constraint_beta_mixing": 0.4,
+                "constraint_error": 1e-06,
+                "constraint_max_iteration": 10,
+                "constraint_method": "energy",
+                "constraint_strength": 1.0,
+                "hubbard_subspace_method": "none",
+                "local": [],
+                "local_constraint": [],
+                "nonlocal": [],
+                "simplified": false
             },
             "iterative_solver": {
                 "converge_by_energy": 1,
                 "early_restart": 0.5,
                 "empty_states_tolerance": 0,
                 "energy_tolerance": 0.01,
+                "extra_ortho": false,
                 "init_eval_old": true,
                 "init_subspace": "lcao",
                 "locking": true,
@@ -57,75 +67,71 @@
                 "type": "anderson",
                 "use_hartree": false
             },
+            "nlcg": {
+                "T": 300.0,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "processing_unit": "",
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
             "parameters": {
                 "auto_rmt": 1,
                 "aw_cutoff": 0.0,
                 "core_relativity": "dirac",
                 "density_tol": 1e-06,
                 "electronic_structure_method": "pseudopotential",
-                "enable_esm": false,
                 "energy_tol": 1e-08,
-                "esm_bc": "pbc",
                 "extra_charge": 0,
                 "gamma_point": false,
                 "gk_cutoff": 6.0,
                 "hubbard_correction": false,
                 "lmax_apw": -1,
-                "lmax_pot": 4,
-                "lmax_rho": 4,
+                "lmax_pot": -1,
+                "lmax_rho": -1,
                 "molecule": false,
-                "ngridk": [
-                    2,
-                    2,
-                    2
-                ],
+                "ngridk": [2,2,2],
                 "nn_radius": -1,
                 "num_bands": -1,
                 "num_dft_iter": 100,
                 "num_fv_states": 40,
                 "num_mag_dims": 0,
+                "precision_gs": "auto",
+                "precision_hs": "fp64",
+                "precision_wf": "fp64",
                 "pw_cutoff": 20.0,
                 "reduce_aux_bf": 0,
-                "shiftk": [
-                    0,
-                    0,
-                    0
-                ],
+                "shiftk": [0,0,0],
                 "smearing": "gaussian",
                 "smearing_width": 0.025,
                 "so_correction": false,
+                "use_ibz": true,
                 "use_scf_correction": true,
                 "use_symmetry": true,
                 "valence_relativity": "zora",
+                "veff_pw_cutoff": 0.0,
                 "vk": [],
                 "xc_dens_tre": -1,
-                "xc_functionals": [
-                    "XC_GGA_X_PBE",
-                    "XC_GGA_C_PBE"
-                ]
+                "xc_functionals": ["XC_GGA_X_PBE","XC_GGA_C_PBE"]
             },
             "settings": {
                 "always_update_wf": true,
                 "auto_enu_tol": 0,
-                "fft_grid_size": [
-                    50,
-                    50,
-                    50
-                ],
+                "fft_grid_size": [50,50,50],
+                "fp32_to_fp64_rms": 0,
                 "itsol_tol_min": 1e-13,
                 "itsol_tol_ratio": 0,
-                "itsol_tol_scale": [
-                    0.1,
-                    0.5
-                ],
-                "min_occupancy": 1e-14,
+                "itsol_tol_scale": [0.1,0.5],
+                "min_occupancy": 1e-05,
                 "mixer_rms_min": 1e-16,
                 "nprii_aug": 20,
                 "nprii_beta": 20,
                 "nprii_rho_core": 20,
                 "nprii_vloc": 200,
                 "radial_grid": "exponential, 1.0",
-                "sht_coverage": 0
+                "sht_coverage": 0,
+                "xc_use_lapl": false
             },
             "unit_cell": {
                 "atom_coordinate_units": "lattice",
@@ -134,177 +140,84 @@
                     "Sr": "sr_lda_v1.uspp.F.UPF.json",
                     "V": "v_lda_v1.4.uspp.F.UPF.json"
                 },
-                "atom_types": [
-                    "Sr",
-                    "V",
-                    "O"
-                ],
+                "atom_types": ["Sr","V","O"],
                 "atoms": {
                     "O": [
-                        [
-                            0.5,
-                            0.0,
-                            0.0
-                        ],
-                        [
-                            0.0,
-                            0.5,
-                            0.0
-                        ],
-                        [
-                            0.0,
-                            0.0,
-                            0.5
-                        ]
+                        [0.5,0.0,0.0],
+                        [0.0,0.5,0.0],
+                        [0.0,0.0,0.5]
                     ],
                     "Sr": [
-                        [
-                            0.5,
-                            0.5,
-                            0.5
-                        ]
+                        [0.5,0.5,0.5]
                     ],
                     "V": [
-                        [
-                            0.0,
-                            0.0,
-                            0.0
-                        ]
+                        [0.0,0.0,0.0]
                     ]
                 },
                 "lattice_vectors": [
-                    [
-                        7.260327248,
-                        0.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        7.260327248,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        7.260327248
-                    ]
+                    [7.260327248,0.0,0.0],
+                    [0.0,7.260327248,0.0],
+                    [0.0,0.0,7.260327248]
                 ],
                 "lattice_vectors_scale": 1.0
+            },
+            "vcsqnm": {
+                "alpha0": 0.01,
+                "eps_subsp": 0.001,
+                "forces_tol": 0.0001,
+                "initial_step_size": -0.1,
+                "lattice_weight": 2.0,
+                "nhist_max": 10,
+                "num_steps": 300,
+                "stress_tol": 1e-05
             }
         },
-        "fft_coarse_grid": [
-            30,
-            30,
-            30
-        ],
-        "mpi_grid": [
-            1,
-            1
-        ],
+        "fft_coarse_grid": [30,30,30],
+        "mpi_grid": [1,1],
         "num_atoms": 5,
         "omega": 382.708923702537
     },
     "counters": {
-        "band_evp_work_count": 492.5075156249998,
-        "local_operator_num_applied": 4507
+        "band_evp_work_count": 711.2660781250006,
+        "local_operator_num_applied": 8153
     },
-    "git_hash": "9ca6392c71c115c2dcebf72e002ed55ce56a7d95",
+    "git_hash": "a0d09bff305c7d162e6e43a792018b99bd33b276",
     "ground_state": {
         "band_gap": 0.0,
         "converged": true,
-        "core_leakage": 0.0,
-        "efermi": 0.42533969826428325,
+        "efermi": 0.4253404170170292,
         "energy": {
             "bxc": 0.0,
-            "core_eval_sum": 0.0,
-            "entropy_sum": -0.01027148917474846,
-            "enuc": 0.0,
-            "eval_sum": -8.122197844128946,
-            "ewald": -114.22303471256379,
-            "exc": -30.179102432863864,
-            "kin": 62.85255824579315,
-            "scf_correction": 2.153480254207807e-05,
-            "total": -156.79038531681005,
-            "veff": -70.9747560899221,
-            "vha": 71.65663720698119,
-            "vloc": -111.05887506629927,
-            "vxc": -31.57251823060936
+            "entropy_sum": -0.010271448712356086,
+            "eval_sum": -8.122181329768267,
+            "ewald": -114.22303473597418,
+            "exc": -30.179100702870933,
+            "kin": 62.85256986733182,
+            "scf_correction": 7.279155056494346e-09,
+            "total": -156.79038533804157,
+            "veff": -70.97475119710009,
+            "vha": 71.65662743684189,
+            "vloc": -111.05886204351877,
+            "vxc": -31.57251659042595
         },
-        "etot_history": [
-            -156.06828060047917,
-            -153.80332581781556,
-            -156.61440606040435,
-            -156.79691632731016,
-            -156.78482901041298,
-            -156.79026152077392,
-            -156.79037339121749,
-            -156.79038484275787,
-            -156.79038513432005,
-            -156.79038527580536,
-            -156.79038530681933,
-            -156.79038531681005
-        ],
+        "etot_history": [-156.06827857641963,-153.80374836546946,-156.6143595770229,-156.79693007441477,-156.78483027662583,-156.79025986900245,-156.79037349719613,-156.79038503034562,-156.7903851948521,-156.79038530672915,-156.7903853274354,-156.79038533401967,-156.7903853364961,-156.79038533742846,-156.79038533780096,-156.79038533794647,-156.79038533799206,-156.79038533802282,-156.79038533802924,-156.7903853380488,-156.79038533803094,-156.79038533803111,-156.7903853380339,-156.79038533803453,-156.79038533802674,-156.79038533803327,-156.79038533803526,-156.79038533803163,-156.7903853380399,-156.79038533804157],
         "forces": [
-            [
-                9.609677654361984e-16,
-                9.40689796827904e-16,
-                1.1274767573432874e-15
-            ],
-            [
-                -1.1476079369216369e-15,
-                -1.4523906083766026e-15,
-                -2.7821120359034502e-15
-            ],
-            [
-                3.602005591468916e-15,
-                -2.1050047991862555e-16,
-                -6.339009902206297e-16
-            ],
-            [
-                -3.4498105214511563e-16,
-                4.043305152232611e-15,
-                -1.1681418515021333e-15
-            ],
-            [
-                -2.541603410397088e-16,
-                -4.968418947514631e-16,
-                3.683227601453856e-15
-            ]
+            [0.0,0.0,0.0],
+            [0.0,0.0,0.0],
+            [0.0,0.0,0.0],
+            [0.0,0.0,0.0],
+            [0.0,0.0,0.0]
         ],
-        "num_scf_iterations": 11,
-        "rms_history": [
-            0.03575990457221733,
-            0.16347798533315186,
-            0.03367088554049394,
-            0.007660019414647781,
-            0.005705499004476083,
-            0.0009372018425913045,
-            0.0003027958925984229,
-            3.470887179568164e-05,
-            1.5183767665060963e-05,
-            7.165415281078854e-06,
-            1.5543269038510216e-06,
-            2.6963658574714354e-07
-        ],
-        "scf_time": 10.366303,
+        "num_scf_iterations": 29,
+        "rho_min": -0.45134651455185854,
+        "rms_history": [0.035759996001183056,0.16347083143551572,0.03367280849138807,0.007658927767700899,0.005716334146330907,0.0009406695744246946,0.0003068511629780159,3.3664201881433996e-05,1.6551703890232554e-05,7.311228347260797e-06,1.4831066076680303e-06,2.1734126825843802e-07,1.34702186554926e-07,4.0999833358805704e-08,2.4816199284299425e-08,2.2255748242158736e-08,1.3402356323391927e-08,9.92106385421278e-09,4.032381736480537e-09,3.174182052979716e-09,1.1706620210166263e-09,1.7455111266387656e-09,7.2437935633636e-10,1.4336701205945096e-09,1.3455975760937222e-09,1.3774567394813967e-09,1.3190218072015866e-09,1.3374177689878663e-09,1.1778943301324438e-09,9.861254186146032e-10],
+        "scf_time": 20.490374061,
         "stress": [
-            [
-                -3.6669035214145426e-05,
-                2.0061770254033705e-35,
-                -2.302211663615283e-26
-            ],
-            [
-                2.0061770254033705e-35,
-                -3.6669035214129814e-05,
-                6.031525289891365e-26
-            ],
-            [
-                -2.302211663615283e-26,
-                6.031525289891365e-26,
-                -3.6669035214082976e-05
-            ]
+            [-3.6583502999036274e-05,-5.855529192896088e-35,-5.385290742219885e-28],
+            [-5.855529192896088e-35,-3.658350299906056e-05,1.884851667994361e-27],
+            [-5.385290742219885e-28,1.884851667994361e-27,-3.6583502999032805e-05]
         ]
     },
     "task": 0,
-    "threads_per_rank": 8
+    "threads_per_rank": 16
 }
