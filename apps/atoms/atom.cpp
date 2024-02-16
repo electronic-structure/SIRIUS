@@ -696,7 +696,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
 
     /* add high angular momentum 2nd order local orbitals with fixed linearisation energies */
     if (lo_type.find("lo3") != std::string::npos) {
-        for (int l = lmax + 1; l < lmax + 4; l++) {
+        for (int l = lmax; l < lmax + 4; l++) {
             for (int dme : {0, 1}) {
                 a.add_lo_descriptor(idxlo, 0, l, 0.15, dme, 0);
             }
@@ -712,10 +712,16 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     if (lo_type.find("lo4") != std::string::npos) {
         for (int n = 1; n <= 6; n++) {
             for (int l = 0; l < n; l++) {
-                for (int dme : {0, 1}) {
-                    a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                if (!nl_c(n, l)) {
+                    for (int dme : {0, 1}) {
+                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                    }
+                    idxlo++;
+                    for (int dme : {1, 2}) {
+                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                    }
+                    idxlo++;
                 }
-                idxlo++;
             }
         }
     }
@@ -823,10 +829,9 @@ main(int argn, char** argv)
                   << std::endl;
         std::cout << "  lo22 : same as lo2 but for {n+1,l} and {n+1,l+1} states" << std::endl;
         std::cout << "  lo3  : two 2nd order high angular momentum local orbitals composed of {u_l(r, E=0.15), \\dot "
-                     "u_l(e, E=0.15)}"
-                  << std::endl;
-        std::cout << "  lo4  : same as lo1 for n <= 6" << std::endl;
+                     "u_l(e, E=0.15)}" << std::endl;
         std::cout << "         and {\\dot u_l(r, E=0.15), \\ddot u_l(e, E=0.15)}" << std::endl;
+        std::cout << "  lo4  : same as lo1 for n <= 6" << std::endl;
         std::cout << "  LO1  : 3rd order valence local orbital composed of {u_l(r, E=0.15), \\dot u_l(r, E=0.15), "
                      "u_l(r, E_l)}"
                   << std::endl;
