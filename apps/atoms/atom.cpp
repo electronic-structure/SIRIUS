@@ -829,7 +829,8 @@ main(int argn, char** argv)
                   << std::endl;
         std::cout << "  lo22 : same as lo2 but for {n+1,l} and {n+1,l+1} states" << std::endl;
         std::cout << "  lo3  : two 2nd order high angular momentum local orbitals composed of {u_l(r, E=0.15), \\dot "
-                     "u_l(e, E=0.15)}" << std::endl;
+                     "u_l(e, E=0.15)}"
+                  << std::endl;
         std::cout << "         and {\\dot u_l(r, E=0.15), \\ddot u_l(e, E=0.15)}" << std::endl;
         std::cout << "  lo4  : same as lo1 for n <= 6" << std::endl;
         std::cout << "  LO1  : 3rd order valence local orbital composed of {u_l(r, E=0.15), \\dot u_l(r, E=0.15), "
