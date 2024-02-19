@@ -146,6 +146,44 @@ write_eig(mdarray<double, 2> const& eigval, int const& num_bands, int const& num
     writeEig.close();
 }
 
+void
+write_nnkp(int const& num_kpts, int const& nntot, mdarray<int,2> const& nnlist, mdarray<int,3> const& nncell)
+{
+    std::ofstream writennkp;
+    writennkp.open("_sirius.nnkp");
+    writennkp << "begin nnkpts\n";
+    writennkp << std::setw(4) << num_kpts << std::endl;
+    for (int ik = 0; ik < num_kpts; ik++) {
+        for (int ib = 0; ib < nntot; ib++) {
+            writennkp << std::setw(6) << ik+1;
+            writennkp << std::setw(6) << nnlist(ik,ib);
+            writennkp << std::setw(7) << nncell(0,ik,ib);
+            writennkp << std::setw(4) << nncell(1,ik,ib);
+            writennkp << std::setw(4) << nncell(2,ik,ib);
+            writennkp << std::endl;
+        }
+    }
+    writennkp << "end nnkpts\n";
+    writennkp.close();
+}
+
+
+void
+write_kpt(mdarray<double,2> const& kpt, int const& num_kpts)
+{
+    std::ofstream writennkp;
+    writennkp.open("_sirius.kpt");
+    writennkp << "begin kpoints\n";
+    writennkp << std::setw(4) << num_kpts << std::endl;
+    for (int ik = 0; ik < num_kpts; ik++) {
+        writennkp << std::setw(6) << kpt(0,ik);
+        writennkp << std::setw(6) << kpt(1,ik);
+        writennkp << std::setw(6) << kpt(2,ik);
+        writennkp << std::endl;
+    }
+    writennkp << "end kpoints\n";
+    writennkp.close();
+}
 /*
  * This function generates the Full Brillouin zone starting from the Irreducible wedge.
  * The equation to satisfy is:
@@ -522,7 +560,6 @@ calculate_Mmn(mdarray<std::complex<double>, 4>& M, K_point_set& kset_fbz, int co
             int ikpb        = nnlist(ik, ib) - 1;
             auto index_ikpb = ikpb_index[ikpb];
             assert((index_ikpb != -1));
-
             std::unique_ptr<wf::Wave_functions<double>> aux_psi_kpb = std::make_unique<wf::Wave_functions<double>>(
                     kset_fbz.get<double>(ik)->gkvec_sptr(), wf::num_mag_dims(0), wf::num_bands(num_bands),
                     kset_fbz.ctx().host_memory_t());
@@ -663,8 +700,9 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     int32_t nntot;                   // output
     int32_t num_nnmax = 12;          // aux variable for max number of neighbors
                                      // fixed, as in pw2wannier or in wannier90 docs
-
+    
     // scalar variables initialization
+    num_wann = ctx_.unit_cell().num_ps_atomic_wf().first;
     num_kpts = kset_fbz.num_kpoints();
     // num_bands_tot = this->get<double>(spl_num_kpoints_[0])->spinor_wave_functions().num_wf();
     num_atoms  = this->ctx().unit_cell().num_atoms();
@@ -692,15 +730,28 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     mdarray<int32_t, 1> exclude_bands({num_bands_tot});   // output
     mdarray<int32_t, 1> proj_s({num_bands_tot});          // output - optional
     mdarray<double, 2> proj_s_qaxis({3, num_bands_tot});  // output - optional
+    
 
+    mdarray<int,1> distk({num_kpts});
+    void* w90glob;                                        // allocate an instance of the library data block
+
+
+    nncell.zero(); //waiting for jerome to update it....
+    distk.zero();  //TOBECHANGED!
+    exclude_bands.zero();
     // non-scalar variables initialization
     std::string aux = "sirius";
     strcpy(seedname, aux.c_str());
     length_seedname = aux.length();
 
+    for(int icoor=0; icoor<3; icoor++){
+        mp_grid(icoor) = 2; //TODO!! CHANGE!!
+    }
+
     for (int ivec = 0; ivec < 3; ivec++) {
         for (int icoor = 0; icoor < 3; icoor++) {
-            real_lattice(ivec, icoor)  = ctx().unit_cell().lattice_vectors()(icoor, ivec) * bohr_radius;
+            //real_lattice(ivec, icoor)  = ctx().unit_cell().lattice_vectors()(icoor, ivec) * bohr_radius;
+            real_lattice(ivec, icoor)  = ctx().unit_cell().lattice_vectors()(ivec, icoor) * bohr_radius;
             recip_lattice(ivec, icoor) = ctx().unit_cell().reciprocal_lattice_vectors()(icoor, ivec) / bohr_radius;
         }
     }
@@ -709,6 +760,11 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
         for (int ix : {0, 1, 2}) {
             kpt_lattice(ix, ik) = kset_fbz.kpoints_[ik]->vk_[ix];
         }
+    }
+
+    std::cout << "\n\n\n\nFULL BRILLOUIN ZONE K POINTS:\n\n\n\n";
+    for(int ik=0; ik<num_kpts; ik++){
+        std::cout << kset_fbz.get<double>(ik)->vk()[0] << " "<< kset_fbz.get<double>(ik)->vk()[1]<< " " << kset_fbz.get<double>(ik)->vk()[2] << std::endl;
     }
 
     for (int iat = 0; iat < num_atoms; iat++) {
@@ -721,7 +777,6 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             atoms_cart(icoor, iat) = cart_coord[icoor] * bohr_radius;
         }
     }
-
     /*
      * Call wannier_setup_ from wannier library. This calculates two important arrays:
      * nnlist(ik,ib) is the index of the neighbor ib of the vector at index ik
@@ -730,10 +785,49 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
      * to the first Brillouin zone. Eq. to hold:
      *             kpoints_[nnlist(ik,ib)] = kpoints_[ik] + (neighbor b) - nncell(.,ik,ib)
      */
-
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
-    if (ctx().comm().rank() == 0) {
-        std::cout << "starting wannier_setup_\n";
+
+
+    w90glob = w90_create(); // allocate an instance of the library data block
+
+    std::cout << "Setting up wannier simulation...\n";
+
+    cset_option(w90glob, "kpoints", &kpt_lattice(0,0), num_kpts, 3);
+    cset_option(w90glob, "mp_grid", &mp_grid(0));
+    cset_option(w90glob, "num_bands", num_bands_tot);
+    cset_option(w90glob, "num_kpts", num_kpts);
+    cset_option(w90glob, "num_wann", num_wann);
+    cset_option(w90glob, "unit_cell_cart", &real_lattice(0,0), 3, 3); 
+    cset_option(w90glob, "distk", &distk(0), num_kpts);
+
+    std::cout << "Done setting simulation...\n";
+
+    int ierr=0;
+    cinput_setopt(w90glob, "sirius", ierr, ctx().comm_k().native()); // process necessary library options
+    std::cout <<"Error from cinput_setopt: " << ierr << std::endl;
+    if (ierr != 0 ) exit(ierr);
+    
+    cinput_reader(w90glob, ierr); // process any other options
+    std::cout << "Error from cinput_reader: " << ierr << std::endl;
+    if (ierr != 0 ) exit(ierr);
+    
+    std::cout << "Reading done...\n";
+
+    cget_nn(w90glob, nntot); 
+    std::cout << "nn: " << nntot << std::endl;
+    cget_nnkp(w90glob, &nnlist(0,0)); // return indexes of NN k-points in FD scheme
+    cget_gkpb(w90glob, &nncell(0,0,0));
+    for(int ib=0; ib<nntot; ib++){
+        for(int ik=0; ik<num_kpts; ik++){
+            std::cout << "ik " << ik << " ib " << ib << " nnlist(ik,ib) " << nnlist(ik,ib) << std::endl;
+        }
+    }
+    std::cout << "Got nntot and nnlist...\n";
+    //read_nnkp(num_kpts, num_wann, nntot, nnlist, nncell, exclude_bands);
+    
+    write_nnkp(num_kpts, nntot, nnlist, nncell);
+    write_kpt(kpt_lattice, num_kpts); 
+        
         /*        wannier_setup_(seedname,
                                this->ctx().cfg().parameters().ngridk().data(), // input
                                &num_kpts,                                      // input
@@ -763,14 +857,15 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                                proj_s_qaxis.at(memory_t::host),          // output
                                length_seedname,                                // aux-length of a string
                                length_atomic_symbol);                          // aux-length of a string
-        */
+        
         read_nnkp(num_kpts, num_wann, nntot, nnlist, nncell, exclude_bands);
-    }
-    ctx().comm().bcast(&nntot, 1, 0);
-    ctx().comm().bcast(nnlist.at(memory_t::host), num_kpts * num_nnmax, 0);
-    ctx().comm().bcast(nncell.at(memory_t::host), 3 * num_kpts * num_nnmax, 0);
-    ctx().comm().bcast(&num_wann, 1, 0);
-    ctx().comm().bcast(exclude_bands.at(memory_t::host), num_bands_tot, 0);
+*/    
+
+//    ctx().comm().bcast(&nntot, 1, 0);
+//    ctx().comm().bcast(nnlist.at(memory_t::host), num_kpts * num_nnmax, 0);
+//    ctx().comm().bcast(nncell.at(memory_t::host), 3 * num_kpts * num_nnmax, 0);
+//    ctx().comm().bcast(&num_wann, 1, 0);
+//    ctx().comm().bcast(exclude_bands.at(memory_t::host), num_bands_tot, 0);
 
 
 
@@ -798,11 +893,11 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     PROFILE_STOP("sirius::K_point_set::generate_w90_coeffs::wannier_setup");
 
     rotate_wavefunctions(*this, kset_fbz, k_temp, num_bands, band_index_tot);
-    num_wann = ctx_.unit_cell().num_ps_atomic_wf().first;
 
     mdarray<std::complex<double>, 3> A({num_bands, num_wann, kset_fbz.num_kpoints()});
     A.zero();
 
+    std::cout << "Calculating Amn...\n";
     calculate_Amn(kset_fbz, num_bands, num_wann, A);
 
     if (ctx().comm().rank() == 0) {
@@ -818,6 +913,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     mdarray<std::complex<double>, 4> M({num_bands, num_bands, nntot, kset_fbz.num_kpoints()});
     M.zero();
 
+    std::cout << "Calculating Mmn...\n";
     calculate_Mmn(M, kset_fbz, num_bands, gvec_kpb, wf_kpb, ikpb_index, nntot, nnlist, nncell);
 
     if (ctx().comm().rank() == 0) {
@@ -835,6 +931,7 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
                 eigval(iband, ik) =
                         kset_fbz.get<double>(ik)->band_energy(iband, 0) * ha2ev; // sirius saves energy in
                                                                                  // Hartree, we need it in eV
+                                                                                 std::cout <<"eigval: "<< "ik "<<ik << " iband " << iband << " "<< kset_fbz.get<double>(ik)->band_energy(iband, 0) * ha2ev << std::endl;
             }
         }
         kset_fbz.ctx().comm_k().bcast(eigval.at(memory_t::host, 0, ik), num_bands, local_rank); // TODO: remove
@@ -843,6 +940,27 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
     if(ctx().comm().rank() == 0){
         write_eig(eigval, num_bands, num_kpts);
     }
+    cset_eigval(w90glob, &eigval(0, 0)); // contains eigenvalues
+
+
+    std::cout << "Ready to start Wannierization.\n";
+    mdarray<std::complex<double>, 3> U_matrix({num_wann, num_wann, num_kpts}); // output
+    mdarray<double, 2> wannier_centres({3, num_wann});                         // output
+    mdarray<double, 1> wannier_spreads({num_wann});                            // output
+    
+    cset_m_local(w90glob, &M(0, 0, 0, 0)); // m matrix
+    cset_u_opt(w90glob, &A(0, 0, 0)); // initial projections
+    cset_u_matrix(w90glob, &U_matrix(0, 0, 0)); // results returned here
+
+    cdisentangle(w90glob, ierr);
+    if (ierr != 0 ) exit(ierr);
+    cwannierise(w90glob, ierr);
+    if (ierr != 0 ) exit(ierr);
+    cget_centres(w90glob, &wannier_centres(0, 0));
+    cget_spreads(w90glob, &wannier_spreads(0));
+    w90_delete(w90glob);
+
+    
     /*
         if (kset_fbz.ctx().comm_k().rank() == 0) {
             std::cout << "Starting wannier_run..." << std::endl;
@@ -850,7 +968,6 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
             // compute wannier orbitals
             // define additional arguments
             mdarray<std::complex<double>, 3> U_matrix(num_wann, num_wann, num_kpts); // output
-            mdarray<std::complex<double>, 3> U_dis(num_bands, num_wann, num_kpts);   // output
             mdarray<fortran_bool, 2> lwindow(num_bands, num_kpts);                   // output
             mdarray<double, 2> wannier_centres(3, num_wann);                         // output
             mdarray<double, 1> wannier_spreads(num_wann);                            // output
