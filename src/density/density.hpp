@@ -541,32 +541,32 @@ class Density : public Field4D
     density_matrix_aux(typename atom_index_t::global ia__) const;
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2>
-    compute_atomic_mag_mom() const;
+    std::vector<double>
+    compute_atomic_mag_mom(int j__) const;
 
     /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
     /** In case of PP-PW there are no real muffin-tins. Instead, a value of magnetization inside atomic
      *  sphere with some chosen radius is returned.
      */
-    std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
+    std::array<periodic_function_integrate_t<double>, 3>
     get_magnetisation() const;
 
     void
     print_info(std::ostream& out__) const;
 
-    Occupation_matrix const&
+    inline auto const&
     occupation_matrix() const
     {
         return *occupation_matrix_;
     }
 
-    Occupation_matrix&
+    inline auto&
     occupation_matrix()
     {
         return *occupation_matrix_;
     }
 
-    auto const&
+    inline auto const&
     paw_density() const
     {
         return *paw_density_;
@@ -815,7 +815,7 @@ copy(Density const& src__, Density& dest__)
 }
 
 template <bool add_pseudo_core__>
-inline std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2>
+inline auto
 get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double add_delta_mag_xc__ = 0.0)
 {
     PROFILE("sirius::get_rho_up_dn");

@@ -33,6 +33,14 @@
 
 namespace sirius {
 
+template <typename T>
+struct periodic_function_integrate_t
+{
+    T total{0};
+    T rg{0};
+    std::vector<T> mt;
+};
+
 /// Representation of the periodical function on the muffin-tin geometry.
 /** Inside each muffin-tin the spherical expansion is used:
  *   \f[
@@ -138,43 +146,42 @@ class Periodic_function
     }
 
     /// Return total integral, interstitial contribution and muffin-tin contributions.
-    inline std::tuple<T, T, std::vector<T>>
+    inline auto
     integrate() const
     {
         PROFILE("sirius::Periodic_function::integrate");
 
-        T it_val = 0;
+        periodic_function_integrate_t<T> result;
 
         if (!ctx_.full_potential()) {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->rg().spfft().local_slice_size(); irloc++) {
-                it_val += this->rg().value(irloc);
+                result.rg += this->rg().value(irloc);
             }
         } else {
             //#pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->rg().spfft().local_slice_size(); irloc++) {
-                it_val += this->rg().value(irloc) * ctx_.theta(irloc);
+                result.rg += this->rg().value(irloc) * ctx_.theta(irloc);
             }
         }
-        it_val *= (unit_cell_.omega() / fft::spfft_grid_size(this->rg().spfft()));
-        mpi::Communicator(this->rg().spfft().communicator()).allreduce(&it_val, 1);
-        T total = it_val;
+        result.rg *= (unit_cell_.omega() / fft::spfft_grid_size(this->rg().spfft()));
+        mpi::Communicator(this->rg().spfft().communicator()).allreduce(&result.rg, 1);
+        result.total = result.rg;
 
-        std::vector<T> mt_val;
         if (ctx_.full_potential()) {
-            mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
+            result.mt = std::vector<T>(unit_cell_.num_atoms(), 0);
 
             for (auto it : unit_cell_.spl_num_atoms()) {
-                mt_val[it.i] = mt_component_[it.i].component(0).integrate(2) * fourpi * y00;
+                result.mt[it.i] = mt_component_[it.i].component(0).integrate(2) * fourpi * y00;
             }
 
-            comm_.allreduce(&mt_val[0], unit_cell_.num_atoms());
+            comm_.allreduce(result.mt.data(), unit_cell_.num_atoms());
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                total += mt_val[ia];
+                result.total += result.mt[ia];
             }
         }
 
-        return std::make_tuple(total, it_val, mt_val);
+        return result;
     }
 
     /** \todo write and read distributed functions */

@@ -1027,7 +1027,7 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__, de
 void
 Density::normalize()
 {
-    double nel   = std::get<0>(rho().integrate());
+    double nel   = rho().integrate().total;
     double scale = unit_cell_.num_electrons() / nel;
 
     /* renormalize interstitial part */
@@ -1051,7 +1051,7 @@ Density::check_num_electrons() const
 {
     double nel{0};
     if (ctx_.full_potential()) {
-        nel = std::get<0>(rho().integrate());
+        nel = rho().integrate().total;
     } else {
         nel = rho().rg().f_0().real() * unit_cell_.omega();
     }
@@ -1711,13 +1711,12 @@ Density::generate_valence_mt()
     }
 }
 
-mdarray<double, 2>
-Density::compute_atomic_mag_mom() const
+std::vector<double>
+Density::compute_atomic_mag_mom(int j__) const
 {
     PROFILE("sirius::Density::compute_atomic_mag_mom");
 
-    mdarray<double, 2> mmom({3, unit_cell_.num_atoms()});
-    mmom.zero();
+    std::vector<double> result(unit_cell_.num_atoms(), 0);
 
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -1726,51 +1725,35 @@ Density::compute_atomic_mag_mom() const
 
         for (auto coord : atom_to_grid_map) {
             int ir = coord.first;
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                mmom(j, ia) += mag(j).rg().value(ir);
-            }
+            result[ia] += this->mag(j__).rg().value(ir);
         }
 
-        for (int j : {0, 1, 2}) {
-            mmom(j, ia) *= (unit_cell_.omega() / fft::spfft_grid_size(ctx_.spfft<double>()));
-        }
+        result[ia] *= (unit_cell_.omega() / fft::spfft_grid_size(ctx_.spfft<double>()));
     }
-    mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
-    return mmom;
+    mpi::Communicator(ctx_.spfft<double>().communicator()).allreduce(result.data(), unit_cell_.num_atoms());
+    return result;
 }
 
-std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
+std::array<periodic_function_integrate_t<double>, 3>
 Density::get_magnetisation() const
 {
     PROFILE("sirius::Density::get_magnetisation");
 
-    std::array<double, 3> total_mag({0, 0, 0});
-    std::vector<std::array<double, 3>> mt_mag(ctx_.unit_cell().num_atoms(), {0, 0, 0});
-    std::array<double, 3> it_mag({0, 0, 0});
+    std::array<periodic_function_integrate_t<double>, 3> result;
+    for (int j = 0; j < 3; j++) {
+        result[j].mt = std::vector<double>(ctx_.unit_cell().num_atoms(), 0);
+    }
 
     std::vector<int> idx = (ctx_.num_mag_dims() == 1) ? std::vector<int>({2}) : std::vector<int>({2, 0, 1});
 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        auto result       = this->mag(j).integrate();
-        total_mag[idx[j]] = std::get<0>(result);
-        it_mag[idx[j]]    = std::get<1>(result);
-        if (ctx_.full_potential()) {
-            auto v = std::get<2>(result);
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                mt_mag[ia][idx[j]] = v[ia];
-            }
+        result[idx[j]] = this->mag(j).integrate();
+        if (!ctx_.full_potential()) {
+            result[idx[j]].mt = this->compute_atomic_mag_mom(j);
         }
     }
 
-    if (!ctx_.full_potential()) {
-        auto mmom = this->compute_atomic_mag_mom();
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                mt_mag[ia][idx[j]] = mmom(j, ia);
-            }
-        }
-    }
-    return std::make_tuple(total_mag, it_mag, mt_mag);
+    return result;
 }
 
 mdarray<double, 2>
@@ -1947,14 +1930,11 @@ Density::print_info(std::ostream& out__) const
 {
     auto result = this->rho().integrate();
 
-    auto total_charge = std::get<0>(result);
-    auto it_charge    = std::get<1>(result);
-    auto mt_charge    = std::get<2>(result);
+    auto total_charge = result.total;
+    auto it_charge    = result.rg;
+    auto mt_charge    = result.mt;
 
     auto result_mag = this->get_magnetisation();
-    auto total_mag  = std::get<0>(result_mag);
-    auto it_mag     = std::get<1>(result_mag);
-    auto mt_mag     = std::get<2>(result_mag);
 
     auto write_vector = [&](r3::vector<double> v__) {
         out__ << "[" << std::setw(9) << std::setprecision(5) << std::fixed << v__[0] << ", " << std::setw(9)
@@ -1977,7 +1957,7 @@ Density::print_info(std::ostream& out__) const
             out__ << std::setw(4) << ia << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
                   << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
             if (ctx_.num_mag_dims()) {
-                r3::vector<double> v(mt_mag[ia]);
+                r3::vector<double> v({result_mag[0].mt[ia], result_mag[1].mt[ia], result_mag[2].mt[ia]});
                 out__ << "  ";
                 write_vector(v);
                 out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length();
@@ -1989,7 +1969,7 @@ Density::print_info(std::ostream& out__) const
               << std::endl
               << "interstitial charge   : " << std::setprecision(6) << std::fixed << it_charge << std::endl;
         if (ctx_.num_mag_dims()) {
-            r3::vector<double> v(it_mag);
+            r3::vector<double> v({result_mag[0].rg, result_mag[1].rg, result_mag[2].rg});
             out__ << "interstitial moment   : ";
             write_vector(v);
             out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;
@@ -1999,7 +1979,7 @@ Density::print_info(std::ostream& out__) const
             out__ << "atom                moment                |moment|" << std::endl << hbar(80, '-') << std::endl;
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                r3::vector<double> v(mt_mag[ia]);
+                r3::vector<double> v({result_mag[0].mt[ia], result_mag[1].mt[ia], result_mag[2].mt[ia]});
                 out__ << std::setw(4) << ia << " ";
                 write_vector(v);
                 out__ << std::setw(12) << std::setprecision(6) << std::fixed << v.length() << std::endl;
@@ -2010,7 +1990,7 @@ Density::print_info(std::ostream& out__) const
     out__ << "total charge          : " << std::setprecision(6) << std::fixed << total_charge << std::endl;
 
     if (ctx_.num_mag_dims()) {
-        r3::vector<double> v(total_mag);
+        r3::vector<double> v({result_mag[0].total, result_mag[1].total, result_mag[2].total});
         out__ << "total moment          : ";
         write_vector(v);
         out__ << ", magnitude : " << std::setprecision(6) << std::fixed << v.length() << std::endl;

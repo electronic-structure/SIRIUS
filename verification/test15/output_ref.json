@@ -5,37 +5,39 @@
         "config": {
             "control": {
                 "beta_chunk_size": 256,
+                "beta_on_device": false,
                 "cyclic_block_size": 8,
-                "fft_mode": "serial",
+                "fft_mode": "parallel",
                 "gen_evp_solver_name": "lapack",
-                "memory_usage": "high",
-                "mpi_grid_dims": [
-                    1,
-                    1
-                ],
+                "gvec_chunk_size": 500000,
+                "mpi_grid_dims": [1,1],
                 "num_bands_to_print": 10,
-                "print_checksum": false,
+                "ortho_rf": false,
+                "output": "stdout:",
                 "print_forces": true,
-                "print_hash": false,
-                "print_memory_usage": false,
                 "print_neighbors": false,
-                "print_performance": false,
                 "print_stress": true,
-                "print_timers": true,
                 "processing_unit": "cpu",
                 "reduce_gvec": true,
                 "rmt_max": 2.2,
-                "spglib_tolerance": 0.0001,
+                "save_rf": false,
+                "spglib_tolerance": 1e-06,
                 "std_evp_solver_name": "lapack",
                 "use_second_variation": true,
                 "verbosity": 2,
                 "verification": 1
             },
             "hubbard": {
+                "constrained_calculation": false,
+                "constraint_beta_mixing": 0.4,
+                "constraint_error": 1e-06,
+                "constraint_max_iteration": 10,
+                "constraint_method": "energy",
+                "constraint_strength": 1.0,
+                "hubbard_subspace_method": "none",
                 "local": [],
+                "local_constraint": [],
                 "nonlocal": [],
-                "normalize": false,
-                "orthogonalize": false,
                 "simplified": false
             },
             "iterative_solver": {
@@ -69,6 +71,7 @@
                 "T": 300.0,
                 "kappa": 0.3,
                 "maxiter": 300,
+                "processing_unit": "",
                 "restart": 10,
                 "tau": 0.1,
                 "tol": 1e-09
@@ -85,29 +88,21 @@
                 "gk_cutoff": 5.0,
                 "hubbard_correction": false,
                 "lmax_apw": -1,
-                "lmax_pot": 2,
-                "lmax_rho": 2,
+                "lmax_pot": -1,
+                "lmax_rho": -1,
                 "molecule": false,
-                "ngridk": [
-                    1,
-                    1,
-                    1
-                ],
+                "ngridk": [1,1,1],
                 "nn_radius": -1,
                 "num_bands": 15,
                 "num_dft_iter": 100,
                 "num_fv_states": -1,
                 "num_mag_dims": 0,
-                "precision_gs": "",
+                "precision_gs": "auto",
                 "precision_hs": "fp64",
                 "precision_wf": "fp64",
                 "pw_cutoff": 30.0,
                 "reduce_aux_bf": 0,
-                "shiftk": [
-                    0,
-                    0,
-                    0
-                ],
+                "shiftk": [0,0,0],
                 "smearing": "gaussian",
                 "smearing_width": 0.025,
                 "so_correction": false,
@@ -115,28 +110,19 @@
                 "use_scf_correction": true,
                 "use_symmetry": true,
                 "valence_relativity": "zora",
+                "veff_pw_cutoff": 0.0,
                 "vk": [],
                 "xc_dens_tre": -1,
-                "xc_functionals": [
-                    "XC_LDA_X",
-                    "XC_LDA_C_PZ"
-                ]
+                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PZ"]
             },
             "settings": {
                 "always_update_wf": true,
                 "auto_enu_tol": 0,
-                "fft_grid_size": [
-                    54,
-                    54,
-                    54
-                ],
+                "fft_grid_size": [54,54,54],
                 "fp32_to_fp64_rms": 0,
                 "itsol_tol_min": 1e-13,
                 "itsol_tol_ratio": 0,
-                "itsol_tol_scale": [
-                    0.1,
-                    0.5
-                ],
+                "itsol_tol_scale": [0.1,0.5],
                 "min_occupancy": 1e-14,
                 "mixer_rms_min": 1e-16,
                 "nprii_aug": 20,
@@ -144,7 +130,8 @@
                 "nprii_rho_core": 20,
                 "nprii_vloc": 200,
                 "radial_grid": "exponential, 1.0",
-                "sht_coverage": 0
+                "sht_coverage": 0,
+                "xc_use_lapl": false
             },
             "unit_cell": {
                 "atom_coordinate_units": "lattice",
@@ -152,146 +139,74 @@
                     "F": "F.pz-n-kjpaw_psl.0.1.UPF.json",
                     "Li": "Li.pz-s-kjpaw_psl.0.2.1.UPF.json"
                 },
-                "atom_types": [
-                    "Li",
-                    "F"
-                ],
+                "atom_types": ["Li","F"],
                 "atoms": {
                     "F": [
-                        [
-                            0.51,
-                            0.52,
-                            0.53
-                        ]
+                        [0.51,0.52,0.53]
                     ],
                     "Li": [
-                        [
-                            0.0,
-                            0.0,
-                            0.0
-                        ]
+                        [0.0,0.0,0.0]
                     ]
                 },
                 "lattice_vectors": [
-                    [
-                        0.0,
-                        3.80402,
-                        3.80402
-                    ],
-                    [
-                        3.80402,
-                        0.0,
-                        3.80402
-                    ],
-                    [
-                        3.80402,
-                        3.80402,
-                        0.0
-                    ]
+                    [0.0,3.80402,3.80402],
+                    [3.80402,0.0,3.80402],
+                    [3.80402,3.80402,0.0]
                 ],
                 "lattice_vectors_scale": 1.0
+            },
+            "vcsqnm": {
+                "alpha0": 0.01,
+                "eps_subsp": 0.001,
+                "forces_tol": 0.0001,
+                "initial_step_size": -0.1,
+                "lattice_weight": 2.0,
+                "nhist_max": 10,
+                "num_steps": 300,
+                "stress_tol": 1e-05
             }
         },
-        "fft_coarse_grid": [
-            20,
-            20,
-            20
-        ],
-        "mpi_grid": [
-            1,
-            1
-        ],
+        "fft_coarse_grid": [20,20,20],
+        "mpi_grid": [1,1],
         "num_atoms": 2,
         "omega": 110.0926613870496
     },
     "counters": {
-        "band_evp_work_count": 6296.53837037037,
-        "local_operator_num_applied": 469
+        "band_evp_work_count": 266.5564444444445,
+        "local_operator_num_applied": 665
     },
-    "git_hash": "8a29684dd6937651fe0ea0948778d1ac6575fbef",
+    "git_hash": "a0d09bff305c7d162e6e43a792018b99bd33b276",
     "ground_state": {
-        "band_gap": 0.2839076870968212,
+        "band_gap": 0.28390769228801205,
         "converged": true,
-        "core_leakage": 0.0,
-        "efermi": 0.26812745270123783,
+        "efermi": 0.26812746272964283,
         "energy": {
             "bxc": 0.0,
-            "core_eval_sum": 0.0,
-            "entropy_sum": -2.383589792164249e-15,
-            "enuc": 0.0,
-            "eval_sum": -3.4815996215984004,
-            "ewald": -20.455644745014084,
-            "exc": -7.134718301472063,
-            "kin": 17.562859415479583,
-            "scf_correction": -3.7352467785467525e-08,
-            "total": -36.34663045399927,
-            "veff": -21.044459037077985,
-            "vha": 18.882914137943413,
-            "vloc": -31.28064519092647,
-            "vxc": -8.64672798409411
+            "entropy_sum": -2.3835967179672105e-15,
+            "eval_sum": -3.481599569878914,
+            "ewald": -20.455644748583353,
+            "exc": -7.134718343400122,
+            "kin": 17.562859473388944,
+            "scf_correction": -2.2026824808563106e-13,
+            "total": -36.34663045589985,
+            "veff": -21.044459043267857,
+            "vha": 18.882914325717632,
+            "vloc": -31.280645329862807,
+            "vxc": -8.646728039123076
         },
-        "etot_history": [
-            -36.284552927856446,
-            -36.33675235112213,
-            -36.34651417424143,
-            -36.34661950207925,
-            -36.34662970422246,
-            -36.346630377259316,
-            -36.3466304453344,
-            -36.346630453019955,
-            -36.346630453886526,
-            -36.34663045398644,
-            -36.34663045399678,
-            -36.34663045399859,
-            -36.34663045399984,
-            -36.34663045399927
-        ],
+        "etot_history": [-36.28455331322234,-36.33479646740993,-36.346569460643934,-36.34662331968118,-36.3466299439055,-36.34663039465025,-36.34663044790946,-36.346630455163606,-36.34663045580824,-36.34663045588525,-36.34663045589704,-36.34663045589899,-36.34663045589954,-36.34663045589964,-36.34663045590075,-36.34663045589953,-36.3466304559,-36.34663045590011,-36.346630455899614,-36.34663045590018,-36.346630455899486,-36.3466304559002,-36.34663045589974,-36.34663045589979,-36.34663045589985],
         "forces": [
-            [
-                0.002559365664084452,
-                0.0017954663643813032,
-                0.001194162206067025
-            ],
-            [
-                -0.00255988432350142,
-                -0.0017956003650794838,
-                -0.0011944555050059475
-            ]
+            [0.0025591981243723314,0.0017953257597679627,0.001194053500109259],
+            [-0.0025598661445539496,-0.0017956007370823802,-0.0011944441019229302]
         ],
-        "num_scf_iterations": 13,
-        "rms_history": [
-            0.028678892483752383,
-            0.02349842649882695,
-            0.004541765234303287,
-            0.00036434785626437733,
-            7.194913243129518e-05,
-            1.6888547055087253e-05,
-            7.3457290099335204e-06,
-            1.6576972580194848e-06,
-            6.901076860230908e-07,
-            2.3652815651263246e-07,
-            1.1587315649624471e-07,
-            1.6360527379466662e-08,
-            2.338749951053934e-08,
-            6.299769017487307e-09
-        ],
-        "scf_time": 5.326932062,
+        "num_scf_iterations": 24,
+        "rho_min": 0.0014326222244096,
+        "rms_history": [0.3857693441030915,0.2789031068206908,0.05991491850897868,0.0035870452975335573,0.0008524496711654916,0.00022138554617856003,8.24096693412592e-05,2.8037953143198665e-05,8.51563337150144e-06,2.260636896366467e-06,9.912079899471038e-07,3.9835923313354935e-07,1.7773475050552037e-07,7.485776155491294e-08,4.498870813806553e-08,1.2474092394340261e-08,5.11694733881503e-09,2.8171154157399786e-09,2.2499332327353287e-09,1.1885656678914381e-09,9.232052110789957e-10,2.83706989043593e-10,1.0138725284276224e-10,2.479921023307939e-12,1.7406853396001392e-13],
+        "scf_time": 3.063280545,
         "stress": [
-            [
-                0.00032049390733834057,
-                3.468219849810727e-05,
-                2.562413015617911e-05
-            ],
-            [
-                3.468219849810727e-05,
-                0.0003310254993841848,
-                2.012453708793498e-05
-            ],
-            [
-                2.562413015617911e-05,
-                2.012453708793498e-05,
-                0.00033962323636708286
-            ]
+            [0.0003204924590759616,3.46819906540458e-05,2.562391628523332e-05],
+            [3.468199065825473e-05,0.0003310242736668399,2.0124423360507742e-05],
+            [2.562391628480407e-05,2.0124423357408825e-05,0.0003396223081114063]
         ]
     },
     "task": 0,

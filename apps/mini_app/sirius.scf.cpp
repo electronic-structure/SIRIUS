@@ -307,8 +307,31 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         double e2 = dict_ref["ground_state"]["energy"]["total"].get<double>();
 
         if (std::abs(e1 - e2) > 1e-5) {
-            std::printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
+            std::cout << "total energy is different: " << e1 << " computed vs. " << e2 << " reference" << std::endl;
             ctx.comm().abort(1);
+        }
+        if (result.count("magnetisation") && dict_ref["ground_state"].count("magnetisation")) {
+            double diff{0};
+            auto t1 = result["magnetisation"]["total"].get<std::vector<double>>();
+            auto t2 = dict_ref["ground_state"]["magnetisation"]["total"].get<std::vector<double>>();
+            for (int x : {0, 1, 2}) {
+                diff += std::abs(t1[x] - t2[x]);
+            }
+            auto v1 = result["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
+            auto v2 = dict_ref["ground_state"]["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
+            if (v1.size() != v2.size()) {
+                std::cout << "length of atomic magnetisations is different" << std::endl;
+                ctx.comm().abort(4);
+            }
+            for (size_t i = 0; i < v1.size(); i++) {
+                for (int x : {0, 1, 2}) {
+                    diff += std::abs(v1[i][x] - v2[i][x]);
+                }
+            }
+            if (diff > 1e-5) {
+                std::cout << "magnetisations is different!" << std::endl;
+                ctx.comm().abort(5);
+            }
         }
         if (result.count("stress") && dict_ref["ground_state"].count("stress")) {
             double diff{0};
@@ -320,7 +343,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
                 }
             }
             if (diff > 1e-5) {
-                std::printf("total stress is different!");
+                std::cout << "total stress is different!" << std::endl;
                 std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
                 std::cout << "  computed: " << result["stress"] << "\n";
                 ctx.comm().abort(2);
@@ -336,7 +359,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
                 }
             }
             if (diff > 1e-6) {
-                std::printf("total force is different!");
+                std::cout << "total force is different!" << std::endl;
                 std::cout << "  reference: " << dict_ref["ground_state"]["forces"] << "\n";
                 std::cout << "  computed: " << result["forces"] << "\n";
                 ctx.comm().abort(3);
@@ -366,7 +389,7 @@ run_tasks(cmd_args const& args)
 
     if (!fs::exists(fpath)) {
         if (mpi::Communicator::world().rank() == 0) {
-            std::printf("input file does not exist\n");
+            std::cout << "input file does not exist" << std::endl;
         }
         return;
     }
