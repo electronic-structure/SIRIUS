@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include "sirius.hpp"
 
 using namespace sirius;
 
@@ -23,9 +23,9 @@ main(int argn, char** argv)
 
     sirius::initialize(1);
 
-    int num_points = args.value<int>("num_points", 20000);
+    int num_points = args.value<int>("num_points", 10000);
 
-    radial_grid_t grid_type = static_cast<radial_grid_t>(args.value<int>("grid_type"));
+    auto grid_t = get_radial_grid_t(args.value<std::string>("grid_type", "power, 3"));
 
     double rmin = args.value<double>("rmin", 1e-7);
 
@@ -43,22 +43,19 @@ main(int argn, char** argv)
 
     std::vector<double> err(28);
 
-    Radial_grid radial_grid(grid_type, num_points, rmin, 50.0);
+    auto radial_grid = Radial_grid_factory<double>(grid_t.first, num_points, rmin, 30.0, grid_t.second);
 
-    printf("grid name: %s\n", radial_grid.grid_type_name().c_str());
+    printf("grid name: %s\n", radial_grid.name().c_str());
 
     std::vector<double> v(radial_grid.num_points());
     for (int i = 0; i < radial_grid.num_points(); i++)
         v[i] = -zn / radial_grid[i];
 
     #pragma omp parallel for schedule(dynamic)
-    for (int j = 0; j < 28; j++) {
-        int n = atomic_conf[zn - 1][j][0];
-        int l = atomic_conf[zn - 1][j][1];
-        int k = atomic_conf[zn - 1][j][2];
-
-        if (n == -1)
-            continue;
+    for (int j = 0; j < atomic_conf[zn - 1].size(); j++) {
+        int n = atomic_conf[zn - 1][j].n;
+        int l = atomic_conf[zn - 1][j].l;
+        int k = atomic_conf[zn - 1][j].k;
 
         double kappa = (k == l) ? k : -k;
 

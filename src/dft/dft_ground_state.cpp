@@ -139,7 +139,8 @@ DFT_ground_state::check_scf_density()
     /* initialize the subspace */
     ::sirius::initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    ::sirius::diagonalize<double, double>(H0, kset_, ctx_.cfg().settings().itsol_tol_min());
+    ::sirius::diagonalize<double, double>(H0, kset_, ctx_.cfg().settings().itsol_tol_min(),
+                                          ctx_.cfg().iterative_solver().num_steps());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
     /* generate new density from the occupied wave-functions */
@@ -232,9 +233,11 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             Hamiltonian0<float> H0(potential_, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
-                result = sirius::diagonalize<float, float>(H0, kset_, iter_solver_tol__);
+                result = sirius::diagonalize<float, float>(H0, kset_, iter_solver_tol__,
+                                                           ctx_.cfg().iterative_solver().num_steps());
             } else {
-                result = sirius::diagonalize<float, double>(H0, kset_, iter_solver_tol__);
+                result = sirius::diagonalize<float, double>(H0, kset_, iter_solver_tol__,
+                                                            ctx_.cfg().iterative_solver().num_steps());
             }
             /* find band occupancies */
             kset_.find_band_occupancies<float>();
@@ -246,7 +249,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         } else {
             Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
-            result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__);
+            result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__,
+                                                         ctx_.cfg().iterative_solver().num_steps());
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
@@ -398,6 +402,16 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     auto tstop = std::chrono::high_resolution_clock::now();
 
     auto dict = serialize();
+    if (ctx_.num_mag_dims()) {
+        dict["magnetisation"]          = {};
+        auto m                         = density_.get_magnetisation();
+        dict["magnetisation"]["total"] = std::vector<double>({m[0].total, m[1].total, m[2].total});
+        std::vector<std::vector<double>> v;
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            v.push_back({m[0].mt[ia], m[1].mt[ia], m[2].mt[ia]});
+        }
+        dict["magnetisation"]["atoms"] = v;
+    }
 
     /* check density */
     if (num_iter >= 0) {

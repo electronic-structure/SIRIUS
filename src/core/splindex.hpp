@@ -81,6 +81,7 @@ struct kp_index_t
     typedef strong_type<value_type, struct __kp_local_index_tag> local;
 };
 
+/// Index type for all atoms in the unit cell.
 struct atom_index_t
 {
     typedef int value_type;
@@ -88,6 +89,7 @@ struct atom_index_t
     typedef strong_type<value_type, struct __atom_local_index_tag> local;
 };
 
+/// Index type for all atom types in the unit cell.
 struct atom_type_index_t
 {
     typedef int value_type;
@@ -95,6 +97,7 @@ struct atom_type_index_t
     typedef strong_type<value_type, struct __atom_type_local_index_tag> local;
 };
 
+/// Index type for all atom symmetry classes in the unit cell.
 struct atom_symmetry_class_index_t
 {
     typedef int value_type;
@@ -102,6 +105,7 @@ struct atom_symmetry_class_index_t
     typedef strong_type<value_type, struct __atom_symmetry_class_local_index_tag> local;
 };
 
+/// Index type for PAW atoms in the unit cell. Not all atoms are necessarily PAW.
 struct paw_atom_index_t
 {
     typedef int value_type;
@@ -115,6 +119,8 @@ using n_blocks = strong_type<int, struct __n_blocks_tag>;
 /** The id of the block has the range [0, n_blocks) */
 using block_id = strong_type<int, struct __block_id_tag>;
 
+/// Type of the index: local or global
+// TODO: deprecate in favour of strong type
 enum class index_domain_t
 {
     /// Global index.

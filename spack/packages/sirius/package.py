@@ -1,4 +1,4 @@
-# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -18,9 +18,14 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     maintainers("simonpintarelli", "haampie", "dev-zero", "AdhocMan", "toxa81")
 
+    license("BSD-2-Clause")
+
     version("develop", branch="develop")
     version("master", branch="master")
 
+    version("7.5.2", sha256="9ae01935578532c84f1d0d673dbbcdd490e26be22efa6c4acf7129f9dc1a0c60")
+    version("7.5.1", sha256="aadfa7976e90a109aeb1677042454388a8d1a50d75834d59c86c8aef06bc12e4")
+    version("7.5.0", sha256="c583f88ffc02e9acac24e786bc35c7c32066882d2f70a1e0c14b5780b510365d")
     version("7.4.3", sha256="015679a60a39fa750c5d1bd8fb1ce73945524bef561270d8a171ea2fd4687fec")
     version("7.4.0", sha256="f9360a695a1e786d8cb9d6702c82dd95144a530c4fa7e8115791c7d1e92b020b")
     version("7.3.2", sha256="a256508de6b344345c295ad8642dbb260c4753cd87cc3dd192605c33542955d7")
@@ -83,7 +88,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant("python", default=False, description="Build Python bindings")
     variant("memory_pool", default=True, description="Build with memory pool")
     variant("elpa", default=False, description="Use ELPA")
-    variant("dlaf", default=False, when="@develop", description="Use DLA-Future")
+    variant("dlaf", default=False, when="@7.5.0:", description="Use DLA-Future")
     variant("vdwxc", default=False, description="Enable libvdwxc support")
     variant("scalapack", default=False, description="Enable scalapack support")
     variant("magma", default=False, description="Enable MAGMA support")
@@ -101,9 +106,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
-    variant(
-        "nvtx", default=False, description="Use NVTX profiler"
-    )
+    variant("nvtx", default=False, description="Use NVTX profiler")
 
     depends_on("cmake@3.23:", type="build")
     depends_on("mpi")
@@ -171,6 +174,11 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("amdblis threads=openmp", when="+openmp ^amdblis")
     depends_on("blis threads=openmp", when="+openmp ^blis")
     depends_on("intel-mkl threads=openmp", when="+openmp ^intel-mkl")
+    depends_on("intel-oneapi-mkl threads=openmp", when="+openmp ^intel-oneapi-mkl")
+
+    conflicts("intel-mkl", when="@develop") # TODO: Change to @7.5.3
+    # MKLConfig.cmake introduced in 2021.3
+    conflicts("intel-oneapi-mkl@:2021.2", when="^intel-oneapi-mkl") 
 
     depends_on("wannier90", when="@7.5.0: +wannier90")
     depends_on("wannier90+shared", when="@7.5.0: +wannier90+shared")
@@ -188,6 +196,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         depends_on("umpire+rocm~device_alloc", when="+rocm")
 
     patch("mpi_datatypes.patch", when="@:7.2.6")
+    patch("fj.patch", when="@7.3.2: %fj")
 
     def cmake_args(self):
         spec = self.spec
@@ -246,8 +255,32 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         if "^cray-libsci" in spec:
             args.append(self.define(cm_label + "USE_CRAY_LIBSCI", "ON"))
 
-        if spec["blas"].name in ["intel-mkl", "intel-parallel-studio", "intel-oneapi-mkl"]:
+        if spec["blas"].name in INTEL_MATH_LIBRARIES:
             args.append(self.define(cm_label + "USE_MKL", "ON"))
+
+            if spec.satisfies("@develop"): # TODO: Change to @7.5.3:
+                mkl_mapper = {
+                    "threading": {
+                        "none": "sequential",
+                        "openmp": "gnu_thread",
+                        "tbb": "tbb_thread",
+                    },
+                    "mpi": {"intel-mpi": "intelmpi", "mpich": "mpich", "openmpi": "openmpi"},
+                }
+
+                mkl_threads = mkl_mapper["threading"][spec["intel-oneapi-mkl"].variants["threads"].value]
+
+                mpi_provider = spec["mpi"].name
+                if mpi_provider in ["mpich", "cray-mpich", "mvapich", "mvapich2"]:
+                    mkl_mpi = mkl_mapper["mpi"]["mpich"]
+                else:
+                    mkl_mpi = mkl_mapper["mpi"][mpi_provider]
+
+                args.extend([
+                    self.define("MKL_INTERFACE", "lp64"),
+                    self.define("MKL_THREADING", mkl_threads),
+                    self.define("MKL_MPI", mkl_mpi)
+                ])
 
         if "+elpa" in spec:
             elpa_incdir = os.path.join(spec["elpa"].headers.directories[0], "elpa")

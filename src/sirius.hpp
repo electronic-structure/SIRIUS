@@ -102,8 +102,8 @@ initialize(bool call_mpi_init__ = true)
 #endif
 
     if (mpi::Communicator::world().rank() == 0) {
-        std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
-                    sirius::revision(), sirius::git_hash().c_str());
+        std::printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version(), minor_version(), revision(),
+                    git_hash().c_str());
 #if !defined(NDEBUG)
         std::printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif
@@ -171,9 +171,6 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
         acc::blas::xt::destroy_handle();
 #endif
         acc::destroy_streams();
-        if (reset_device__) {
-            acc::reset();
-        }
     }
 
 #if defined(__APEX)
@@ -206,6 +203,9 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
 #if defined(SIRIUS_DLAF)
     la::Eigensolver_dlaf::finalize();
 #endif
+    if (acc::num_devices() && reset_device__) {
+        acc::reset();
+    }
 
     is_initialized() = false;
 

@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.5.0
+  VERSION 7.5.3
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -147,24 +147,17 @@ if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")
   endif()
 endif()
 
-find_package(Filesystem COMPONENTS Final Experimental)
-
-add_library(sirius::filesystem INTERFACE IMPORTED)
-  target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
-  target_compile_definitions(sirius::filesystem INTERFACE
-    $<$<BOOL:${Filesystem_FOUND}>:SIRIUS_STD_FILESYSTEM>
-    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:SIRIUS_STD_FILESYSTEM_EXPERIMENTAL>
-  )
-
 if (SIRIUS_USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
 
-set(LINALG_LIB "")
+set(SIRIUS_LINALG_LIB "")
 if(SIRIUS_USE_MKL)
-  set(SIRIUS_USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
-  find_package(MKL REQUIRED)
-  set(SIRIUS_LINALG_LIB "sirius::mkl")
+  set(MKL_INTERFACE "lp64" CACHE STRING "")
+  set(MKL_THREADING "sequential" CACHE STRING "")
+  set(MKL_MPI "mpich" CACHE STRING "")
+  find_package(MKL CONFIG REQUIRED)
+  set(SIRIUS_LINALG_LIB "MKL::MKL")
 elseif(SIRIUS_USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
   set(SIRIUS_LINALG_LIB "${SIRIUS_CRAY_LIBSCI_LIBRARIES}")
@@ -220,7 +213,7 @@ if(SIRIUS_USE_ROCM)
 endif()
 
 if(SIRIUS_USE_MEMORY_POOL)
-  find_package(umpire)
+  find_package(umpire REQUIRED)
 endif()
 
 # check if git command exists

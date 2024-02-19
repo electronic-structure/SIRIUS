@@ -851,7 +851,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                 }
                 if (hubbard_full_orthogonalization__ != nullptr) {
                     if (*hubbard_full_orthogonalization__) {
-                        sim_ctx.cfg().hubbard().full_orthogonalization(true);
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method("full_orthogonalization");
                     }
                 }
 
@@ -862,12 +862,17 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                 if (hubbard_orbitals__ != nullptr) {
                     std::string s(hubbard_orbitals__);
                     std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+                    bool jump = false;
                     if (s == "ortho-atomic") {
-                        sim_ctx.cfg().hubbard().orthogonalize(true);
-                        sim_ctx.cfg().hubbard().full_orthogonalization(true);
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method("full_orthogonalization");
+                        jump = true;
                     }
                     if (s == "norm-atomic") {
-                        sim_ctx.cfg().hubbard().normalize(true);
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method("normalize");
+                        jump = true;
+                    }
+                    if (!jump) {
+                        sim_ctx.cfg().hubbard().hubbard_subspace_method(s);
                     }
                 }
                 if (fft_grid_size__ != nullptr) {
@@ -2240,8 +2245,29 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
                 auto& sim_ctx = get_sim_ctx(handler__);
                 auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
                 type.hubbard_correction(true);
-                type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
-                                         std::vector<double>(), true);
+                if (type.file_name().empty()) {
+                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
+                                             std::vector<double>(), true);
+                } else {
+                    // we use a an external file containing the potential
+                    // information which means that we do not have all information
+                    // yet.
+                    //
+                    // let's build the local hubbard section instead
+                    //
+
+                    json elem;
+
+                    elem["atom_type"]               = label__;
+                    elem["n"]                       = *n__;
+                    elem["l"]                       = *l__;
+                    elem["total_initial_occupancy"] = *occ__;
+                    elem["U"]                       = *U__;
+                    elem["J"]                       = *J__;
+                    elem["alpha"]                   = *alpha__;
+                    elem["beta"]                    = *beta__;
+                    sim_ctx.cfg().hubbard().local().append(elem);
+                }
             },
             error_code__);
 }
@@ -2715,6 +2741,10 @@ sirius_find_eigen_states:
       type: double
       attr: in, optional
       doc: Iterative solver tolerance.
+    iter_solver_steps:
+      type: int
+      attr: in, optional
+      doc: Iterative solver number of steps.
     error_code:
       type: int
       attr: out, optional
@@ -2724,7 +2754,7 @@ sirius_find_eigen_states:
 void
 sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, bool const* precompute_pw__,
                          bool const* precompute_rf__, bool const* precompute_ri__, double const* iter_solver_tol__,
-                         int* error_code__)
+                         int const* iter_solver_steps__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -2732,6 +2762,8 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 auto& ks = get_ks(ks_handler__);
                 double tol =
                         (iter_solver_tol__) ? *iter_solver_tol__ : ks.ctx().cfg().iterative_solver().energy_tolerance();
+                int steps =
+                        (iter_solver_steps__) ? *iter_solver_steps__ : ks.ctx().cfg().iterative_solver().num_steps();
                 if (precompute_pw__ && *precompute_pw__) {
                     gs.potential().generate_pw_coefs();
                 }
@@ -2745,7 +2777,7 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                     const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
                 }
                 Hamiltonian0<double> H0(gs.potential(), false);
-                diagonalize<double, double>(H0, ks, tol);
+                diagonalize<double, double>(H0, ks, tol, steps);
             },
             error_code__);
 }
@@ -3031,7 +3063,8 @@ sirius_get_energy(void* const* handler__, char const* label__, double* energy__,
                         {"paw-one-el", [&]() { return potential.PAW_one_elec_energy(density); }},
                         {"paw", [&]() { return potential.PAW_total_energy(density); }},
                         {"fermi", [&]() { return kset.energy_fermi(); }},
-                        {"hubbard", [&]() { return sirius::hubbard_energy(density); }}};
+                        {"hubbard", [&]() { return sirius::hubbard_energy(density); }},
+                        {"band-gap", [&]() { return kset.band_gap(); }}};
 
                 if (!func.count(label)) {
                     RTE_THROW("wrong label: " + label);
@@ -5356,7 +5389,7 @@ sirius_get_total_magnetization(void* const* handler__, double* mag__, int* error
                 total_mag.zero();
                 for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
                     auto result  = gs.density().mag(j).integrate();
-                    total_mag[j] = std::get<0>(result);
+                    total_mag[j] = result.total;
                 }
                 if (gs.ctx().num_mag_dims() == 3) {
                     /* swap z and x and change order from z,x,y to x,z,y */
@@ -6042,6 +6075,14 @@ sirius_linear_solver:
       type: int
       attr: in, required
       doc: Number of occupied bands.
+    tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+    niter:
+      type: int
+      attr: out, optional
+      doc: Average number of iterations.
     error_code:
       type: int
       attr: out, optional
@@ -6052,7 +6093,8 @@ void
 sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num_gvec_kq_loc__,
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
-                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ__, int* error_code__)
+                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ__, double const* tol__,
+                     int* niter__, int* error_code__)
 {
     using namespace sirius;
     PROFILE("sirius_api::sirius_linear_solver");
@@ -6193,11 +6235,15 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
 
                 // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
+                auto tol = get_value(tol__, 1e-13);
+
                 auto result = sirius::cg::multi_cg(linear_operator, preconditioner, X_wrap, B_wrap, U_wrap,
                                                    C_wrap, // state vectors
                                                    100,    // iters
-                                                   1e-13   // tol
-                );
+                                                   tol);
+                if (niter__) {
+                    *niter__ = result.niter_eff;
+                }
                 mg.clear();
 
                 /* bring wave functions back in order of QE */
@@ -6207,6 +6253,132 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                             dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
                         }
                     }
+                }
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_generate_rhoaug_q:
+  doc: Generate augmentation charge in case of complex density (linear response)
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT ground state handler.
+    iat:
+      type: int
+      attr: in, required
+      doc: Index of atom type.
+    num_atoms:
+      type: int
+      attr: in, required
+      doc: Total number of atoms.
+    num_gvec_loc:
+      type: int
+      attr: in, required
+      doc: Local number of G-vectors
+    num_spin_comp:
+      type: int
+      attr: in, required
+      doc: Number of spin components.
+    qpw:
+      type: complex
+      attr: in, required, dimension(ldq, num_gvec_loc)
+      doc: Augmentation operator for a givem atom type.
+    ldq:
+      type: int
+      attr: in, required
+      doc: Leading dimension of qpw array.
+    phase_factors_q:
+      type: complex
+      attr: in, required, dimension(num_atoms)
+      doc: Phase factors exp(i*q*r_alpha)
+    mill:
+      type: int
+      attr: in, required, dimension(3, num_gvec_loc)
+      doc: Miller indices (G-vectors in lattice coordinates)
+    dens_mtrx:
+      type: complex
+      attr: in, required, dimension(ldd, num_atoms, num_spin_comp)
+      doc: Density matrix
+    ldd:
+      type: int
+      attr: in, required
+      doc: Leading dimension of density matrix.
+    rho_aug:
+      type: complex
+      attr: inout, required, dimension(num_gvec_loc, num_spin_comp)
+      doc: Resulting augmentation charge.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void
+sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* num_atoms__, int const* num_gvec_loc__,
+                         int const* num_spin_comp__, std::complex<double> const* qpw__, int const* ldq__,
+                         std::complex<double> const* phase_factors_q__, int const* mill__,
+                         std::complex<double> const* dens_mtrx__, int const* ldd__, std::complex<double>* rho_aug__,
+                         int* error_code__)
+{
+    using namespace sirius;
+    PROFILE("sirius_api::sirius_generate_rhoaug_q");
+    call_sirius(
+            [&]() {
+                auto& gs   = get_gs(handler__);
+                auto& sctx = gs.ctx();
+                /* index of atom type */
+                int iat           = *iat__ - 1;
+                int num_beta      = sctx.unit_cell().atom_type(iat).mt_basis_size();
+                int num_gvec_loc  = *num_gvec_loc__;
+                int num_spin_comp = *num_spin_comp__;
+
+                mdarray<std::complex<double>, 2> qpw({*ldq__, num_gvec_loc}, const_cast<std::complex<double>*>(qpw__));
+                mdarray<int, 2> mill({3, num_gvec_loc}, const_cast<int*>(mill__));
+                mdarray<std::complex<double>, 3> dens_mtrx({*ldd__, *num_atoms__, num_spin_comp},
+                                                           const_cast<std::complex<double>*>(dens_mtrx__));
+                mdarray<std::complex<double>, 2> rho_aug({num_gvec_loc, num_spin_comp}, rho_aug__);
+
+                /* density matrix for all atoms of a given type */
+                mdarray<std::complex<double>, 2> tmp2(
+                        {num_beta * (num_beta + 1) / 2, sctx.unit_cell().atom_type(iat).num_atoms()},
+                        get_memory_pool(memory_t::host));
+
+                mdarray<std::complex<double>, 2> tmp1({sctx.unit_cell().atom_type(iat).num_atoms(), num_gvec_loc},
+                                                      get_memory_pool(memory_t::host));
+                for (int is = 0; is < num_spin_comp; is++) {
+                    PROFILE_START("sirius_generate_rhoaug_q:tmp2")
+                    for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
+                        int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
+                        for (int j = 0; j < num_beta * (num_beta + 1) / 2; j++) {
+                            tmp2(j, i) = dens_mtrx(j, ia, is);
+                        }
+                    }
+                    PROFILE_STOP("sirius_generate_rhoaug_q:tmp2")
+
+                    PROFILE_START("sirius_generate_rhoaug_q:gemm")
+                    la::wrap(la::lib_t::blas)
+                            .gemm('T', 'N', sctx.unit_cell().atom_type(iat).num_atoms(), num_gvec_loc,
+                                  num_beta * (num_beta + 1) / 2, &la::constant<std::complex<double>>::one(),
+                                  tmp2.at(memory_t::host), tmp2.ld(), qpw.at(memory_t::host), qpw.ld(),
+                                  &la::constant<std::complex<double>>::zero(), tmp1.at(memory_t::host), tmp1.ld());
+                    PROFILE_STOP("sirius_generate_rhoaug_q:gemm")
+
+                    PROFILE_START("sirius_generate_rhoaug_q:sum")
+                    #pragma omp parallel for
+                    for (int ig = 0; ig < num_gvec_loc; ig++) {
+                        std::complex<double> z(0, 0);
+                        for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
+                            int ia = sctx.unit_cell().atom_type(iat).atom_id(i);
+                            z += tmp1(i, ig) * phase_factors_q__[ia] *
+                                 std::conj(sctx.gvec_phase_factor(r3::vector<int>(&mill(0, ig)), ia));
+                        }
+                        rho_aug(ig, is) += z * 2.0;
+                    }
+                    PROFILE_STOP("sirius_generate_rhoaug_q:sum")
                 }
             },
             error_code__);

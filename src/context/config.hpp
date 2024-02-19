@@ -111,7 +111,7 @@ class config_t
     };
     inline auto const& mixer() const {return mixer_;}
     inline auto& mixer() {return mixer_;}
-    /// Settings control the internal parameters related to the numerical implementation.
+    /// Parameters of the 'settings' section influence the numerical implementation.
     /**
         Changing of setting parameters will have a small impact on the final result.
     */
@@ -329,6 +329,18 @@ class config_t
             }
             dict_["/settings/fp32_to_fp64_rms"_json_pointer] = fp32_to_fp64_rms__;
         }
+        /// When true, use Laplacian in the expression for GGA; otherwise use divergence of gradient.
+        inline auto xc_use_lapl() const
+        {
+            return dict_.at("/settings/xc_use_lapl"_json_pointer).get<bool>();
+        }
+        inline void xc_use_lapl(bool xc_use_lapl__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/xc_use_lapl"_json_pointer] = xc_use_lapl__;
+        }
       private:
         nlohmann::json& dict_;
     };
@@ -398,6 +410,12 @@ class config_t
         {
             nlohmann::json::json_pointer p("/unit_cell/atom_files");
             return dict_.at(p / label__).get<std::string>();
+        }
+        /// Mapping between atom type labels and muffin-tin radii (LAPW only)
+        inline auto atom_type_rmt(std::string label__) const
+        {
+            nlohmann::json::json_pointer p("/unit_cell/atom_type_rmt");
+            return dict_.at(p / label__).get<double>();
         }
         /// Atomic coordinates
         inline auto atoms(std::string label__) const
@@ -628,7 +646,7 @@ class config_t
     inline auto& iterative_solver() {return iterative_solver_;}
     /// Control parameters
     /**
-        Parameters of the control input sections do not in general change the numerics,
+        Parameters of the 'control' input sections do not in general change the numerics,
         but instead control how the results are obtained. Changing parameters in control section should
         not change the significant digits in final results.
     */
@@ -886,6 +904,18 @@ class config_t
             }
             dict_["/control/ortho_rf"_json_pointer] = ortho_rf__;
         }
+        /// Save LAPW radial functions in text file for inspection.
+        inline auto save_rf() const
+        {
+            return dict_.at("/control/save_rf"_json_pointer).get<bool>();
+        }
+        inline void save_rf(bool save_rf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/save_rf"_json_pointer] = save_rf__;
+        }
         /// Type of the output stream (stdout:, file:name)
         inline auto output() const
         {
@@ -1040,6 +1070,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/parameters/pw_cutoff"_json_pointer] = pw_cutoff__;
+        }
+        /// Second cutoff for effective potential expansion in the units of [a.u.^-1]
+        inline auto veff_pw_cutoff() const
+        {
+            return dict_.at("/parameters/veff_pw_cutoff"_json_pointer).get<double>();
+        }
+        inline void veff_pw_cutoff(double veff_pw_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/veff_pw_cutoff"_json_pointer] = veff_pw_cutoff__;
         }
         /// Cutoff for augmented-wave functions.
         /**
@@ -1599,41 +1641,17 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// If true, orthogonalization is applied to Hubbard orbitals.
-        inline auto orthogonalize() const
+        /// Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions
+        inline auto hubbard_subspace_method() const
         {
-            return dict_.at("/hubbard/orthogonalize"_json_pointer).get<bool>();
+            return dict_.at("/hubbard/hubbard_subspace_method"_json_pointer).get<std::string>();
         }
-        inline void orthogonalize(bool orthogonalize__)
+        inline void hubbard_subspace_method(std::string hubbard_subspace_method__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/hubbard/orthogonalize"_json_pointer] = orthogonalize__;
-        }
-        /// If true, all atomic orbitals from all atoms are used to orthogonalize the hubbard subspace
-        inline auto full_orthogonalization() const
-        {
-            return dict_.at("/hubbard/full_orthogonalization"_json_pointer).get<bool>();
-        }
-        inline void full_orthogonalization(bool full_orthogonalization__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/full_orthogonalization"_json_pointer] = full_orthogonalization__;
-        }
-        /// If true, normalization is applied to Hubbard orbitals.
-        inline auto normalize() const
-        {
-            return dict_.at("/hubbard/normalize"_json_pointer).get<bool>();
-        }
-        inline void normalize(bool normalize__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/normalize"_json_pointer] = normalize__;
+            dict_["/hubbard/hubbard_subspace_method"_json_pointer] = hubbard_subspace_method__;
         }
         /// If true, simplified version of Hubbard correction is used.
         inline auto simplified() const

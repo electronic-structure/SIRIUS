@@ -25,6 +25,7 @@
 #ifndef __WAVE_FUNCTIONS_HPP__
 #define __WAVE_FUNCTIONS_HPP__
 
+#include <costa/grid2grid/grid_layout.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <costa/layout.hpp>
@@ -634,18 +635,17 @@ class Wave_functions_mt : public Wave_functions_base<T>
 
     /// Return COSTA layout for the muffin-tin part for a given spin index and band range.
     auto
-    grid_layout_mt(spin_index ispn__, band_range b__)
+    grid_layout_mt(spin_index ispn__, band_range b__) -> costa::grid_layout<std::complex<T>>
     {
-        std::vector<int> rowsplit(comm_.size() + 1);
-        rowsplit[0] = 0;
+        std::vector<int> rowsplit({0});
+        std::vector<int> owners;
         for (int i = 0; i < comm_.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + mt_coeffs_distr_.counts[i];
+            if (mt_coeffs_distr_.counts[i] > 0) {
+                rowsplit.push_back(rowsplit.back() + mt_coeffs_distr_.counts[i]);
+                owners.push_back(i);
+            }
         }
         std::vector<int> colsplit({0, b__.size()});
-        std::vector<int> owners(comm_.size());
-        for (int i = 0; i < comm_.size(); i++) {
-            owners[i] = i;
-        }
         costa::block_t localblock;
         localblock.data =
                 this->num_mt_ ? this->data_[ispn__.get()].at(memory_t::host, this->num_pw_, b__.begin()) : nullptr;
@@ -653,8 +653,10 @@ class Wave_functions_mt : public Wave_functions_base<T>
         localblock.row = comm_.rank();
         localblock.col = 0;
 
-        return costa::custom_layout<std::complex<T>>(comm_.size(), 1, rowsplit.data(), colsplit.data(), owners.data(),
-                                                     1, &localblock, 'C');
+        int nlocal_blocks = this->num_mt_ ? 1 : 0;
+
+        return costa::custom_layout<std::complex<T>>(rowsplit.size() - 1, 1, rowsplit.data(), colsplit.data(),
+                                                     owners.data(), nlocal_blocks, &localblock, 'C');
     }
 
     /// Compute checksum of the muffin-tin coefficients.

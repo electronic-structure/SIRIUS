@@ -25,6 +25,11 @@
 #ifndef __MATH_TOOLS_HPP__
 #define __MATH_TOOLS_HPP__
 
+#include <cmath>
+#include <complex>
+#include <iomanip>
+#include "core/rte/rte.hpp"
+
 namespace sirius {
 
 inline auto
@@ -85,9 +90,14 @@ factorial(int n)
 inline auto
 round(double a__, int n__)
 {
-    double a0 = std::floor(a__);
-    double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
-    return a0 + b;
+    std::stringstream s;
+    s << std::setprecision(n__) << std::fixed << a__;
+    double result;
+    s >> result;
+    return result;
+    // double a0 = std::floor(a__);
+    // double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
+    // return a0 + b;
 }
 
 inline auto

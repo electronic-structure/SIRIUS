@@ -292,13 +292,13 @@ wrap::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
             (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
              &info);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         case lib_t::lapack: {
             if (A.comm().size() != 1) {
-                throw std::runtime_error("[geqrf] can't use lapack for distributed matrix; use scalapck instead");
+                RTE_THROW("can't use lapack for distributed matrix; use scalapck instead");
             }
             ftn_int lwork = -1;
             ftn_double_complex z;
@@ -312,7 +312,7 @@ wrap::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -339,13 +339,13 @@ wrap::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
             (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
              &info);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         case lib_t::lapack: {
             if (A.comm().size() != 1) {
-                throw std::runtime_error("[geqrf] can't use lapack for distributed matrix; use scalapck instead");
+                RTE_THROW("can't use lapack for distributed matrix; use scalapck instead");
             }
             ftn_int lwork = -1;
             ftn_double z;
@@ -359,7 +359,7 @@ wrap::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -386,13 +386,13 @@ wrap::geqrf<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
             (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
              &info);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         case lib_t::lapack: {
             if (A.comm().size() != 1) {
-                throw std::runtime_error("[geqrf] can't use lapack for distributed matrix; use scalapck instead");
+                RTE_THROW("can't use lapack for distributed matrix; use scalapck instead");
             }
             ftn_int lwork = -1;
             ftn_complex z;
@@ -406,7 +406,7 @@ wrap::geqrf<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -433,13 +433,13 @@ wrap::geqrf<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia
             (&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork,
              &info);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         case lib_t::lapack: {
             if (A.comm().size() != 1) {
-                throw std::runtime_error("[geqrf] can't use lapack for distributed matrix; use scalapck instead");
+                RTE_THROW("can't use lapack for distributed matrix; use scalapck instead");
             }
             ftn_int lwork = -1;
             ftn_single z;
@@ -453,7 +453,7 @@ wrap::geqrf<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -482,7 +482,7 @@ wrap::axpy(int n, ftn_double_complex const* alpha, ftn_double_complex const* x, 
         }
 #endif
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -511,7 +511,7 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
 #if defined(SIRIUS_GPU)
             acc::blas::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -519,7 +519,7 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::sgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
@@ -528,7 +528,7 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -557,7 +557,7 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
 #if defined(SIRIUS_GPU)
             acc::blas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -565,7 +565,7 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
@@ -574,7 +574,7 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -607,7 +607,7 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
                              reinterpret_cast<acc_complex_float_t const*>(beta),
                              reinterpret_cast<acc_complex_float_t*>(C), ldc, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -619,7 +619,7 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
                                  reinterpret_cast<acc_complex_float_t const*>(beta),
                                  reinterpret_cast<acc_complex_float_t*>(C), ldc);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
@@ -628,7 +628,7 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -663,7 +663,7 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
                              reinterpret_cast<acc_complex_double_t const*>(beta),
                              reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -675,7 +675,7 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
                                  reinterpret_cast<acc_complex_double_t const*>(beta),
                                  reinterpret_cast<acc_complex_double_t*>(C), ldc);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
@@ -684,7 +684,7 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -713,12 +713,12 @@ wrap::gemm<ftn_single>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
              &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -747,12 +747,12 @@ wrap::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k
             (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
              &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -782,12 +782,12 @@ wrap::gemm<ftn_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int 
             (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
              &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -817,12 +817,12 @@ wrap::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, f
             (&transa, &transb, &m, &n, &k, alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host),
              &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(), (ftn_len)1, (ftn_len)1);
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -847,7 +847,7 @@ wrap::hemm<ftn_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_complex 
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -873,7 +873,7 @@ wrap::hemm<ftn_double_complex>(char side, char uplo, ftn_int m, ftn_int n, ftn_d
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -895,16 +895,16 @@ wrap::ger<ftn_single>(ftn_int m, ftn_int n, ftn_single const* alpha, ftn_single 
 #if defined(SIRIUS_GPU)
             acc::blas::sger(m, n, alpha, x, incx, y, incy, A, lda, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
         case lib_t::cublasxt: {
-            throw std::runtime_error("(s,c)ger is not implemented in cublasxt");
+            RTE_THROW("(s,c)ger is not implemented in cublasxt");
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -926,16 +926,16 @@ wrap::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double 
 #if defined(SIRIUS_GPU)
             acc::blas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
         case lib_t::cublasxt: {
-            throw std::runtime_error("(d,z)ger is not implemented in cublasxt");
+            RTE_THROW("(d,z)ger is not implemented in cublasxt");
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -957,7 +957,7 @@ wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, 
 #if defined(SIRIUS_GPU)
             acc::blas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -965,12 +965,12 @@ wrap::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -992,7 +992,7 @@ wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m, ftn_int n, 
 #if defined(SIRIUS_GPU)
             acc::blas::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -1000,12 +1000,12 @@ wrap::trmm<ftn_single>(char side, char uplo, char transa, ftn_int m, ftn_int n, 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::blas::xt::strmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1030,7 +1030,7 @@ wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn
                              reinterpret_cast<acc_complex_double_t const*>(A), lda,
                              reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -1040,12 +1040,12 @@ wrap::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn
                                  reinterpret_cast<acc_complex_double_t const*>(A), lda,
                                  reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1069,7 +1069,7 @@ wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
                              reinterpret_cast<acc_complex_float_t const*>(A), lda,
                              reinterpret_cast<acc_complex_float_t*>(B), ldb, sid());
 #else
-            throw std::runtime_error("not compiled with GPU blas support!");
+            RTE_THROW("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -1079,12 +1079,12 @@ wrap::trmm<ftn_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
                                  reinterpret_cast<acc_complex_float_t const*>(A), lda,
                                  reinterpret_cast<acc_complex_float_t*>(B), ldb);
 #else
-            throw std::runtime_error("not compiled with cublasxt");
+            RTE_THROW("not compiled with cublasxt");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1105,7 +1105,7 @@ wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::dpotrf('U', n, A, lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1118,7 +1118,7 @@ wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* de
             FORTRAN(pdpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1126,12 +1126,12 @@ wrap::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::potrf<ftn_double>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1153,7 +1153,7 @@ wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::spotrf('U', n, A, lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1166,7 +1166,7 @@ wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* de
             FORTRAN(pspotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1174,12 +1174,12 @@ wrap::potrf<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::potrf<ftn_single>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1206,7 +1206,7 @@ wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
             FORTRAN(pzpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1214,7 +1214,7 @@ wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::zpotrf('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1222,12 +1222,12 @@ wrap::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::potrf<ftn_double_complex>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1254,7 +1254,7 @@ wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* 
             FORTRAN(pcpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1262,7 +1262,7 @@ wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::cpotrf('U', n, reinterpret_cast<magmaFloatComplex*>(A), lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1270,12 +1270,12 @@ wrap::potrf<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::potrf<ftn_complex>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1302,7 +1302,7 @@ wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* de
             FORTRAN(pdtrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1310,7 +1310,7 @@ wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::dtrtri('U', n, A, lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1318,12 +1318,12 @@ wrap::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::trtri<ftn_double>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1350,7 +1350,7 @@ wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* de
             FORTRAN(pstrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1358,7 +1358,7 @@ wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::strtri('U', n, A, lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1366,12 +1366,12 @@ wrap::trtri<ftn_single>(ftn_int n, ftn_single* A, ftn_int lda, ftn_int const* de
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::trtri<ftn_single>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1398,7 +1398,7 @@ wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
             FORTRAN(pztrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1406,7 +1406,7 @@ wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::ztrtri('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1414,12 +1414,12 @@ wrap::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::trtri<ftn_double_complex>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1446,7 +1446,7 @@ wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* 
             FORTRAN(pctrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -1454,7 +1454,7 @@ wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::ctrtri('U', n, reinterpret_cast<magmaFloatComplex*>(A), lda);
 #else
-            throw std::runtime_error("not compiled with magma");
+            RTE_THROW("not compiled with magma");
 #endif
             break;
         }
@@ -1462,12 +1462,12 @@ wrap::trtri<ftn_complex>(ftn_int n, ftn_complex* A, ftn_int lda, ftn_int const* 
 #if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             acc::cusolver::trtri<ftn_complex>(n, A, lda);
 #else
-            throw std::runtime_error("not compiled with CUDA");
+            RTE_THROW("not compiled with CUDA");
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1487,7 +1487,7 @@ wrap::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, f
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1507,7 +1507,7 @@ wrap::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, 
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1527,7 +1527,7 @@ wrap::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1548,7 +1548,7 @@ wrap::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, f
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1568,7 +1568,7 @@ wrap::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_in
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1588,7 +1588,7 @@ wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1609,12 +1609,12 @@ wrap::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
             FORTRAN(pzgetrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
             return info;
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1641,7 +1641,7 @@ wrap::getrs<ftn_double_complex>(char trans, ftn_int n, ftn_int nrhs, const ftn_d
         }
 #endif
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1668,12 +1668,12 @@ wrap::tranc<ftn_complex>(ftn_int m, ftn_int n, dmatrix<ftn_complex>& A, ftn_int 
             (&m, &n, const_cast<ftn_complex*>(&constant<ftn_complex>::one()), A_ptr, &ia, &ja, A.descriptor(),
              const_cast<ftn_complex*>(&constant<ftn_complex>::zero()), C_ptr, &ic, &jc, C.descriptor());
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1700,12 +1700,12 @@ wrap::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
              A.descriptor(), const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::zero()), C_ptr, &ic, &jc,
              C.descriptor());
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1732,12 +1732,12 @@ wrap::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
              A.descriptor(), const_cast<ftn_double_complex*>(&constant<ftn_double_complex>::zero()), C_ptr, &ic, &jc,
              C.descriptor());
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1763,12 +1763,12 @@ wrap::tranc<ftn_single>(ftn_int m, ftn_int n, dmatrix<ftn_single>& A, ftn_int ia
             (&m, &n, const_cast<ftn_single*>(&constant<ftn_single>::one()), A_ptr, &ia, &ja, A.descriptor(),
              const_cast<ftn_single*>(&constant<ftn_single>::zero()), C_ptr, &ic, &jc, C.descriptor());
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1794,12 +1794,12 @@ wrap::tranu<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
             (&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr, &ia, &ja, A.descriptor(),
              const_cast<ftn_double*>(&constant<ftn_double>::zero()), C_ptr, &ic, &jc, C.descriptor());
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1825,12 +1825,12 @@ wrap::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia
             (&m, &n, const_cast<ftn_double*>(&constant<ftn_double>::one()), A_ptr, &ia, &ja, A.descriptor(),
              const_cast<ftn_double*>(&constant<ftn_double>::zero()), C_ptr, &ic, &jc, C.descriptor());
 #else
-            throw std::runtime_error(linalg_msg_no_scalapack);
+            RTE_THROW(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1853,7 +1853,7 @@ wrap::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) co
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1877,7 +1877,7 @@ wrap::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1900,7 +1900,7 @@ wrap::sytrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1923,7 +1923,7 @@ wrap::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) co
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1943,7 +1943,7 @@ wrap::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) co
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1963,7 +1963,7 @@ wrap::sytrs<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn
             break;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1982,7 +1982,7 @@ wrap::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, f
             return info;
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
@@ -1993,17 +1993,17 @@ template <>
 inline std::tuple<ftn_double, ftn_double, ftn_double>
 wrap::lartg(ftn_double f, ftn_double g) const
 {
+    ftn_double cs{0}, sn{0}, r{0};
     switch (la_) {
         case lib_t::lapack: {
-            ftn_double cs, sn, r;
             FORTRAN(dlartg)(&f, &g, &cs, &sn, &r);
-            return std::make_tuple(cs, sn, r);
         }
         default: {
-            throw std::runtime_error(linalg_msg_wrong_type);
+            RTE_THROW(linalg_msg_wrong_type);
             break;
         }
     }
+    return std::make_tuple(cs, sn, r);
 }
 
 template <typename T>

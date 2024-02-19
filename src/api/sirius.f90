@@ -2831,9 +2831,10 @@ end subroutine sirius_initialize_subspace
 !> @param [in] precompute_rf Generate radial functions
 !> @param [in] precompute_ri Generate radial integrals
 !> @param [in] iter_solver_tol Iterative solver tolerance.
+!> @param [in] iter_solver_steps Iterative solver number of steps.
 !> @param [out] error_code Error code.
 subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute_pw,precompute_rf,&
-&precompute_ri,iter_solver_tol,error_code)
+&precompute_ri,iter_solver_tol,iter_solver_steps,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
@@ -2842,6 +2843,7 @@ logical, optional, target, intent(in) :: precompute_pw
 logical, optional, target, intent(in) :: precompute_rf
 logical, optional, target, intent(in) :: precompute_ri
 real(8), optional, target, intent(in) :: iter_solver_tol
+integer, optional, target, intent(in) :: iter_solver_steps
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -2853,11 +2855,12 @@ logical(C_BOOL), target :: precompute_rf_c_type
 type(C_PTR) :: precompute_ri_ptr
 logical(C_BOOL), target :: precompute_ri_c_type
 type(C_PTR) :: iter_solver_tol_ptr
+type(C_PTR) :: iter_solver_steps_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute_pw,precompute_rf,&
-&precompute_ri,iter_solver_tol,error_code)&
+&precompute_ri,iter_solver_tol,iter_solver_steps,error_code)&
 &bind(C, name="sirius_find_eigen_states")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
@@ -2866,6 +2869,7 @@ type(C_PTR), value :: precompute_pw
 type(C_PTR), value :: precompute_rf
 type(C_PTR), value :: precompute_ri
 type(C_PTR), value :: iter_solver_tol
+type(C_PTR), value :: iter_solver_steps
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -2893,12 +2897,16 @@ iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) then
 iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 endif
+iter_solver_steps_ptr = C_NULL_PTR
+if (present(iter_solver_steps)) then
+iter_solver_steps_ptr = C_LOC(iter_solver_steps)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_pw_ptr,&
-&precompute_rf_ptr,precompute_ri_ptr,iter_solver_tol_ptr,error_code_ptr)
+&precompute_rf_ptr,precompute_ri_ptr,iter_solver_tol_ptr,iter_solver_steps_ptr,error_code_ptr)
 if (present(precompute_pw)) then
 endif
 if (present(precompute_rf)) then
@@ -5951,9 +5959,11 @@ end subroutine sirius_create_H0
 !> @param [in] alpha_pv Constant for the projector.
 !> @param [in] spin Current spin channel.
 !> @param [in] nbnd_occ Number of occupied bands.
+!> @param [in] tol Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+!> @param [out] niter Average number of iterations.
 !> @param [out] error_code Error code
 subroutine sirius_linear_solver(handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,psi,&
-&eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ,error_code)
+&eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ,tol,niter,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
@@ -5969,6 +5979,8 @@ integer, target, intent(in) :: num_spin_comp
 real(8), target, intent(in) :: alpha_pv
 integer, target, intent(in) :: spin
 integer, target, intent(in) :: nbnd_occ
+real(8), optional, target, intent(in) :: tol
+integer, optional, target, intent(out) :: niter
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
@@ -5984,11 +5996,13 @@ type(C_PTR) :: num_spin_comp_ptr
 type(C_PTR) :: alpha_pv_ptr
 type(C_PTR) :: spin_ptr
 type(C_PTR) :: nbnd_occ_ptr
+type(C_PTR) :: tol_ptr
+type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_linear_solver_aux(handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ,error_code)&
+&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ,tol,niter,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -6004,6 +6018,8 @@ type(C_PTR), value :: num_spin_comp
 type(C_PTR), value :: alpha_pv
 type(C_PTR), value :: spin
 type(C_PTR), value :: nbnd_occ
+type(C_PTR), value :: tol
+type(C_PTR), value :: niter
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -6034,14 +6050,123 @@ spin_ptr = C_NULL_PTR
 spin_ptr = C_LOC(spin)
 nbnd_occ_ptr = C_NULL_PTR
 nbnd_occ_ptr = C_LOC(nbnd_occ)
+tol_ptr = C_NULL_PTR
+if (present(tol)) then
+tol_ptr = C_LOC(tol)
+endif
+niter_ptr = C_NULL_PTR
+if (present(niter)) then
+niter_ptr = C_LOC(niter)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_linear_solver_aux(handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,&
 &dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,&
-&nbnd_occ_ptr,error_code_ptr)
+&nbnd_occ_ptr,tol_ptr,niter_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
+
+!
+!> @brief Generate augmentation charge in case of complex density (linear response)
+!> @param [in] handler DFT ground state handler.
+!> @param [in] iat Index of atom type.
+!> @param [in] num_atoms Total number of atoms.
+!> @param [in] num_gvec_loc Local number of G-vectors
+!> @param [in] num_spin_comp Number of spin components.
+!> @param [in] qpw Augmentation operator for a givem atom type.
+!> @param [in] ldq Leading dimension of qpw array.
+!> @param [in] phase_factors_q Phase factors exp(i*q*r_alpha)
+!> @param [in] mill Miller indices (G-vectors in lattice coordinates)
+!> @param [in] dens_mtrx Density matrix
+!> @param [in] ldd Leading dimension of density matrix.
+!> @param [inout] rho_aug Resulting augmentation charge.
+!> @param [out] error_code Error code
+subroutine sirius_generate_rhoaug_q(handler,iat,num_atoms,num_gvec_loc,num_spin_comp,&
+&qpw,ldq,phase_factors_q,mill,dens_mtrx,ldd,rho_aug,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: handler
+integer, target, intent(in) :: iat
+integer, target, intent(in) :: num_atoms
+integer, target, intent(in) :: num_gvec_loc
+integer, target, intent(in) :: num_spin_comp
+complex(8), target, intent(in) :: qpw(ldq, num_gvec_loc)
+integer, target, intent(in) :: ldq
+complex(8), target, intent(in) :: phase_factors_q(num_atoms)
+integer, target, intent(in) :: mill(3, num_gvec_loc)
+complex(8), target, intent(in) :: dens_mtrx(ldd, num_atoms, num_spin_comp)
+integer, target, intent(in) :: ldd
+complex(8), target, intent(inout) :: rho_aug(num_gvec_loc, num_spin_comp)
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: iat_ptr
+type(C_PTR) :: num_atoms_ptr
+type(C_PTR) :: num_gvec_loc_ptr
+type(C_PTR) :: num_spin_comp_ptr
+type(C_PTR) :: qpw_ptr
+type(C_PTR) :: ldq_ptr
+type(C_PTR) :: phase_factors_q_ptr
+type(C_PTR) :: mill_ptr
+type(C_PTR) :: dens_mtrx_ptr
+type(C_PTR) :: ldd_ptr
+type(C_PTR) :: rho_aug_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_generate_rhoaug_q_aux(handler,iat,num_atoms,num_gvec_loc,num_spin_comp,&
+&qpw,ldq,phase_factors_q,mill,dens_mtrx,ldd,rho_aug,error_code)&
+&bind(C, name="sirius_generate_rhoaug_q")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: iat
+type(C_PTR), value :: num_atoms
+type(C_PTR), value :: num_gvec_loc
+type(C_PTR), value :: num_spin_comp
+type(C_PTR), value :: qpw
+type(C_PTR), value :: ldq
+type(C_PTR), value :: phase_factors_q
+type(C_PTR), value :: mill
+type(C_PTR), value :: dens_mtrx
+type(C_PTR), value :: ldd
+type(C_PTR), value :: rho_aug
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+iat_ptr = C_NULL_PTR
+iat_ptr = C_LOC(iat)
+num_atoms_ptr = C_NULL_PTR
+num_atoms_ptr = C_LOC(num_atoms)
+num_gvec_loc_ptr = C_NULL_PTR
+num_gvec_loc_ptr = C_LOC(num_gvec_loc)
+num_spin_comp_ptr = C_NULL_PTR
+num_spin_comp_ptr = C_LOC(num_spin_comp)
+qpw_ptr = C_NULL_PTR
+qpw_ptr = C_LOC(qpw)
+ldq_ptr = C_NULL_PTR
+ldq_ptr = C_LOC(ldq)
+phase_factors_q_ptr = C_NULL_PTR
+phase_factors_q_ptr = C_LOC(phase_factors_q)
+mill_ptr = C_NULL_PTR
+mill_ptr = C_LOC(mill)
+dens_mtrx_ptr = C_NULL_PTR
+dens_mtrx_ptr = C_LOC(dens_mtrx)
+ldd_ptr = C_NULL_PTR
+ldd_ptr = C_LOC(ldd)
+rho_aug_ptr = C_NULL_PTR
+rho_aug_ptr = C_LOC(rho_aug)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_generate_rhoaug_q_aux(handler_ptr,iat_ptr,num_atoms_ptr,num_gvec_loc_ptr,&
+&num_spin_comp_ptr,qpw_ptr,ldq_ptr,phase_factors_q_ptr,mill_ptr,dens_mtrx_ptr,ldd_ptr,&
+&rho_aug_ptr,error_code_ptr)
+end subroutine sirius_generate_rhoaug_q
 
 !
 !> @brief Generate D-operator matrix.

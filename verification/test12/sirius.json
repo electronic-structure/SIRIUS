@@ -2,7 +2,7 @@
   "control": {
     "processing_unit": "cpu",
     "rmt_max": 2.2,
-    "verbosity" : 1
+    "verbosity" : 2
   },
   "unit_cell": {
     "lattice_vectors": [
@@ -49,13 +49,13 @@
   "parameters": {
     "energy_tol": 1e-06,
     "use_symmetry": true,
-    "gk_cutoff" : 10,
+    "aw_cutoff" : 7,
     "xc_functionals": [
       "XC_LDA_X",
       "XC_LDA_C_PZ"
     ],
     "density_tol": 1e-08,
-    "num_dft_iter": 1,
+    "num_dft_iter": 100,
     "pw_cutoff": 20.0,
     "auto_rmt": 1,
     "smearing_width": 0.01,

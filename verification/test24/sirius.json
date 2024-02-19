@@ -5,7 +5,6 @@
         "verbosity": 1
     },
     "hubbard": {
-        "full_orthogonalization": false,
         "local": [
             {
                 "atom_type": "Ni",

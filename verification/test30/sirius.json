@@ -31,7 +31,7 @@
         "constraint_max_iteration": 100,
         "constraint_method": "energy",
         "constraint_strength": 1.0,
-        "full_orthogonalization": true,
+        "hubbard_subspace_method" : "full_orthogonalization",
         "local": [
             {
                 "atom_type": "Ni",
@@ -132,8 +132,6 @@
             }
         ],
         "nonlocal": [],
-        "normalize": false,
-        "orthogonalize": true,
         "simplified": true
     },
     "iterative_solver": {

@@ -6,7 +6,7 @@
             "control": {
                 "beta_chunk_size": 256,
                 "beta_on_device": false,
-                "cyclic_block_size": 2,
+                "cyclic_block_size": 4,
                 "fft_mode": "parallel",
                 "gen_evp_solver_name": "lapack",
                 "gvec_chunk_size": 500000,
@@ -14,17 +14,17 @@
                 "num_bands_to_print": 10,
                 "ortho_rf": false,
                 "output": "stdout:",
-                "print_forces": true,
+                "print_forces": false,
                 "print_neighbors": false,
-                "print_stress": true,
+                "print_stress": false,
                 "processing_unit": "cpu",
-                "reduce_gvec": true,
-                "rmt_max": 2.2,
+                "reduce_gvec": false,
+                "rmt_max": 2.0,
                 "save_rf": false,
                 "spglib_tolerance": 1e-06,
                 "std_evp_solver_name": "lapack",
                 "use_second_variation": true,
-                "verbosity": 1,
+                "verbosity": 2,
                 "verification": 0
             },
             "hubbard": {
@@ -54,12 +54,12 @@
                 "num_steps": 20,
                 "relative_tolerance": 0,
                 "residual_tolerance": 1e-06,
-                "subspace_size": 4,
-                "type": "davidson"
+                "subspace_size": 2,
+                "type": "exact"
             },
             "locked": true,
             "mixer": {
-                "beta": 0.75,
+                "beta": 0.5,
                 "beta0": 0.15,
                 "beta_scaling_factor": 1.0,
                 "linear_mix_rms_tol": 1000000.0,
@@ -78,47 +78,47 @@
             },
             "parameters": {
                 "auto_rmt": 1,
-                "aw_cutoff": 0.0,
+                "aw_cutoff": 7.0,
                 "core_relativity": "dirac",
-                "density_tol": 1e-05,
-                "electronic_structure_method": "pseudopotential",
-                "energy_tol": 1e-08,
+                "density_tol": 1e-07,
+                "electronic_structure_method": "full_potential_lapwlo",
+                "energy_tol": 1e-10,
                 "extra_charge": 0,
                 "gamma_point": false,
-                "gk_cutoff": 6.0,
+                "gk_cutoff": 3.5,
                 "hubbard_correction": false,
-                "lmax_apw": -1,
-                "lmax_pot": -1,
-                "lmax_rho": -1,
+                "lmax_apw": 8,
+                "lmax_pot": 8,
+                "lmax_rho": 8,
                 "molecule": false,
                 "ngridk": [2,2,2],
                 "nn_radius": -1,
-                "num_bands": 10,
+                "num_bands": -1,
                 "num_dft_iter": 100,
-                "num_fv_states": -1,
+                "num_fv_states": 4,
                 "num_mag_dims": 0,
                 "precision_gs": "auto",
                 "precision_hs": "fp64",
                 "precision_wf": "fp64",
-                "pw_cutoff": 20.0,
+                "pw_cutoff": 12.0,
                 "reduce_aux_bf": 0,
                 "shiftk": [0,0,0],
                 "smearing": "gaussian",
-                "smearing_width": 0.025,
+                "smearing_width": 0.001,
                 "so_correction": false,
                 "use_ibz": true,
                 "use_scf_correction": true,
                 "use_symmetry": true,
-                "valence_relativity": "zora",
+                "valence_relativity": "koelling_harmon",
                 "veff_pw_cutoff": 0.0,
                 "vk": [],
                 "xc_dens_tre": -1,
-                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PZ"]
+                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PW"]
             },
             "settings": {
                 "always_update_wf": true,
                 "auto_enu_tol": 0,
-                "fft_grid_size": [48,48,48],
+                "fft_grid_size": [45,45,45],
                 "fp32_to_fp64_rms": 0,
                 "itsol_tol_min": 1e-13,
                 "itsol_tol_ratio": 0,
@@ -145,9 +145,9 @@
                     ]
                 },
                 "lattice_vectors": [
-                    [7.0,0.0,0.0],
-                    [0.0,7.0,0.0],
-                    [0.0,0.0,7.0]
+                    [10.0,0.0,0.0],
+                    [0.0,10.0,0.0],
+                    [0.0,0.0,10.0]
                 ],
                 "lattice_vectors_scale": 1.0
             },
@@ -162,47 +162,41 @@
                 "stress_tol": 1e-05
             }
         },
-        "fft_coarse_grid": [30,30,30],
+        "fft_coarse_grid": [25,25,25],
         "mpi_grid": [1,1],
         "num_atoms": 1,
-        "omega": 343.0
+        "omega": 1000.0
     },
     "counters": {
-        "band_evp_work_count": 1094.4629999999997,
-        "local_operator_num_applied": 1406
+        "band_evp_work_count": 0.0,
+        "local_operator_num_applied": 0
     },
     "git_hash": "a0d09bff305c7d162e6e43a792018b99bd33b276",
     "ground_state": {
         "band_gap": 0.0,
         "converged": true,
-        "efermi": -0.21334093998009182,
+        "core_leakage": 0.0,
+        "efermi": -0.2298410110176048,
         "energy": {
             "bxc": 0.0,
-            "entropy_sum": -0.010013661107597048,
-            "eval_sum": -0.22399006682712394,
-            "ewald": -0.20266411652384675,
-            "exc": -0.22491559734693162,
-            "kin": 0.3784882195287623,
-            "scf_correction": 1.1045739878312588e-09,
-            "total": -0.46072378162036787,
-            "veff": -0.6024782863558863,
-            "vha": 0.18434581372278694,
-            "vloc": -0.4937915341366955,
-            "vxc": -0.293032565941951
+            "core_eval_sum": 0.0,
+            "entropy_sum": -0.00012385610466867573,
+            "enuc": -0.4589669998262808,
+            "eval_sum": -0.23151862142818033,
+            "ewald": 0.0,
+            "exc": -0.2292559127051379,
+            "kin": 0.4145107268100424,
+            "scf_correction": 1.1201746197286866e-09,
+            "total": -0.44731572496791183,
+            "veff": -0.6460293482382228,
+            "vha": -0.3472070807334204,
+            "vxc": -0.2988222675051662
         },
-        "etot_history": [-0.4607019204015677,-0.46072327304080424,-0.46072377256180236,-0.46072378129344804,-0.4607237816021808,-0.4607237816205268,-0.4607237816213049,-0.4607237816212939,-0.4607237816200783,-0.4607237816216672,-0.46072378162138783,-0.4607237816225624,-0.4607237816203466,-0.46072378162284133,-0.4607237816234845,-0.4607237816197599,-0.46072378162036787],
-        "forces": [
-            [0.0,0.0,0.0]
-        ],
-        "num_scf_iterations": 16,
-        "rho_min": 7.71079871640548e-05,
-        "rms_history": [0.000936577032795191,0.00015523220240862948,1.659711336229331e-05,5.571949620719023e-07,1.9915586374828655e-07,1.8349294930108194e-08,9.252848921264509e-09,1.801042495156533e-09,1.3506712387922054e-10,1.5511595654570004e-10,2.0151556078944659e-10,2.527118266909556e-10,2.1389570367226746e-10,2.2293545161381012e-10,2.2217773213531797e-10,2.5375390311621956e-10,3.0640450648876877e-10],
-        "scf_time": 1.55360497,
-        "stress": [
-            [5.1663635654665185e-05,-3.918314502740958e-38,-1.0097419599367557e-28],
-            [-3.918314502740958e-38,5.1663635654665294e-05,6.731613092367134e-29],
-            [-1.0097419599367557e-28,6.731613092367134e-29,5.1663635654666595e-05]
-        ]
+        "etot_history": [-0.44831290667058615,-0.4468106247281318,-0.4474447515330019,-0.4472612489844311,-0.4473117274570976,-0.4473147267928498,-0.44731448495156323,-0.4473157212147262,-0.44731572498077743,-0.447315724750069,-0.447315724970636,-0.44731572496791183],
+        "num_scf_iterations": 11,
+        "rho_min": 1.648108372612403e-06,
+        "rms_history": [0.0032486284901036824,0.001611615320128309,0.00036574537452736914,0.0006333251021287985,0.00010938708700217726,3.961750514562787e-05,2.786516901283542e-05,1.3376392153616588e-07,3.263317593773774e-09,7.329481622623265e-09,1.3108155611926734e-10,3.598095195052713e-11],
+        "scf_time": 14.867175396
     },
     "task": 0,
     "threads_per_rank": 16

@@ -143,7 +143,6 @@ Atom_type::init()
 
     if (!parameters_.full_potential()) {
         RTE_ASSERT(mt_radial_basis_size() == num_beta_radial_functions());
-        // RTE_ASSERT(lmax_beta() == indexr1().lmax());
     }
 
     /* get number of valence electrons */
@@ -358,13 +357,15 @@ Atom_type::print_info(std::ostream& out__) const
             }
             out__ << lo_descriptors_hub_[i];
         }
+
+        bool orthogonalize_ = parameters_.cfg().hubbard().hubbard_subspace_method() == "orthogonalize";
+        bool full_orthogonalization_ =
+                parameters_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization";
+        bool normalize_ = parameters_.cfg().hubbard().hubbard_subspace_method() == "normalize";
         out__ << std::endl;
-        out__ << "  orthogonalize                      : " << boolstr(parameters_.cfg().hubbard().orthogonalize())
-              << std::endl
-              << "  normalize                          : " << boolstr(parameters_.cfg().hubbard().normalize())
-              << std::endl
-              << "  full_orthogonalization             : "
-              << boolstr(parameters_.cfg().hubbard().full_orthogonalization()) << std::endl
+        out__ << "  orthogonalize                      : " << boolstr(orthogonalize_) << std::endl
+              << "  normalize                          : " << boolstr(normalize_) << std::endl
+              << "  full_orthogonalization             : " << boolstr(full_orthogonalization_) << std::endl
               << "  simplified                         : " << boolstr(parameters_.cfg().hubbard().simplified())
               << std::endl;
     }
@@ -717,12 +718,17 @@ Atom_type::read_input(std::string const& str__)
     }
 
     if (parameters_.full_potential()) {
-        name_           = parser["name"].get<std::string>();
-        symbol_         = parser["symbol"].get<std::string>();
-        mass_           = parser["mass"].get<double>();
-        zn_             = parser["number"].get<int>();
-        double r0       = parser["rmin"].get<double>();
-        double R        = parser["rmt"].get<double>();
+        name_     = parser["name"].get<std::string>();
+        symbol_   = parser["symbol"].get<std::string>();
+        mass_     = parser["mass"].get<double>();
+        zn_       = parser["number"].get<int>();
+        double r0 = parser["rmin"].get<double>();
+        double R  = parser["rmt"].get<double>();
+        try { /* overwrite the muffin-tin radius with the value from the inpupt */
+            R = parameters_.cfg().unit_cell().atom_type_rmt(label_);
+        } catch (...) {
+        }
+
         int nmtp        = parser["nrmt"].get<int>();
         this->lmax_apw_ = parser.value("lmax_apw", this->lmax_apw_);
 
@@ -858,7 +864,7 @@ Atom_type::read_hubbard_input()
         }
     }
 
-    if (parameters_.cfg().hubbard().full_orthogonalization()) {
+    if (parameters_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
         this->hubbard_correction_ = true;
         if (lo_descriptors_hub_.empty()) {
             for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
