@@ -279,7 +279,7 @@ Density::initial_density_full_pot()
 
     /* compute contribution from free atoms to the interstitial density */
     auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
-                                                           [&ri](int iat, double g) { return ri.value(iat, g); });
+                                          [&ri](int iat, double g) { return ri.value(iat, g); });
 
     /* initialize density of free atoms (not smoothed) */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {

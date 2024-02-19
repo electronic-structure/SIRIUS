@@ -33,8 +33,8 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
         for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
             auto& atom_type = ctx__.unit_cell().atom(ia).type();
             // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
-            auto phase = twopi *
-                         dot(kp__.gkvec().gkvec(gvec_index_t::local(igkloc)), ctx__.unit_cell().atom(ia).position());
+            auto phase =
+                    twopi * dot(kp__.gkvec().gkvec(gvec_index_t::local(igkloc)), ctx__.unit_cell().atom(ia).position());
             auto phase_factor = std::exp(std::complex<double>(0.0, phase));
             for (auto const& e : atom_type.indexb_wfs()) {
                 /*  orbital quantum  number of this atomic orbital */
