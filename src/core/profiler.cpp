@@ -27,7 +27,7 @@
 namespace sirius {
 ::rt_graph::Timer global_rtgraph_timer;
 
-#if defined(SIRIUS_CUDA_NVTX)
-acc::nvtxprofiler::Timer global_nvtx_timer;
+#if defined(SIRIUS_TX)
+acc::txprofiler::Timer global_tx_timer;
 #endif
 } // namespace sirius
