@@ -36,7 +36,7 @@ density_residual_hartree_energy(Density const& rho1__, Density const& rho2__)
     #pragma omp parallel for reduction(+:eh)
     for (int igloc = gv.skip_g0(); igloc < gv.count(); igloc++) {
         auto z   = rho1__.component(0).rg().f_pw_local(igloc) - rho2__.component(0).rg().f_pw_local(igloc);
-        double g = gv.gvec_len<index_domain_t::local>(igloc);
+        double g = gv.gvec_len(gvec_index_t::local(igloc));
         eh += (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / std::pow(g, 2);
     }
     gv.comm().allreduce(&eh, 1);
@@ -131,7 +131,7 @@ Potential::poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__, mdarra
          * multipole moments in the muffin-tins */
         #pragma omp parallel for schedule(static)
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
-            double gR  = ctx_.gvec().gvec_len<index_domain_t::local>(igloc) * R;
+            double gR  = ctx_.gvec().gvec_len(gvec_index_t::local(igloc)) * R;
             double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
 
             std::complex<double> rho_G(0, 0);
@@ -216,7 +216,7 @@ Potential::poisson(Periodic_function<double> const& rho__)
         #pragma omp parallel for
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
             hartree_potential_->rg().f_pw_local(igloc) =
-                    fourpi * rho_pw[igloc] / std::pow(ctx_.gvec().gvec_len<index_domain_t::local>(igloc), 2);
+                    fourpi * rho_pw[igloc] / std::pow(ctx_.gvec().gvec_len(gvec_index_t::local(igloc)), 2);
         }
     } else {
         /* reference paper:
@@ -229,7 +229,7 @@ Potential::poisson(Periodic_function<double> const& rho__)
         double R_cut = 0.5 * std::pow(unit_cell_.omega(), 1.0 / 3);
         #pragma omp parallel for
         for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
-            auto glen = ctx_.gvec().gvec_len<index_domain_t::local>(igloc);
+            auto glen = ctx_.gvec().gvec_len(gvec_index_t::local(igloc));
             hartree_potential_->rg().f_pw_local(igloc) =
                     (fourpi * rho_pw[igloc] / std::pow(glen, 2)) * (1.0 - std::cos(glen * R_cut));
         }
@@ -283,7 +283,7 @@ Potential::poisson(Periodic_function<double> const& rho__)
     }
     if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
         for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-            if (ctx_.gvec().gvec_len<index_domain_t::local>(ig) > ctx_.cfg().parameters().veff_pw_cutoff()) {
+            if (ctx_.gvec().gvec_len(gvec_index_t::local(ig)) > ctx_.cfg().parameters().veff_pw_cutoff()) {
                 hartree_potential_->rg().f_pw_local(ig) = 0;
             }
         }

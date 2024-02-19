@@ -101,8 +101,8 @@ K_point<T>::initialize()
 
             fv_eigen_vectors_slab_->zero(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
-                    int ig = igloc + gkvec().gvec_offset(comm().rank());
+                for (int igloc = 0; igloc < gkvec().count(comm().rank()); igloc++) {
+                    int ig = igloc + gkvec().offset(comm().rank());
                     if (ig == i) {
                         fv_eigen_vectors_slab_->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) = 1.0;
                     }
@@ -369,8 +369,8 @@ K_point<T>::generate_gkvec(double gk_cutoff__)
 
     for (int rank = 0; rank < comm().size(); rank++) {
         auto gv = gkvec_->gvec_local(rank);
-        for (int igloc = 0; igloc < gkvec_->gvec_count(rank); igloc++) {
-            int ig       = gkvec_->gvec_offset(rank) + igloc;
+        for (int igloc = 0; igloc < gkvec_->count(rank); igloc++) {
+            int ig       = gkvec_->offset(rank) + igloc;
             auto loc_row = spl_ngk_row.location(ig);
             auto loc_col = spl_ngk_col.location(ig);
             if (loc_row.ib == comm_row().rank()) {
@@ -559,7 +559,7 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* save the order of G-vectors */
         mdarray<int, 2> gv({3, num_gkvec()});
         for (int i = 0; i < num_gkvec(); i++) {
-            auto v = gkvec().template gvec<index_domain_t::global>(i);
+            auto v = gkvec().gvec(gvec_index_t::global(i));
             for (int x : {0, 1, 2}) {
                 gv(x, i) = v[x];
             }
@@ -708,7 +708,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* vs = {r, theta, phi} */
-        auto vs = r3::spherical_coordinates(this->gkvec().template gkvec_cart<index_domain_t::local>(igk_loc));
+        auto vs = r3::spherical_coordinates(this->gkvec().gkvec_cart(gvec_index_t::local(igk_loc)));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
@@ -743,7 +743,7 @@ K_point<T>::generate_atomic_wave_functions(std::vector<int> atoms__,
         std::vector<std::complex<T>> phase_gk(num_gkvec_loc());
         #pragma omp parallel for
         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-            auto G = gkvec().template gvec<index_domain_t::local>(igk_loc);
+            auto G = gkvec().gvec(gvec_index_t::local(igk_loc));
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(static_cast<std::complex<T>>(ctx_.gvec_phase_factor(G, ia)) * phase_k);
         }

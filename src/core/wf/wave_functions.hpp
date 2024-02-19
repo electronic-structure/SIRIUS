@@ -760,7 +760,7 @@ class Wave_functions : public Wave_functions_mt<T>
         std::vector<int> rowsplit(this->comm_.size() + 1);
         rowsplit[0] = 0;
         for (int i = 0; i < this->comm_.size(); i++) {
-            rowsplit[i + 1] = rowsplit[i] + gkvec_->gvec_count(i);
+            rowsplit[i + 1] = rowsplit[i] + gkvec_->count(i);
         }
         std::vector<int> colsplit({0, b__.size()});
         std::vector<int> owners(this->comm_.size());

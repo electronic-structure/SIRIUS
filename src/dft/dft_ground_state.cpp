@@ -86,13 +86,13 @@ DFT_ground_state::energy_kin_sum_pw() const
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-            auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            auto Gk = kp->gkvec().gkvec_cart(gvec_index_t::local(igloc));
 
             double d{0};
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                    double f = kp->band_occupancy(i, ispin);
-                    auto z   = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
+                    auto f = kp->band_occupancy(i, ispin);
+                    auto z = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
                     d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                 }
             }

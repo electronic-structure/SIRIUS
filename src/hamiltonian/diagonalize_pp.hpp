@@ -61,7 +61,7 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
     auto& gen_solver = ctx.gen_evp_solver();
 
     for (int ig = 0; ig < kp__.num_gkvec(); ig++) {
-        hmlt.set(ig, ig, 0.5 * std::pow(kp__.gkvec().template gkvec_cart<index_domain_t::global>(ig).length(), 2));
+        hmlt.set(ig, ig, 0.5 * std::pow(kp__.gkvec().gkvec_cart(gvec_index_t::global(ig)).length(), 2));
         ovlp.set(ig, ig, 1);
     }
 
@@ -79,9 +79,9 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 
     #pragma omp parallel for schedule(static)
     for (int igk_col = 0; igk_col < kp__.num_gkvec_col(); igk_col++) {
-        auto gvec_col = kp__.gkvec_col().template gvec<index_domain_t::local>(igk_col);
+        auto gvec_col = kp__.gkvec_col().gvec(gvec_index_t::local(igk_col));
         for (int igk_row = 0; igk_row < kp__.num_gkvec_row(); igk_row++) {
-            auto gvec_row = kp__.gkvec_row().template gvec<index_domain_t::local>(igk_row);
+            auto gvec_row = kp__.gkvec_row().gvec(gvec_index_t::local(igk_row));
             auto ig12     = ctx.gvec().index_g12_safe(gvec_row, gvec_col);
 
             if (ispn__ == 0) {

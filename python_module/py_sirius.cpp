@@ -502,8 +502,8 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<wf::num_bands>(m, "num_bands").def(py::init<int>());
     py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
     py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec")
-            .def("count", &fft::Gvec::count)
-            .def("gkvec_cart", &fft::Gvec::gkvec_cart<index_domain_t::global>);
+            .def("count", py::overload_cast<>(&fft::Gvec::count, py::const_))
+            .def("gkvec_cart", py::overload_cast<gvec_index_t::global>(&fft::Gvec::gkvec_cart, py::const_));
     // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
     py::class_<wf::device_memory_guard>(m, "device_memory_guard");
 

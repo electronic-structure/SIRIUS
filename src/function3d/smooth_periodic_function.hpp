@@ -482,7 +482,7 @@ gradient(Smooth_periodic_function<T>& f__)
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        auto G = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
+        auto G = f__.gvec().gvec_cart(gvec_index_t::local(igloc));
         for (int x : {0, 1, 2}) {
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
@@ -503,7 +503,7 @@ divergence(Smooth_periodic_vector_function<T>& g__)
     f.zero();
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
-            auto G = f.gvec().template gvec_cart<index_domain_t::local>(igloc);
+            auto G = f.gvec().gvec_cart(gvec_index_t::local(igloc));
             f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * std::complex<real_type<T>>(0, G[x]);
         }
     }
@@ -521,7 +521,7 @@ laplacian(Smooth_periodic_function<T>& f__)
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        auto G              = f__.gvec().template gvec_cart<index_domain_t::local>(igloc);
+        auto G              = f__.gvec().gvec_cart(gvec_index_t::local(igloc));
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * std::complex<real_type<T>>(-std::pow(G.length(), 2), 0);
     }
     return g;

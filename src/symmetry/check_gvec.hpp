@@ -39,7 +39,7 @@ check_gvec(fft::Gvec const& gvec__, Crystal_symmetry const& sym__)
         auto sm = sym__[isym].spg_op.R;
 
         for (int igloc = 0; igloc < gvec__.count(); igloc++) {
-            auto gv = gvec__.gvec<index_domain_t::local>(igloc);
+            auto gv = gvec__.gvec(gvec_index_t::local(igloc));
             /* apply symmetry operation to the G-vector */
             auto gv_rot = dot(gv, sm);
 
