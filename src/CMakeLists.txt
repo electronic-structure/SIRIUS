@@ -60,6 +60,7 @@ set(_SOURCES
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
+  "k_point/generate_w90_coeffs.cpp"
   "radial/radial_integrals.cpp"
   "mixer/mixer_functions.cpp"
   "nlcglib/adaptor.cpp"
@@ -115,6 +116,7 @@ target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
   $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
   $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
   $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
+  $<TARGET_NAME_IF_EXISTS:sirius::wannier90>
   SpFFT::spfft
   SPLA::spla
   "${SIRIUS_LINALG_LIB}"
@@ -130,6 +132,7 @@ target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
+
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${SIRIUS_USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${SIRIUS_USE_SCALAPACK}>:SIRIUS_SCALAPACK>
@@ -147,6 +150,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${SIRIUS_USE_VCSQNM}>:SIRIUS_VCSQNM>
   $<$<BOOL:${SIRIUS_HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${SIRIUS_USE_MAGMA}>,$<BOOL:${SIRIUS_USE_ROCM}>>:HAVE_HIP> # Required for magma headers
+  $<$<BOOL:${SIRIUS_USE_WANNIER90}>:SIRIUS_WANNIER90>
 )
 
 if(SIRIUS_CREATE_FORTRAN_BINDINGS)
