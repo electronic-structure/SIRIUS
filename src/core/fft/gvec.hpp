@@ -605,7 +605,7 @@ class Gvec
     inline auto
     gkvec(gvec_index_t::global ig__) const
     {
-        return this->gvec(gvec_index_t::global(ig__)) + vk_;
+        return this->gvec(ig__) + vk_;
     }
 
     /// Return local G+k vector in fractional coordinates.
@@ -1156,6 +1156,83 @@ print(std::ostream& out__, Gvec const& gvec__)
     //    pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
     //}
     // out__ << pout.flush(0);
+}
+
+class gvec_iterator_t
+{
+  private:
+    gvec_index_t::local igloc_{-1};
+    gvec_index_t::value_type offset_{-1};
+  public:
+    using difference_type = std::ptrdiff_t;
+
+    gvec_iterator_t(gvec_index_t::local igloc__, gvec_index_t::value_type offset__)
+        : igloc_{igloc__}
+        , offset_{offset__}
+    {
+    }
+
+    gvec_iterator_t(gvec_index_t::local igloc__)
+        : igloc_{igloc__}
+    {
+    }
+
+    inline bool
+    operator!=(gvec_iterator_t const& rhs__)
+    {
+        return this->igloc_ != rhs__.igloc_;
+    }
+
+    inline gvec_iterator_t&
+    operator++()
+    {
+        this->igloc_++;
+        return *this;
+    }
+
+    inline gvec_iterator_t
+    operator++(int)
+    {
+        gvec_iterator_t tmp(this->igloc_);
+        this->igloc_++;
+        return tmp;
+    }
+
+    inline auto
+    operator*()
+    {
+        struct
+        {
+            typename gvec_index_t::global ig;
+            typename gvec_index_t::local igloc;
+        } ret{gvec_index_t::global(this->offset_ + this->igloc_.get()), this->igloc_};
+        return ret;
+    }
+
+    inline difference_type
+    operator-(gvec_iterator_t const& rhs__) const
+    {
+        return this->igloc_ - rhs__.igloc_;
+    }
+
+    inline gvec_iterator_t&
+    operator+=(difference_type rhs__)
+    {
+        this->igloc_ += rhs__;
+        return *this;
+    }
+};
+
+inline auto
+begin(Gvec const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(0), gv__.offset());
+}
+
+inline auto
+end(Gvec const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(gv__.count()));
 }
 
 } // namespace fft
