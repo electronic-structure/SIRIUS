@@ -1163,6 +1163,7 @@ class gvec_iterator_t
   private:
     gvec_index_t::local igloc_{-1};
     gvec_index_t::value_type offset_{-1};
+
   public:
     using difference_type = std::ptrdiff_t;
 

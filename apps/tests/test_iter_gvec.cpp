@@ -3,11 +3,12 @@
 
 using namespace sirius;
 
-int main(int argn, char** argv)
+int
+main(int argn, char** argv)
 {
     sirius::initialize();
 
-    r3::matrix<double> M({{1,0,0},{0,1,0},{0,0,1}});
+    r3::matrix<double> M({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     fft::Gvec gv(M, 10, mpi::Communicator::world(), false);
 
     #pragma omp parallel for
