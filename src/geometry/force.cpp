@@ -667,9 +667,6 @@ Force::calc_forces_vloc()
 
     auto const& gvecs = ctx_.gvec();
 
-    int gvec_count  = gvecs.count();
-    int gvec_offset = gvecs.offset();
-
     double fact = valence_rho.rg().gvec().reduced() ? 2.0 : 1.0;
 
     /* here the calculations are in lattice vectors space */
@@ -679,16 +676,15 @@ Force::calc_forces_vloc()
 
         int iat = atom.type_id();
 
-        for (int igloc = 0; igloc < gvec_count; igloc++) {
-            int ig   = gvec_offset + igloc;
-            int igsh = ctx_.gvec().shell(ig);
+        for (auto it : gvecs) {
+            int igsh = ctx_.gvec().shell(it.ig);
 
             /* cartesian form for getting cartesian force components */
-            auto gvec_cart = gvecs.gvec_cart(gvec_index_t::local(igloc));
+            auto gvec_cart = gvecs.gvec_cart(it.igloc);
 
             /* scalar part of a force without multiplying by G-vector */
-            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.rg().f_pw_local(igloc)) *
-                                     std::conj(ctx_.gvec_phase_factor(ig, ia));
+            std::complex<double> z = fact * fourpi * ff(igsh, iat) * std::conj(valence_rho.rg().f_pw_local(it.igloc)) *
+                                     std::conj(ctx_.gvec_phase_factor(it.ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */
             for (int x : {0, 1, 2}) {
