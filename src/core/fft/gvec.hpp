@@ -1231,6 +1231,12 @@ begin(Gvec const& gv__)
 }
 
 inline auto
+begin1(Gvec const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(gv__.skip_g0()), gv__.offset());
+}
+
+inline auto
 end(Gvec const& gv__)
 {
     return gvec_iterator_t(gvec_index_t::local(gv__.count()));
