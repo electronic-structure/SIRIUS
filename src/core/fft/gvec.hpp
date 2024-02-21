@@ -1233,11 +1233,8 @@ class gvec_skip_g0
         : gv_{gv__}
     {
     }
-    auto const&
-    gv() const
-    {
-        return gv_;
-    }
+    friend auto begin(gvec_skip_g0 const&);
+    friend auto end(gvec_skip_g0 const&);
 };
 
 inline auto
@@ -1255,7 +1252,7 @@ begin(Gvec const& gv__)
 inline auto
 begin(gvec_skip_g0 const& gv__)
 {
-    return gvec_iterator_t(gvec_index_t::local(gv__.gv().skip_g0()), gv__.gv().offset());
+    return gvec_iterator_t(gvec_index_t::local(gv__.gv_.skip_g0()), gv__.gv_.offset());
 }
 
 inline auto
@@ -1267,7 +1264,7 @@ end(Gvec const& gv__)
 inline auto
 end(gvec_skip_g0 const& gv__)
 {
-    return gvec_iterator_t(gvec_index_t::local(gv__.gv().count()));
+    return gvec_iterator_t(gvec_index_t::local(gv__.gv_.count()));
 }
 
 } // namespace fft
