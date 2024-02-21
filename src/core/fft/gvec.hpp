@@ -1224,6 +1224,28 @@ class gvec_iterator_t
     }
 };
 
+class gvec_skip_g0
+{
+  private:
+    Gvec const& gv_;
+  public:
+    gvec_skip_g0(Gvec const& gv__)
+        : gv_{gv__}
+    {
+    }
+    auto const&
+    gv() const
+    {
+        return gv_;
+    }
+};
+
+inline auto
+skip_g0(Gvec const& gv__)
+{
+    return gvec_skip_g0(gv__);
+}
+
 inline auto
 begin(Gvec const& gv__)
 {
@@ -1231,15 +1253,21 @@ begin(Gvec const& gv__)
 }
 
 inline auto
-begin1(Gvec const& gv__)
+begin(gvec_skip_g0 const& gv__)
 {
-    return gvec_iterator_t(gvec_index_t::local(gv__.skip_g0()), gv__.offset());
+    return gvec_iterator_t(gvec_index_t::local(gv__.gv().skip_g0()), gv__.gv().offset());
 }
 
 inline auto
 end(Gvec const& gv__)
 {
     return gvec_iterator_t(gvec_index_t::local(gv__.count()));
+}
+
+inline auto
+end(gvec_skip_g0 const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(gv__.gv().count()));
 }
 
 } // namespace fft
