@@ -76,7 +76,7 @@ RUN spack env create -d /sirius-env-clang && \
     spack -e /sirius-env-clang install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda && \
-    spack -e /sirius-env-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +scalapack +tests +apps +cuda +magma ^netlib-scalapack ^mpich ^openblas threads=openmp" && \
+    spack -e /sirius-env-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +scalapack +tests +apps +cuda +magma +python ^netlib-scalapack ^mpich ^openblas threads=openmp" && \
     spack -e /sirius-env-cuda develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-cuda install --only=dependencies --fail-fast
 
