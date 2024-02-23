@@ -208,14 +208,17 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
             if (idx_veff__ <= 1 || idx_veff__ >= 4) { /* up-up or dn-dn block or Theta(r) */
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
+                        PROFILE_START("mul_by_veff_14_HOST_R2C");
                         #pragma omp parallel for
                         for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
                             out__[ir] = in__[ir] * veff_vec__[idx_veff__]->value(ir);
                         }
+                        PROFILE_STOP("mul_by_veff_14_HOST_R2C");
                         break;
                     }
                     case SPFFT_TRANS_C2C: {
+                        PROFILE_START("mul_by_veff_14_HOST_C2C");
                         auto in  = reinterpret_cast<std::complex<T> const*>(in__);
                         auto out = reinterpret_cast<std::complex<T>*>(out__);
                         #pragma omp parallel for
@@ -223,10 +226,12 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                             /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
                             out[ir] = in[ir] * veff_vec__[idx_veff__]->value(ir);
                         }
+                        PROFILE_STOP("mul_by_veff_14_HOST_C2C");
                         break;
                     }
                 }
             } else { /* special case for idx_veff = 2 or idx_veff__ = 3 */
+                PROFILE_START("mul_by_veff_23_HOST");
                 T pref   = (idx_veff__ == 2) ? -1 : 1;
                 auto in  = reinterpret_cast<std::complex<T> const*>(in__);
                 auto out = reinterpret_cast<std::complex<T>*>(out__);
@@ -235,6 +240,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                     /* multiply by Bx +/- i*By */
                     out[ir] = in[ir] * std::complex<T>(veff_vec__[2]->value(ir), pref * veff_vec__[3]->value(ir));
                 }
+                PROFILE_STOP("mul_by_veff_23_HOST");
             }
             break;
         }
@@ -242,21 +248,26 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
             if (idx_veff__ <= 1 || idx_veff__ >= 4) { /* up-up or dn-dn block or Theta(r) */
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
+                        PROFILE_START("mul_by_veff_14_GPU_R2C");
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
                         mul_by_veff_real_real_gpu(nr, in__, veff_vec__[idx_veff__]->values().at(memory_t::device),
                                                   out__);
+                        PROFILE_STOP("mul_by_veff_14_GPU_R2C");
                         break;
                     }
                     case SPFFT_TRANS_C2C: {
+                        PROFILE_START("mul_by_veff_14_GPU_C2C");
                         auto in  = reinterpret_cast<std::complex<T> const*>(in__);
                         auto out = reinterpret_cast<std::complex<T>*>(out__);
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
                         mul_by_veff_complex_real_gpu(nr, in, veff_vec__[idx_veff__]->values().at(memory_t::device),
                                                      out);
+                        PROFILE_STOP("mul_by_veff_14_GPU_C2C");
                         break;
                     }
                 }
             } else {
+                PROFILE_START("mul_by_veff_23_GPU");
                 /* multiply by Bx +/- i*By */
                 T pref   = (idx_veff__ == 2) ? -1 : 1;
                 auto in  = reinterpret_cast<std::complex<T> const*>(in__);
@@ -264,6 +275,7 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
 
                 mul_by_veff_complex_complex_gpu(nr, in, pref, veff_vec__[2]->values().at(memory_t::device),
                                                 veff_vec__[3]->values().at(memory_t::device), out);
+                PROFILE_STOP("mul_by_veff_23_GPU");
             }
             break;
         } break;
@@ -413,50 +425,93 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
         */
         if (spins__.size() == 2) {
             /* phi_u(G) -> phi_u(r) */
+            PROFILE_START("phi_to_r_u");
             phi_to_r(wf::spin_index(0), wf::band_index(i));
+            PROFILE_STOP("phi_to_r_u");
             /* save phi_u(r) in temporary buf_rg array */
+            PROFILE_START("copy_phi_u");
             copy_phi();
+            PROFILE_STOP("copy_phi_u");
             /* multiply phi_u(r) by effective potential */
+            PROFILE_START("mul_by_veff_1");
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::v0, spfft_buf);
+            PROFILE_STOP("mul_by_veff_1");
 
             /* V_{uu}(r)phi_{u}(r) -> [V*phi]_{u}(G) */
+            PROFILE_START("vphi_to_G_uu");
             vphi_to_G();
+            PROFILE_STOP("vphi_to_G_uu");
             /* add kinetic energy */
+            PROFILE_START("add_to_hphi_1");
             add_to_hphi(0, wf::band_index(i));
+            PROFILE_STOP("add_to_hphi_1");
             /* multiply phi_{u} by V_{du} and copy to FFT buffer */
+            PROFILE_START("mul_by_veff_2");
             mul_by_veff<T>(spfftk__, reinterpret_cast<T*>(buf_rg_.at(spfft_mem)), veff_vec_, 3, spfft_buf);
+            PROFILE_STOP("mul_by_veff_2");
             /* V_{du}(r)phi_{u}(r) -> [V*phi]_{d}(G) */
+            PROFILE_START("vphi_to_G_du");
             vphi_to_G();
+            PROFILE_STOP("vphi_to_G_du");
             /* add to hphi_{d} */
+            PROFILE_START("add_to_hphi_d");
             add_to_hphi(3, wf::band_index(i));
+            PROFILE_STOP("add_to_hphi_d");
 
             /* for the second spin component */
 
             /* phi_d(G) -> phi_d(r) */
+            PROFILE_START("phi_to_r_d");
             phi_to_r(wf::spin_index(1), wf::band_index(i));
+            PROFILE_START("phi_to_r_d");
             /* save phi_d(r) */
+            PROFILE_START("copy_phi_d");
             copy_phi();
+            PROFILE_STOP("copy_phi_d");
             /* multiply phi_d(r) by effective potential */
+            PROFILE_START("mul_by_veff_3");
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, v_local_index_t::v1, spfft_buf);
+            PROFILE_STOP("mul_by_veff_3");
             /* V_{dd}(r)phi_{d}(r) -> [V*phi]_{d}(G) */
+            PROFILE_START("vphi_to_G_dd");
             vphi_to_G();
+            PROFILE_STOP("vphi_to_G_dd");
             /* add kinetic energy */
+            PROFILE_START("add_to_hphi_2");
             add_to_hphi(1, wf::band_index(i));
+            PROFILE_STOP("add_to_hphi_2");
             /* multiply phi_{d} by V_{ud} and copy to FFT buffer */
+            PROFILE_START("mul_by_veff_4");
             mul_by_veff<T>(spfftk__, reinterpret_cast<T*>(buf_rg_.at(spfft_mem)), veff_vec_, 2, spfft_buf);
+            PROFILE_STOP("mul_by_veff_4");
             /* V_{ud}(r)phi_{d}(r) -> [V*phi]_{u}(G) */
+            PROFILE_START("vphi_to_G_ud");
             vphi_to_G();
+            PROFILE_STOP("vphi_to_G_ud");
             /* add to hphi_{u} */
+            PROFILE_START("add_to_hphi_u");
             add_to_hphi(2, wf::band_index(i));
+            PROFILE_STOP("add_to_hphi_u");
         } else { /* spin-collinear or non-magnetic case */
             /* phi(G) -> phi(r) */
+            PROFILE_START("phi_to_r");
             phi_to_r(spins__.begin(), wf::band_index(i));
+            PROFILE_STOP("phi_to_r");
+
             /* multiply by effective potential */
+            PROFILE_START("mul_by_veff");
             mul_by_veff<T>(spfftk__, spfft_buf, veff_vec_, spins__.begin().get(), spfft_buf);
+            PROFILE_STOP("mul_by_veff");
+
             /* V(r)phi(r) -> [V*phi](G) */
+            PROFILE_START("vphi_to_G");
             vphi_to_G();
+            PROFILE_STOP("vphi_to_G");
+
             /* add kinetic energy */
+            PROFILE_START("add_to_hphi");
             add_to_hphi(spins__.begin().get(), wf::band_index(i));
+            PROFILE_STOP("add_to_hphi");
         }
     }
     PROFILE_STOP("sirius::Local_operator::apply_h|bands");
