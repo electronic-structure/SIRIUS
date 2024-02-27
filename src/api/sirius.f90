@@ -6330,6 +6330,75 @@ endif
 call sirius_set_density_matrix_aux(handler_ptr,ia_ptr,dm_ptr,ld_ptr,error_code_ptr)
 end subroutine sirius_set_density_matrix
 
+!
+!> @brief major version.
+!> @param [out] version version
+subroutine sirius_get_major_version(version)
+implicit none
+!
+integer, target, intent(out) :: version
+!
+type(C_PTR) :: version_ptr
+!
+interface
+subroutine sirius_get_major_version_aux(version)&
+&bind(C, name="sirius_get_major_version")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: version
+end subroutine
+end interface
+!
+version_ptr = C_NULL_PTR
+version_ptr = C_LOC(version)
+call sirius_get_major_version_aux(version_ptr)
+end subroutine sirius_get_major_version
+
+!
+!> @brief minor version.
+!> @param [out] version version
+subroutine sirius_get_minor_version(version)
+implicit none
+!
+integer, target, intent(out) :: version
+!
+type(C_PTR) :: version_ptr
+!
+interface
+subroutine sirius_get_minor_version_aux(version)&
+&bind(C, name="sirius_get_minor_version")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: version
+end subroutine
+end interface
+!
+version_ptr = C_NULL_PTR
+version_ptr = C_LOC(version)
+call sirius_get_minor_version_aux(version_ptr)
+end subroutine sirius_get_minor_version
+
+!
+!> @brief minor version.
+!> @param [out] version version
+subroutine sirius_get_revision(version)
+implicit none
+!
+integer, target, intent(out) :: version
+!
+type(C_PTR) :: version_ptr
+!
+interface
+subroutine sirius_get_revision_aux(version)&
+&bind(C, name="sirius_get_revision")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: version
+end subroutine
+end interface
+!
+version_ptr = C_NULL_PTR
+version_ptr = C_LOC(version)
+call sirius_get_revision_aux(version_ptr)
+end subroutine sirius_get_revision
+
 
 subroutine sirius_free_handler_ctx(handler, error_code)
     implicit none

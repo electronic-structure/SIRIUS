@@ -6530,4 +6530,55 @@ sirius_set_density_matrix(void** handler__, int const* ia__, std::complex<double
             error_code__);
 }
 
+/*
+ @api begin
+ sirius_get_major_version:
+  doc: major version.
+  arguments:
+    version:
+      type: int
+      attr: out, required
+      doc: version
+ @api end
+ */
+void
+sirius_get_major_version(int* version)
+{
+    *version = major_version();
+}
+
+/*
+ @api begin
+ sirius_get_minor_version:
+   doc: minor version.
+   arguments:
+     version:
+       type: int
+       attr: out, required
+       doc: version
+ @api end
+ */
+void
+sirius_get_minor_version(int* version)
+{
+    *version = minor_version();
+}
+
+/*
+ @api begin
+ sirius_get_revision:
+   doc: minor version.
+   arguments:
+     version:
+       type: int
+       attr: out, required
+       doc: version
+ @api end
+ */
+void
+sirius_get_revision(int* version)
+{
+    *version = revision();
+}
+
 } // extern "C"
