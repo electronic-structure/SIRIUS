@@ -22,7 +22,7 @@ endif()
 set(libname py_sirius)
 pybind11_add_module(${libname} py_sirius.cpp py_sirius_operators.cpp py_sirius_r3.cpp)
 
-add_dependencies(${libname} sirius)
+add_dependencies(${libname} sirius_cxx)
 target_link_libraries(${libname} PRIVATE mpi4py::mpi4py)
 if(USE_MKL)
   # workaround for `Intel MKL FATAL ERROR: Cannot load libmkl_avx2.so or libmkl_def.so.`
@@ -38,7 +38,7 @@ if(isSystemDir STREQUAL "-1")
   set_target_properties(${libname} PROPERTIES INSTALL_RPATH "${basePoint};${basePoint}/${relDir}")
 endif()
 
-target_link_libraries(${libname} PRIVATE sirius)
+target_link_libraries(${libname} PRIVATE sirius_cxx)
 # collect python files in module dir
 # install to cmake prefix
 install(DIRECTORY sirius

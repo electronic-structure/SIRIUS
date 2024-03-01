@@ -8,7 +8,7 @@ test_wf_fft;test_potrf;test_lr_solver;test_radial_solver;test_dirac;test_rad_sch
 
 foreach(_test ${_tests})
   add_executable(${_test} ${_test}.cpp)
-  target_link_libraries(${_test} PRIVATE sirius)
+  target_link_libraries(${_test} PRIVATE sirius_cxx)
   install(TARGETS ${_test} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 endforeach()
 
