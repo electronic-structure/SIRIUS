@@ -26,12 +26,7 @@
                 "beta0": {
                     "type": "number",
                     "default": 0.15,
-                    "title": "Mixing ratio in case of initial linear mixing"
-                },
-                "linear_mix_rms_tol": {
-                    "type": "number",
-                    "default": 1E+6,
-                    "title": "RMS tolerance above which the linear mixing is triggered"
+                    "title": "For Anderson mixer only: minimum allowed value of mixing parameter beta"
                 },
                 "max_history": {
                     "type": "integer",
@@ -41,7 +36,7 @@
                 "beta_scaling_factor": {
                     "type": "number",
                     "default": 1.0,
-                    "title": "Scaling factor for mixing parameter"
+                    "title": "For Anderson mixer only: scaling factor for mixing parameter beta"
                 },
                 "use_hartree": {
                     "type": "boolean",
@@ -52,7 +47,7 @@
         },
         "settings": {
             "type": "object",
-            "title": "Parameters of the 'settings' section influence the numerical implementation.",
+            "title": "Parameters of the 'settings' section influence numerical implementation.",
             "description": "Changing of setting parameters will have a small impact on the final result.",
             "properties": {
                 "nprii_vloc": {
@@ -74,12 +69,6 @@
                     "type": "integer",
                     "default": 20,
                     "title": "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
-                },
-                "always_update_wf": {
-                    "type": "boolean",
-                    "default": true,
-                    "title": "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
-                    "$comment": "move to iterative solver section"
                 },
                 "mixer_rms_min": {
                     "type": "number",

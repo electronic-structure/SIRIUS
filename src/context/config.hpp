@@ -58,18 +58,6 @@ class config_t
             }
             dict_["/mixer/beta0"_json_pointer] = beta0__;
         }
-        /// RMS tolerance above which the linear mixing is triggered
-        inline auto linear_mix_rms_tol() const
-        {
-            return dict_.at("/mixer/linear_mix_rms_tol"_json_pointer).get<double>();
-        }
-        inline void linear_mix_rms_tol(double linear_mix_rms_tol__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/mixer/linear_mix_rms_tol"_json_pointer] = linear_mix_rms_tol__;
-        }
         /// Number of history steps for Broyden-type mixers
         inline auto max_history() const
         {
