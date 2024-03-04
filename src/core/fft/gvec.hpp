@@ -1228,13 +1228,16 @@ class gvec_skip_g0
 {
   private:
     Gvec const& gv_;
+
   public:
     gvec_skip_g0(Gvec const& gv__)
         : gv_{gv__}
     {
     }
-    friend auto begin(gvec_skip_g0 const&);
-    friend auto end(gvec_skip_g0 const&);
+    friend auto
+    begin(gvec_skip_g0 const&);
+    friend auto
+    end(gvec_skip_g0 const&);
 };
 
 inline auto
