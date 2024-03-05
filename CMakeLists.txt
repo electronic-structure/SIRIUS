@@ -248,23 +248,37 @@ configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
                "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
                @ONLY)
 
+if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+  write_basic_package_version_file(
+    "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+    VERSION "${SIRIUS_VERSION}"
+    COMPATIBILITY SameMajorVersion)
+  # write siriusConfig.cmake for F90 API
+  configure_package_config_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
+    "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sirius)
+  install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+                "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+                DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
+endif()
 write_basic_package_version_file(
-  "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+  "${PROJECT_BINARY_DIR}/sirius_cxxConfigVersion.cmake"
   VERSION "${SIRIUS_VERSION}"
   COMPATIBILITY SameMajorVersion)
 
 # install targets and modules
 include(cmake/env_vars_map.cmake)
-configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
-               "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+# write sirius_cxxConfig for C++ API
+configure_file("${PROJECT_SOURCE_DIR}/cmake/sirius_cxxConfig.cmake.in"
+              "${PROJECT_BINARY_DIR}/sirius_cxxConfig.cmake"
                @ONLY)
-install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
-              "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
+install(FILES "${PROJECT_BINARY_DIR}/sirius_cxxConfig.cmake"
+              "${PROJECT_BINARY_DIR}/sirius_cxxConfigVersion.cmake"
               "${PROJECT_SOURCE_DIR}/cmake/cudalibs_target.cmake"
               "${PROJECT_SOURCE_DIR}/cmake/hdf5_target.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius_cxx")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius_cxx"
         FILES_MATCHING PATTERN "*.cmake")
 
 # sirius library
