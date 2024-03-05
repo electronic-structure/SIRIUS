@@ -280,7 +280,7 @@ Energy::get_gkvec_ekin()
             auto& gkvec     = kp.gkvec();
             std::vector<double> gkvec_local(gkvec_count);
             for (int i = 0; i < gkvec_count; ++i) {
-                gkvec_local[i] = gkvec.gkvec_cart<index_domain_t::global>(i).length();
+                gkvec_local[i] = gkvec.gkvec_cart(gvec_index_t::global(i)).length();
             }
             gkvec_cart.push_back(std::move(gkvec_local));
             kindices.emplace_back(it.i.get(), ispn);

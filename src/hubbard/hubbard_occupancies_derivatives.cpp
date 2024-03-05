@@ -215,7 +215,7 @@ Hubbard::compute_occupancies_derivatives(K_point<double>& kp__, Q_operator<doubl
         for (int i = 0; i < nawf; i++) {
             for (int igloc = 0; igloc < kp__.num_gkvec_loc(); igloc++) {
                 /* G+k vector in Cartesian coordinates */
-                auto gk = kp__.gkvec().template gkvec_cart<index_domain_t::local>(igloc);
+                auto gk = kp__.gkvec().gkvec_cart(gvec_index_t::local(igloc));
                 /* gradient of phi_atomic */
                 phi_atomic_tmp->pw_coeffs(igloc, wf::spin_index(0), wf::band_index(i)) =
                         std::complex<double>(0.0, -gk[x]) *
@@ -419,7 +419,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point<double>& kp__, Q_operato
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
         /* gvs = {r, theta, phi} */
-        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
+        auto gvc = kp__.gkvec().gkvec_cart(gvec_index_t::local(igkloc));
         auto rtp = r3::spherical_coordinates(gvc);
 
         sf::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));

@@ -165,8 +165,8 @@ test_vector_calculus(cmd_args const& args__)
     }
 
     for (int iv = 0; iv < 10; iv++) { // gvec.count(); iv++) {
-        std::cout << "Gvec: lattice: " << gvec.gvec<index_domain_t::local>(iv)
-                  << " Cartesian: " << gvec.gvec_cart<index_domain_t::local>(iv) << std::endl;
+        std::cout << "Gvec: lattice: " << gvec.gvec(gvec_index_t::local(iv))
+                  << " Cartesian: " << gvec.gvec_cart(gvec_index_t::local(iv)) << std::endl;
 
         Smooth_periodic_function<f_type> f(spfft, gvp);
         Smooth_periodic_function<f_type> g(spfft, gvp);

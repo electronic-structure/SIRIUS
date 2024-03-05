@@ -54,7 +54,7 @@ test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.ld(); j++) {
             int ig  = gvec->offset() + j;
-            auto gc = gvec->gvec_cart<index_domain_t::global>(ig);
+            auto gc = gvec->gvec_cart(gvec_index_t::global(ig));
             diff += std::pow(std::abs(static_cast<T>(2.71828 + 0.5 * dot(gc, gc)) *
                                               phi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i)) -
                                       hphi.pw_coeffs(j, wf::spin_index(0), wf::band_index(i))),

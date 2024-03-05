@@ -100,7 +100,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
         #pragma omp parallel for schedule(static)
         for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
             if (what & 1) {
-                auto ekin            = 0.5 * kp_.gkvec().template gkvec_cart<index_domain_t::local>(ig_loc).length2();
+                auto ekin            = 0.5 * kp_.gkvec().gkvec_cart(gvec_index_t::local(ig_loc)).length2();
                 h_diag(ig_loc, ispn) = ekin + H0_.local_op().v0(ispn);
             }
             if (what & 2) {
@@ -217,7 +217,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
         if (what & 1) {
-            auto gvc      = kp_.gkvec().template gkvec_cart<index_domain_t::local>(igloc);
+            auto gvc      = kp_.gkvec().gkvec_cart(gvec_index_t::local(igloc));
             T ekin        = 0.5 * dot(gvc, gvc);
             h_diag[igloc] = H0_.local_op().v0(0) + ekin * H0_.ctx().theta_pw(0).real();
         }
@@ -667,12 +667,12 @@ Hamiltonian_k<T>::set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<s
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp.num_gkvec_col(); igk_col++) {
         /* fractional coordinates of G vectors */
-        auto gvec_col = kp.gkvec_col().template gvec<index_domain_t::local>(igk_col);
+        auto gvec_col = kp.gkvec_col().gvec(gvec_index_t::local(igk_col));
         /* Cartesian coordinates of G+k vectors */
-        auto gkvec_col_cart = kp.gkvec_col().template gkvec_cart<index_domain_t::local>(igk_col);
+        auto gkvec_col_cart = kp.gkvec_col().gkvec_cart(gvec_index_t::local(igk_col));
         for (int igk_row = 0; igk_row < kp.num_gkvec_row(); igk_row++) {
-            auto gvec_row       = kp.gkvec_row().template gvec<index_domain_t::local>(igk_row);
-            auto gkvec_row_cart = kp.gkvec_row().template gkvec_cart<index_domain_t::local>(igk_row);
+            auto gvec_row       = kp.gkvec_row().gvec(gvec_index_t::local(igk_row));
+            auto gkvec_row_cart = kp.gkvec_row().gkvec_cart(gvec_index_t::local(igk_row));
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
             double t1 = 0.5 * r3::dot(gkvec_row_cart, gkvec_col_cart);

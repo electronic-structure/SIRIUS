@@ -52,7 +52,7 @@ main(int argn, char** argv)
         v[i] = -zn / radial_grid[i];
 
     #pragma omp parallel for schedule(dynamic)
-    for (int j = 0; j < atomic_conf[zn - 1].size(); j++) {
+    for (size_t j = 0; j < atomic_conf[zn - 1].size(); j++) {
         int n = atomic_conf[zn - 1][j].n;
         int l = atomic_conf[zn - 1][j].l;
         int k = atomic_conf[zn - 1][j].k;

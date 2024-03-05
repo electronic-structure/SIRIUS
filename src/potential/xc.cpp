@@ -420,7 +420,7 @@ remove_high_pw(Simulation_context const& ctx__, Smooth_periodic_function<T>& f__
     f__.fft_transform(-1);
     #pragma omp parallel for
     for (int ig = 0; ig < ctx__.gvec().count(); ig++) {
-        if (ctx__.gvec().gvec_len<index_domain_t::local>(ig) > ctx__.cfg().parameters().veff_pw_cutoff()) {
+        if (ctx__.gvec().gvec_len(gvec_index_t::local(ig)) > ctx__.cfg().parameters().veff_pw_cutoff()) {
             f__.f_pw_local(ig) = 0;
         }
     }

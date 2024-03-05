@@ -272,8 +272,8 @@ Gvec::distribute_z_columns()
     if (ng != num_gvec_) {
         RTE_THROW("wrong number of G-vectors");
     }
-    this->offset_         = this->gvec_offset(this->comm().rank());
-    this->count_          = this->gvec_count(this->comm().rank());
+    this->offset_         = this->offset(this->comm().rank());
+    this->count_          = this->count(this->comm().rank());
     this->num_zcol_local_ = this->zcol_distr_.counts[this->comm().rank()];
 }
 
@@ -297,7 +297,7 @@ Gvec::find_gvec_shells()
     for (int ig = 0; ig < num_gvec_; ig++) {
         /* if the shell for this vector is not yet found */
         if (gvec_shell_[ig] == -1) {
-            auto G = gvec<index_domain_t::global>(ig);
+            auto G = gvec(gvec_index_t::global(ig));
             for (auto& R : lat_sym) {
                 auto G1  = r3::dot(G, R);
                 auto ig1 = index_by_gvec(G1);
@@ -342,7 +342,7 @@ Gvec::find_gvec_shells()
     std::vector<int> ngv_sh(num_gvec_shells_, 0);
 
     for (int ig = 0; ig < num_gvec_; ig++) {
-        auto g   = gvec_cart<index_domain_t::global>(ig).length();
+        auto g   = gvec_cart(gvec_index_t::global(ig)).length();
         int igsh = gvec_shell_[ig];
         gvec_shell_len_[igsh] += g;
         ngv_sh[igsh]++;
@@ -454,7 +454,7 @@ Gvec::init(fft::Grid const& fft_grid)
     }
 
     for (int ig = 0; ig < num_gvec_; ig++) {
-        auto gv = gvec<index_domain_t::global>(ig);
+        auto gv = gvec(gvec_index_t::global(ig));
         if (index_by_gvec(gv) != ig) {
             std::stringstream s;
             s << "wrong G-vector index: ig=" << ig << " gv=" << gv << " index_by_gvec(gv)=" << index_by_gvec(gv);
@@ -476,7 +476,7 @@ Gvec::init(fft::Grid const& fft_grid)
         /* loop over local G-vectors of a base set */
         for (int igloc = 0; igloc < gvec_base_->count(); igloc++) {
             /* G-vector in lattice coordinates */
-            auto G = gvec_base_->gvec<index_domain_t::local>(igloc);
+            auto G = gvec_base_->gvec(gvec_index_t::local(igloc));
             /* global index of G-vector in the current set */
             int ig = index_by_gvec(G);
             /* the same MPI rank must store this G-vector */
@@ -595,7 +595,7 @@ Gvec_fft::build_fft_distr()
         for (int i = 0; i < comm_ortho_fft().size(); i++) {
             /* fine-grained rank */
             int r = rank_map_(rank, i);
-            gvec_distr_fft_.counts[rank] += gvec().gvec_count(r);
+            gvec_distr_fft_.counts[rank] += gvec().count(r);
         }
     }
     for (int i = 0; i < comm_ortho_fft().size(); i++) {
@@ -625,7 +625,7 @@ Gvec_fft::pile_gvec()
      * between columns of the 2D MPI grid */
     gvec_fft_slab_ = mpi::block_data_descriptor(comm_ortho_fft_.size());
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
-        gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_map_(comm_fft_.rank(), i));
+        gvec_fft_slab_.counts[i] = gvec().count(rank_map_(comm_fft_.rank(), i));
     }
     gvec_fft_slab_.calc_offsets();
 
@@ -702,9 +702,9 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     }
     /* count the number of elements to receive */
     for (int r = 0; r < comm_.size(); r++) {
-        for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
+        for (int igloc = 0; igloc < gvec_.count(r); igloc++) {
             /* index of G-vector in the original distribution */
-            int ig = gvec_.gvec_offset(r) + igloc;
+            int ig = gvec_.offset(r) + igloc;
             /* index of the G-vector shell */
             int igsh = gvec_.shell(ig);
             if (spl_num_gsh_.location(igsh).ib == comm_.rank()) {
@@ -725,10 +725,10 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     gvec_shell_remapped_ = mdarray<int, 1>({gvec_count_remapped()}, mdarray_label("gvec_shell_remapped_"));
     std::vector<int> counts(comm_.size(), 0);
     for (int r = 0; r < comm_.size(); r++) {
-        for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
-            int ig   = gvec_.gvec_offset(r) + igloc;
+        for (int igloc = 0; igloc < gvec_.count(r); igloc++) {
+            int ig   = gvec_.offset(r) + igloc;
             int igsh = gvec_.shell(ig);
-            auto G   = gvec_.gvec<index_domain_t::global>(ig);
+            auto G   = gvec_.gvec(gvec_index_t::global(ig));
             if (spl_num_gsh_.location(igsh).ib == comm_.rank()) {
                 for (int x : {0, 1, 2}) {
                     gvec_remapped_(x, a2a_recv_.offsets[r] + counts[r]) = G[x];

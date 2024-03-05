@@ -3848,7 +3848,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 if (gvec__ != nullptr) {
                     mdarray<int, 2> gvec({3, sim_ctx.gvec().num_gvec()}, gvec__);
                     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                        auto gv = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
+                        auto gv = sim_ctx.gvec().gvec(gvec_index_t::global(ig));
                         for (int x : {0, 1, 2}) {
                             gvec(x, ig) = gv[x];
                         }
@@ -3857,7 +3857,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 if (gvec_cart__ != nullptr) {
                     mdarray<double, 2> gvec_cart({3, sim_ctx.gvec().num_gvec()}, gvec_cart__);
                     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                        auto gvc = sim_ctx.gvec().gvec_cart<index_domain_t::global>(ig);
+                        auto gvc = sim_ctx.gvec().gvec_cart(gvec_index_t::global(ig));
                         for (int x : {0, 1, 2}) {
                             gvec_cart(x, ig) = gvc[x];
                         }
@@ -3865,7 +3865,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                 }
                 if (gvec_len__ != nullptr) {
                     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                        gvec_len__[ig] = sim_ctx.gvec().gvec_len<index_domain_t::global>(ig);
+                        gvec_len__[ig] = sim_ctx.gvec().gvec_len(gvec_index_t::global(ig));
                     }
                 }
                 if (index_by_gvec__ != nullptr) {
@@ -3881,7 +3881,7 @@ sirius_get_gvec_arrays(void* const* handler__, int* gvec__, double* gvec_cart__,
                               -1);
 
                     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                        auto G = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
+                        auto G = sim_ctx.gvec().gvec(gvec_index_t::global(ig));
 
                         index_by_gvec(G[0], G[1], G[2]) = ig + 1;
                     }
@@ -3946,7 +3946,7 @@ sirius_get_fft_index(void* const* handler__, int* fft_index__, int* error_code__
             [&]() {
                 auto& sim_ctx = get_sim_ctx(handler__);
                 for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-                    auto G          = sim_ctx.gvec().gvec<index_domain_t::global>(ig);
+                    auto G          = sim_ctx.gvec().gvec(gvec_index_t::global(ig));
                     fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
                 }
             },
@@ -4049,12 +4049,12 @@ sirius_get_gkvec_arrays(void* const* ks_handler__, int* ik__, int* num_gkvec__, 
                     mdarray<double, 2> gkvec_tp({2, kp->num_gkvec()}, gkvec_tp__);
 
                     for (int igk = 0; igk < kp->num_gkvec(); igk++) {
-                        auto gkc = kp->gkvec().gkvec_cart<index_domain_t::global>(igk);
-                        auto G   = kp->gkvec().gvec<index_domain_t::global>(igk);
+                        auto gkc = kp->gkvec().gkvec_cart(gvec_index_t::global(igk));
+                        auto G   = kp->gkvec().gvec(gvec_index_t::global(igk));
 
                         gvec_index__[igk] = ks.ctx().gvec().index_by_gvec(G) + 1; // Fortran counts from 1
                         for (int x : {0, 1, 2}) {
-                            gkvec(x, igk)      = kp->gkvec().template gkvec<index_domain_t::global>(igk)[x];
+                            gkvec(x, igk)      = kp->gkvec().gkvec(gvec_index_t::global(igk))[x];
                             gkvec_cart(x, igk) = gkc[x];
                         }
                         auto rtp         = r3::spherical_coordinates(gkc);

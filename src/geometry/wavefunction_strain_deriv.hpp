@@ -14,7 +14,7 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
         /* Cartesian coordinats of G-vector */
-        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
+        auto gvc = kp__.gkvec().gkvec_cart(gvec_index_t::local(igkloc));
         /* vs = {r, theta, phi} */
         auto gvs = r3::spherical_coordinates(gvc);
 
@@ -33,8 +33,8 @@ wavefunctions_strain_deriv(Simulation_context const& ctx__, K_point<double>& kp_
         for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
             auto& atom_type = ctx__.unit_cell().atom(ia).type();
             // TODO: this can be optimized, check k_point::generate_atomic_wavefunctions()
-            auto phase = twopi *
-                         dot(kp__.gkvec().gkvec<index_domain_t::local>(igkloc), ctx__.unit_cell().atom(ia).position());
+            auto phase =
+                    twopi * dot(kp__.gkvec().gkvec(gvec_index_t::local(igkloc)), ctx__.unit_cell().atom(ia).position());
             auto phase_factor = std::exp(std::complex<double>(0.0, phase));
             for (auto const& e : atom_type.indexb_wfs()) {
                 /*  orbital quantum  number of this atomic orbital */

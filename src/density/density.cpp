@@ -179,7 +179,7 @@ Density::initial_density_pseudo()
     // TODO: MPI parallelise over G-shells
     auto const ff = ctx_.ri().ps_rho_->values(q, ctx_.comm());
     /* make Vloc(G) */
-    auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
+    auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
 
     if (env::print_checksum()) {
         auto z1 = mdarray<std::complex<double>, 1>({ctx_.gvec().count()}, &v[0]).checksum();
@@ -278,8 +278,8 @@ Density::initial_density_full_pot()
     Radial_integrals_rho_free_atom ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 40);
 
     /* compute contribution from free atoms to the interstitial density */
-    auto v = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
-                                                           [&ri](int iat, double g) { return ri.value(iat, g); });
+    auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
+                                          [&ri](int iat, double g) { return ri.value(iat, g); });
 
     /* initialize density of free atoms (not smoothed) */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
