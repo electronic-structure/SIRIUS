@@ -1,4 +1,3 @@
-#include "core/splindex.hpp"
 #include "python_module_includes.hpp"
 #include <mpi.h>
 
