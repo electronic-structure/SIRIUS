@@ -19,7 +19,7 @@
 
 /** \file anderson_mixer.hpp
  *
- *   \brief Contains definition and implementation sirius::Anderson.
+ *  \brief Contains definition and implementation sirius::Anderson.
  */
 
 #ifndef __ANDERSON_MIXER_HPP__

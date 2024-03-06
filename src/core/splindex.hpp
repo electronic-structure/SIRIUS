@@ -68,49 +68,56 @@ split_in_blocks(int length__, int block_size__)
 template <typename T = int>
 struct basic_index_t
 {
-    typedef T value_type;
-    typedef T global;
-    typedef T local;
+    using value_type = T;
+    using global     = T;
+    using local      = T;
 };
 
 /// K-point index type.
 struct kp_index_t
 {
-    typedef int value_type;
-    typedef strong_type<value_type, struct __kp_global_index_tag> global;
-    typedef strong_type<value_type, struct __kp_local_index_tag> local;
+    using value_type = int;
+    using global     = strong_type<value_type, struct __kp_global_index_tag>;
+    using local      = strong_type<value_type, struct __kp_local_index_tag>;
 };
 
 /// Index type for all atoms in the unit cell.
 struct atom_index_t
 {
-    typedef int value_type;
-    typedef strong_type<value_type, struct __atom_global_index_tag> global;
-    typedef strong_type<value_type, struct __atom_local_index_tag> local;
+    using value_type = int;
+    using global     = strong_type<value_type, struct __atom_global_index_tag>;
+    using local      = strong_type<value_type, struct __atom_local_index_tag>;
 };
 
 /// Index type for all atom types in the unit cell.
 struct atom_type_index_t
 {
-    typedef int value_type;
-    typedef strong_type<value_type, struct __atom_type_global_index_tag> global;
-    typedef strong_type<value_type, struct __atom_type_local_index_tag> local;
+    using value_type = int;
+    using global     = strong_type<value_type, struct __atom_type_global_index_tag>;
+    using local      = strong_type<value_type, struct __atom_type_local_index_tag>;
 };
 
 /// Index type for all atom symmetry classes in the unit cell.
 struct atom_symmetry_class_index_t
 {
-    typedef int value_type;
-    typedef strong_type<value_type, struct __atom_symmetry_class_global_index_tag> global;
-    typedef strong_type<value_type, struct __atom_symmetry_class_local_index_tag> local;
+    using value_type = int;
+    using global     = strong_type<value_type, struct __atom_symmetry_class_global_index_tag>;
+    using local      = strong_type<value_type, struct __atom_symmetry_class_local_index_tag>;
 };
 
 /// Index type for PAW atoms in the unit cell. Not all atoms are necessarily PAW.
 struct paw_atom_index_t
 {
-    typedef int value_type;
-    typedef strong_type<value_type, struct __paw_atom_global_index_tag> global;
-    typedef strong_type<value_type, struct __paw_atom_local_index_tag> local;
+    using value_type = int;
+    using global     = strong_type<value_type, struct __paw_atom_global_index_tag>;
+    using local      = strong_type<value_type, struct __paw_atom_local_index_tag>;
+};
+
+struct gvec_index_t
+{
+    using value_type = int;
+    using global     = strong_type<value_type, struct __gvec_global_index_tag>;
+    using local      = strong_type<value_type, struct __gvec_local_index_tag>;
 };
 
 /// Number of blocks to which the global index is split.
@@ -118,16 +125,6 @@ using n_blocks = strong_type<int, struct __n_blocks_tag>;
 /// ID of the block.
 /** The id of the block has the range [0, n_blocks) */
 using block_id = strong_type<int, struct __block_id_tag>;
-
-/// Type of the index: local or global
-// TODO: deprecate in favour of strong type
-enum class index_domain_t
-{
-    /// Global index.
-    global,
-    /// Local index.
-    local
-};
 
 /// Base class for split index.
 template <typename Index_t = basic_index_t<int>>

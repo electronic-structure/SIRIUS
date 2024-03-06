@@ -1,4 +1,10 @@
 #include "non_local_operator.hpp"
+#include <string>
+#include <vector>
+#include <complex>
+#include <iostream>
+#include <algorithm>
+#include <cmath>
 
 namespace sirius {
 

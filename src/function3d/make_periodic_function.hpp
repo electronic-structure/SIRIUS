@@ -29,7 +29,7 @@ namespace sirius {
 
 /// Make periodic function out of form factors.
 /** Return vector of plane-wave coefficients */
-template <index_domain_t index_domain, typename F>
+template <bool gvec_local, typename F>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
                        mdarray<std::complex<double>, 2> const& phase_factors_t__, F&& form_factors__)
@@ -38,7 +38,7 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 
     const double fourpi_omega = fourpi / uc__.omega();
 
-    auto const ngv = (index_domain == index_domain_t::local) ? gv__.count() : gv__.num_gvec();
+    auto const ngv = gvec_local ? gv__.count() : gv__.num_gvec();
     mdarray<std::complex<double>, 1> f_pw({ngv});
     f_pw.zero();
 
@@ -46,15 +46,15 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
     for (int igloc = 0; igloc < gv__.count(); igloc++) {
         /* global index of G-vector */
         const int ig   = gv__.offset() + igloc;
-        const double g = gv__.gvec_len<index_domain_t::local>(igloc);
+        const double g = gv__.gvec_len(gvec_index_t::local(igloc));
 
-        auto const j = (index_domain == index_domain_t::local) ? igloc : ig;
+        auto const j = gvec_local ? igloc : ig;
         for (int iat = 0; iat < uc__.num_atom_types(); iat++) {
             f_pw[j] += fourpi_omega * std::conj(phase_factors_t__(igloc, iat)) * form_factors__(iat, g);
         }
     }
 
-    if (index_domain == index_domain_t::global) {
+    if (!gvec_local) {
         gv__.comm().allgather(&f_pw[0], gv__.count(), gv__.offset());
     }
 
@@ -62,7 +62,7 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 }
 
 /// Make periodic out of form factors computed for G-shells.
-template <index_domain_t index_domain>
+template <bool gvec_local>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
                        mdarray<std::complex<double>, 2> const& phase_factors_t__,
@@ -72,7 +72,7 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
 
     const double fourpi_omega = fourpi / uc__.omega();
 
-    auto const ngv = (index_domain == index_domain_t::local) ? gv__.count() : gv__.num_gvec();
+    auto const ngv = gvec_local ? gv__.count() : gv__.num_gvec();
     mdarray<std::complex<double>, 1> f_pw({ngv});
     f_pw.zero();
 
@@ -82,13 +82,13 @@ make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
         const int ig   = gv__.offset() + igloc;
         const int igsh = gv__.shell(ig);
 
-        auto const j = (index_domain == index_domain_t::local) ? igloc : ig;
+        auto const j = gvec_local ? igloc : ig;
         for (int iat = 0; iat < uc__.num_atom_types(); iat++) {
             f_pw[j] += fourpi_omega * std::conj(phase_factors_t__(igloc, iat)) * form_factors__(igsh, iat);
         }
     }
 
-    if (index_domain == index_domain_t::global) {
+    if (!gvec_local) {
         gv__.comm().allgather(&f_pw[0], gv__.count(), gv__.offset());
     }
 

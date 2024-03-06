@@ -27,7 +27,7 @@ class OccupancyDescriptor(object):
 
     def __get__(self, instance, owner):
 
-        out = CoefficientArray(dtype=np.double, ctype=np.array)
+        out = CoefficientArray()
 
         for k in range(len(instance)):
             for ispn in range(instance.ctx().num_spins()):
@@ -56,7 +56,7 @@ class KPointWeightDescriptor(object):
 
     def __get__(self, instance, owner):
 
-        out = CoefficientArray(dtype=np.double, ctype=np.array)
+        out = CoefficientArray()
 
         for k in range(len(instance)):
             for ispn in range(instance.ctx().num_spins()):
@@ -72,7 +72,7 @@ class BandEnergiesDescriptor(object):
 
     def __get__(self, instance, owner):
 
-        out = CoefficientArray(dtype=np.double, ctype=np.array)
+        out = CoefficientArray()
 
         for k in range(len(instance)):
             for ispn in range(instance.ctx().num_spins()):

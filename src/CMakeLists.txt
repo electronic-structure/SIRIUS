@@ -86,24 +86,23 @@ set(_SOURCES
   )
 
 
-# create library with .cpp, .cu and .f90 sources
-add_library(sirius "${_SOURCES};${_CUSOURCES};${_FSOURCES}")
-
-target_compile_features(sirius PUBLIC cxx_std_14)
-target_compile_features(sirius PUBLIC c_std_99)
-target_compile_features(sirius PUBLIC cuda_std_14)
-set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  # create library with .cpp, .cu and .f90 sources
+add_library(sirius_cxx "${_SOURCES};${_CUSOURCES};")
+target_compile_features(sirius_cxx PUBLIC cxx_std_17)
+target_compile_features(sirius_cxx PUBLIC c_std_99)
+target_compile_features(sirius_cxx PUBLIC cuda_std_17)
+set_target_properties(sirius_cxx PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(SIRIUS_USE_ROCM)
   set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
-  set_target_properties(sirius PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
+  set_target_properties(sirius_cxx PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 endif()
 
 #if(SIRIUS_USE_CUDA)
 #  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 #endif()
 
-target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
+target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   MPI::MPI_CXX
   sirius::libxc
   sirius::libspg
@@ -127,10 +126,9 @@ target_link_libraries(sirius PUBLIC ${GSL_LIBRARY}
   $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
 )
 
-target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
-                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
-target_compile_definitions(sirius PUBLIC
+target_include_directories(sirius_cxx PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+                                             $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>)
+target_compile_definitions(sirius_cxx PUBLIC
   $<$<BOOL:${SIRIUS_USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${SIRIUS_USE_SCALAPACK}>:SIRIUS_SCALAPACK>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:SIRIUS_USE_MEMORY_POOL>
@@ -150,23 +148,37 @@ target_compile_definitions(sirius PUBLIC
 )
 
 if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+  add_library(sirius "${_FSOURCES}")
+  target_link_libraries(sirius PRIVATE sirius_cxx)
+  target_include_directories(sirius PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
+
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
+  install(TARGETS sirius
+    EXPORT sirius_targets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
+  install(EXPORT sirius_targets
+    FILE siriusTargets.cmake
+    NAMESPACE sirius::
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
 endif()
 
-install(TARGETS sirius
-        EXPORT sirius_targets
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
-install(EXPORT sirius_targets
-        FILE siriusTargets.cmake
-        NAMESPACE sirius::
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
+install(TARGETS sirius_cxx
+  EXPORT sirius_cxx_targets
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius_cxx")
+install(EXPORT sirius_cxx_targets
+  FILE sirius_cxxTargets.cmake
+  NAMESPACE sirius::
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius_cxx")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
-        FILES_MATCHING REGEX ".*(hpp|h)$")
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
+  FILES_MATCHING REGEX ".*(hpp|h)$")
 install(FILES "${PROJECT_BINARY_DIR}/src/core/version.hpp"
-              "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
+  "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")

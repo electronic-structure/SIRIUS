@@ -126,17 +126,17 @@ class Matching_coefficients // TODO: compute on GPU
             std::vector<std::complex<double>> ylm(lmmax_apw);
 
             #pragma omp for
-            for (int i = 0; i < gkvec_.count(); i++) {
-                auto gkvec_cart = gkvec_.gkvec_cart<index_domain_t::local>(i);
+            for (auto it : gkvec_) {
+                auto gkvec_cart = gkvec_.gkvec_cart(it.igloc);
                 /* get r, theta, phi */
-                auto vs       = r3::spherical_coordinates(gkvec_cart);
-                gkvec_len_[i] = vs[0];
+                auto vs = r3::spherical_coordinates(gkvec_cart);
 
+                gkvec_len_[it.igloc] = vs[0];
                 /* get spherical harmonics */
                 sf::spherical_harmonics(lmax_apw, vs[1], vs[2], &ylm[0]);
 
                 for (int lm = 0; lm < lmmax_apw; lm++) {
-                    gkvec_ylm_(i, lm) = ylm[lm];
+                    gkvec_ylm_(it.igloc, lm) = ylm[lm];
                 }
             }
         }
@@ -201,9 +201,9 @@ class Matching_coefficients // TODO: compute on GPU
         int iat = type.id();
 
         std::vector<std::complex<double>> phase_factors(gkvec_.count());
-        for (int i = 0; i < gkvec_.count(); i++) {
-            double phase     = twopi * dot(gkvec_.template gkvec<index_domain_t::local>(i), atom__.position());
-            phase_factors[i] = std::exp(std::complex<double>(0, phase));
+        for (auto it : gkvec_) {
+            double phase            = twopi * dot(gkvec_.gkvec(it.igloc), atom__.position());
+            phase_factors[it.igloc] = std::exp(std::complex<double>(0, phase));
         }
 
         const double eps{0.1};

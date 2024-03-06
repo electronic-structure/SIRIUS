@@ -186,7 +186,7 @@ Potential::update()
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             #pragma omp parallel for schedule(static)
             for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-                auto len = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc).length();
+                auto len = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc)).length();
                 for (int l = 0; l <= ctx_.lmax_rho(); l++) {
                     sbessel_mom_(l, igloc, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) *
                                                   sbessel_mt_(l + 1, igloc, iat) / len;

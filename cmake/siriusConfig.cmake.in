@@ -1,98 +1,11 @@
-cmake_minimum_required(VERSION 3.12)
+@PACKAGE_INIT@
 
-if(NOT TARGET sirius::sirius)
-  # Find bundled modules first  
-  set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules" ${CMAKE_MODULE_PATH})
-
-  # store CXX compiler id. Used in MKL package.
-  set(SIRIUS_CXX_COMPILER_ID @CMAKE_CXX_COMPILER_ID@)
-  if(NOT ${CMAKE_CXX_COMPILER_ID})
-    set(CMAKE_CXX_COMPILER_ID ${SIRIUS_CXX_COMPILER_ID})
-  endif()
-
-  # if not relocatable
-  if (NOT @CMAKE_SKIP_INSTALL_RPATH@) 
-    set(MPI_ROOT @MPI_ROOT@)
-    set(ENV{SPG_DIR} @SIRIUS_SPG_DIR@)
-    set(ENV{LIBXCROOT} @SIRIUS_LIBXCROOT@) 
-    set(ENV{GSL_ROOT_DIR} @SIRIUS_GSL_ROOT_DIR@) 
-    set(ENV{MKLROOT} @SIRIUS_MKLROOT@)
-    set(ENV{MAGMAROOT} @SIRIUS_MAGMAROOT@)
-    set(ENV{ELPAROOT} @SIRIUS_ELPAROOT@)
-    set(SpFFT_DIR @SpFFT_DIR@) 
-    # TODO: CUDA, ROCM, mpi4py ?
-  endif()
-
-  # pass REQUIRED or QUIET depending on top Config call
-  if (sirius_FIND_REQUIRED)
-    set(mode REQUIRED)
-  else()
-    set(mode QUIET)
-  endif()
-
-  find_package(MPI ${mode} COMPONENTS CXX)
-  find_package(GSL ${mode})
-  find_package(LibXC 3.0.0 ${mode})
-  find_package(LibSPG ${mode})
-  find_package(HDF5 ${mode} C)
-  include("${CMAKE_CURRENT_LIST_DIR}/hdf5_target.cmake")
-  find_package(SpFFT 0.9.6 CONFIG ${mode})
-  find_package(SPLA 1.1.0 CONFIG ${mode})
-  find_package(costa CONFIG ${mode})
-
-  if(@SIRIUS_USE_OPENMP@)
-    find_package(OpenMP ${mode})
-  endif()
-
-  if(@SIRIUS_USE_MKL@)
-    set(MKL_INTERFACE "@MKL_INTERFACE@")
-    set(MKL_THREADING "@MKL_THREADING@")
-    set(MKL_MPI "@MKL_MPI@")
-    find_dependency(MKL CONFIG)
-  elseif(@SIRIUS_USE_CRAY_LIBSCI@)
-    find_package(CRAY_LIBSCI ${mode})
-  else()
-    find_package(LAPACK ${mode})
-    if(@SIRIUS_USE_SCALAPACK@)
-      find_package(SCALAPACK ${mode}) # just sets scalapack_DIR
-    endif()
-  endif()
-  
-  if(@SIRIUS_USE_ELPA@)
-    find_package(Elpa ${mode})
-  endif()
-  
-  if(@SIRIUS_USE_DLAF@)
-    find_package(DLAF ${mode})
-  endif()
-
-  if(@SIRIUS_USE_MAGMA@)
-    find_package(MAGMA ${mode})
-  endif()
-
-  if(@SIRIUS_USE_VDWXC@)
-    find_package(LibVDWXC 0.3.0 ${mode})
-  endif()
-
-  if(@SIRIUS_USE_CUDA@)
-    # TODO: propagate the passed `sm` flag
-    find_package(CUDA ${mode})
-    include("${CMAKE_CURRENT_LIST_DIR}/cudalibs_target.cmake")
-  endif()
-
-  if(@SIRIUS_USE_ROCM@)
-    find_package(hip CONFIG ${mode})
-    find_package(rocblas CONFIG ${mode})
-    find_package(rocsolver CONFIG ${mode})
-  endif()
-
-  if(@SIRIUS_USE_MEMORY_POOL@)
-    find_package(umpire ${mode})
-  endif()
-
-  # Clean-up module path.
-  list(REMOVE_ITEM CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules")
-
-  # Include SIRIUS target
-  include("${CMAKE_CURRENT_LIST_DIR}/siriusTargets.cmake")
+if(NOT @BUILD_SHARED_LIBS@)
+  find_package(sirius_cxx CONFIG REQUIRED)
 endif()
+
+include(CMakeFindDependencyMacro)
+
+include("${CMAKE_CURRENT_LIST_DIR}/siriusTargets.cmake")
+
+check_required_components(sirius)

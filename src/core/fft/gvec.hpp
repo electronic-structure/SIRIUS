@@ -522,7 +522,7 @@ class Gvec
 
     /// Number of G-vectors for a fine-grained distribution.
     inline int
-    gvec_count(int rank__) const
+    count(int rank__) const
     {
         RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.counts[rank__];
@@ -538,7 +538,7 @@ class Gvec
 
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
     inline int
-    gvec_offset(int rank__) const
+    offset(int rank__) const
     {
         RTE_ASSERT(rank__ < comm().size());
         return gvec_distr_.offsets[rank__];
@@ -559,6 +559,12 @@ class Gvec
         return (comm().rank() == 0) ? 1 : 0;
     }
 
+    inline auto
+    global_index(gvec_index_t::local ig__) const
+    {
+        return gvec_index_t::global(ig__.get() + offset());
+    }
+
     /// Return number of G-vector shells.
     inline int
     num_shells() const
@@ -566,74 +572,62 @@ class Gvec
         return num_gvec_shells_;
     }
 
-    /// Return G vector in fractional coordinates.
-    template <index_domain_t idx_t>
-    inline r3::vector<int>
-    gvec(int ig__) const
+    /// Return global G vector in fractional coordinates.
+    inline auto
+    gvec(gvec_index_t::global ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return r3::vector<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
-                break;
-            }
-            case index_domain_t::global: {
-                return gvec_by_full_index(gvec_full_index_(ig__));
-                break;
-            }
-        }
+        return gvec_by_full_index(gvec_full_index_(ig__));
     }
 
-    /// Return G+k vector in fractional coordinates.
-    template <index_domain_t idx_t>
-    inline r3::vector<double>
-    gkvec(int ig__) const
+    /// Return local G vector in fractional coordinates.
+    inline auto
+    gvec(gvec_index_t::local ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return r3::vector<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
-                break;
-            }
-            case index_domain_t::global: {
-                return this->gvec<idx_t>(ig__) + vk_;
-                break;
-            }
-        }
+        return r3::vector<int>(gvec_(0, ig__), gvec_(1, ig__), gvec_(2, ig__));
     }
 
-    /// Return G vector in Cartesian coordinates.
-    template <index_domain_t idx_t>
-    inline r3::vector<double>
-    gvec_cart(int ig__) const
+    /// Return global G vector in Cartesian coordinates.
+    inline auto
+    gvec_cart(gvec_index_t::global ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return r3::vector<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
-                break;
-            }
-            case index_domain_t::global: {
-                auto G = this->gvec<idx_t>(ig__);
-                return dot(lattice_vectors_, G);
-                break;
-            }
-        }
+        auto G = this->gvec(ig__);
+        return dot(lattice_vectors_, G);
     }
 
-    /// Return G+k vector in fractional coordinates.
-    template <index_domain_t idx_t>
-    inline r3::vector<double>
-    gkvec_cart(int ig__) const
+    /// Return local G vector in Cartesian coordinates.
+    inline auto
+    gvec_cart(gvec_index_t::local ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return r3::vector<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
-                break;
-            }
-            case index_domain_t::global: {
-                auto Gk = this->gvec<idx_t>(ig__) + vk_;
-                return dot(lattice_vectors_, Gk);
-                break;
-            }
-        }
+        return r3::vector<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+    }
+
+    /// Return global G+k vector in fractional coordinates.
+    inline auto
+    gkvec(gvec_index_t::global ig__) const
+    {
+        return this->gvec(ig__) + vk_;
+    }
+
+    /// Return local G+k vector in fractional coordinates.
+    inline auto
+    gkvec(gvec_index_t::local ig__) const
+    {
+        return r3::vector<double>(gkvec_(0, ig__), gkvec_(1, ig__), gkvec_(2, ig__));
+    }
+
+    /// Return global G+k vector in fractional coordinates.
+    inline auto
+    gkvec_cart(gvec_index_t::global ig__) const
+    {
+        auto Gk = this->gvec(ig__) + vk_;
+        return dot(lattice_vectors_, Gk);
+    }
+
+    /// Return local G+k vector in fractional coordinates.
+    inline auto
+    gkvec_cart(gvec_index_t::local ig__) const
+    {
+        return r3::vector<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
     }
 
     /// Return index of the G-vector shell by the G-vector index.
@@ -657,7 +651,7 @@ class Gvec
     }
 
     /// Get lengths of all G-vector shells.
-    std::vector<double>
+    inline auto
     shells_len() const
     {
         std::vector<double> q(this->num_shells());
@@ -667,21 +661,18 @@ class Gvec
         return q;
     }
 
-    /// Return length of the G-vector.
-    template <index_domain_t idx_t>
-    inline double
-    gvec_len(int ig__) const
+    /// Return length of global G-vector.
+    inline auto
+    gvec_len(gvec_index_t::global ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return gvec_len_(ig__);
-                break;
-            }
-            case index_domain_t::global: {
-                return gvec_shell_len_(gvec_shell_(ig__));
-                break;
-            }
-        }
+        return gvec_shell_len_(gvec_shell_(ig__));
+    }
+
+    /// Return length of local G-vector.
+    inline auto
+    gvec_len(gvec_index_t::local ig__) const
+    {
+        return gvec_len_(ig__);
     }
 
     inline int
@@ -932,7 +923,7 @@ class Gvec_fft
     {
         int rank = gvec().comm().rank();
         /* collect scattered PW coefficients */
-        comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__, gvec_slab().counts.data(),
+        comm_ortho_fft().allgather(f_pw_local__, gvec().count(rank), f_pw_fft__, gvec_slab().counts.data(),
                                    gvec_slab().offsets.data());
     }
 
@@ -954,7 +945,7 @@ class Gvec_fft
     {
         for (int i = 0; i < comm_ortho_fft_.size(); i++) {
             /* offset in global index */
-            int offset = this->gvec_.gvec_offset(rank_map_(comm_fft_.rank(), i));
+            int offset = this->gvec_.offset(rank_map_(comm_fft_.rank(), i));
             for (int ig = 0; ig < gvec_fft_slab_.counts[i]; ig++) {
                 f_pw_fft__[gvec_fft_slab_.offsets[i] + ig] = f_pw_global__[offset + ig];
             }
@@ -1146,8 +1137,8 @@ print(std::ostream& out__, Gvec const& gvec__)
         auto len = gvec__.shell_len(igsh);
         out__ << "shell : " << igsh << ", length : " << len << std::endl;
         for (auto ig : gsh_map[igsh]) {
-            auto G  = gvec__.gvec<index_domain_t::global>(ig);
-            auto Gc = gvec__.gvec_cart<index_domain_t::global>(ig);
+            auto G  = gvec__.gvec(gvec_index_t::global(ig));
+            auto Gc = gvec__.gvec_cart(gvec_index_t::global(ig));
             out__ << "  ig : " << ig << ", G = " << G << ", length diff : " << std::abs(Gc.length() - len) << std::endl;
         }
     }
@@ -1165,6 +1156,118 @@ print(std::ostream& out__, Gvec const& gvec__)
     //    pout << "G=" << e.first[0] << " " << e.first[1] << " " << e.first[2] << ", igloc=" << e.second << std::endl;
     //}
     // out__ << pout.flush(0);
+}
+
+class gvec_iterator_t
+{
+  private:
+    gvec_index_t::local igloc_{-1};
+    gvec_index_t::value_type offset_{-1};
+
+  public:
+    using difference_type = std::ptrdiff_t;
+
+    gvec_iterator_t(gvec_index_t::local igloc__, gvec_index_t::value_type offset__)
+        : igloc_{igloc__}
+        , offset_{offset__}
+    {
+    }
+
+    gvec_iterator_t(gvec_index_t::local igloc__)
+        : igloc_{igloc__}
+    {
+    }
+
+    inline bool
+    operator!=(gvec_iterator_t const& rhs__)
+    {
+        return this->igloc_ != rhs__.igloc_;
+    }
+
+    inline gvec_iterator_t&
+    operator++()
+    {
+        this->igloc_++;
+        return *this;
+    }
+
+    inline gvec_iterator_t
+    operator++(int)
+    {
+        gvec_iterator_t tmp(this->igloc_);
+        this->igloc_++;
+        return tmp;
+    }
+
+    inline auto
+    operator*()
+    {
+        struct
+        {
+            typename gvec_index_t::global ig;
+            typename gvec_index_t::local igloc;
+        } ret{gvec_index_t::global(this->offset_ + this->igloc_.get()), this->igloc_};
+        return ret;
+    }
+
+    inline difference_type
+    operator-(gvec_iterator_t const& rhs__) const
+    {
+        return this->igloc_ - rhs__.igloc_;
+    }
+
+    inline gvec_iterator_t&
+    operator+=(difference_type rhs__)
+    {
+        this->igloc_ += rhs__;
+        return *this;
+    }
+};
+
+class gvec_skip_g0
+{
+  private:
+    Gvec const& gv_;
+
+  public:
+    gvec_skip_g0(Gvec const& gv__)
+        : gv_{gv__}
+    {
+    }
+    friend auto
+    begin(gvec_skip_g0 const&);
+    friend auto
+    end(gvec_skip_g0 const&);
+};
+
+inline auto
+skip_g0(Gvec const& gv__)
+{
+    return gvec_skip_g0(gv__);
+}
+
+inline auto
+begin(Gvec const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(0), gv__.offset());
+}
+
+inline auto
+begin(gvec_skip_g0 const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(gv__.gv_.skip_g0()), gv__.gv_.offset());
+}
+
+inline auto
+end(Gvec const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(gv__.count()));
+}
+
+inline auto
+end(gvec_skip_g0 const& gv__)
+{
+    return gvec_iterator_t(gvec_index_t::local(gv__.gv_.count()));
 }
 
 } // namespace fft

@@ -86,13 +86,13 @@ DFT_ground_state::energy_kin_sum_pw() const
 
         #pragma omp parallel for schedule(static) reduction(+:ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-            auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            auto Gk = kp->gkvec().gkvec_cart(gvec_index_t::local(igloc));
 
             double d{0};
             for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                    double f = kp->band_occupancy(i, ispin);
-                    auto z   = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
+                    auto f = kp->band_occupancy(i, ispin);
+                    auto z = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
                     d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                 }
             }
@@ -402,6 +402,16 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     auto tstop = std::chrono::high_resolution_clock::now();
 
     auto dict = serialize();
+    if (ctx_.num_mag_dims()) {
+        dict["magnetisation"]          = {};
+        auto m                         = density_.get_magnetisation();
+        dict["magnetisation"]["total"] = std::vector<double>({m[0].total, m[1].total, m[2].total});
+        std::vector<std::vector<double>> v;
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            v.push_back({m[0].mt[ia], m[1].mt[ia], m[2].mt[ia]});
+        }
+        dict["magnetisation"]["atoms"] = v;
+    }
 
     /* check density */
     if (num_iter >= 0) {

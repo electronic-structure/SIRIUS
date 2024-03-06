@@ -95,7 +95,7 @@ test_sym(cmd_args const& args__)
                         for (int ig = 0; ig < kset_nosym.get<double>(ik1)->num_gkvec(); ig++) {
                             double w = 1.0 / (1.0 + kset_nosym.get<double>(ik1)
                                                             ->gkvec()
-                                                            .gkvec_cart<index_domain_t::global>(ig)
+                                                            .gkvec_cart(gvec_index_t::global(ig))
                                                             .length());
                             auto z1  = phi_nosym[ik1].pw_coeffs(ig, wf::spin_index(0), wf::band_index(m1 + ib));
                             auto z2  = phi_nosym[ik1].pw_coeffs(ig, wf::spin_index(0), wf::band_index(m2 + ib));
@@ -155,7 +155,7 @@ test_sym(cmd_args const& args__)
                             double w =
                                     1.0 /
                                     (1.0 +
-                                     kset_sym.get<double>(ik)->gkvec().gkvec_cart<index_domain_t::global>(ig).length());
+                                     kset_sym.get<double>(ik)->gkvec().gkvec_cart(gvec_index_t::global(ig)).length());
                             auto z1 = phi1.pw_coeffs(ig, wf::spin_index(0), wf::band_index(m1 + ib));
                             auto z2 = phi1.pw_coeffs(ig, wf::spin_index(0), wf::band_index(m2 + ib));
                             dm1(m1, m2, ia) += std::conj(z1) * z2 * w;

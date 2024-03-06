@@ -280,7 +280,7 @@ Energy::get_gkvec_ekin()
             auto& gkvec     = kp.gkvec();
             std::vector<double> gkvec_local(gkvec_count);
             for (int i = 0; i < gkvec_count; ++i) {
-                gkvec_local[i] = gkvec.gkvec_cart<index_domain_t::global>(i).length();
+                gkvec_local[i] = gkvec.gkvec_cart(gvec_index_t::global(i)).length();
             }
             gkvec_cart.push_back(std::move(gkvec_local));
             kindices.emplace_back(it.i.get(), ispn);
@@ -326,7 +326,6 @@ Energy::print_info() const
     auto& unit_cell = kset_.unit_cell();
 
     auto result_mag = density_.get_magnetisation();
-    auto mt_mag     = std::get<2>(result_mag);
 
     if (ctx.num_mag_dims() && ctx.comm().rank() == 0) {
         std::printf("atom              moment                |moment|");
@@ -337,7 +336,7 @@ Energy::print_info() const
         std::printf("\n");
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            r3::vector<double> v(mt_mag[ia]);
+            r3::vector<double> v({result_mag[0].mt[ia], result_mag[1].mt[ia], result_mag[2].mt[ia]});
             std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
             std::printf("\n");
         }

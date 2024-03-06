@@ -34,12 +34,12 @@ ewald_energy(const Simulation_context& ctx, const fft::Gvec& gvec, const Unit_ce
 
     #pragma omp parallel for reduction(+ : ewald_g)
     for (int igloc = gvec.skip_g0(); igloc < gvec.count(); igloc++) {
-        double g2 = std::pow(gvec.gvec_len<index_domain_t::local>(igloc), 2);
+        double g2 = std::pow(gvec.gvec_len(gvec_index_t::local(igloc)), 2);
 
         std::complex<double> rho(0, 0);
 
         for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            rho += ctx.gvec_phase_factor(gvec.gvec<index_domain_t::local>(igloc), ia) *
+            rho += ctx.gvec_phase_factor(gvec.gvec(gvec_index_t::local(igloc)), ia) *
                    static_cast<double>(unit_cell.atom(ia).zn());
         }
 

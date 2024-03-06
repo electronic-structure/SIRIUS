@@ -1,5 +1,11 @@
 import numpy as np
-from ..coefficient_array import CoefficientArray, spdiag, threaded, allthreaded
+from ..coefficient_array import spdiag, threaded, allthreaded
+from numpy.typing import NDArray
+from typing import TypeAlias
+
+__all__ = ["gram_schmidt", "modified_gram_schmidt", "loewdin"]
+
+complex_array_t: TypeAlias = NDArray[np.complex128]
 
 
 @threaded
@@ -28,34 +34,31 @@ def modified_gram_schmidt(X):
     for k in range(m):
         Q[:, k] = X[:, k]
         for i in range(k):
-            Q[:, k] = Q[:, k] - np.tensordot(Q[:, k], np.conj(Q[:, i]), axes=2) * Q[:, i]
+            Q[:, k] = (
+                Q[:, k] - np.tensordot(Q[:, k], np.conj(Q[:, i]), axes=2) * Q[:, i]
+            )
         Q[:, k] = Q[:, k] / np.linalg.norm(Q[:, k])
     return Q
 
 
-def loewdin_nc(X):
-    M = X.H @ X
+def loewdin_nc(X: complex_array_t) -> complex_array_t:
+    """Loewdin for the norm-consvering case."""
+    M = np.conj(X).T @ X
     w, U = np.linalg.eigh(M)
-    R = U @ spdiag(1/np.sqrt(w)) @ U.H
-
+    R = U @ spdiag(1 / np.sqrt(w)) @ np.conj(U).T
     return X @ R
 
 
-def loewdin_overlap(X, S):
-    """
-
-    """
-    M = X.H @ (S @ X)
+def loewdin_overlap(X: complex_array_t, S: complex_array_t) -> complex_array_t:
+    """Loewdin with overlap matrix S."""
+    M = np.conj(X).T @ (S @ X)
     w, U = np.linalg.eigh(M)
-    R = U @ spdiag(1/np.sqrt(w)) @ U.H
-
+    R = U @ spdiag(1 / np.sqrt(w)) @ np.conj(U).T
     return X @ R
 
 
 def loewdin(X, S=None):
-    """
-
-    """
+    """Loewdin orthogonalization."""
     if S is None:
         return threaded(loewdin_nc)(X)
     return allthreaded(loewdin_overlap)(X, S)

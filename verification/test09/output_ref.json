@@ -5,37 +5,47 @@
         "config": {
             "control": {
                 "beta_chunk_size": 256,
+                "beta_on_device": false,
                 "cyclic_block_size": 16,
-                "fft_mode": "serial",
+                "fft_mode": "parallel",
                 "gen_evp_solver_name": "lapack",
-                "memory_usage": "high",
-                "mpi_grid_dims": [
-                    1,
-                    1
-                ],
+                "gvec_chunk_size": 500000,
+                "mpi_grid_dims": [1,1],
                 "num_bands_to_print": 10,
-                "print_checksum": false,
+                "ortho_rf": false,
+                "output": "stdout:",
                 "print_forces": true,
-                "print_hash": false,
-                "print_memory_usage": false,
                 "print_neighbors": false,
-                "print_performance": false,
                 "print_stress": true,
-                "print_timers": true,
                 "processing_unit": "cpu",
                 "reduce_gvec": true,
                 "rmt_max": 2.2,
-                "spglib_tolerance": 0.0001,
+                "save_rf": false,
+                "spglib_tolerance": 1e-06,
                 "std_evp_solver_name": "lapack",
                 "use_second_variation": true,
                 "verbosity": 1,
                 "verification": 0
+            },
+            "hubbard": {
+                "constrained_calculation": false,
+                "constraint_beta_mixing": 0.4,
+                "constraint_error": 1e-06,
+                "constraint_max_iteration": 10,
+                "constraint_method": "energy",
+                "constraint_strength": 1.0,
+                "hubbard_subspace_method": "none",
+                "local": [],
+                "local_constraint": [],
+                "nonlocal": [],
+                "simplified": false
             },
             "iterative_solver": {
                 "converge_by_energy": 1,
                 "early_restart": 0.5,
                 "empty_states_tolerance": 0,
                 "energy_tolerance": 0.01,
+                "extra_ortho": false,
                 "init_eval_old": true,
                 "init_subspace": "lcao",
                 "locking": true,
@@ -57,67 +67,62 @@
                 "type": "anderson",
                 "use_hartree": false
             },
+            "nlcg": {
+                "T": 300.0,
+                "kappa": 0.3,
+                "maxiter": 300,
+                "processing_unit": "",
+                "restart": 10,
+                "tau": 0.1,
+                "tol": 1e-09
+            },
             "parameters": {
                 "auto_rmt": 1,
                 "aw_cutoff": 0.0,
                 "core_relativity": "dirac",
                 "density_tol": 1e-05,
                 "electronic_structure_method": "pseudopotential",
-                "enable_esm": false,
                 "energy_tol": 1e-07,
-                "esm_bc": "pbc",
                 "extra_charge": 0,
                 "gamma_point": false,
                 "gk_cutoff": 7.0,
                 "hubbard_correction": false,
                 "lmax_apw": -1,
-                "lmax_pot": 4,
-                "lmax_rho": 4,
+                "lmax_pot": -1,
+                "lmax_rho": -1,
                 "molecule": false,
-                "ngridk": [
-                    2,
-                    2,
-                    2
-                ],
+                "ngridk": [2,2,2],
                 "nn_radius": -1,
                 "num_bands": 38,
                 "num_dft_iter": 100,
                 "num_fv_states": -1,
                 "num_mag_dims": 3,
+                "precision_gs": "auto",
+                "precision_hs": "fp64",
+                "precision_wf": "fp64",
                 "pw_cutoff": 20.0,
                 "reduce_aux_bf": 0,
-                "shiftk": [
-                    0,
-                    0,
-                    0
-                ],
+                "shiftk": [0,0,0],
                 "smearing": "gaussian",
                 "smearing_width": 0.04,
                 "so_correction": false,
+                "use_ibz": true,
                 "use_scf_correction": true,
                 "use_symmetry": true,
                 "valence_relativity": "zora",
+                "veff_pw_cutoff": 0.0,
                 "vk": [],
                 "xc_dens_tre": -1,
-                "xc_functionals": [
-                    "XC_LDA_X",
-                    "XC_LDA_C_PZ"
-                ]
+                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PZ"]
             },
             "settings": {
                 "always_update_wf": true,
                 "auto_enu_tol": 0,
-                "fft_grid_size": [
-                    32,
-                    32,
-                    32
-                ],
+                "fft_grid_size": [32,32,32],
+                "fp32_to_fp64_rms": 0,
                 "itsol_tol_min": 1e-13,
                 "itsol_tol_ratio": 0,
-                "itsol_tol_scale": [
-                    0.1,
-                    0.5
-                ],
+                "itsol_tol_scale": [0.1,0.5],
                 "min_occupancy": 1e-14,
                 "mixer_rms_min": 1e-16,
                 "nprii_aug": 20,
@@ -125,146 +130,86 @@
                 "nprii_rho_core": 20,
                 "nprii_vloc": 200,
                 "radial_grid": "exponential, 1.0",
-                "sht_coverage": 0
+                "sht_coverage": 0,
+                "xc_use_lapl": false
             },
             "unit_cell": {
                 "atom_coordinate_units": "lattice",
                 "atom_files": {
                     "Ni": "Ni.json"
                 },
-                "atom_types": [
-                    "Ni"
-                ],
+                "atom_types": ["Ni"],
                 "atoms": {
                     "Ni": [
-                        [
-                            0.0,
-                            0.0,
-                            0.0
-                        ]
+                        [0.0,0.0,0.0]
                     ]
                 },
                 "lattice_vectors": [
-                    [
-                        0.0,
-                        3.32308339004766,
-                        3.32308339004766
-                    ],
-                    [
-                        3.32308339004766,
-                        0.0,
-                        3.32308339004766
-                    ],
-                    [
-                        3.32308339004766,
-                        3.32308339004766,
-                        0.0
-                    ]
+                    [0.0,3.32308339004766,3.32308339004766],
+                    [3.32308339004766,0.0,3.32308339004766],
+                    [3.32308339004766,3.32308339004766,0.0]
                 ],
                 "lattice_vectors_scale": 1.0
+            },
+            "vcsqnm": {
+                "alpha0": 0.01,
+                "eps_subsp": 0.001,
+                "forces_tol": 0.0001,
+                "initial_step_size": -0.1,
+                "lattice_weight": 2.0,
+                "nhist_max": 10,
+                "num_steps": 300,
+                "stress_tol": 1e-05
             }
         },
-        "fft_coarse_grid": [
-            24,
-            24,
-            24
-        ],
-        "mpi_grid": [
-            1,
-            1
-        ],
+        "fft_coarse_grid": [24,24,24],
+        "mpi_grid": [1,1],
         "num_atoms": 1,
         "omega": 73.39284359469754
     },
     "counters": {
-        "band_evp_work_count": 914.4732468289834,
-        "local_operator_num_applied": 4248
+        "band_evp_work_count": 1149.2759330806261,
+        "local_operator_num_applied": 7405
     },
-    "git_hash": "9ca6392c71c115c2dcebf72e002ed55ce56a7d95",
+    "git_hash": "a0d09bff305c7d162e6e43a792018b99bd33b276",
     "ground_state": {
         "band_gap": 0.0,
         "converged": true,
-        "core_leakage": 0.0,
-        "efermi": 0.6591592103977443,
+        "efermi": 0.659157746933176,
         "energy": {
-            "bxc": -0.009177530554033093,
-            "core_eval_sum": 0.0,
-            "entropy_sum": -0.04290778859997536,
-            "enuc": 0.0,
-            "eval_sum": -10.643172652284889,
-            "ewald": -111.75579556460703,
-            "exc": -17.531757291098526,
-            "kin": 48.68346833641025,
-            "scf_correction": 3.691212057077564e-05,
-            "total": -171.53704037465718,
-            "veff": -59.317463458141106,
-            "vha": 107.38021908937856,
-            "vloc": -144.58019452357587,
-            "vxc": -22.11748802394789
+            "bxc": -0.009192423887923618,
+            "entropy_sum": -0.04291132199732681,
+            "eval_sum": -10.64315397961692,
+            "ewald": -111.75579558182746,
+            "exc": -17.53176263965274,
+            "kin": 48.68350739584102,
+            "scf_correction": 3.355751232447801e-10,
+            "total": -171.5370403894957,
+            "veff": -59.317468951570014,
+            "vha": 107.38018012115612,
+            "vloc": -144.58016830276986,
+            "vxc": -22.117480769953318
         },
-        "etot_history": [
-            -164.76001675462115,
-            -170.71626241657202,
-            -171.38178506657061,
-            -171.50831213872098,
-            -171.52743711928758,
-            -171.5338753975007,
-            -171.53702889662534,
-            -171.5370101448073,
-            -171.53702559423158,
-            -171.5370153693776,
-            -171.53700430872357,
-            -171.53702919091833,
-            -171.53703875641844,
-            -171.53704005472525,
-            -171.53704036915806,
-            -171.53704037465718
-        ],
+        "etot_history": [-164.75692163002395,-170.71761545621757,-171.39437783839549,-171.51549359893022,-171.52658307845155,-171.53420845960264,-171.53676808254517,-171.53699131440146,-171.536994948771,-171.53704659354267,-171.53688167215222,-171.53695021016298,-171.53693000211746,-171.5369161735536,-171.53701205720387,-171.537040366811,-171.5370401788493,-171.53704038684342,-171.5370403890885,-171.53704038945924,-171.53704038901117,-171.53704038940526,-171.53704038947967,-171.5370403894986,-171.53704038949652,-171.53704038949866,-171.53704038949525,-171.53704038949638,-171.53704038949283,-171.53704038949945,-171.5370403894979,-171.53704038949374,-171.53704038949775,-171.5370403894914,-171.53704038948973,-171.5370403895004,-171.5370403894957],
         "forces": [
-            [
-                -9.944324508991307e-14,
-                -9.945202270778817e-14,
-                -9.939999048483895e-14
-            ]
+            [0.0,0.0,0.0]
         ],
-        "num_scf_iterations": 15,
-        "rms_history": [
-            0.3955378365301099,
-            0.34837396933343845,
-            0.08046775794814597,
-            0.03991273749013303,
-            0.014828545104641584,
-            0.018139969252526988,
-            0.0027136672877014767,
-            0.0017684895148163955,
-            0.0009364836656174294,
-            0.0013715117794877972,
-            0.0004958714926858735,
-            0.0006051175490428055,
-            4.003913903749789e-05,
-            5.309016172558246e-05,
-            4.721330051640113e-06,
-            1.993021689520456e-06
-        ],
-        "scf_time": 13.188788,
+        "magnetisation": {
+            "atoms": [
+                [0.3610544283495706,0.36105381374675594,0.36106531033144096]
+            ],
+            "total": [0.3685438795292026,0.36854325126124204,0.3685549860478623]
+        },
+        "num_scf_iterations": 36,
+        "rho_min": 0.03244873603392834,
+        "rms_history": [0.3952156996472348,0.34777901989177723,0.08005142411282959,0.034216994285304295,0.015188164292063855,0.019251307658047338,0.004312004017356451,0.0010132093289054727,0.0015365565670006492,0.001649061120349782,0.0018554927170676286,0.002452407828810018,0.00027287370772286954,0.00035405773498798146,0.00029467216303793206,2.2950701369361053e-05,2.1143728112123566e-05,5.226522935771849e-06,2.365628773402923e-06,1.1304228450273856e-06,1.032452137184115e-06,3.506820817763679e-07,2.431696225899669e-07,7.195703526607182e-08,1.666855991841051e-08,1.370278999078748e-09,1.1345830844985997e-09,7.862329515846881e-10,5.381519174051264e-10,6.546406235342705e-10,8.337989287245213e-10,5.428142943521951e-10,5.155451173461152e-10,4.6213680793671534e-10,4.420730518778322e-10,3.7798904739155807e-10,3.596954760634993e-10],
+        "scf_time": 8.816742246,
         "stress": [
-            [
-                -0.0007555810605143903,
-                7.857549695535911e-20,
-                6.114494983150938e-34
-            ],
-            [
-                7.857549695535911e-20,
-                -0.0007555810605145291,
-                -4.2435424539185383e-20
-            ],
-            [
-                6.114494983150938e-34,
-                -4.2435424539185383e-20,
-                -0.0007555810605143903
-            ]
+            [-0.0007560406492820582,5.139228664519358e-20,-9.035018104043667e-21],
+            [5.139228664519358e-20,-0.0007560406492820582,-6.042730474928824e-20],
+            [-9.035018104043667e-21,-6.042730474928824e-20,-0.0007560406492821969]
         ]
     },
     "task": 0,
-    "threads_per_rank": 8
+    "threads_per_rank": 16
 }

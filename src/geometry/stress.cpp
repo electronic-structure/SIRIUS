@@ -238,14 +238,13 @@ Stress::calc_stress_core()
 
     auto q        = ctx_.gvec().shells_len();
     auto const ff = ctx_.ri().ps_core_djl_->values(q, ctx_.comm());
-    auto drhoc =
-            make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
+    auto drhoc    = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
 
     double sdiag{0};
     int ig0 = ctx_.gvec().skip_g0();
 
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-        auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc));
         auto g = G.length();
 
         for (int mu : {0, 1, 2}) {
@@ -445,7 +444,7 @@ Stress::calc_stress_us()
                     }
                     #pragma omp parallel for
                     for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                        auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+                        auto gvc = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc));
                         double g = gvc.length();
 
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -501,7 +500,7 @@ Stress::calc_stress_ewald()
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         int ig = ctx_.gvec().offset() + igloc;
 
-        auto G          = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G          = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc));
         double g2       = std::pow(G.length(), 2);
         double g2lambda = g2 / 4.0 / lambda;
 
@@ -616,7 +615,7 @@ Stress::calc_stress_har()
 
     int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-        auto G    = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G    = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc));
         double g2 = std::pow(G.length(), 2);
         auto z    = density_.rho().rg().f_pw_local(igloc);
         double d  = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
@@ -661,7 +660,7 @@ Stress::calc_stress_kin_aux()
                 #pragma omp for
                 for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                     for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                        auto Gk = kp->gkvec().template gkvec_cart<index_domain_t::local>(igloc);
+                        auto Gk = kp->gkvec().gkvec_cart(gvec_index_t::local(igloc));
 
                         double f = kp->band_occupancy(i, ispin);
                         auto z = kp->spinor_wave_functions().pw_coeffs(igloc, wf::spin_index(ispin), wf::band_index(i));
@@ -711,17 +710,15 @@ Stress::calc_stress_vloc()
     auto const ri_vloc    = ctx_.ri().vloc_->values(q, ctx_.comm());
     auto const ri_vloc_dg = ctx_.ri().vloc_djl_->values(q, ctx_.comm());
 
-    auto v  = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
-                                                           ri_vloc);
-    auto dv = make_periodic_function<index_domain_t::local>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(),
-                                                            ri_vloc_dg);
+    auto v  = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ri_vloc);
+    auto dv = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ri_vloc_dg);
 
     double sdiag{0};
 
     int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
 
-        auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc));
 
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {

@@ -14,9 +14,9 @@
 #include <utility>
 #include <memory>
 #include <stdexcept>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+// #ifdef _OPENMP
+// #include <omp.h>
+// #endif
 
 #include "core/json.hpp"
 #include "dft/energy.hpp"

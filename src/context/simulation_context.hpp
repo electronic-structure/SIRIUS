@@ -596,7 +596,7 @@ class Simulation_context : public Simulation_parameters
     inline auto
     gvec_phase_factor(int ig__, int ia__) const
     {
-        return gvec_phase_factor(gvec().gvec<index_domain_t::global>(ig__), ia__);
+        return gvec_phase_factor(gvec().gvec(gvec_index_t::global(ig__)), ia__);
     }
 
     inline auto const&

@@ -1,4 +1,9 @@
 #include "python_module_includes.hpp"
+#include <string>
+#include <iomanip>
+#include <complex>
+#include <sstream>
+#include <cstdio>
 
 using namespace pybind11::literals;
 namespace py = pybind11;
@@ -22,10 +27,15 @@ init_operators(py::module& m)
                  py::arg("precompute_lapw") = false)
             .def("Q", &Hamiltonian0<PT>::Q, py::return_value_policy::reference_internal)
             .def("D", &Hamiltonian0<PT>::D, py::return_value_policy::reference_internal)
+            .def("Hk", &Hamiltonian0<PT>::operator(), py::keep_alive<0, 1>())
             .def("potential", &Hamiltonian0<PT>::potential, py::return_value_policy::reference_internal);
 
+    py::class_<U_operator<PT>>(m, "U_operator")
+            .def("mat", &U_operator<PT>::mat, py::return_value_policy::reference_internal, py::keep_alive<0, 1>());
+
     py::class_<Hamiltonian_k<PT>>(m, "Hamiltonian_k")
-            .def(py::init<Hamiltonian0<PT>&, K_point<PT>&>(), py::keep_alive<1, 2>(), py::keep_alive<1, 3>());
+            .def(py::init<Hamiltonian0<PT>&, K_point<PT>&>(), py::keep_alive<1, 2>(), py::keep_alive<1, 3>())
+            .def_property_readonly("U", &Hamiltonian_k<PT>::U, py::return_value_policy::reference_internal);
 
     py::class_<S_k<complex_double>>(m, "S_k")
             .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
@@ -151,4 +161,31 @@ init_operators(py::module& m)
                  py::keep_alive<1, 0>());
 
     py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>>(m, "Beta_projectors");
+    m.def("apply_U_operator", &apply_U_operator<double>, py::arg("ctx"), py::arg("spin_range"), py::arg("band_range"),
+          py::arg("hub_wf"), py::arg("phi"), py::arg("u_op"), py::arg("hphi"));
+
+    py::class_<wf::band_range>(m, "band_range")
+            .def(py::init<int, int>())
+            .def("__len__", &wf::band_range::size)
+            .def("__getitem__", [](const wf::band_range& br, int i) {
+                if (i >= br.size()) {
+                    throw pybind11::index_error("out of bounds");
+                }
+                return br.begin() + i;
+            });
+
+    py::class_<wf::spin_range>(m, "spin_range")
+            .def(py::init<int, int>())
+            .def("__getitem__",
+                 [](const wf::spin_range& sp, int i) {
+                     if (i >= sp.size()) {
+                         throw pybind11::index_error("out of bounds");
+                     }
+                     auto index = sp.begin();
+                     for (int k = 0; k < i; ++k) {
+                         index++;
+                     }
+                     return static_cast<int>(index);
+                 })
+            .def("__len__", &wf::spin_range::size);
 }
