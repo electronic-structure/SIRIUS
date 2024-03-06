@@ -29,11 +29,17 @@ if(USE_MKL)
   target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
 endif()
 
-set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)
+# figure out correct python site-packages directory for installation
+file(WRITE "${CMAKE_BINARY_DIR}/install-prefix" "${CMAKE_INSTALL_PREFIX}")
+execute_process(
+  COMMAND ${PYTHON_EXECUTABLE} "${PROJECT_SOURCE_DIR}/python_module/cmake_helpers/where.py"
+  INPUT_FILE "${CMAKE_BINARY_DIR}/install-prefix"
+  OUTPUT_VARIABLE SIRIUS_PYTHON_LIB_PATH
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # set relative RPATH
 if(isSystemDir STREQUAL "-1")
-  file(RELATIVE_PATH relDir ${PYTHON_INSTALL_SITE_DIR}/sirius
+  file(RELATIVE_PATH relDir ${SIRIUS_PYTHON_LIB_PATH}/sirius
     ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
   set_target_properties(${libname} PROPERTIES INSTALL_RPATH "${basePoint};${basePoint}/${relDir}")
 endif()
@@ -43,13 +49,13 @@ target_link_libraries(${libname} PRIVATE sirius_cxx)
 # install to cmake prefix
 install(DIRECTORY sirius
   DESTINATION
-  ${PYTHON_INSTALL_SITE_DIR}
+  ${SIRIUS_PYTHON_LIB_PATH}
   FILES_MATCHING REGEX
   ".*py"
 )
 install(TARGETS ${libname}
   LIBRARY
-  DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
+  DESTINATION ${SIRIUS_PYTHON_LIB_PATH}/sirius)
 install(
   PROGRAMS
   ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py

@@ -30,6 +30,9 @@
 #include "non_local_operator_base.hpp"
 #include "context/simulation_context.hpp"
 #include "hubbard/hubbard_matrix.hpp"
+#include <utility>
+#include <vector>
+#include <complex>
 
 namespace sirius {
 /* forward declaration */
@@ -113,6 +116,12 @@ class U_operator
 
     int
     find_orbital_index(const int ia__, const int n__, const int l__) const;
+
+    matrix<std::complex<T>> const&
+    mat(int i) const
+    {
+        return um_[i];
+    }
 };
 
 /** \tparam T  Precision of the wave-functions.

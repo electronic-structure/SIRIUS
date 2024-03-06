@@ -34,6 +34,12 @@
 #include "hamiltonian/hamiltonian.hpp"
 #include "symmetry/symmetrize_forces.hpp"
 #include "lapw/step_function.hpp"
+#include <string>
+#include <iomanip>
+#include <vector>
+#include <complex>
+#include <algorithm>
+#include <cmath>
 
 namespace sirius {
 
@@ -162,9 +168,14 @@ Force::compute_dmat(K_point<double>* kp__, la::dmatrix<std::complex<double>>& dm
         }
     }
 }
-
 mdarray<double, 2> const&
 Force::calc_forces_total()
+{
+    return calc_forces_total(true /*add scf correction*/);
+}
+
+mdarray<double, 2> const&
+Force::calc_forces_total(bool add_scf_corr)
 {
     forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     if (ctx_.full_potential()) {
@@ -182,15 +193,22 @@ Force::calc_forces_total()
         calc_forces_nonloc();
         calc_forces_core();
         calc_forces_ewald();
-        calc_forces_scf_corr();
+        if (add_scf_corr) {
+            calc_forces_scf_corr();
+        }
         calc_forces_hubbard();
 
         forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             for (int x : {0, 1, 2}) {
-                forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
-                                       forces_core_(x, ia) + forces_ewald_(x, ia) + forces_scf_corr_(x, ia) +
-                                       forces_hubbard_(x, ia);
+                if (add_scf_corr) {
+                    forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
+                                           forces_core_(x, ia) + forces_ewald_(x, ia) + forces_scf_corr_(x, ia) +
+                                           forces_hubbard_(x, ia);
+                } else {
+                    forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
+                                           forces_core_(x, ia) + forces_ewald_(x, ia) + forces_hubbard_(x, ia);
+                }
             }
         }
     }

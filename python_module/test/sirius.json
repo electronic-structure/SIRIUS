@@ -1,0 +1,49 @@
+{
+    "control" : {
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 0
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "pseudopotential",
+        "xc_functionals": ["XC_LDA_C_PZ", "XC_LDA_X"],
+        "smearing_width" : 0.00025,
+        "num_fv_states": 4,
+        "num_mag_dims" : 0,
+        "gk_cutoff" : 6.0,
+        "pw_cutoff" : 12.00,
+        "use_symmetry": true,
+        "ngridk" : [1, 1, 1],
+        "num_dft_iter": 10000,
+        "density_tol": 1e-14,
+        "energy_tol": 1e-14,
+        "gamma_point": false
+    },
+    "iterative_solver" : {
+        "type" : "davidson"
+    },
+    "unit_cell" : {
+        "lattice_vectors" : [ [1.0, 0.0, 0.0],
+                              [0.0, 1.0, 0.0],
+                              [0.0, 0.0, 1.0]
+                            ],
+        "lattice_vectors_scale": 10.26,
+        "atom_types" : ["Si"],
+        "atom_files" : {
+            "Si"  : "Si.json"
+        },
+        "atoms" : {
+            "Si":
+            [[0.0, 0.0, 0.0],
+            [1.3575, 1.3575, 1.3575]]
+        },
+        "atom_coordinate_units": "A"
+    },
+
+    "mixer" : {
+        "beta" : 0.8
+    }
+
+}

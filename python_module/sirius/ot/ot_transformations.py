@@ -1,7 +1,10 @@
 import numpy as np
 from numpy.linalg import eigh, solve
-from ..coefficient_array import PwCoeffs
+from ..coefficient_array import PwCoeffs, allthreaded
 
+from numpy.typing import NDArray
+from typing import TypeAlias
+complex_array_t: TypeAlias = NDArray[np.complex128]
 
 def matview(x):
     return np.matrix(x, copy=False)
@@ -15,7 +18,7 @@ def lagrangeMult(p, c0, P=None):
     """
     from ..coefficient_array import CoefficientArray
     if isinstance(p, CoefficientArray):
-        out = type(p)(dtype=p.dtype, ctype=p.ctype)
+        out = PwCoeffs()
         for key, v in p.items():
             if P is not None:
                 out[key] = lagrangeMult(v, c0[key], P[key])
@@ -33,6 +36,27 @@ def lagrangeMult(p, c0, P=None):
             correction = -c0 * oc
         return correction
 
+def _c(x: complex_array_t, c0: complex_array_t) -> complex_array_t:
+    x = matview(x)
+    assert np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7
+    XX = np.dot(x.H, x)
+    w, R = eigh(XX)
+    w = np.where(np.abs(w) < 1e-14, 0, w)
+    w = np.sqrt(w)
+    R = matview(R)
+    err = np.linalg.norm(R.H @ R - np.eye(*R.shape), 'fro')
+    # TODO: remove: check that we are not losing accuracy for small x
+    assert np.isclose(R * np.diag(w**2) * R.H, XX).all()
+    assert err < 1e-11
+
+    Wsinc = np.diag(np.sinc(w/np.pi))
+    sincU = np.dot(np.dot(R, Wsinc), R.H)
+
+    Wcos = np.diag(np.cos(w))
+    cosU = np.dot(np.dot(R, Wcos), R.H)
+
+    return np.dot(c0, cosU) + np.dot(x, sincU)
+
 
 def c(x, c0):
     """
@@ -42,31 +66,9 @@ def c(x, c0):
     it must hold x.T*c0 = 0
     """
     if isinstance(x, PwCoeffs):
-        assert(isinstance(c0, PwCoeffs))
-        cres = PwCoeffs(dtype=np.complex128)
-        for key, xloc in x.items():
-            c0loc = c0[key]
-            cres[key] = c(xloc, c0loc)
-        return cres
+        return allthreaded(_c)(x, c0)
     else:
-        x = matview(x)
-        assert np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7
-        XX = np.dot(x.H, x)
-        w, R = eigh(XX)
-        w = np.sqrt(w)
-        R = matview(R)
-        err = np.linalg.norm(R.H * R - np.eye(*R.shape), 'fro')
-        # TODO: remove: check that we are not losing accuracy for small x
-        assert np.isclose(R * np.diag(w**2) * R.H, XX).all()
-        assert err < 1e-11
-
-        Wsinc = np.diag(np.sinc(w/np.pi))
-        sincU = np.dot(np.dot(R, Wsinc), R.H)
-
-        Wcos = np.diag(np.cos(w))
-        cosU = np.dot(np.dot(R, Wcos), R.H)
-
-        return np.dot(c0, cosU) + np.dot(x, sincU)
+        return _c(x, c0)
 
 
 class ConstrainedGradient:
@@ -129,15 +131,15 @@ class ConstrainedGradient:
         """
         if isinstance(x, PwCoeffs):
             assert(isinstance(self.c0, PwCoeffs))
-            Hx_out = PwCoeffs(dtype=x.dtype)
-            Gx_out = PwCoeffs(dtype=x.dtype)
+            Hx_out = PwCoeffs()
+            Gx_out = PwCoeffs()
             for ki in x.kvalues():
                 # get a view of all x-coefficients for given k-index
                 xk = x.kview(ki)
                 # precompute matrix functions and pw-coeffs
                 fX = {}
                 # plane-wave coefficients c(x, c0)
-                c = PwCoeffs(dtype=x.dtype)
+                c = PwCoeffs()
                 for key, val in xk.items():
                     fX[key] = {k: t for k, t in zip(['c', 'Λ', 'sincU', 'R'],
                                                     self._prepare_fX(x=val, c0=self.c0[key]))}
@@ -189,10 +191,16 @@ class ConstrainedGradient:
         #   VandeVondele, J., & Hutter, J. . An efficient orbital transformation method
         #   for electronic structure calculations. , 118(10), 4365–4369.
         #   http://dx.doi.org/10.1063/1.1543154
-        assert isinstance(R, np.matrix)
-        assert isinstance(sincU, np.matrix)
-        assert isinstance(Hc, np.matrix)
-        assert isinstance(c0, np.matrix)
+
+        R = matview(R)
+        sincU = matview(sincU)
+        Hc = matview(Hc)
+        c0 = matview(c0)
+
+        # assert isinstance(R, np.matrix)
+        # assert isinstance(sincU, np.matrix)
+        # assert isinstance(Hc, np.matrix)
+        # assert isinstance(c0, np.matrix)
 
         v = np.sinc(np.sqrt(Λ)/np.pi)
         v = v[:, np.newaxis]

@@ -154,6 +154,8 @@ build openmpi image:
     SLURM_UNBUFFEREDIO: ''
     SLURM_WAIT: 0
 
+
+
 gpu serial:
   extends: .run_tests
   variables:
@@ -207,4 +209,36 @@ cpu band parallel:
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "60:00"
     TEST_COMMAND: ctest -L cpu_band_parallel --timeout 3600
+    USE_MPI: 'YES'
+
+python:
+  extends: .container-runner-daint-gpu
+  needs: ["build cuda image"]
+  stage: test
+  script:
+    - |
+      # spack load etc fails,
+      PYTHONPATH=$(spack -C /root/.spack find --format={prefix} sirius)/lib/python3.10/site-packages
+      PYTHONPATH=/sirius-env-cuda/.spack-env/view/local/lib/python3.10/dist-packages/:$PYTHONPATH
+      export PYTHONPATH
+      pip install pytest
+      cd /sirius-src/python_module/test/ && pytest .
+  image: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
+  variables:
+    CRAY_CUDA_MPS: 1
+    GIT_STRATEGY: none
+    MPICH_MAX_THREAD_SAFETY: multiple
+    CSCS_REGISTRY_LOGIN: 'YES'
+    PULL_IMAGE: 'YES'
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_UNBUFFEREDIO: ''
+    SLURM_WAIT: 0
+    OMP_NUM_THREADS: 3
+    SLURM_CONSTRAINT: gpu
+    SLURM_CPU_BIND: sockets
+    SLURM_CPUS_PER_TASK: 3
+    SLURM_NTASKS: 1
+    SLURM_TIMELIMIT: "60:00"
+    TEST_COMMAND: pytest
     USE_MPI: 'YES'
