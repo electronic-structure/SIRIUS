@@ -513,8 +513,10 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<fft::Gvec_fft, std::shared_ptr<fft::Gvec_fft>>(m, "Gvec_fft");
     py::class_<fft::Gvec, std::shared_ptr<fft::Gvec>>(m, "Gvec")
             .def("count", py::overload_cast<>(&fft::Gvec::count, py::const_))
-            .def("gkvec_cart", py::overload_cast<gvec_index_t::global>(&fft::Gvec::gkvec_cart, py::const_));
-    // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
+            .def("gkvec_cart", [](py::object& gvec_obj, int i) {
+                auto& gvec = gvec_obj.cast<fft::Gvec&>();
+                return gvec.gkvec_cart(gvec_index_t::global(i));
+            });
     py::class_<wf::device_memory_guard>(m, "device_memory_guard");
 
     py::class_<wf::Wave_functions_base<double>, std::shared_ptr<wf::Wave_functions_base<double>>>(m,
