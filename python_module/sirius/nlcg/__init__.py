@@ -138,7 +138,7 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
     if "restart" in config:
         logger("restart loading from " + config["restart"]["fname"])
         fname = config["restart"]["fname"]
-        X = make_pwcoeffs(load_state(fname, kset, "X", np.complex))
+        X = make_pwcoeffs(load_state(fname, kset, "X", np.complex128))
         fn = load_state(fname, kset, "fn", np.float64).asarray().flatten()
         M(X, fn)  # make sure band energies are set
 
@@ -187,7 +187,7 @@ def run_neugebauer(config, sirius_config, callback, final_callback, error_callba
     if "restart" in config:
         logger("restart loading from " + config["restart"]["fname"])
         fname = config["restart"]["fname"]
-        X = make_pwcoeffs(load_state(fname, kset, "X", np.complex))
+        X = make_pwcoeffs(load_state(fname, kset, "X", np.complex128))
         # the diagoal of eta is stored in dumps, therefore it is real-valued
         ek = diag(load_state(fname, kset, "eta", np.float64)).asarray().flatten()
     else:
