@@ -331,9 +331,13 @@ class Unit_cell
         return *atom_types_[id__];
     }
 
-    inline auto atom_types() const -> std::vector<std::shared_ptr<Atom_type>>
+    inline bool has_augmented_atom() const
     {
-        return atom_types_;
+        for (auto at : atom_types_) {
+            if (at->augment())
+                return true;
+        }
+        return false;
     }
 
     /// Return const atom type instance by id.
