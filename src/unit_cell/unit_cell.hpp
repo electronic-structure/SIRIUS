@@ -331,11 +331,13 @@ class Unit_cell
         return *atom_types_[id__];
     }
 
-    inline bool has_augmented_atom() const
+    inline bool
+    has_augmented_atom() const
     {
         for (auto at : atom_types_) {
-            if (at->augment())
+            if (at->augment()) {
                 return true;
+            }
         }
         return false;
     }
