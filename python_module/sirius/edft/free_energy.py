@@ -30,8 +30,7 @@ def s(x):
 
 
 class FreeEnergy:
-    """
-    copied from Baarman implementation
+    """ FreeEnergy wrapper.
     """
 
     def __init__(self, E, T, smearing):
@@ -58,8 +57,7 @@ class FreeEnergy:
         fn   -- occupations numbers
         """
 
-        self.energy.kpointset.fn = fn
-        E, HX = self.energy.compute(cn)
+        E, HX = self.energy.compute(cn, fn)
         entropy = self.smearing.entropy(fn)
 
         self.entropy = entropy

@@ -47,7 +47,7 @@ class DiagonalPreconditioner():
     def __matmul__(self, other):
         """
         """
-        out = type(other)(dtype=other.dtype)
+        out = type(other)()
         if isinstance(other, CoefficientArray):
             for key, Dl in self.D.items():
                 out[key] = Dl @ other[key]
@@ -65,7 +65,7 @@ class DiagonalPreconditioner():
                 out.D[key] = s*Dl
             return out
         if isinstance(s, CoefficientArray):
-            out = type(s)(dtype=s.dtype)
+            out = type(s)()
             for key in s.keys():
                 out[key] = self.D[key] * s[key]
             return out
@@ -77,7 +77,7 @@ class DiagonalPreconditioner():
         """
         """
         if isinstance(self.D, CoefficientArray):
-            out_data = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
+            out_data = type(self.D)()
             out = DiagonalPreconditioner(out_data)
             for k, v in self.D.items():
                 out.D[k] = -v
@@ -94,7 +94,7 @@ class DiagonalPreconditioner():
         """
         inverse
         """
-        D = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
+        D = type(self.D)()
         for k in self.D.keys():
             shape = self.D[k].shape
             D[k] = dia_matrix((1/self.D[k].data, 0), shape=shape)
@@ -114,7 +114,7 @@ def make_kinetic_precond(kpointset, eps=0.1):
 
     nk = len(kpointset)
     nc = kpointset.ctx().num_spins()
-    P = PwCoeffs(dtype=np.float64, ctype=dia_matrix)
+    P = PwCoeffs()
     for k in range(nk):
         kp = kpointset[k]
         gkvec = kp.gkvec()
@@ -141,7 +141,7 @@ def make_kinetic_precond2(kpointset):
     """
     nk = len(kpointset)
     nc = kpointset.ctx().num_spins()
-    P = PwCoeffs(dtype=np.float64, ctype=dia_matrix)
+    P = PwCoeffs()
     for k in range(nk):
         kp = kpointset[k]
         gkvec = kp.gkvec()

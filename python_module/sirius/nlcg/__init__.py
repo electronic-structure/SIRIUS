@@ -9,7 +9,7 @@ logger = Logger()
 
 
 def make_pwcoeffs(coefficient_array):
-    out = PwCoeffs(dtype=np.complex, ctype=np.matrix)
+    out = PwCoeffs()
     out._data = coefficient_array._data
     return out
 
@@ -63,9 +63,8 @@ def initial_state(sirius_input, nscf):
 
     res = DFT_ground_state_find(nscf, config=sirius_input)
     ctx = res["ctx"]
-    m = ctx.max_occupancy()
+    # m = ctx.max_occupancy()
     # not yet implemented for single spin channel system
-    # assert m == 1
     kset = res["kpointset"]
     potential = res["potential"]
     density = res["density"]
