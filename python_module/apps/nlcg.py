@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     yaml_config = args.input
-    ycfg = yaml.load(open(yaml_config, 'r'))
+    ycfg = yaml.safe_load(open(yaml_config, 'r'))
     # validate CG-config
     ycfg['CG'] = validate_config(ycfg['CG'])
 
