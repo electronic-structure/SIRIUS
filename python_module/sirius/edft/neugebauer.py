@@ -7,10 +7,8 @@ import numpy as np
 from scipy.constants import physical_constants
 
 from ..coefficient_array import CoefficientArray as ca
-from ..coefficient_array import diag, einsum, inner, l2norm
+from ..coefficient_array import diag, einsum, inner
 from ..operators import US_Precond, Sinv_operator, S_operator
-
-from ..helpers import save_state
 from ..logger import Logger
 from ..py_sirius import sprint_magnetization
 from .ortho import loewdin
