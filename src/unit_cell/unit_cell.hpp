@@ -26,10 +26,12 @@
 #define __UNIT_CELL_HPP__
 
 #include <algorithm>
+#include <memory>
 #include "atom.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/json.hpp"
 #include "context/simulation_parameters.hpp"
+#include "unit_cell/atom_type.hpp"
 
 namespace sirius {
 
@@ -327,6 +329,11 @@ class Unit_cell
     {
         assert(id__ >= 0 && id__ < (int)atom_types_.size());
         return *atom_types_[id__];
+    }
+
+    inline auto atom_types() const -> std::vector<std::shared_ptr<Atom_type>>
+    {
+        return atom_types_;
     }
 
     /// Return const atom type instance by id.
