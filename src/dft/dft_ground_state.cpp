@@ -139,7 +139,7 @@ DFT_ground_state::check_scf_density()
     /* initialize the subspace */
     ::sirius::initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    ::sirius::diagonalize<double, double>(H0, kset_, ctx_.cfg().settings().itsol_tol_min(),
+    ::sirius::diagonalize<double, double>(H0, kset_, ctx_.cfg().iterative_solver().min_tolerance(),
                                           ctx_.cfg().iterative_solver().num_steps());
     /* find band occupancies */
     kset_.find_band_occupancies<double>();
@@ -212,7 +212,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     s << "density_tol               : " << density_tol__ << std::endl
       << "energy_tol                : " << energy_tol__ << std::endl
       << "iter_solver_tol (initial) : " << iter_solver_tol__ << std::endl
-      << "iter_solver_tol (target)  : " << ctx_.cfg().settings().itsol_tol_min() << std::endl
+      << "iter_solver_tol (target)  : " << ctx_.cfg().iterative_solver().min_tolerance() << std::endl
       << "num_dft_iter              : " << num_dft_iter__;
     ctx_.message(1, __func__, s);
 
@@ -271,14 +271,14 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             // tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
             tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
         }
-        tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol,
-                       ctx_.cfg().settings().itsol_tol_scale()[1] * iter_solver_tol__);
+        tol = std::min(ctx_.cfg().iterative_solver().tolerance_scale()[0] * tol,
+                       ctx_.cfg().iterative_solver().tolerance_scale()[1] * iter_solver_tol__);
         /* tolerance can't be too small */
-        iter_solver_tol__ = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
+        iter_solver_tol__ = std::max(ctx_.cfg().iterative_solver().min_tolerance(), tol);
 
         bool iter_solver_converged{true};
         if (ctx_.cfg().iterative_solver().type() != "exact") {
-            iter_solver_converged = (tol <= ctx_.cfg().settings().itsol_tol_min());
+            iter_solver_converged = (tol <= ctx_.cfg().iterative_solver().min_tolerance());
         }
 
 #if defined(SIRIUS_USE_FP32)
@@ -287,11 +287,11 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             if (ctx_.cfg().parameters().precision_gs() == "fp64" && ctx_.cfg().parameters().precision_wf() == "fp32") {
                 /* if we reached the mimimum tolerance for fp32 */
                 if ((ctx_.cfg().settings().fp32_to_fp64_rms() == 0 &&
-                     iter_solver_tol__ <= ctx_.cfg().settings().itsol_tol_min()) ||
+                     iter_solver_tol__ <= ctx_.cfg().iterative_solver().min_tolerance()) ||
                     (rms < ctx_.cfg().settings().fp32_to_fp64_rms())) {
                     std::cout << "switching to FP64" << std::endl;
                     ctx_.cfg().unlock();
-                    ctx_.cfg().settings().itsol_tol_min(std::numeric_limits<double>::epsilon() * 10);
+                    ctx_.cfg().iterative_solver().min_tolerance(std::numeric_limits<double>::epsilon() * 10);
                     ctx_.cfg().parameters().precision_wf("fp64");
                     ctx_.cfg().parameters().precision_hs("fp64");
                     ctx_.cfg().lock();

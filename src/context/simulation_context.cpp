@@ -482,8 +482,8 @@ Simulation_context::initialize()
 
     if (cfg().parameters().precision_wf() == "fp32" && cfg().parameters().precision_gs() == "fp64") {
         double t = std::numeric_limits<float>::epsilon() * 10;
-        auto tol = std::max(cfg().settings().itsol_tol_min(), t);
-        cfg().settings().itsol_tol_min(tol);
+        auto tol = std::max(cfg().iterative_solver().min_tolerance(), t);
+        cfg().iterative_solver().min_tolerance(tol);
     }
 
     /* set the smearing */

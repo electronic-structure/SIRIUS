@@ -102,6 +102,7 @@ class Broyden2 : public Mixer<FUNCS...>
     double beta_;
     mdarray<double, 2> S_;
     mdarray<double, 1> gamma_;
+
   public:
     Broyden2(std::size_t max_history, double beta)
         : Mixer<FUNCS...>(max_history)
