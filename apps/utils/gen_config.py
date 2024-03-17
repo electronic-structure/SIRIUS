@@ -213,5 +213,8 @@ print("\n}")
 
 with open('DOC.md', 'w') as f:
     for e in data['properties']:
-        f.write(f'# {e} - {data["properties"][e]["title"]}')
+        f.write(f'# {e}\n')
+        f.write(f'{data["properties"][e]["title"]}\n')
+        for k in data["properties"][e]["properties"]:
+            f.write(f' - **{k}**: {data["properties"][e]["properties"][k]["title"]}\n')
         f.write('\n')
