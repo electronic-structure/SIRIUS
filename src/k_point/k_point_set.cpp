@@ -135,6 +135,24 @@ K_point_set::initialize(std::vector<int> const& counts)
         RTE_THROW("K-point set is already initialized");
     }
     PROFILE("sirius::K_point_set::initialize");
+    if (comm().size() > this->num_kpoints()) {
+        std::stringstream s;
+        s << "Number of MPI ranks for k-points is larger than the number of k-points; parallelization is not optimal"
+          << std::endl
+          << "  number of k-points                   : " << this->num_kpoints() << std::endl
+          << "  k-point communicator size            : " << comm().size() << std::endl
+          << "  optimal size of k-point communicator : ";
+        for (int i = 1; i <= this->num_kpoints(); i++) {
+            if (this->num_kpoints() % i == 0) {
+                s << i << " ";
+            }
+        }
+        s << std::endl;
+        s << "Check if you need to set control.mpi_grid_dims for band parallelization";
+        if (ctx_.comm().rank() == 0) {
+            RTE_WARNING(s);
+        }
+    }
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
         splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
