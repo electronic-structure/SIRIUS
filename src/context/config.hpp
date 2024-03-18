@@ -46,7 +46,7 @@ class config_t
             }
             dict_["/mixer/beta"_json_pointer] = beta__;
         }
-        /// Mixing ratio in case of initial linear mixing
+        /// For Anderson mixer only: minimum allowed value of mixing parameter beta
         inline auto beta0() const
         {
             return dict_.at("/mixer/beta0"_json_pointer).get<double>();
@@ -57,18 +57,6 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/mixer/beta0"_json_pointer] = beta0__;
-        }
-        /// RMS tolerance above which the linear mixing is triggered
-        inline auto linear_mix_rms_tol() const
-        {
-            return dict_.at("/mixer/linear_mix_rms_tol"_json_pointer).get<double>();
-        }
-        inline void linear_mix_rms_tol(double linear_mix_rms_tol__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/mixer/linear_mix_rms_tol"_json_pointer] = linear_mix_rms_tol__;
         }
         /// Number of history steps for Broyden-type mixers
         inline auto max_history() const
@@ -82,7 +70,7 @@ class config_t
             }
             dict_["/mixer/max_history"_json_pointer] = max_history__;
         }
-        /// Scaling factor for mixing parameter
+        /// For Anderson mixer only: scaling factor for mixing parameter beta
         inline auto beta_scaling_factor() const
         {
             return dict_.at("/mixer/beta_scaling_factor"_json_pointer).get<double>();
@@ -106,12 +94,27 @@ class config_t
             }
             dict_["/mixer/use_hartree"_json_pointer] = use_hartree__;
         }
+        /// Minimum value of allowed RMS for the mixer.
+        /**
+            Mixer will not mix functions if the RMS between previous and current functions is below this tolerance.
+        */
+        inline auto rms_min() const
+        {
+            return dict_.at("/mixer/rms_min"_json_pointer).get<double>();
+        }
+        inline void rms_min(double rms_min__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/mixer/rms_min"_json_pointer] = rms_min__;
+        }
       private:
         nlohmann::json& dict_;
     };
     inline auto const& mixer() const {return mixer_;}
     inline auto& mixer() {return mixer_;}
-    /// Parameters of the 'settings' section influence the numerical implementation.
+    /// Parameters of the 'settings' section influence numerical implementation.
     /**
         Changing of setting parameters will have a small impact on the final result.
     */
@@ -169,102 +172,6 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/settings/nprii_rho_core"_json_pointer] = nprii_rho_core__;
-        }
-        /// Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion
-        inline auto always_update_wf() const
-        {
-            return dict_.at("/settings/always_update_wf"_json_pointer).get<bool>();
-        }
-        inline void always_update_wf(bool always_update_wf__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/settings/always_update_wf"_json_pointer] = always_update_wf__;
-        }
-        /// Minimum value of allowed RMS for the mixer.
-        /**
-            Mixer will not mix functions if the RMS between previous and current functions is below this tolerance.
-        */
-        inline auto mixer_rms_min() const
-        {
-            return dict_.at("/settings/mixer_rms_min"_json_pointer).get<double>();
-        }
-        inline void mixer_rms_min(double mixer_rms_min__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/settings/mixer_rms_min"_json_pointer] = mixer_rms_min__;
-        }
-        /// Minimum tolerance of the iterative solver.
-        inline auto itsol_tol_min() const
-        {
-            return dict_.at("/settings/itsol_tol_min"_json_pointer).get<double>();
-        }
-        inline void itsol_tol_min(double itsol_tol_min__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/settings/itsol_tol_min"_json_pointer] = itsol_tol_min__;
-        }
-        /// Minimum occupancy below which the band is treated as being 'empty'
-        inline auto min_occupancy() const
-        {
-            return dict_.at("/settings/min_occupancy"_json_pointer).get<double>();
-        }
-        inline void min_occupancy(double min_occupancy__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/settings/min_occupancy"_json_pointer] = min_occupancy__;
-        }
-        /// Fine control of the empty states tolerance.
-        /**
-            This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
-            \code{.cpp}
-            // tolerance of occupied bands
-            double tol = ctx_.iterative_solver().energy_tolerance();
-            // final tolerance of empty bands
-            double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
-            \endcode
-        */
-        inline auto itsol_tol_ratio() const
-        {
-            return dict_.at("/settings/itsol_tol_ratio"_json_pointer).get<double>();
-        }
-        inline void itsol_tol_ratio(double itsol_tol_ratio__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/settings/itsol_tol_ratio"_json_pointer] = itsol_tol_ratio__;
-        }
-        /// Scaling parameters of the iterative  solver tolerance.
-        /**
-            First number is the scaling of density RMS, that gives the estimate of the new 
-            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
-            between the two. This is how it is done in the code: 
-            \code{.cpp}
-            double old_tol = ctx_.iterative_solver_tolerance();
-            // estimate new tolerance of iterative solver
-            double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
-            tol = std::max(ctx_.settings().itsol_tol_min_, tol);
-            // set new tolerance of iterative solver
-            ctx_.iterative_solver().energy_tolerance(tol);\endcode
-        */
-        inline auto itsol_tol_scale() const
-        {
-            return dict_.at("/settings/itsol_tol_scale"_json_pointer).get<std::array<double, 2>>();
-        }
-        inline void itsol_tol_scale(std::array<double, 2> itsol_tol_scale__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/settings/itsol_tol_scale"_json_pointer] = itsol_tol_scale__;
         }
         /// Tolerance to recompute the LAPW linearisation energies.
         inline auto auto_enu_tol() const
@@ -555,6 +462,18 @@ class config_t
             }
             dict_["/iterative_solver/empty_states_tolerance"_json_pointer] = empty_states_tolerance__;
         }
+        /// Minimum tolerance of the iterative solver.
+        inline auto min_tolerance() const
+        {
+            return dict_.at("/iterative_solver/min_tolerance"_json_pointer).get<double>();
+        }
+        inline void min_tolerance(double min_tolerance__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/iterative_solver/min_tolerance"_json_pointer] = min_tolerance__;
+        }
         /// Defines the flavour of the iterative solver.
         /**
             If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
@@ -639,6 +558,63 @@ class config_t
             }
             dict_["/iterative_solver/extra_ortho"_json_pointer] = extra_ortho__;
         }
+        /// Minimum occupancy below which the band is treated as being 'empty'
+        inline auto min_occupancy() const
+        {
+            return dict_.at("/iterative_solver/min_occupancy"_json_pointer).get<double>();
+        }
+        inline void min_occupancy(double min_occupancy__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/iterative_solver/min_occupancy"_json_pointer] = min_occupancy__;
+        }
+        /// Fine control of the empty states tolerance.
+        /**
+            This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
+            \code{.cpp}
+            // tolerance of occupied bands
+            double tol = ctx_.iterative_solver().energy_tolerance();
+            // final tolerance of empty bands
+            double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
+            \endcode
+        */
+        inline auto tolerance_ratio() const
+        {
+            return dict_.at("/iterative_solver/tolerance_ratio"_json_pointer).get<double>();
+        }
+        inline void tolerance_ratio(double tolerance_ratio__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/iterative_solver/tolerance_ratio"_json_pointer] = tolerance_ratio__;
+        }
+        /// Scaling parameters of the iterative  solver tolerance.
+        /**
+            First number is the scaling of density RMS, that gives the estimate of the new 
+            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
+            between the two. This is how it is done in the code: 
+            \code{.cpp}
+            double old_tol = ctx_.iterative_solver_tolerance();
+            // estimate new tolerance of iterative solver
+            double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
+            tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+            // set new tolerance of iterative solver
+            ctx_.iterative_solver().energy_tolerance(tol);\endcode
+        */
+        inline auto tolerance_scale() const
+        {
+            return dict_.at("/iterative_solver/tolerance_scale"_json_pointer).get<std::array<double, 2>>();
+        }
+        inline void tolerance_scale(std::array<double, 2> tolerance_scale__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/iterative_solver/tolerance_scale"_json_pointer] = tolerance_scale__;
+        }
       private:
         nlohmann::json& dict_;
     };
@@ -657,7 +633,7 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.
+        /// MPI grid is setting the parameters for blacs grid / band parallelisation, the rest is going to k-point parallelization.
         inline auto mpi_grid_dims() const
         {
             return dict_.at("/control/mpi_grid_dims"_json_pointer).get<std::vector<int>>();

@@ -57,7 +57,8 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
 
     double empy_tol{itsol_tol__};
     if (itso.type() == "davidson") {
-        empy_tol = std::max(itsol_tol__ * ctx.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance());
+        empy_tol =
+                std::max(itsol_tol__ * ctx.cfg().iterative_solver().tolerance_ratio(), itso.empty_states_tolerance());
         RTE_OUT(ctx.out(2)) << "iterative solver tolerance (occupied, empty): " << itsol_tol__ << " "
                             << itsol_tol__ + empy_tol << std::endl;
     }

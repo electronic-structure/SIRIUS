@@ -26,12 +26,7 @@
                 "beta0": {
                     "type": "number",
                     "default": 0.15,
-                    "title": "Mixing ratio in case of initial linear mixing"
-                },
-                "linear_mix_rms_tol": {
-                    "type": "number",
-                    "default": 1E+6,
-                    "title": "RMS tolerance above which the linear mixing is triggered"
+                    "title": "For Anderson mixer only: minimum allowed value of mixing parameter beta"
                 },
                 "max_history": {
                     "type": "integer",
@@ -41,18 +36,24 @@
                 "beta_scaling_factor": {
                     "type": "number",
                     "default": 1.0,
-                    "title": "Scaling factor for mixing parameter"
+                    "title": "For Anderson mixer only: scaling factor for mixing parameter beta"
                 },
                 "use_hartree": {
                     "type": "boolean",
                     "default": false,
                     "title": "Use Hartree potential in the inner() product for residuals"
+                },
+                "rms_min": {
+                    "type": "number",
+                    "default": 1E-16,
+                    "title": "Minimum value of allowed RMS for the mixer.",
+                    "description": "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
                 }
             }
         },
         "settings": {
             "type": "object",
-            "title": "Parameters of the 'settings' section influence the numerical implementation.",
+            "title": "Parameters of the 'settings' section influence numerical implementation.",
             "description": "Changing of setting parameters will have a small impact on the final result.",
             "properties": {
                 "nprii_vloc": {
@@ -74,48 +75,6 @@
                     "type": "integer",
                     "default": 20,
                     "title": "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
-                },
-                "always_update_wf": {
-                    "type": "boolean",
-                    "default": true,
-                    "title": "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
-                    "$comment": "move to iterative solver section"
-                },
-                "mixer_rms_min": {
-                    "type": "number",
-                    "default": 1E-16,
-                    "title": "Minimum value of allowed RMS for the mixer.",
-                    "description": "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
-                },
-                "itsol_tol_min": {
-                    "type": "number",
-                    "default": 1E-13,
-                    "title": "Minimum tolerance of the iterative solver."
-                },
-                "min_occupancy": {
-                    "type": "number",
-                    "default": 1E-14,
-                    "title": "Minimum occupancy below which the band is treated as being 'empty'"
-                },
-                "itsol_tol_ratio": {
-                    "type": "number",
-                    "default": 0,
-                    "title": "Fine control of the empty states tolerance.",
-                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
-                },
-                "itsol_tol_scale": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    },
-                    "minItems": 2,
-                    "maxItems": 2,
-                    "default": [
-                        0.1,
-                        0.5
-                    ],
-                    "title": "Scaling parameters of the iterative  solver tolerance.",
-                    "description": "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver().energy_tolerance(tol);\\endcode"
                 },
                 "auto_enu_tol": {
                     "type": "number",
@@ -318,6 +277,11 @@
                     "title": "Additional tolerance for empty states.",
                     "description": "Setting this variable to 0 will treat empty states with the same tolerance as occupied states."
                 },
+                "min_tolerance": {
+                    "type": "number",
+                    "default": 1E-13,
+                    "title": "Minimum tolerance of the iterative solver."
+                },
                 "converge_by_energy": {
                     "type": "integer",
                     "default": 1,
@@ -355,6 +319,31 @@
                     "type": "boolean",
                     "default": false,
                     "title": "Orthogonalize the new subspace basis functions one more time in order to improve the numerical stability."
+                },
+                "min_occupancy": {
+                    "type": "number",
+                    "default": 1E-14,
+                    "title": "Minimum occupancy below which the band is treated as being 'empty'"
+                },
+                "tolerance_ratio": {
+                    "type": "number",
+                    "default": 0,
+                    "title": "Fine control of the empty states tolerance.",
+                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
+                },
+                "tolerance_scale": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "default": [
+                        0.1,
+                        0.5
+                    ],
+                    "title": "Scaling parameters of the iterative  solver tolerance.",
+                    "description": "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver().energy_tolerance(tol);\\endcode"
                 }
             }
         },
@@ -368,7 +357,7 @@
                     "items": {
                         "type": "integer"
                     },
-                    "title": "the mpi grid is setting the parameters for blacs grid / band parallelisation, the rest going to k-point parallelization.",
+                    "title": "MPI grid is setting the parameters for blacs grid / band parallelisation, the rest is going to k-point parallelization.",
                     "default": [
                         1,
                         1

@@ -55,8 +55,7 @@ Mixer_factory(config_t::mixer_t const& mix_cfg)
     } else if (mix_cfg.type() == "anderson_stable") {
         mixer.reset(new Anderson_stable<FUNCS...>(mix_cfg.max_history(), mix_cfg.beta()));
     } else if (mix_cfg.type() == "broyden2") {
-        mixer.reset(new Broyden2<FUNCS...>(mix_cfg.max_history(), mix_cfg.beta(), mix_cfg.beta0(),
-                                           mix_cfg.beta_scaling_factor(), mix_cfg.linear_mix_rms_tol()));
+        mixer.reset(new Broyden2<FUNCS...>(mix_cfg.max_history(), mix_cfg.beta()));
     } else {
         RTE_THROW("wrong type of mixer");
     }

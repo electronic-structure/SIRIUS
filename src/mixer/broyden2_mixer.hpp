@@ -98,13 +98,15 @@ namespace mixer {
 template <typename... FUNCS>
 class Broyden2 : public Mixer<FUNCS...>
 {
+  private:
+    double beta_;
+    mdarray<double, 2> S_;
+    mdarray<double, 1> gamma_;
+
   public:
-    Broyden2(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, double linear_mix_rmse_tol)
+    Broyden2(std::size_t max_history, double beta)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
-        , beta0_(beta0)
-        , beta_scaling_factor_(beta_scaling_factor)
-        , linear_mix_rmse_tol_(linear_mix_rmse_tol)
         , S_({max_history, max_history})
         , gamma_({max_history})
     {
@@ -185,15 +187,8 @@ class Broyden2 : public Mixer<FUNCS...>
             }
         }
     }
-
-  private:
-    double beta_;
-    double beta0_;
-    double beta_scaling_factor_;
-    double linear_mix_rmse_tol_;
-    mdarray<double, 2> S_;
-    mdarray<double, 1> gamma_;
 };
+
 } // namespace mixer
 } // namespace sirius
 

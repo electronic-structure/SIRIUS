@@ -388,15 +388,15 @@ class Simulation_parameters
     inline double
     min_occupancy() const
     {
-        return cfg_.settings().min_occupancy();
+        return cfg_.iterative_solver().min_occupancy();
     }
 
     /// Set minimum occupancy.
     inline double
     min_occupancy(double val__)
     {
-        cfg().settings().min_occupancy(val__);
-        return cfg().settings().min_occupancy();
+        cfg().iterative_solver().min_occupancy(val__);
+        return cfg().iterative_solver().min_occupancy();
     }
 
     bool
