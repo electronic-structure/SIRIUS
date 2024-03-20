@@ -136,7 +136,7 @@ def einsum(expr, *operands):
     try:
         return np.einsum(expr, *operands)
     except (ValueError, TypeError):
-        out = type(operands[0])(dtype=operands[0].dtype, ctype=np.array)
+        out = type(operands[0])()
         for key in operands[0]._data.keys():
             out[key] = np.einsum(expr, *list(map(lambda x: x[key], operands)))
         return out

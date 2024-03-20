@@ -7,14 +7,13 @@ import numpy as np
 from scipy.constants import physical_constants
 
 from ..coefficient_array import CoefficientArray as ca
-from ..coefficient_array import diag, einsum, inner, l2norm
+from ..coefficient_array import diag, einsum, inner
 from ..operators import US_Precond, Sinv_operator, S_operator
-
-from ..helpers import save_state
 from ..logger import Logger
 from ..py_sirius import sprint_magnetization
 from .ortho import loewdin
 from .preconditioner import IdentityPreconditioner
+from .free_energy import FreeEnergy
 import time
 
 logger = Logger()
@@ -40,7 +39,7 @@ def _solve(A, X):
     """
     returns A⁻¹ X
     """
-    out = type(X)(dtype=X.dtype, ctype=X.ctype)
+    out = type(X)()
     for k in X.keys():
         out[k] = np.linalg.solve(A[k], X[k])
     return out
@@ -200,7 +199,7 @@ def steepest_descent(**kwargs):
 
 
 class CG:
-    def __init__(self, free_energy):
+    def __init__(self, free_energy: FreeEnergy):
         """
         Arguments:
         free_energy -- Free Energy callable
@@ -213,7 +212,7 @@ class CG:
         potential = self.M.energy.potential
         kset = self.M.energy.kpointset
         ctx = kset.ctx()
-        self.is_ultrasoft = np.any([type.augment for type in kset.ctx().unit_cell().atom_types])
+        self.is_ultrasoft = kset.ctx().unit_cell().augmented
         if self.is_ultrasoft:
             self.Si = Sinv_operator(ctx, potential, kset)
             self.S = S_operator(ctx, potential, kset)
