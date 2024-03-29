@@ -1,3 +1,11 @@
+/* This file is part of SIRIUS electronic structure library.
+ *
+ * Copyright (c), ETH Zurich.  All rights reserved.
+ *
+ * Please, refer to the LICENSE file in the root directory.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 // Warning! This is an automatically generated header file!
 /** \file atomic_data.hpp
  *  \brief Basic atomic data information.
