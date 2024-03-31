@@ -30,11 +30,10 @@ def s(x):
 
 
 class FreeEnergy:
-    """
-    copied from Baarman implementation
+    """ FreeEnergy wrapper.
     """
 
-    def __init__(self, E, T, smearing):
+    def __init__(self, E, smearing):
         """
         Keyword Arguments:
         energy      -- total energy object
@@ -43,7 +42,6 @@ class FreeEnergy:
         smearing    --
         """
         self.energy = E
-        self.T = T
         assert isinstance(smearing, Smearing)
         self.smearing = smearing
         if self.energy.kpointset.ctx().num_mag_dims() == 0:
@@ -51,18 +49,17 @@ class FreeEnergy:
         else:
             self.scale = 1
 
-    def __call__(self, cn, fn):
+    def __call__(self, cn, fn, mu, ek):
         """
         Keyword Arguments:
-        cn   -- PW coefficients
-        fn   -- occupations numbers
+        cn   -- wfc coefficients (plane-wave)
+        fn   -- occupation numbers
+        mu   -- chemical potential
+        ek   -- pseudo band-energies
         """
 
-        self.energy.kpointset.fn = fn
-        E, HX = self.energy.compute(cn)
-        entropy = self.smearing.entropy(fn)
-
-        self.entropy = entropy
+        # this sets kset.e as side-effect
+        E, HX = self.energy.compute(cn, fn)
         self.ks_energy = E
-
-        return E + entropy, HX
+        self.entropy = self.smearing.entropy(mu - ek)
+        return E + self.entropy, HX

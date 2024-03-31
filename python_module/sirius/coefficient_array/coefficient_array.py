@@ -3,11 +3,11 @@ import numpy as np
 from mpi4py import MPI
 from scipy.sparse import dia_matrix
 from numpy.typing import ArrayLike, NDArray
-from typing import Union, Tuple, Any, Callable, get_type_hints, TypeAlias, Union
+from typing import Union, Tuple, Any, Callable, get_type_hints, TypeAlias
 from collections import abc
 import copy
 
-scalar_t: TypeAlias  = Union[int, float, complex, np.float64, np.complex128]
+scalar_t: TypeAlias = Union[int, float, complex, np.float64, np.complex128]
 
 
 def check_return_type(func: Callable) -> bool:
@@ -30,6 +30,21 @@ def threaded(f):
     return _f
 
 
+def threaded_class(f):
+    """Decorator for threaded (in class members)
+    application over CoefficientArray."""
+
+    def _f(self, x, *args, **kwargs):
+        if isinstance(x, CoefficientArray):
+            out = type(x)()
+            for k in x._data.keys():
+                out[k] = f(self, x[k], *args, **kwargs)
+            return out
+        else:
+            return f(self, x, *args, **kwargs)
+
+    return _f
+
 
 @threaded
 def sort(x):
@@ -49,13 +64,6 @@ def trace(x):
 @threaded
 def identity_like(x):
     return np.eye(*x.shape)
-
-
-def shapes(x):
-    shapes = {}
-    for k in x:
-        shapes[k] = np.shape(x[k])
-    return shapes
 
 
 def eye_like(shapes):
@@ -136,7 +144,7 @@ def einsum(expr, *operands):
     try:
         return np.einsum(expr, *operands)
     except (ValueError, TypeError):
-        out = type(operands[0])(dtype=operands[0].dtype, ctype=np.array)
+        out = type(operands[0])()
         for key in operands[0]._data.keys():
             out[key] = np.einsum(expr, *list(map(lambda x: x[key], operands)))
         return out
@@ -175,7 +183,7 @@ class CoefficientArray(CoefficientArrayBase):
         self, key: Tuple[int, int], item: Union[ArrayLike, dia_matrix, Any]
     ):
         """ """
-        if (key in self._data) and hasattr(item, '__array__'):
+        if (key in self._data) and hasattr(item, "__array__"):
             x = self._data[key]
             # make sure shapes don't change
             x[:] = item
@@ -560,7 +568,7 @@ def allthreaded(f, return_type=PwCoeffs):
     type_hints = get_type_hints(f)
     return_type_hint = type_hints["return"]
     nret = 1
-    if hasattr(return_type_hint, '__origin__') and return_type_hint.__origin__ is tuple:
+    if hasattr(return_type_hint, "__origin__") and return_type_hint.__origin__ is tuple:
         nret = len(return_type_hint.__args__)
 
     def _f(*args):
