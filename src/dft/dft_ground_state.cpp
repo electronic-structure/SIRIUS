@@ -500,6 +500,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy2("Hubbard one-el contribution", hub_one_elec);
     }
     write_energy2("Total energy", etot);
+    write_energy2("Free energy (E-TS)", etot + s_sum);
     out__ << std::endl;
     write_energy("band gap (eV)", gap);
     write_energy("Efermi", ef);
