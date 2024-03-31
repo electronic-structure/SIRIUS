@@ -16,6 +16,7 @@
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
+#include "dft/energy.hpp"
 
 namespace sirius {
 
@@ -148,6 +149,7 @@ Potential::update()
     if (!ctx_.full_potential()) {
         local_potential_->zero();
         generate_local_potential();
+        ewald_energy_ = sirius::ewald_energy(ctx_, ctx_.gvec(), ctx_.unit_cell());
     } else {
         gvec_ylm_ = generate_gvec_ylm(ctx_, ctx_.lmax_pot());
 

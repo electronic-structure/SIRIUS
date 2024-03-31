@@ -57,9 +57,6 @@ class DFT_ground_state
     /// k-point independent part of the Hamiltonian.
     std::shared_ptr<Hamiltonian0<double>> H0_; // hard-code double for now
 
-    /// Store Ewald energy which is computed once and which doesn't change during the run.
-    double ewald_energy_{0};
-
     /// Correction to total energy from the SCF density minimisation.
     double scf_correction_energy_{0};
 
@@ -75,10 +72,8 @@ class DFT_ground_state
         , forces_(ctx_, density_, potential_, kset__)
 
     {
-        if (!ctx_.full_potential()) {
-            ewald_energy_ = sirius::ewald_energy(ctx_, ctx_.gvec(), ctx_.unit_cell());
-        }
     }
+
     ~DFT_ground_state()
     {
         int n = ctx_.num_loc_op_applied();
@@ -139,12 +134,6 @@ class DFT_ground_state
     stress()
     {
         return stress_;
-    }
-
-    inline double
-    ewald_energy() const
-    {
-        return ewald_energy_;
     }
 
     inline double

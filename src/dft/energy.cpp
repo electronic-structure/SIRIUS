@@ -165,31 +165,28 @@ ks_energy(Simulation_context const& ctx, std::map<std::string, double> const& en
 }
 
 double
-ks_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
-          double ewald_energy)
+ks_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return ks_energy(ctx, total_energy_components(ctx, kset, density, potential, ewald_energy));
+    return ks_energy(ctx, total_energy_components(ctx, kset, density, potential));
 }
 
 /** Total energy is an alias for Kohn-Sham total energy. It is computed without entropy contribution. */
 double
-total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
-             double ewald_energy)
+total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return ks_energy(ctx, kset, density, potential, ewald_energy);
+    return ks_energy(ctx, kset, density, potential);
 }
 
 /** F = E - TS, where -TS is the entropy sum. */
 double
-free_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
-             double ewald_energy)
+free_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return ks_energy(ctx, kset, density, potential, ewald_energy) + kset.entropy_sum();
+    return ks_energy(ctx, kset, density, potential) + kset.entropy_sum();
 }
 
 std::map<std::string, double>
 total_energy_components(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-                        Potential const& potential, double ewald_energy)
+                        Potential const& potential)
 {
     std::map<std::string, double> table;
     switch (ctx.electronic_structure_method()) {
@@ -208,7 +205,7 @@ total_energy_components(Simulation_context const& ctx, K_point_set const& kset, 
             table["PAW_one_elec"]     = potential.PAW_one_elec_energy(density);
             table["vha"]              = energy_vha(potential);
             table["exc"]              = energy_exc(density, potential);
-            table["ewald"]            = ewald_energy;
+            table["ewald"]            = potential.ewald_energy();
             table["PAW_total_energy"] = potential.PAW_total_energy(density);
             break;
         }

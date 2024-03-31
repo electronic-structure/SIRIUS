@@ -134,6 +134,9 @@ class Potential : public Field4D
     /** This is used to verify the variational derivative of Exc w.r.t. magnetisation mag */
     double add_delta_mag_xc_{0};
 
+    /// Ewald energy.
+    double ewald_energy_{0};
+
     void
     init_PAW();
 
@@ -902,6 +905,12 @@ class Potential : public Field4D
     hubbard_potential() const
     {
         return hubbard_potential_;
+    }
+
+    inline double
+    ewald_energy() const
+    {
+        return ewald_energy_;
     }
 };
 
