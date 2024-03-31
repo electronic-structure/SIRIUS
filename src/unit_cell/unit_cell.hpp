@@ -15,10 +15,12 @@
 #define __UNIT_CELL_HPP__
 
 #include <algorithm>
+#include <memory>
 #include "atom.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/json.hpp"
 #include "context/simulation_parameters.hpp"
+#include "unit_cell/atom_type.hpp"
 
 namespace sirius {
 
@@ -316,6 +318,17 @@ class Unit_cell
     {
         assert(id__ >= 0 && id__ < (int)atom_types_.size());
         return *atom_types_[id__];
+    }
+
+    inline bool
+    has_augmented_atom() const
+    {
+        for (auto at : atom_types_) {
+            if (at->augment()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// Return const atom type instance by id.

@@ -187,7 +187,7 @@ class Simulation_parameters
     smearing(std::string name__);
 
     auto
-    smearing() const
+    smearing() const -> smearing::smearing_t
     {
         return smearing_;
     }
