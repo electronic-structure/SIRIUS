@@ -129,7 +129,7 @@ std::map<std::string, std::string> const fleur_core = {
         {"Md", "1s2s2p3s3p4s3d4p5s4d5p4f5d"},
         {"No", "1s2s2p3s3p4s3d4p5s4d5p4f5d"},
         {"Lr", "1s2s2p3s3p4s3d4p5s4d5p6s4f5d6p"},
-    };
+};
 
 /// Helper class to compute free atom in spherical potential approximation.
 class Free_atom : public sirius::Atom_type
