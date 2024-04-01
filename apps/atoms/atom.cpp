@@ -760,6 +760,13 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                             a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
                         }
                         idxlo++;
+
+                        if (l + 1 < n) {
+                            for (int dme : {0, 1}) {
+                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                            }
+                            idxlo++;
+                        }
                     }
                 }
 
@@ -781,6 +788,13 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                             a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
                         }
                         idxlo++;
+
+                        if (l + 1 < n) {
+                            for (int dme : {1, 2}) {
+                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                            }
+                            idxlo++;
+                        }
                     }
                 }
 
