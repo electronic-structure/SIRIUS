@@ -13,6 +13,7 @@
 
 #include "atom_type.hpp"
 #include "core/ostream_tools.hpp"
+#include <algorithm>
 
 namespace sirius {
 
@@ -690,13 +691,8 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
 }
 
 void
-Atom_type::read_input(std::string const& str__)
+Atom_type::read_input(nlohmann::json const& parser)
 {
-    auto parser = read_json_from_file_or_string(str__);
-
-    if (parser.empty()) {
-        return;
-    }
 
     if (!parameters_.full_potential()) {
         read_pseudo_uspp(parser);
@@ -736,6 +732,338 @@ Atom_type::read_input(std::string const& str__)
         free_atom_radial_grid_ = Radial_grid_ext<double>(static_cast<int>(fa_r.size()), fa_r.data());
         /* read density */
         free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
+    }
+}
+
+bool
+is_upf_file(std::string const& str__)
+{
+    const std::string ftype = ".upf";
+    std::string lcstr__     = str__;
+    std::transform(lcstr__.begin(), lcstr__.end(), lcstr__.begin(), ::tolower);
+    return lcstr__.compare(lcstr__.size() - ftype.size(), ftype.size(), ftype) == 0;
+}
+
+#ifdef SIRIUS_USE_PUGIXML
+template <typename T>
+std::vector<T>
+vec_from_str(std::string const& str__, T const scaling)
+{
+    std::vector<T> vec;
+    std::istringstream iss(str__);
+
+    std::copy(std::istream_iterator<T>(iss), std::istream_iterator<T>(), std::back_inserter(vec));
+    std::transform(vec.begin(), vec.end(), vec.begin(), [&scaling](T val) { return val * scaling; });
+
+    return vec;
+}
+
+template <typename T>
+std::vector<T>
+vec_from_str(std::string const& str__)
+{
+    std::vector<T> vec;
+    std::istringstream iss(str__);
+
+    std::copy(std::istream_iterator<T>(iss), std::istream_iterator<T>(), std::back_inserter(vec));
+
+    return vec;
+}
+
+void
+Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
+{
+
+    pugi::xml_node header = upf.child("PP_HEADER");
+    symbol_               = header.attribute("element").as_string();
+
+    double zp;
+    zp  = header.attribute("z_valence").as_double();
+    zn_ = int(zp + 1e-10);
+
+    int nmtp = header.attribute("mesh_size").as_int();
+
+    auto rgrid = vec_from_str<double>(upf.child("PP_MESH").child("PP_R").child_value());
+    if (static_cast<int>(rgrid.size()) != nmtp) {
+        RTE_THROW("wrong mesh size");
+    }
+    /* set the radial grid */
+    set_radial_grid(nmtp, rgrid.data());
+
+    local_potential(vec_from_str<double>(upf.child("PP_LOCAL").child_value(), 0.5));
+
+    ps_core_charge_density(vec_from_str<double>(upf.child("PP_NLCC").child_value()));
+
+    ps_total_charge_density(vec_from_str<double>(upf.child("PP_RHOATOM").child_value()));
+
+    if (local_potential().size() != rgrid.size() || ps_core_charge_density().size() != rgrid.size() ||
+        ps_total_charge_density().size() != rgrid.size()) {
+        std::cout << local_potential().size() << " " << ps_core_charge_density().size() << " "
+                  << ps_total_charge_density().size() << std::endl;
+        RTE_THROW("wrong array size");
+    }
+
+    spin_orbit_coupling_ = header.attribute("has_so").as_bool();
+
+    int nbf = header.attribute("number_of_proj").as_int();
+
+    for (int i = 0; i < nbf; i++) {
+        std::string bstr         = "PP_BETA." + std::to_string(i + 1);
+        pugi::xml_node beta_node = upf.child("PP_NONLOCAL").child(bstr.data());
+        auto beta_raw            = vec_from_str<double>(beta_node.child_value());
+
+        int nr = beta_node.attribute("cutoff_radius_index").as_int();
+        if (nr == 0) {
+            for (int j = beta_raw.size() - 1; j >= 0; j--) {
+                if (abs(beta_raw[j]) > 1.0e-80) {
+                    nr = j + 1;
+                    break;
+                }
+            }
+        }
+        if (nr == 0) {
+            nr = beta_raw.size();
+        }
+
+        std::vector<double> beta(nr);
+        std::copy(beta_raw.begin(), beta_raw.begin() + nr, beta.begin());
+
+        if (static_cast<int>(beta.size()) > num_mt_points()) {
+            std::stringstream s;
+            s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+              << "size of beta radial functions in the file: " << beta.size() << std::endl
+              << "radial grid size: " << num_mt_points();
+            RTE_THROW(s);
+        }
+        int l = beta_node.attribute("angular_momentum").as_int();
+        if (spin_orbit_coupling_) {
+            // we encode the fact that the total angular momentum j = l
+            // -1/2 or l + 1/2 by changing the sign of l
+            std::string bstr       = "PP_RELBETA." + std::to_string(i + 1);
+            pugi::xml_node so_node = upf.child("PP_SPIN_ORB").child(bstr.data());
+
+            double j = so_node.attribute("jjj").as_double();
+            if (j < (double)l) {
+                l *= -1;
+            }
+        }
+        // add_beta_radial_function(l, beta);
+        if (spin_orbit_coupling_) {
+            if (l >= 0) {
+                add_beta_radial_function(angular_momentum(l, 1), beta);
+            } else {
+                add_beta_radial_function(angular_momentum(-l, -1), beta);
+            }
+        } else {
+            add_beta_radial_function(angular_momentum(l), beta);
+        }
+    }
+
+    mdarray<double, 2> d_mtrx({nbf, nbf});
+    d_mtrx.zero();
+    auto v = vec_from_str<double>(upf.child("PP_NONLOCAL").child("PP_DIJ").child_value(), 0.5);
+
+    for (int i = 0; i < nbf; i++) {
+        for (int j = 0; j < nbf; j++) {
+            d_mtrx(i, j) = v[j * nbf + i];
+        }
+    }
+    d_mtrx_ion(d_mtrx);
+
+    pugi::xml_node nl_node = upf.child("PP_NONLOCAL");
+    if (!nl_node.child("PP_AUGMENTATION").empty()) {
+        for (int i = 0; i < nbf; i++) {
+            std::string istr     = "PP_BETA." + std::to_string(i + 1);
+            pugi::xml_node inode = nl_node.child(istr.data());
+            int li               = inode.attribute("angular_momentum").as_int();
+
+            for (int j = i; j < nbf; j++) {
+                std::string jstr     = "PP_BETA." + std::to_string(j + 1);
+                pugi::xml_node jnode = nl_node.child(jstr.data());
+                int lj               = jnode.attribute("angular_momentum").as_int();
+
+                for (int l = abs(li - lj); l < li + lj + 1; l++) {
+                    if ((li + lj + l) % 2 != 0) {
+                        continue;
+                    }
+
+                    std::string ijl_str =
+                            "PP_QIJL." + std::to_string(i + 1) + "." + std::to_string(j + 1) + "." + std::to_string(l);
+                    pugi::xml_node ijl_node = nl_node.child("PP_AUGMENTATION").child(ijl_str.data());
+
+                    auto qij = vec_from_str<double>(ijl_node.child_value());
+                    if ((int)qij.size() != num_mt_points()) {
+                        RTE_THROW("wrong size of qij");
+                    }
+                    add_q_radial_function(i, j, l, qij);
+                }
+            }
+        }
+    }
+
+    /* read starting wave functions ( UPF CHI ) */
+    if (!header.attribute("number_of_wfc").empty()) {
+        /* total number of pseudo atomic wave-functions */
+        size_t nwf = header.attribute("number_of_wfc").as_int();
+        /* loop over wave-functions */
+        for (size_t k = 0; k < nwf; k++) {
+            std::string wstr        = "PP_CHI." + std::to_string(k + 1);
+            pugi::xml_node wfc_node = upf.child("PP_PSWFC").child(wstr.data());
+
+            auto v = vec_from_str<double>(wfc_node.child_value());
+
+            if ((int)v.size() != num_mt_points()) {
+                std::stringstream s;
+                s << "wrong size of atomic functions for atom type " << symbol_ << " (label: " << label_ << ")"
+                  << std::endl
+                  << "size of atomic radial functions in the file: " << v.size() << std::endl
+                  << "radial grid size: " << num_mt_points();
+                RTE_THROW(s);
+            }
+
+            int l = wfc_node.attribute("l").as_int();
+            int n = -1;
+            double occ{0};
+            if (!wfc_node.attribute("occupation").empty()) {
+                occ = wfc_node.attribute("occupation").as_double();
+            }
+
+            if (!wfc_node.attribute("label").empty()) {
+                auto c1 = wfc_node.attribute("label").as_string();
+                std::istringstream iss(std::string(1, c1[0]));
+                iss >> n;
+            }
+
+            if (spin_orbit_coupling()) {
+                std::string bstr       = "PP_RELWFC." + std::to_string(k + 1);
+                pugi::xml_node so_node = upf.child("PP_SPIN_ORB").child(bstr.data());
+                if (!so_node.attribute("jchi").empty() && l != 0) {
+
+                    std::string wstr           = "PP_CHI." + std::to_string(k + 2);
+                    pugi::xml_node wfc_node_p1 = upf.child("PP_PSWFC").child(wstr.data());
+
+                    auto v1 = vec_from_str<double>(wfc_node_p1.child_value());
+                    double occ1{0};
+                    if (!wfc_node_p1.attribute("occupation").empty()) {
+                        occ1 = wfc_node_p1.attribute("occupation").as_double();
+                    }
+                    occ += occ1;
+                    for (int ir = 0; ir < num_mt_points(); ir++) {
+                        v[ir] = 0.5 * v[ir] + 0.5 * v1[ir];
+                    }
+                    k += 1;
+                }
+            }
+            add_ps_atomic_wf(n, angular_momentum(l), v, occ);
+        }
+    }
+}
+
+void
+Atom_type::read_pseudo_paw(pugi::xml_node const& upf)
+{
+    is_paw_ = true;
+
+    /* read core energy */
+    if (!upf.child("PP_PAW").attribute("core_energy").empty()) {
+        paw_core_energy(0.5 * upf.child("PP_PAW").attribute("core_energy").as_double());
+    } else {
+        paw_core_energy(0);
+    }
+
+    /* cutoff index */
+    int cutoff_radius_index = upf.child("PP_NONLOCAL").child("PP_AUGMENTATION").attribute("cutoff_r_index").as_int();
+
+    /* read core density and potential */
+    paw_ae_core_charge_density(vec_from_str<double>(upf.child("PP_PAW").child("PP_AE_NLCC").child_value()));
+
+    /* read occupations */
+    paw_wf_occ(vec_from_str<double>(upf.child("PP_PAW").child("PP_OCCUPATIONS").child_value()));
+
+    /* setups for reading AE and PS basis wave functions */
+    int num_wfc = num_beta_radial_functions();
+
+    /* read ae and ps wave functions */
+    for (int i = 0; i < num_wfc; i++) {
+        /* read ae wave func */
+        std::string wstr        = "PP_AEWFC." + std::to_string(i + 1);
+        pugi::xml_node wfc_node = upf.child("PP_FULL_WFC").child(wstr.data());
+        auto wfc                = vec_from_str<double>(wfc_node.child_value());
+
+        if ((int)wfc.size() > num_mt_points()) {
+            std::stringstream s;
+            s << "wrong size of ae_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+              << "size of ae_wfc radial functions in the file: " << wfc.size() << std::endl
+              << "radial grid size: " << num_mt_points();
+            RTE_THROW(s);
+        }
+
+        add_ae_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
+
+        wstr     = "PP_PSWFC." + std::to_string(i + 1);
+        wfc_node = upf.child("PP_FULL_WFC").child(wstr.data());
+        wfc      = vec_from_str<double>(wfc_node.child_value());
+
+        if ((int)wfc.size() > num_mt_points()) {
+            std::stringstream s;
+            s << "wrong size of ps_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+              << "size of ps_wfc radial functions in the file: " << wfc.size() << std::endl
+              << "radial grid size: " << num_mt_points();
+            RTE_THROW(s);
+        }
+
+        add_ps_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
+    }
+}
+
+void
+Atom_type::read_input(pugi::xml_node const& upf)
+{
+    if (!parameters_.full_potential()) {
+        read_pseudo_uspp(upf);
+
+        std::string pseudo_type = upf.child("PP_HEADER").attribute("pseudo_type").as_string();
+        if (pseudo_type == "PAW") {
+            read_pseudo_paw(upf);
+        }
+    } else {
+        RTE_THROW("Full potential calculations require JSON potential files.");
+    }
+}
+#endif
+
+void
+Atom_type::read_input(std::string const& str__)
+{
+    // Read from SIRIUS json potential file
+    if (!is_upf_file(str__)) {
+        auto parser = read_json_from_file_or_string(str__);
+
+        if (parser.empty()) {
+            return;
+        }
+
+        read_input(parser);
+
+        // Read from standard UPF version 2 xml files
+    } else {
+
+#ifdef SIRIUS_USE_PUGIXML
+        pugi::xml_document doc;
+        pugi::xml_parse_result parser = doc.load_file(str__.data());
+
+        if (!parser) {
+            return;
+        }
+
+        pugi::xml_node upf = doc.child("UPF");
+        if (upf.empty()) {
+            RTE_THROW("SIRIUS can only read UPF files with version >= 2. Use the upf_to_json tool.");
+        }
+        read_input(upf);
+#else
+        RTE_THROW("SIRIUS cannot read UPF files directly without pugixml.")
+#endif
     }
 
     /* it is already done in input.h; here the different constans are initialized */

@@ -32,6 +32,7 @@ option(SIRIUS_BUILD_APPS              "build apps" ON)
 option(SIRIUS_USE_OPENMP              "use OpenMP" ON)
 option(SIRIUS_USE_PROFILER            "measure execution of functions with timer" ON)
 option(SIRIUS_USE_MEMORY_POOL         "use memory pool" ON)
+option(SIRIUS_USE_PUGIXML             "enable reading of UPF v2 files with pugixml" OFF)
 option(SIRIUS_USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
 option(BUILD_TESTING                  "build test executables" OFF) # override default setting in CTest module
 option(SIRIUS_USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
@@ -134,6 +135,10 @@ find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
 find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
+
+if (SIRIUS_USE_PUGIXML)
+   find_package(pugixml REQUIRED)
+endif()
 
 # Check if SpFFT support single precision if required
 if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")

@@ -45,6 +45,6 @@ RUN spack install --fail-fast rocsolver%gcc
 RUN spack install --fail-fast hipfft%gcc
 
 RUN spack env create -d /sirius-env-rocm && \
-    spack -e /sirius-env-rocm add "sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc" && \
+    spack -e /sirius-env-rocm add "sirius@develop %gcc build_type=Release +scalapack +fortran +tests +pugixml +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc" && \
     spack -e /sirius-env-rocm develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-rocm install --only=dependencies --fail-fast

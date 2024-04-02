@@ -1,0 +1,71 @@
+{
+    "control" : {
+        "processing_unit" : "cpu",
+        "verbosity" : 1,
+        "print_forces" : true,
+        "print_stress" : true
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "pseudopotential",
+
+        "num_fv_states" : 40,
+
+        "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+
+        "smearing_width" : 0.025,
+
+        "use_symmetry" : true,
+
+        "gk_cutoff" : 6.0,
+        "pw_cutoff" : 20.00,
+
+        "energy_tol" : 1e-8,
+        "density_tol" : 1e-6,
+
+        "ngridk" : [2,2,2]
+    },
+
+    "iterative_solver" : {
+        "type" : "davidson"
+    },
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [1, 0, 0],
+                              [0, 1, 0],
+                              [0, 0, 1]
+                            ],
+        "lattice_vectors_scale" : 7.260327248,
+
+        "atom_types" : ["Sr", "V", "O"],
+
+        "atom_files" : {
+            "Sr" : "Sr.pbe-spn-kjpaw_psl.1.0.0.UPF",
+            "V"  : "V.pbe-spnl-rrkjus_psl.1.0.0.UPF",
+            "O"  : "O_pd_nc_sr_pbe_standard_0.4.1.upf"
+        },
+
+        "atoms" : {
+            "Sr" : [
+                [0.5, 0.5, 0.5]
+            ],
+            "V" : [
+                [0, 0, 0, 0, 0, 4]
+            ],
+            "O" : [
+                [0.5, 0.0, 0.0],
+                [0.0, 0.5, 0.0],
+                [0.0, 0.0, 0.5]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "anderson",
+        "max_history" : 8,
+        "use_hartree" : true
+    }
+
+}
