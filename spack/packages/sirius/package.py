@@ -159,6 +159,9 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         depends_on("dla-future +cuda", when="+cuda")
         depends_on("dla-future +rocm", when="+rocm")
 
+        conflicts("^pika@:0.22.1", when="+cuda")
+        conflicts("^pika@:0.22.1", when="+rocm")
+
     depends_on("rocblas", when="+rocm")
     depends_on("rocsolver", when="@7.5.0: +rocm")
 

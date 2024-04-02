@@ -1,21 +1,10 @@
-// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
-// the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* This file is part of SIRIUS electronic structure library.
+ *
+ * Copyright (c), ETH Zurich.  All rights reserved.
+ *
+ * Please, refer to the LICENSE file in the root directory.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
 /** \file davidson.hpp
  *
@@ -118,8 +107,8 @@ project_out_subspace(::spla::Context& spla_ctx__, memory_t mem__, wf::spin_range
 /// Solve the eigen-problem using Davidson iterative method.
 /**
 \tparam T                     Precision type of wave-functions (float or double).
-\tparam F                     Type of the subspace matrices (fload or duble for Gamma case,
-                              complex<float> or complex<doouble> for general k-point case.
+\tparam F                     Type of the subspace matrices (float or double for Gamma case,
+                              complex<float> or complex<double> for general k-point case.
 \tparam what                  What to solve: H|psi> = e*S|psi> or S|psi> = o|psi>
 \param [in]     Hk            Hamiltonian for a given k-point.
 \param [in]     num_bands     Number of eigen-states (bands) to compute.
@@ -128,10 +117,10 @@ project_out_subspace(::spla::Context& spla_ctx__, memory_t mem__, wf::spin_range
                               On output they are the solutions of Hk|psi> = e S|psi> eigen-problem.
 \param [in]     tolerance     Lambda-function for the band energy tolerance.
 \param [in]     res_tol       Residual tolerance.
-\param [in]     num_stpes     Number of iterative steps.
+\param [in]     num_steps     Number of iterative steps.
 \param [in]     locking       Lock and do not update of the converged wave-functions.
-\param [in]     subspace_size Size of the diagonalziation subspace.
-\param [in]     estimate_eval Estimate eigen-values to get the converrged rersiduals.
+\param [in]     subspace_size Size of the diagonalization subspace.
+\param [in]     estimate_eval Estimate eigen-values to get the converged residuals.
 \param [in]     extra_ortho   Orthogonalize new subspace basis one extra time.
 \param [out]    out           Output stream.
 \param [in]     verbosity     Verbosity level.
@@ -340,7 +329,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
         mdarray<real_type<F>, 1> eval({num_bands__.get()});
         mdarray<real_type<F>, 1> eval_old({num_bands__.get()});
 
-        /* lambda function thatcheck if band energy is converged */
+        /* lambda function that checks if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool {
             return std::abs(eval[j__] - eval_old[j__]) <= tolerance__(j__ + num_locked, ispn__);
         };

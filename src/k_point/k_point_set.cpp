@@ -1,21 +1,10 @@
-// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
-// the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* This file is part of SIRIUS electronic structure library.
+ *
+ * Copyright (c), ETH Zurich.  All rights reserved.
+ *
+ * Please, refer to the LICENSE file in the root directory.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
 #include <limits>
 #include "dft/smearing.hpp"
@@ -135,6 +124,24 @@ K_point_set::initialize(std::vector<int> const& counts)
         RTE_THROW("K-point set is already initialized");
     }
     PROFILE("sirius::K_point_set::initialize");
+    if (comm().size() > this->num_kpoints()) {
+        std::stringstream s;
+        s << "Number of MPI ranks for k-points is larger than the number of k-points; parallelization is not optimal"
+          << std::endl
+          << "  number of k-points                   : " << this->num_kpoints() << std::endl
+          << "  k-point communicator size            : " << comm().size() << std::endl
+          << "  optimal size of k-point communicator : ";
+        for (int i = 1; i <= this->num_kpoints(); i++) {
+            if (this->num_kpoints() % i == 0) {
+                s << i << " ";
+            }
+        }
+        s << std::endl;
+        s << "Check if you need to set control.mpi_grid_dims for band parallelization";
+        if (ctx_.comm().rank() == 0) {
+            RTE_WARNING(s);
+        }
+    }
     /* distribute k-points along the 1-st dimension of the MPI grid */
     if (counts.empty()) {
         splindex_block<> spl_tmp(num_kpoints(), n_blocks(comm().size()), block_id(comm().rank()));
