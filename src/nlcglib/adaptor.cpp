@@ -153,7 +153,7 @@ Energy::compute()
     kset_.sync_band<double, sync_band_t::energy>();
 
     // evaluate total energy
-    //double eewald      = ewald_energy(ctx, ctx.gvec(), ctx.unit_cell());
+    // double eewald      = ewald_energy(ctx, ctx.gvec(), ctx.unit_cell());
     energy_components_ = total_energy_components(ctx, kset_, density_, potential_);
     etot_              = ks_energy(ctx, this->energy_components_);
 }
