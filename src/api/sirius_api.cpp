@@ -3392,6 +3392,10 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                     if (sim_ctx.num_mag_dims() != 3) {
                         ispn0 = ispn1 = spin;
                     }
+                    mdarray<std::complex<double>, 3> evec;
+                    if (evec__) {
+                        evec = mdarray<std::complex<double>, 3>({*ld__, num_spin_comp, sim_ctx.num_bands()}, evec__);
+                    }
                     /* send wave-functions for each spin channel */
                     for (int s = ispn0; s <= ispn1; s++) {
                         int tag = mpi::Communicator::get_tag(src_rank, dest_rank) + s;
@@ -3402,7 +3406,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                             auto kp   = ks.get<double>(jk);
                             int count = kp->spinor_wave_functions().ld();
                             req       = ks.comm().isend(kp->spinor_wave_functions().at(memory_t::host, 0,
-                                                                                       sirius::wf::spin_index(0),
+                                                                                       sirius::wf::spin_index(s),
                                                                                        sirius::wf::band_index(0)),
                                                         count * sim_ctx.num_bands(), dest_rank, tag);
                         }
@@ -3414,7 +3418,6 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
 
                             std::vector<std::complex<double>> wf_tmp(gkvec.num_gvec());
                             int offset = gkvec.offset();
-                            mdarray<std::complex<double>, 3> evec({*ld__, num_spin_comp, sim_ctx.num_bands()}, evec__);
 
                             auto igmap = gvec_mapping(gkvec);
 
