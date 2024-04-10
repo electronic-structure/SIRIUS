@@ -29,6 +29,10 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
 # get latest version of spack
 RUN git clone -b v0.21.2 https://github.com/spack/spack.git
 
+# add local repo to spack
+COPY ./spack /opt/spack
+RUN spack repo add --scope system /opt/spack
+
 # set the location of packages built by spack
 RUN spack config add config:install_tree:root:/opt/local
 # set cuda_arch for all packages
