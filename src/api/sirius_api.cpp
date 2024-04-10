@@ -3403,7 +3403,7 @@ sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int co
                         ispn0 = ispn1 = spin;
                     }
                     mdarray<std::complex<double>, 3> evec;
-                    if(evec__){
+                    if (evec__) {
                         evec = mdarray<std::complex<double>, 3>({*ld__, num_spin_comp, sim_ctx.num_bands()}, evec__);
                     }
                     /* send wave-functions for each spin channel */
