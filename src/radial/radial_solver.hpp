@@ -597,6 +597,8 @@ class Radial_solver
 
         int nn{0};
 
+        using namespace radial_solver_local;
+
         for (int j = 0; j <= dme__; j++) {
             p.push_back(std::vector<double>(nr));
             q.push_back(std::vector<double>(nr));
@@ -609,24 +611,34 @@ class Radial_solver
                         chi_q(i) = -j * p[j - 1][i];
                     }
                 } else if (rel__ == relativity_t::koelling_harmon) {
-                    double sq_alpha = std::pow(speed_of_light, -2);
-                    double ll_half  = l__ * (l__ + 1) / 2.0;
+                    for (int i = 0; i < nr; i++) {
+                        chi_p(i) = j * 2 * sq_alpha_half * q[j - 1][i];
+                    }
+                    double ll_half = l__ * (l__ + 1) / 2.0;
                     if (j == 1) {
                         for (int i = 0; i < nr; i++) {
                             double x = radial_grid_[i];
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
-                            double M = 1 + 0.5 * sq_alpha * (enu__ - V);
-                            chi_p(i) = sq_alpha * q[j - 1][i];
-                            chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            double M = rel_mass<relativity_t::koelling_harmon>(enu__, V);
+                            double c = sq_alpha_half * ll_half / std::pow(x * M, 2);
+                            chi_q(i) = -p[j - 1][i] * (1 + c);
                         }
                     } else if (j == 2) {
                         for (int i = 0; i < nr; i++) {
                             double x = radial_grid_[i];
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
-                            double M = 1 + 0.5 * sq_alpha * (enu__ - V);
-                            chi_p(i) = 2 * sq_alpha * q[j - 1][i];
-                            chi_q(i) = -2 * p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2)) +
-                                       p[j - 2][i] * (0.5 * ll_half * std::pow(sq_alpha, 2) / (M * std::pow(M * x, 2)));
+                            double M = rel_mass<relativity_t::koelling_harmon>(enu__, V);
+                            double c = sq_alpha_half * ll_half / std::pow(x * M, 2);
+                            chi_q(i) = -2 * p[j - 1][i] * (1 + c) + 2 * p[j - 2][i] * sq_alpha_half * c / M;
+                        }
+                    } else if (j == 3) {
+                        for (int i = 0; i < nr; i++) {
+                            double x = radial_grid_[i];
+                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M = rel_mass<relativity_t::koelling_harmon>(enu__, V);
+                            double c = sq_alpha_half * ll_half / std::pow(x * M, 2);
+                            chi_q(i) = -3 * p[j - 1][i] * (1 + c) + 6 * p[j - 2][i] * sq_alpha_half * c / M -
+                                       6 * p[j - 3][i] * std::pow(sq_alpha_half / M, 2) * c;
                         }
                     } else {
                         std::stringstream s;
