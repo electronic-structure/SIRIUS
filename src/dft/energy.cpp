@@ -16,7 +16,7 @@
 namespace sirius {
 
 double
-ewald_energy(const Simulation_context& ctx, const fft::Gvec& gvec, const Unit_cell& unit_cell)
+ewald_energy(Simulation_context const& ctx, fft::Gvec const& gvec, Unit_cell const& unit_cell)
 {
     double alpha{ctx.ewald_lambda()};
     double ewald_g{0};
@@ -80,7 +80,7 @@ energy_vha(Potential const& potential)
 }
 
 double
-energy_bxc(const Density& density, const Potential& potential)
+energy_bxc(Density const& density, Potential const& potential)
 {
     double ebxc{0};
     for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
@@ -139,7 +139,7 @@ energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const
 }
 
 double
-ks_energy(Simulation_context const& ctx, const std::map<std::string, double>& energies)
+ks_energy(Simulation_context const& ctx, std::map<std::string, double> const& energies)
 {
     double tot_en{0};
 
@@ -165,41 +165,28 @@ ks_energy(Simulation_context const& ctx, const std::map<std::string, double>& en
 }
 
 double
-ks_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
-          double ewald_energy)
+ks_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return ks_energy(ctx, total_energy_components(ctx, kset, density, potential, ewald_energy));
+    return ks_energy(ctx, total_energy_components(ctx, kset, density, potential));
 }
 
+/** Total energy is an alias for Kohn-Sham total energy. It is computed without entropy contribution. */
 double
-total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential,
-             double ewald_energy)
+total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
+    return ks_energy(ctx, kset, density, potential);
+}
 
-    double eks = ks_energy(ctx, kset, density, potential, ewald_energy);
-    double tot_en{0};
-
-    switch (ctx.electronic_structure_method()) {
-        case electronic_structure_method_t::full_potential_lapwlo: {
-            tot_en = eks;
-            break;
-        }
-
-        case electronic_structure_method_t::pseudopotential: {
-            tot_en = eks + kset.entropy_sum();
-            break;
-        }
-        default: {
-            RTE_THROW("invalid electronic_structure_method");
-        }
-    }
-
-    return tot_en;
+/** F = E - TS, where -TS is the entropy sum. */
+double
+free_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
+{
+    return ks_energy(ctx, kset, density, potential) + kset.entropy_sum();
 }
 
 std::map<std::string, double>
-total_energy_components(Simulation_context const& ctx, const K_point_set& kset, Density const& density,
-                        Potential const& potential, double ewald_energy)
+total_energy_components(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
+                        Potential const& potential)
 {
     std::map<std::string, double> table;
     switch (ctx.electronic_structure_method()) {
@@ -218,7 +205,7 @@ total_energy_components(Simulation_context const& ctx, const K_point_set& kset, 
             table["PAW_one_elec"]     = potential.PAW_one_elec_energy(density);
             table["vha"]              = energy_vha(potential);
             table["exc"]              = energy_exc(density, potential);
-            table["ewald"]            = ewald_energy;
+            table["ewald"]            = potential.ewald_energy();
             table["PAW_total_energy"] = potential.PAW_total_energy(density);
             break;
         }

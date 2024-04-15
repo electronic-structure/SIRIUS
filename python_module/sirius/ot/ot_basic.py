@@ -104,8 +104,7 @@ class Energy:
 
         self.kpointset.sync_band_energy()
 
-        Etot = total_energy(self.ctx, self.kpointset, self.density, self.potential,
-                            ewald_energy(self.ctx, self.ctx.gvec(), self.ctx.unit_cell()))
+        Etot = total_energy(self.ctx, self.kpointset, self.density, self.potential)
 
 
         # comps = total_energy_components(self.ctx, self.kpointset, self.density, self.potential, 1000)

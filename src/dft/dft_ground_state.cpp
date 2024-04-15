@@ -59,10 +59,6 @@ DFT_ground_state::update()
     kset_.update();
     potential_.update();
     density_.update();
-
-    if (!ctx_.full_potential()) {
-        ewald_energy_ = sirius::ewald_energy(ctx_, ctx_.gvec(), ctx_.unit_cell());
-    }
 }
 
 double
@@ -98,13 +94,13 @@ DFT_ground_state::energy_kin_sum_pw() const
 double
 DFT_ground_state::total_energy() const
 {
-    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_correction_energy_;
+    return sirius::total_energy(ctx_, kset_, density_, potential_) + this->scf_correction_energy_;
 }
 
 json
 DFT_ground_state::serialize()
 {
-    return energy_dict(ctx_, kset_, density_, potential_, ewald_energy_, this->scf_correction_energy_);
+    return energy_dict(ctx_, kset_, density_, potential_, this->scf_correction_energy_);
 }
 
 /// A quick check of self-constent density in case of pseudopotential.
@@ -115,7 +111,7 @@ DFT_ground_state::check_scf_density()
         return json();
     }
 
-    auto gs0 = energy_dict(ctx_, kset_, density_, potential_, ewald_energy_);
+    auto gs0 = energy_dict(ctx_, kset_, density_, potential_, this->scf_correction_energy_);
 
     /* create new potential */
     Potential pot(ctx_);
@@ -138,7 +134,7 @@ DFT_ground_state::check_scf_density()
     Density rho(ctx_);
     rho.generate<double>(kset_, ctx_.use_symmetry(), add_core, transform_to_rg);
 
-    auto gs1 = energy_dict(ctx_, kset_, rho, pot, ewald_energy_);
+    auto gs1 = energy_dict(ctx_, kset_, rho, pot, this->scf_correction_energy_);
 
     auto calc_rms = [&](Field4D& a, Field4D& b) -> double {
         double rms{0};
@@ -489,7 +485,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy2("one-electron contribution", one_elec_en); // eband + deband in QE
         write_energy("hartree contribution", 0.5 * evha);
         write_energy("xc contribution", eexc);
-        write_energy("ewald contribution", ewald_energy_);
+        write_energy("ewald contribution", potential_.ewald_energy());
         write_energy("PAW contribution", potential_.PAW_total_energy(density_));
     }
     write_energy("smearing (-TS)", s_sum);
@@ -500,6 +496,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy2("Hubbard one-el contribution", hub_one_elec);
     }
     write_energy2("Total energy", etot);
+    write_energy2("Free energy (E-TS)", etot + s_sum);
     out__ << std::endl;
     write_energy("band gap (eV)", gap);
     write_energy("Efermi", ef);
