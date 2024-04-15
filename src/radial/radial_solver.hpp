@@ -614,7 +614,7 @@ class Radial_solver
                     for (int i = 0; i < nr; i++) {
                         chi_p(i) = j * 2 * sq_alpha_half * q[j - 1][i];
                     }
-                    double ll_half  = l__ * (l__ + 1) / 2.0;
+                    double ll_half = l__ * (l__ + 1) / 2.0;
                     if (j == 1) {
                         for (int i = 0; i < nr; i++) {
                             double x = radial_grid_[i];
@@ -637,8 +637,8 @@ class Radial_solver
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M = rel_mass<relativity_t::koelling_harmon>(enu__, V);
                             double c = sq_alpha_half * ll_half / std::pow(x * M, 2);
-                            chi_q(i) = -3 * p[j - 1][i] * (1 + c) + 6 * p[j - 2][i] * sq_alpha_half * c / M
-                                       -6 * p[j - 3][i] * std::pow(sq_alpha_half / M, 2) * c;
+                            chi_q(i) = -3 * p[j - 1][i] * (1 + c) + 6 * p[j - 2][i] * sq_alpha_half * c / M -
+                                       6 * p[j - 3][i] * std::pow(sq_alpha_half / M, 2) * c;
                         }
                     } else {
                         std::stringstream s;
