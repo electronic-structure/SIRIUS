@@ -9,7 +9,7 @@ stages:
 build base cuda image:
   extends: .container-builder-dynamic-name
   stage: baseimage
-  timeout: 2h
+  timeout: 10h
   variables:
     DOCKERFILE: ci/baseimage.cuda.Dockerfile
     WATCH_FILECHANGES: ci/baseimage.cuda.Dockerfile

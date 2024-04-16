@@ -23,7 +23,11 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
     tar zxvf cmake.tar.gz --strip-components=1 -C /usr
 
 # get latest version of spack
-RUN git clone -b v0.21.0 https://github.com/spack/spack.git
+RUN git clone -b v0.21.2 https://github.com/spack/spack.git
+
+# add local repo to spack
+COPY ./spack /opt/spack
+RUN spack repo add --scope system /opt/spack
 
 # set the location of packages built by spack
 RUN spack config add config:install_tree:root:/opt/local
@@ -45,6 +49,6 @@ RUN spack install --fail-fast rocsolver%gcc
 RUN spack install --fail-fast hipfft%gcc
 
 RUN spack env create -d /sirius-env-rocm && \
-    spack -e /sirius-env-rocm add "sirius@develop %gcc build_type=Release +scalapack +fortran +tests +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc" && \
+    spack -e /sirius-env-rocm add "sirius@develop %gcc build_type=Release +scalapack +fortran +tests +pugixml +rocm ^openblas ^mpich ^spfft ^umpire+rocm~device_alloc" && \
     spack -e /sirius-env-rocm develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-rocm install --only=dependencies --fail-fast

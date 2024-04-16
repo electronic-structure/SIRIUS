@@ -27,7 +27,11 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
     tar zxvf cmake.tar.gz --strip-components=1 -C /usr
 
 # get latest version of spack
-RUN git clone -b v0.21.0 https://github.com/spack/spack.git
+RUN git clone -b v0.21.2 https://github.com/spack/spack.git
+
+# add local repo to spack
+COPY ./spack /opt/spack
+RUN spack repo add --scope system /opt/spack
 
 # set the location of packages built by spack
 RUN spack config add config:install_tree:root:/opt/local
@@ -71,46 +75,46 @@ RUN ldconfig
 
 # create environments for several configurations and install dependencies
 RUN spack env create -d /sirius-env-clang && \
-    spack -e /sirius-env-clang add "sirius@develop %clang build_type=RelWithDebInfo ~cuda ~fortran +tests ^openblas%gcc ^libxc%gcc ^mpich%gcc " && \
+    spack -e /sirius-env-clang add "sirius@develop %clang build_type=RelWithDebInfo ~cuda ~fortran +tests +pugixml ^openblas%gcc ^libxc%gcc ^mpich%gcc " && \
     spack -e /sirius-env-clang develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-clang install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda && \
-    spack -e /sirius-env-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +scalapack +tests +apps +cuda +magma +python ^netlib-scalapack ^mpich ^openblas threads=openmp" && \
+    spack -e /sirius-env-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +scalapack +tests +pugixml +apps +cuda +magma +python ^netlib-scalapack ^mpich ^openblas threads=openmp" && \
     spack -e /sirius-env-cuda develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-cuda install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda-mkl-mpich && \
-    spack -e /sirius-env-cuda-mkl-mpich add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +magma ^mpich ^intel-oneapi-mkl+cluster" && \
+    spack -e /sirius-env-cuda-mkl-mpich add "sirius@develop %gcc build_type=RelWithDebInfo +tests +pugixml +apps +cuda +scalapack +magma ^mpich ^intel-oneapi-mkl+cluster" && \
     spack -e /sirius-env-cuda-mkl-mpich develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-cuda-mkl-mpich install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-elpa && \
-    spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda +scalapack +elpa ^netlib-scalapack ^mpich ^openblas ^elpa+cuda" && \
+    spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +pugixml +apps +cuda +scalapack +elpa ^netlib-scalapack ^mpich ^openblas ^elpa+cuda" && \
     spack -e /sirius-env-elpa develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-elpa install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-fp32 && \
-    spack -e /sirius-env-fp32 add "sirius@develop %gcc build_type=RelWithDebInfo +tests +apps +cuda ^mpich ^openblas ^elpa+cuda ^spfft+single_precision+cuda" && \
+    spack -e /sirius-env-fp32 add "sirius@develop %gcc build_type=RelWithDebInfo +tests +pugixml +apps +cuda ^mpich ^openblas ^elpa+cuda ^spfft+single_precision+cuda" && \
     spack -e /sirius-env-fp32 develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-fp32 install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-nlcg && \
-    spack -e /sirius-env-nlcg add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +cuda +nlcglib ^openblas ^mpich" && \
+    spack -e /sirius-env-nlcg add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +cuda +nlcglib ^openblas ^mpich" && \
     spack -e /sirius-env-nlcg develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-nlcg install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-openmpi && \
-    spack -e /sirius-env-openmpi add "sirius@develop %gcc +tests +apps +scalapack +fortran build_type=RelWithDebInfo ^netlib-scalapack ^openblas ^openmpi" && \
+    spack -e /sirius-env-openmpi add "sirius@develop %gcc +tests +pugixml +apps +scalapack +fortran build_type=RelWithDebInfo ^netlib-scalapack ^openblas ^openmpi" && \
     spack -e /sirius-env-openmpi develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-openmpi install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-cuda-sequential && \
-    spack -e /sirius-env-cuda-sequential add "sirius@develop %gcc +cuda +tests +apps +fortran build_type=RelWithDebInfo ^openblas ^openmpi" && \
+    spack -e /sirius-env-cuda-sequential add "sirius@develop %gcc +cuda +tests +pugixml +apps +fortran build_type=RelWithDebInfo ^openblas ^openmpi" && \
     spack -e /sirius-env-cuda-sequential develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-cuda-sequential install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-vdwxc-cuda && \
-    spack -e /sirius-env-vdwxc-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda" && \
+    spack -e /sirius-env-vdwxc-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda" && \
     spack -e /sirius-env-vdwxc-cuda develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-vdwxc-cuda install --only=dependencies --fail-fast
