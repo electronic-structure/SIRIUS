@@ -1,8 +1,6 @@
 import typing
 from ..coefficient_array import CoefficientArray
 from ..py_sirius import (
-    ewald_energy,
-    energy_bxc,
     Wave_functions,
     MemoryEnum,
     Hamiltonian0,
