@@ -3,7 +3,7 @@
 </p>
 
 [![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases)
-[![Forum](https://img.shields.io/badge/user_forum-discourse-blue.svg)](https://sirius-dsl.discourse.group/latest)
+[![Static Badge](https://img.shields.io/badge/chat%20-%20matrix%20-%20green)](https://matrix.to/#/#SIRIUS:staffchat.ethz.ch)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
 [![Build](https://github.com/electronic-structure/SIRIUS/workflows/Build/badge.svg?branch=master)](https://github.com/electronic-structure/SIRIUS/actions)
