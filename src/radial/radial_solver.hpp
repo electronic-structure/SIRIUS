@@ -647,26 +647,37 @@ class Radial_solver
                         RTE_THROW(s);
                     }
                 } else if (rel__ == relativity_t::iora) {
-                    double sq_alpha = std::pow(speed_of_light, -2);
                     double ll_half  = l__ * (l__ + 1) / 2.0;
+                    for (int i = 0; i < nr; i++) {
+                        double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                        double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                        double x = radial_grid_[i];
+                        chi_q(i) = -j * p[j - 1][i] * (1 + sq_alpha_half * ll_half / std::pow(M0 * x, 2));
+                    }
 
                     if (j == 1) {
                         for (int i = 0; i < nr; i++) {
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
-                            double M = 1 - 0.5 * sq_alpha * V;
-                            double x = radial_grid_[i];
-                            chi_p(i) = q[j - 1][i] * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2);
-                            chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                            double U = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha_half / std::pow(U, 2);
                         }
                     } else if (j == 2) {
                         for (int i = 0; i < nr; i++) {
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
-                            double M = 1 - 0.5 * sq_alpha * V;
-                            double x = radial_grid_[i];
-                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) +
-                                       q[j - 2][i] * std::pow(sq_alpha, 2) / 2 / M /
-                                               std::pow(1 - sq_alpha * enu__ / 2 / M, 3);
-                            chi_q(i) = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                            double U = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i) = q[j - 1][i] * 4 * sq_alpha_half / std::pow(U, 2) +
+                                       q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) / M0 / std::pow(U, 3);
+                        }
+                    } else if (j == 3) {
+                        for (int i = 0; i < nr; i++) {
+                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                            double U = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i) = q[j - 1][i] * 6 * sq_alpha_half / std::pow(U, 2) +
+                                       q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) / (M0 * U) / std::pow(U, 2) +
+                                       q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) / std::pow(M0 * U, 2) / std::pow(U, 2);
                         }
                     } else {
                         std::stringstream s;
