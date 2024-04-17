@@ -672,10 +672,18 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                     if (order1 == order2) {
                         o_radial_integrals_(l, order1, order2) = 1.0;
                     } else {
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                        if (atom_type_.parameters().cfg().settings().simple_lapw_ri()) {
+                            for (int ir = 0; ir < nmtp; ir++) {
+                                s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *
+                                    std::pow(atom_type_.radial_grid(ir), 2);
+                            }
+                            o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(0);
+                        } else {
+                            for (int ir = 0; ir < nmtp; ir++) {
+                                s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                            }
+                            o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
                         }
-                        o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
                     }
                 }
             }

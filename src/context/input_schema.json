@@ -95,6 +95,16 @@
                     ],
                     "title": "Initial dimenstions for the fine-grain FFT grid"
                 },
+                "use_coarse_fft_grid": {
+                    "type": "boolean",
+                    "default": true,
+                    "title": "If true, coarse FFT grid is used to apply Hamiltonian and compute charge density from wave-functions."
+                },
+                "simple_lapw_ri": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Simplified calculation of LAPW radial integrals."
+                },
                 "radial_grid": {
                     "type": "string",
                     "default": "exponential, 1.0",
