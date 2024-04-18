@@ -744,8 +744,8 @@ bool
 is_upf_file(std::string const& str__)
 {
     const std::string ftype = ".upf";
-    std::string lcstr__     = str__;
-    std::transform(lcstr__.end() - 4, lcstr__.end(), lcstr__.begin(), ::tolower);
+    std::string lcstr__     = str__.substr(str__.size() - 4, 4);
+    std::transform(lcstr__.begin(), lcstr__.end(), lcstr__.begin(), ::tolower);
     return lcstr__ == ftype;
 }
 
