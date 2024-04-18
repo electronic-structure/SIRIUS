@@ -765,10 +765,9 @@ vec_from_str(std::string const& str__, identity_t<T> scaling = T{1})
         } else if constexpr (std::is_same_v<T, float>) {
             data.push_back(std::stof(s) * scaling);
         } else {
-            static_assert(false, "type not implemented");
+            static_assert(!std::is_same_v<T, T>, "type not implemented");
         }
     }
-
     return data;
 }
 
