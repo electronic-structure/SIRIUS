@@ -550,11 +550,8 @@ class Radial_solver
         double ll_half = l__ * (l__ + 1) / 2.0;
 
         for (int i = 0; i < radial_grid_.num_points(); i++) {
-            double x  = radial_grid_.x(i);
-            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
-            double M  = radial_solver_local::rel_mass<rel>(enu__, V);
-            //double M0 = radial_solver_local::rel_mass<relativity_t::zora>(enu__, V);
-            double v1 = ll_half / std::pow(radial_grid_.x(i), 2);
+            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+            double M = radial_solver_local::rel_mass<rel>(enu__, V);
 
             switch (rel) {
                 case relativity_t::none:
@@ -564,7 +561,8 @@ class Radial_solver
                     /* p' = 2Mq + \frac{p}{r} + chi_p */
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
                     /* q' = (V - enu + \frac{\ell(\ell + 1)}{2 M x^2}) p - \frac{p}{r} + chi_q */
-                    dqdr__[i] = (V - enu__ + v1 / M) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
+                    dqdr__[i] = (V - enu__ + ll_half / std::pow(radial_grid_.x(i), 2) / M) * p__[i] -
+                                q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
                 }
                 //case relativity_t::iora: {
