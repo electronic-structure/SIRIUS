@@ -26,6 +26,15 @@
 
 namespace sirius {
 
+struct radial_solver_result_t
+{
+    int num_nodes;
+    std::vector<double> p;
+    std::vector<double> dpdr;
+    std::vector<double> q;
+    std::vector<double> dqdr;
+};
+
 namespace radial_solver_local {
 
 double const rest_energy = std::pow(speed_of_light, 2);
@@ -602,7 +611,7 @@ class Radial_solver
         ve_.interpolate();
     }
 
-    std::tuple<int, std::vector<double>, std::vector<double>, std::vector<double>, std::vector<double>>
+    auto
     solve(relativity_t rel__, int dme__, int l__, int k__, double enu__) const
     {
         int nr = num_points();
@@ -737,7 +746,7 @@ class Radial_solver
             }
         }
 
-        return std::make_tuple(nn, p.back(), dpdr.back(), q.back(), dqdr.back());
+        return radial_solver_result_t{nn, p.back(), dpdr.back(), q.back(), dqdr.back()};
     }
 
     /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
@@ -774,10 +783,10 @@ class Radial_solver
         auto result = solve(rel__, dme__, l__, 0, enu__);
         int nr      = num_points();
 
-        auto p0 = std::get<1>(result);
-        auto p1 = std::get<2>(result);
-        auto q0 = std::get<3>(result);
-        auto q1 = std::get<4>(result);
+        auto p0 = result.p;
+        auto p1 = result.dpdr;
+        auto q0 = result.q;
+        auto q1 = result.dqdr;
 
         /* save the results */
         p__.resize(nr);
@@ -796,7 +805,7 @@ class Radial_solver
         sdpdr.interpolate();
         uderiv__[1] = (sdpdr.deriv(1, nr - 1) - 2 * p1.back() / R + 2 * p0.back() / std::pow(R, 2)) / R;
 
-        return std::get<0>(result);
+        return result.num_nodes;
     }
 
     inline int
