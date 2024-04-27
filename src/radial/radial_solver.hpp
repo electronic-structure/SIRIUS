@@ -121,7 +121,11 @@ rel_mass_deriv(double enu__, double v__, double v_deriv__)
  *    p'(r) &=& 2q(r) + \frac{p(r)}{r} \\
  *    q'(r) &=& \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
  *  \f}
- *  Scalar-relativistic equations look similar. For m = 0 (no energy derivative) we have:
+ *  Scalar-relativistic Koelling-Harmon equations look similar. Second-order ODE
+ *  \f[
+ *    p''(r) - \frac{\ell(\ell +1)}{r^2}p(r) = 2 M \big(V - E\big)p(r) + \frac{M'}{M}\big(p'(r) - \frac{p(r)}{r}\big)
+ *  \f]
+ *  decouples into a system of 1st order ODE:
  *  \f{eqnarray*}{
  *    p'(r) &=& 2Mq(r) + \frac{p(r)}{r} \\
  *    q'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) p(r) - \frac{q(r)}{r}
@@ -174,7 +178,7 @@ rel_mass_deriv(double enu__, double v__, double v_deriv__)
  *                                \frac{\dot{q}(r)}{r} -
  *                                \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) p(r)
  *    \end{array}
- *    \right
+ *    \right.
  *  \f]
  *  The second energy derivatives are:
  *  \f[
