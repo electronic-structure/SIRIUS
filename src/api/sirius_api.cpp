@@ -33,20 +33,20 @@
 
 using namespace sirius;
 
-struct sirius_context_handler_t
-{
-    void* handler_ptr_{nullptr};
-};
-
-struct sirius_ground_state_handler_t
-{
-    void* handler_ptr_{nullptr};
-};
-
-struct sirius_kpoint_set_handler_t
-{
-    void* handler_ptr_{nullptr};
-};
+//struct sirius_context_handler_t
+//{
+//    void* handler_ptr_{nullptr};
+//};
+//
+//struct sirius_ground_state_handler_t
+//{
+//    void* handler_ptr_{nullptr};
+//};
+//
+//struct sirius_kpoint_set_handler_t
+//{
+//    void* handler_ptr_{nullptr};
+//};
 
 Simulation_context&
 get_sim_ctx(void* const* h);
@@ -6523,16 +6523,155 @@ sirius_set_density_matrix(void** handler__, int const* ia__, std::complex<double
 }
 
 /*
- @api begin
- sirius_get_major_version:
-  doc: major version.
+@api begin
+sirius_set_local_occupation_matrix:
+  doc: Set local occupation matrix of LDA+U+V method.
   arguments:
-    version:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    ia:
       type: int
-      attr: out, required
-      doc: version
- @api end
- */
+      attr: in, required
+      doc: Index of atom.
+    n:
+      type: int
+      attr: in, required
+      doc: Principal quantum number.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    spin:
+      type: int
+      attr: in, required
+      doc: Spin index.
+    occ_mtrx:
+      type: complex
+      attr: in, required, dimension(ld, ld, 3)
+      doc: Local occupation matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the occupation matrix.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_set_local_occupation_matrix(void** handler__, int const* ia__, int const* n__, int const* l__, int const* spin__,
+        std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs = get_gs(handler__);
+                int ia = *ia__ - 1;
+                int n = *n__;
+                int l = *l__;
+                int spin = *spin__;
+                int ld = *ld__;
+                //mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_set_nonlocal_occupation_matrix:
+  doc: Set nonlocal part of LDA+U+V occupation matrix.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    ia1:
+      type: int
+      attr: in, required
+      doc: Index of first atom in pair.
+    n1:
+      type: int
+      attr: in, required
+      doc: Principal quantum number of first atom.
+    l1:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number of first atom.
+    spin1:
+      type: int
+      attr: in, required
+      doc: Spin index of first atom.
+    ia2:
+      type: int
+      attr: in, required
+      doc: Index of second atom in pair.
+    n2:
+      type: int
+      attr: in, required
+      doc: Principal quantum number of second atom.
+    l2:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number of second atom.
+    spin2:
+      type: int
+      attr: in, required
+      doc: Spin index of second atom.
+    T:
+      type: int
+      attr: in, required, dimension(3)
+      doc: Translation vector that connects two atoms.
+    occ_mtrx:
+      type: complex
+      attr: in, required, dimension(ld, ld, 3)
+      doc: Nonlocal occupation matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the occupation matrix.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_set_nonlocal_occupation_matrix(void** handler__, int const* ia1__, int const* n1__, int const* l1__,
+        int const* spin1__, int const* ia2__, int const* n2__, int const* l2__, int const* spin2__,
+        int const* T__, std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
+{
+
+    call_sirius(
+            [&]() {
+                auto& gs = get_gs(handler__);
+                int ia1 = *ia1__ - 1;
+                int n1 = *n1__;
+                int l1 = *l1__;
+                int spin1 = *spin1__;
+                int ia2 = *ia2__ - 1;
+                int n2 = *n2__;
+                int l2 = *l2__;
+                int spin2 = *spin2__;
+                r3::vector<int> T(T__);
+                int ld = *ld__;
+                //mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_get_major_version:
+ doc: major version.
+ arguments:
+   version:
+     type: int
+     attr: out, required
+     doc: version
+@api end
+*/
 void
 sirius_get_major_version(int* version)
 {
@@ -6540,16 +6679,16 @@ sirius_get_major_version(int* version)
 }
 
 /*
- @api begin
- sirius_get_minor_version:
-   doc: minor version.
-   arguments:
-     version:
-       type: int
-       attr: out, required
-       doc: version
- @api end
- */
+@api begin
+sirius_get_minor_version:
+  doc: minor version.
+  arguments:
+    version:
+      type: int
+      attr: out, required
+      doc: version
+@api end
+*/
 void
 sirius_get_minor_version(int* version)
 {
@@ -6557,16 +6696,16 @@ sirius_get_minor_version(int* version)
 }
 
 /*
- @api begin
- sirius_get_revision:
-   doc: minor version.
-   arguments:
-     version:
-       type: int
-       attr: out, required
-       doc: version
- @api end
- */
+@api begin
+sirius_get_revision:
+  doc: minor version.
+  arguments:
+    version:
+      type: int
+      attr: out, required
+      doc: version
+@api end
+*/
 void
 sirius_get_revision(int* version)
 {
