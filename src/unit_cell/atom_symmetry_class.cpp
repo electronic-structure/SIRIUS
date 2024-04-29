@@ -699,12 +699,12 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                 if (atom_type_.indexr(i1).am.l() == atom_type_.indexr(i2).am.l()) {
                     int ll = atom_type_.indexr(i1).am.l() * (atom_type_.indexr(i1).am.l() + 1);
                     for (int ir = 0; ir < nmtp; ir++) {
-                        double Minv = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
+                        double Minv2 = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
                         /* u_1(r) * u_2(r) */
                         double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
                         /* r*u'_1(r) * r*u'_2(r) */
                         double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                        s(ir)     = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
+                        s(ir)     = sq_alpha_half * 0.5 * Minv2 * (t1 + t0 * 0.5 * ll);
                     }
                     o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                 }

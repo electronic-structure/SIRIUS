@@ -663,17 +663,16 @@ Hamiltonian_k<T>::set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<s
             auto gvec_row       = kp.gkvec_row().gvec(gvec_index_t::local(igk_row));
             auto gkvec_row_cart = kp.gkvec_row().gkvec_cart(gvec_index_t::local(igk_row));
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
-            /* pw kinetic energy */
-            double t1 = 0.5 * r3::dot(gkvec_row_cart, gkvec_col_cart);
 
             h__(igk_row, igk_col) += H0().potential().veff_pw(ig12);
             o__(igk_row, igk_col) += H0().ctx().theta_pw(ig12);
 
+            /* pw kinetic energy */
+            double t1 = 0.5 * r3::dot(gkvec_row_cart, gkvec_col_cart);
+
             switch (H0().ctx().valence_relativity()) {
                 case relativity_t::iora: {
-                    h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
                     o__(igk_row, igk_col) += t1 * sq_alpha_half * H0().potential().rm2_inv_pw(ig12);
-                    break;
                 }
                 case relativity_t::zora: {
                     h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
