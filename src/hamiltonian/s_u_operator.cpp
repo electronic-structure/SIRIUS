@@ -87,27 +87,6 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
     }
 }
 
-template <class T>
-int
-U_operator<T>::find_orbital_index(const int ia__, const int n__, const int l__) const
-{
-    int at_lvl = 0;
-    for (at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
-        int lo_ind  = atomic_orbitals_[at_lvl].second;
-        int atom_id = atomic_orbitals_[at_lvl].first;
-        if ((atomic_orbitals_[at_lvl].first == ia__) &&
-            (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).n() == n__) &&
-            (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l() == l__))
-            break;
-    }
-
-    if (at_lvl == static_cast<int>(atomic_orbitals_.size())) {
-        std::cout << "atom: " << ia__ << "n: " << n__ << ", l: " << l__ << std::endl;
-        RTE_THROW("Found an arbital that is not listed\n");
-    }
-    return at_lvl;
-}
-
 template class U_operator<double>;
 #if defined(SIRIUS_USE_FP32)
 template class U_operator<float>;

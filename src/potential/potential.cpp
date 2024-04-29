@@ -135,7 +135,7 @@ Potential::Potential(Simulation_context& ctx__)
     init_PAW();
 
     if (ctx_.hubbard_correction()) {
-        U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
+        U_ = std::make_unique<Hubbard>(ctx_);
     }
 
     update();

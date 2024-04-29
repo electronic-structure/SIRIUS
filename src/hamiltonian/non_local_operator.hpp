@@ -103,9 +103,6 @@ class U_operator
         return um_[idx3].at(mem__, idx1, idx2);
     }
 
-    int
-    find_orbital_index(const int ia__, const int n__, const int l__) const;
-
     matrix<std::complex<T>> const&
     mat(int i) const
     {
