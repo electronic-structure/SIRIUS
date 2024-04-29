@@ -183,6 +183,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("blis threads=openmp", when="+openmp ^blis")
     depends_on("intel-mkl threads=openmp", when="+openmp ^intel-mkl")
     depends_on("intel-oneapi-mkl threads=openmp", when="+openmp ^intel-oneapi-mkl")
+    depends_on("intel-oneapi-mkl+cluster", when="+scalapack ^intel-oneapi-mkl")
 
     conflicts("intel-mkl", when="@develop") # TODO: Change to @7.5.3
     # MKLConfig.cmake introduced in 2021.3
@@ -290,6 +291,13 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
                     self.define("MKL_THREADING", mkl_threads),
                     self.define("MKL_MPI", mkl_mpi)
                 ])
+
+                if '+scalapack' in self.spec:
+                    # options provided by `MKLConfig.cmake`
+                    args.extend([
+                        self.define("ENABLE_BLACS", "On"),
+                        self.define("ENABLE_SCALAPACK", "On")
+                    ])
 
         if "+elpa" in spec:
             elpa_incdir = os.path.join(spec["elpa"].headers.directories[0], "elpa")
