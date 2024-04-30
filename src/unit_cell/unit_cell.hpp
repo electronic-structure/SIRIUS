@@ -320,17 +320,6 @@ class Unit_cell
         return *atom_types_[id__];
     }
 
-    inline bool
-    has_augmented_atom() const
-    {
-        for (auto at : atom_types_) {
-            if (at->augment()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /// Return const atom type instance by id.
     inline Atom_type const&
     atom_type(int id__) const
