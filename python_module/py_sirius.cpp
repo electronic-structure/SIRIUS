@@ -585,8 +585,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     m.def("total_energy", &total_energy);
     m.def("ks_energy",
-          py::overload_cast<Simulation_context const&, K_point_set const&, Density const&, Potential const&, double>(
-                  &ks_energy));
+          py::overload_cast<Simulation_context const&, K_point_set const&, Density const&, Potential const&>(&ks_energy));
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
