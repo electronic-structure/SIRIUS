@@ -33,21 +33,6 @@
 
 using namespace sirius;
 
-struct sirius_context_handler_t
-{
-    void* handler_ptr_{nullptr};
-};
-
-struct sirius_ground_state_handler_t
-{
-    void* handler_ptr_{nullptr};
-};
-
-struct sirius_kpoint_set_handler_t
-{
-    void* handler_ptr_{nullptr};
-};
-
 Simulation_context&
 get_sim_ctx(void* const* h);
 
@@ -320,6 +305,11 @@ static inline int
 idx_m_qe(int m__)
 {
     return (m__ > 0) ? 2 * m__ - 1 : -2 * m__;
+}
+static inline int
+phase_m_qe(int m__)
+{
+    return (m__ < 0 && (-m__) % 2 == 0) ? -1 : 1;
 }
 
 /// Mapping of atomic indices from SIRIUS to QE order.
@@ -6523,16 +6513,169 @@ sirius_set_density_matrix(void** handler__, int const* ia__, std::complex<double
 }
 
 /*
- @api begin
- sirius_get_major_version:
-  doc: major version.
+@api begin
+sirius_set_local_occupation_matrix:
+  doc: Set local occupation matrix of LDA+U+V method.
   arguments:
-    version:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    ia:
       type: int
-      attr: out, required
-      doc: version
- @api end
- */
+      attr: in, required
+      doc: Index of atom.
+    n:
+      type: int
+      attr: in, required
+      doc: Principal quantum number.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    spin:
+      type: int
+      attr: in, required
+      doc: Spin index.
+    occ_mtrx:
+      type: complex
+      attr: in, required, dimension(ld, ld)
+      doc: Local occupation matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the occupation matrix.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_set_local_occupation_matrix(void** handler__, int const* ia__, int const* n__, int const* l__, int const* spin__,
+                                   std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs = get_gs(handler__);
+                int ia   = *ia__ - 1;
+                int n    = *n__;
+                int l    = *l__;
+                int spin = *spin__ - 1;
+                mdarray<std::complex<double>, 2> occ_mtrx({*ld__, *ld__}, occ_mtrx__);
+                auto idx      = gs.density().occupation_matrix().find_orbital_index(ia, n, l);
+                auto& local_m = gs.density().occupation_matrix().local(idx);
+                for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+                    for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                        local_m(m1, m2, spin) = occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) *
+                                                static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
+                    }
+                }
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_set_nonlocal_occupation_matrix:
+  doc: Set nonlocal part of LDA+U+V occupation matrix.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    atom_pair:
+      type: int
+      attr: in, required, dimension(2)
+      doc: Index of two atoms in the non-local V correction.
+    n:
+      type: int
+      attr: in, required, dimension(2)
+      doc: Pair of principal quantum numbers.
+    l:
+      type: int
+      attr: in, required, dimension(2)
+      doc: Pair of orbital quantum numbers.
+    spin:
+      type: int
+      attr: in, required
+      doc: Spin index.
+    T:
+      type: int
+      attr: in, required, dimension(3)
+      doc: Translation vector that connects two atoms.
+    occ_mtrx:
+      type: complex
+      attr: in, required, dimension(ld1, ld2)
+      doc: Nonlocal occupation matrix.
+    ld1:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the occupation matrix.
+    ld2:
+      type: int
+      attr: in, required
+      doc: Second dimension of the occupation matrix.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_set_nonlocal_occupation_matrix(void** handler__, int const* atom_pair__, int const* n__, int const* l__,
+                                      int const* spin__, int const* T__, std::complex<double>* occ_mtrx__,
+                                      int const* ld1__, int const* ld2__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs  = get_gs(handler__);
+                auto& ctx = gs.ctx();
+                int ia1   = atom_pair__[0] - 1;
+                int ia2   = atom_pair__[1] - 1;
+                int n1    = n__[0];
+                int n2    = n__[1];
+                int l1    = l__[0];
+                int l2    = l__[1];
+                int spin  = *spin__;
+                r3::vector<int> T(T__);
+
+                bool found{false};
+                for (int i = 0; i < ctx.cfg().hubbard().nonlocal().size(); i++) {
+                    auto e = ctx.cfg().hubbard().nonlocal(i);
+                    if (e.atom_pair()[0] == ia1 && e.atom_pair()[1] == ia2 && e.n()[0] == n1 && e.n()[1] == n2 &&
+                        e.l()[0] == l1 && e.l()[1] == l2 && e.T()[0] == T[0] && e.T()[1] == T[1] && e.T()[2] == T[2]) {
+
+                        mdarray<std::complex<double>, 2> occ_mtrx({*ld1__, *ld2__}, occ_mtrx__);
+                        for (int m1 = 0; m1 < 2 * l1 + 1; m1++) {
+                            for (int m2 = 0; m2 < 2 * l2 + 1; m2++) {
+                                gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) =
+                                        occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) *
+                                        static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
+                            }
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    RTE_THROW("index of non-local occupation matrix is not found");
+                }
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_get_major_version:
+ doc: major version.
+ arguments:
+   version:
+     type: int
+     attr: out, required
+     doc: version
+@api end
+*/
 void
 sirius_get_major_version(int* version)
 {
@@ -6540,16 +6683,16 @@ sirius_get_major_version(int* version)
 }
 
 /*
- @api begin
- sirius_get_minor_version:
-   doc: minor version.
-   arguments:
-     version:
-       type: int
-       attr: out, required
-       doc: version
- @api end
- */
+@api begin
+sirius_get_minor_version:
+  doc: minor version.
+  arguments:
+    version:
+      type: int
+      attr: out, required
+      doc: version
+@api end
+*/
 void
 sirius_get_minor_version(int* version)
 {
@@ -6557,16 +6700,16 @@ sirius_get_minor_version(int* version)
 }
 
 /*
- @api begin
- sirius_get_revision:
-   doc: minor version.
-   arguments:
-     version:
-       type: int
-       attr: out, required
-       doc: version
- @api end
- */
+@api begin
+sirius_get_revision:
+  doc: minor version.
+  arguments:
+    version:
+      type: int
+      attr: out, required
+      doc: version
+@api end
+*/
 void
 sirius_get_revision(int* version)
 {
