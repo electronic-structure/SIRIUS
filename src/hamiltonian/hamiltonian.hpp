@@ -419,11 +419,12 @@ class Hamiltonian_k
      *  \f[
      *    \frac{1}{M} = \frac{1}{M_0} - \frac{\alpha^2}{2} \frac{1}{M_0^2} E
      *  \f]
-     *  If we now insert it into kinetic energy \f$ \hat {\bf P} \frac{1}{M} \hat {\bf P} \f$ we obtain
+     *
+     *  If we now insert it into kinetic energy \f$ \hat {\bf P} \frac{1}{2M} \hat {\bf P} \f$ we obtain
      *  correction linear to energy which has to be added to the overlap matrix:
-     * \f[
-     *   \hat {\bf P} \frac{\alpha^2}{2} \frac{1}{M_0^2} \hat {\bf P}
-     * \f]
+     *  \f[
+     *   \hat {\bf P} \frac{\alpha^2}{2} \frac{1}{2M_0^2} \hat {\bf P}
+     *  \f]
      */
     void
     set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;

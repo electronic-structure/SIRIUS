@@ -500,7 +500,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(h__, o__);
 
-    ///*  copy back to GPU */ // TODO: optimize the copies
+    /*  copy back to GPU */ // TODO: optimize the copies
     // if (pu == device_t::GPU) {
     //     acc::copyin(h__.at(memory_t::device), h__.ld(), h__.at(memory_t::host), h__.ld(), kp.gklo_basis_size_row(),
     //         kp.gklo_basis_size_col());
