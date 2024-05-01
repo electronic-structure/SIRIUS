@@ -345,33 +345,6 @@ class Radial_solver
              *     same as scalar-relativistic with M(x) = 1 - 0.5 * alpha^2 * V(x)
              */
             switch (rel) {
-                //case relativity_t::none: {
-                //    gsl_matrix_set(m, 0, 0, xinv);
-                //    gsl_matrix_set(m, 0, 1, 2.0);
-                //    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half * x2inv);
-                //    gsl_matrix_set(m, 1, 1, -xinv);
-
-                //    dfdx[0] = -y[0] * x2inv;
-                //    dfdx[1] = y[0] * (ve_deriv + p->zn * x2inv - ll_half * 2.0 * x3inv) + y[1] * x2inv +
-                //              chi_q_deriv;
-                //    break;
-                //}
-                //case relativity_t::koelling_harmon:
-                //case relativity_t::zora: {
-                //    gsl_matrix_set(m, 0, 0, xinv);
-                //    gsl_matrix_set(m, 0, 1, 2.0 * M);
-                //    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half / (M * std::pow(x, 2)));
-                //    gsl_matrix_set(m, 1, 1, -xinv);
-
-                //    double M_deriv = sq_alpha_half * (-p->zn * x2inv - ve_deriv);
-
-                //    dfdx[0] = 2 * y[1] * sq_alpha_half * M_deriv - y[0] * x2inv + chi_p_deriv;
-                //    dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M * std::pow(x, 3)) -
-                //               M_deriv * ll_half / std::pow(x * M, 2)) *
-                //                      y[0] +
-                //              y[1] * x2inv + chi_q_deriv;
-                //    break;
-                //}
                 case relativity_t::none:
                 case relativity_t::koelling_harmon:
                 case relativity_t::zora:
@@ -578,14 +551,6 @@ class Radial_solver
                                 q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
                 }
-                //case relativity_t::iora: {
-                //    dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
-                //    dqdr__[i] = (V - enu__ + v1 / M0 -
-                //                 radial_solver_local::sq_alpha_half * ll_half * enu__ / std::pow(M0 * x, 2)) *
-                //                        p__[i] -
-                //                q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
-                //    break;
-                //}
                 case relativity_t::dirac: {
                     /* Dirac equation is only solved for core states and p' and q' are not needed */
                     break;

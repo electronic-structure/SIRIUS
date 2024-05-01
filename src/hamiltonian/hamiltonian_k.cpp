@@ -423,7 +423,8 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
                 }
 
                 kp_.alm_coeffs_col().template generate<false>(atom, alm_col_atom);
-                /* can't copy alm to device how as it might be modified by the iora */
+
+                /* can't copy alm to device now as it might be modified by the iora */
 
                 H0_.apply_hmt_to_apw(atom, spin_block_t::nm, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == device_t::GPU) {

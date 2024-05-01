@@ -704,7 +704,7 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                         double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
                         /* r*u'_1(r) * r*u'_2(r) */
                         double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                        s(ir)     = sq_alpha_half * 0.5 * Minv2 * (t1 + t0 * 0.5 * ll);
+                        s(ir)     = sq_alpha_half * 0.5 * Minv2 * (t1 + t0 * ll);
                     }
                     o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                 }
