@@ -125,7 +125,6 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocblas>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:hip::host>
   $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
-  /home/ubuntu/radsolver/libradsol.a
 )
 
 target_include_directories(sirius_cxx PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
