@@ -6248,7 +6248,6 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                         }
                     }
                 }
-		std::cout << "here i am \n";
             },
             error_code__);
 }
