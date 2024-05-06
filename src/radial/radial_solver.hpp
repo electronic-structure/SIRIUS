@@ -223,7 +223,7 @@ class Radial_solver
     /// Integrate system of two first-order differential equations forward starting from the origin.
     template <relativity_t rel>
     int
-    integrate_forward_gsl(double enu__, int l__, int k__, Spline<double> const& chi_p__, Spline<double> const& chi_q__,
+    integrate_forward_gsl(double enu__, int l__, int k__, Spline<double>& chi_p__, Spline<double>& chi_q__,
                           std::vector<double>& p__, std::vector<double>& dpdr__, std::vector<double>& q__,
                           std::vector<double>& dqdr__, bool bound_state__) const
     {
@@ -472,14 +472,19 @@ class Radial_solver
                 p__[p.ir + 1] = y[0];
                 q__[p.ir + 1] = y[1];
 
-                if (std::abs(y[0]) > 1e6) {
+                double const max_val{1e6};
+
+                if (std::abs(y[0]) > max_val) {
                     ridx.push_back(p.ir + 1);
                     for (int j = 0; j <= p.ir + 1; j++) {
-                        p__[j] /= 1e6;
-                        q__[j] /= 1e6;
+                        p__[j] /= max_val;
+                        q__[j] /= max_val;
                     }
-                    y[0] /= 1e6;
-                    y[1] /= 1e6;
+                    y[0] /= max_val;
+                    y[1] /= max_val;
+
+                    chi_p__.scale(1.0 / max_val);
+                    chi_q__.scale(1.0 / max_val);
                 }
             }
             gsl_odeiv2_evolve_free(e);
@@ -522,17 +527,6 @@ class Radial_solver
             }
         }
 
-        Spline<double> s(radial_grid_);
-        for (int i = 0; i < radial_grid_.num_points(); i++) {
-            s(i) = std::pow(p__[i], 2);
-        }
-        auto norm = s.interpolate().integrate(0);
-        norm      = 1.0 / std::sqrt(norm);
-        for (int i = 0; i < radial_grid_.num_points(); i++) {
-            p__[i] = norm * p__[i];
-            q__[i] = norm * q__[i];
-        }
-
         double ll_half = l__ * (l__ + 1) / 2.0;
 
         for (int i = 0; i < radial_grid_.num_points(); i++) {
@@ -557,6 +551,20 @@ class Radial_solver
                 }
             }
         }
+
+        /* normalize */
+        Spline<double> s(radial_grid_);
+        for (int i = 0; i < radial_grid_.num_points(); i++) {
+            s(i) = std::pow(p__[i], 2);
+        }
+        auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+        for (int i = 0; i < radial_grid_.num_points(); i++) {
+            p__[i]    *= norm;
+            q__[i]    *= norm;
+            dpdr__[i] *= norm;
+            dqdr__[i] *= norm;
+        }
+
         return nn;
     }
 
@@ -653,24 +661,25 @@ class Radial_solver
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
                             double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha_half / std::pow(U, 2);
+                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha_half * std::pow(U, -2);
                         }
                     } else if (j == 2) {
                         for (int i = 0; i < nr; i++) {
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
                             double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 4 * sq_alpha_half / std::pow(U, 2) +
-                                       q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) / M0 / std::pow(U, 3);
+                            chi_p(i) = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
+                                       q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) * std::pow(U, -3) / M0;
                         }
                     } else if (j == 3) {
                         for (int i = 0; i < nr; i++) {
                             double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
                             double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 6 * sq_alpha_half / std::pow(U, 2) +
-                                       q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) / (M0 * U) / std::pow(U, 2) +
-                                       q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) / std::pow(M0 * U, 2) / std::pow(U, 2);
+                            chi_p(i) = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
+                                       q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) * std::pow(U, -2) / (M0 * U) +
+                                       q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) * std::pow(M0 * U, -2) *
+                                       std::pow(U, -2);
                         }
                     } else {
                         std::stringstream s;
