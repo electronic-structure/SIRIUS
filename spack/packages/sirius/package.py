@@ -108,6 +108,11 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     )
     variant("nvtx", default=False, description="Use NVTX profiler")
 
+    with when("@7.6:"): 
+        variant("pugixml", default=False, description="Enable direct reading of UPF v2 pseudopotentials")
+        conflicts("+tests~pugixml")
+    depends_on("pugixml", when="+pugixml")
+
     depends_on("cmake@3.23:", type="build")
     depends_on("mpi")
     depends_on("gsl")
@@ -226,6 +231,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             self.define_from_variant(cm_label + "USE_PROFILER", "profiler"),
             self.define_from_variant(cm_label + "USE_NVTX", "nvtx"),
             self.define_from_variant(cm_label + "USE_WANNIER90", "wannier90"),
+            self.define_from_variant(cm_label + "USE_PUGIXML", "pugixml"),
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant("BUILD_TESTING", "tests"),
         ]

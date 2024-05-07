@@ -26,6 +26,10 @@
 #include "core/profiler.hpp"
 #include "core/packed_index.hpp"
 
+#ifdef SIRIUS_USE_PUGIXML
+#include "pugixml.hpp"
+#endif
+
 namespace sirius {
 
 /// Descriptor of a local orbital radial function.
@@ -277,9 +281,24 @@ class Atom_type
     inline void
     read_pseudo_paw(nlohmann::json const& parser);
 
-    /// Read atomic parameters from json file or string.
+    /// Read atomic parameters from json file.
     inline void
     read_input(std::string const& str__);
+
+    inline void
+    read_input(nlohmann::json const& parser);
+
+    /// Read atomic parameters directly from UPF v2 files
+#ifdef SIRIUS_USE_PUGIXML
+    inline void
+    read_pseudo_uspp(pugi::xml_node const& upf);
+
+    inline void
+    read_pseudo_paw(pugi::xml_node const& upf);
+
+    inline void
+    read_input(pugi::xml_node const& upf);
+#endif
 
     /// Initialize descriptors of the augmented-wave radial functions.
     inline void
