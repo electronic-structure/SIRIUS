@@ -54,6 +54,12 @@ test_enu(cmd_args const& args__)
         fprintf(fout, "%18.12f %18.12f %18.12f %18.12f\n", x, result1.p[i] / x, result2.p[i] / x, result3.p[i] / x);
     }
     fclose(fout);
+
+    auto enu2 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1).enu();
+    auto enu3 = Enu_finder(rel, zn, n, l, rgrid, v, enu2).enu();
+
+    std::cout << "enu2: " << enu2 << ", enu3: " << enu3 << ", diff: " << std::abs(enu2 - enu3) << std::endl;
+
     return 0;
 }
 
