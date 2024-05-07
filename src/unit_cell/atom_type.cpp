@@ -746,8 +746,11 @@ is_upf_file(std::string const& str__)
     const std::string ftype = ".upf";
     auto lcstr              = str__;
     lcstr                   = trim(lcstr);
-    std::transform(lcstr.begin(), lcstr.end(), lcstr.begin(), ::tolower);
-    return lcstr.find(ftype) == lcstr.size() - ftype.size();
+    if (lcstr.size() < ftype.size()) {
+        return false;
+    }
+    return std::equal(ftype.rbegin(), ftype.rend(), lcstr.rbegin(),
+                      [](char a, char b) { return std::tolower(a) == std::tolower(b); });
 }
 
 #ifdef SIRIUS_USE_PUGIXML
