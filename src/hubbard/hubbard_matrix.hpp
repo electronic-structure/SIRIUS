@@ -78,16 +78,18 @@ class Hubbard_matrix
         return local_;
     }
 
+    /// Return local occupation matrix for a given composite atomic level (atom + local n,l).
     auto&
-    local(int ia__)
+    local(int idx__)
     {
-        return local_[ia__];
+        return local_[idx__];
     }
 
+    /// Return const reference to local occupation matrix block.
     auto const&
-    local(int ia__) const
+    local(int idx__) const
     {
-        return local_[ia__];
+        return local_[idx__];
     }
 
     auto&
@@ -235,7 +237,7 @@ class Hubbard_matrix
         return ctx_;
     }
 
-    int
+    auto
     find_orbital_index(const int ia__, const int n__, const int l__) const
     {
         int at_lvl = 0;
