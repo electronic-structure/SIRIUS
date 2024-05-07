@@ -94,7 +94,6 @@ rel_mass_deriv(double enu__, double v__, double v_deriv__)
     }
 };
 
-
 } // namespace radial_solver_local
 
 /// Finds a solution to radial Schrodinger, Koelling-Harmon or Dirac equation.
@@ -563,8 +562,8 @@ class Radial_solver
         }
         auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
         for (int i = 0; i < radial_grid_.num_points(); i++) {
-            p__[i]    *= norm;
-            q__[i]    *= norm;
+            p__[i] *= norm;
+            q__[i] *= norm;
             dpdr__[i] *= norm;
             dqdr__[i] *= norm;
         }
@@ -677,38 +676,38 @@ class Radial_solver
                         RTE_THROW(s);
                     }
                 } else if (rel__ == relativity_t::iora) {
-                    double ll_half  = l__ * (l__ + 1) / 2.0;
+                    double ll_half = l__ * (l__ + 1) / 2.0;
                     for (int i = 0; i < nr; i++) {
-                        double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                        double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                         double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                        double x = radial_grid_[i];
-                        chi_q(i) = -j * p[j - 1][i] * (1 + sq_alpha_half * ll_half / std::pow(M0 * x, 2));
+                        double x  = radial_grid_[i];
+                        chi_q(i)  = -j * p[j - 1][i] * (1 + sq_alpha_half * ll_half / std::pow(M0 * x, 2));
                     }
 
                     if (j == 1) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                            double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha_half * std::pow(U, -2);
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 2 * sq_alpha_half * std::pow(U, -2);
                         }
                     } else if (j == 2) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                            double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
                                        q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) * std::pow(U, -3) / M0;
                         }
                     } else if (j == 3) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                            double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
                                        q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) * std::pow(U, -2) / (M0 * U) +
                                        q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) * std::pow(M0 * U, -2) *
-                                       std::pow(U, -2);
+                                               std::pow(U, -2);
                         }
                     } else {
                         std::stringstream s;
