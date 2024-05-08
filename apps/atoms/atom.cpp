@@ -755,7 +755,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                 }
                 idxlo++;
                 if (n <= 6 && nl_v(n + 1, l)) {
-                    for (int dme: {0, 1, 2}) {
+                    for (int dme : {0, 1, 2}) {
                         a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
                         a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n + 1, l), 0, auto_enu);
                         idxlo++;
