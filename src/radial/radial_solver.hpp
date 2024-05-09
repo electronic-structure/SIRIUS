@@ -204,6 +204,121 @@ rel_mass_deriv(double enu__, double v__, double v_deriv__)
  *    \end{array}
  *    \right.
  *  \f]
+ *
+ *  \section ederiv Full derivation of energy derivatives.
+ *
+ *  Schroedinger equation with \f$ M = 1 \f$. Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *      \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *      \frac{p(\epsilon )}{r}\right) = \frac{p'(\epsilon )}{r}+2 q'(\epsilon ) \\
+ *    \displaystyle \frac{\partial ^2\left(2 M(\epsilon ) q(\epsilon )+
+ *    \frac{p(\epsilon )}{r}\right)}{\partial \epsilon ^2} = \frac{p''(\epsilon )}{r}+2 q''(\epsilon ) \\
+ *    \displaystyle \frac{\partial ^3\left(2 M(\epsilon ) q(\epsilon )+
+ *     \frac{p(\epsilon )}{r}\right)}{\partial \epsilon ^3} = \frac{p^{(3)}(\epsilon )}{r}+2 q^{(3)}(\epsilon )
+ *    \end{array}
+ *  \f]
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p'(\epsilon ) \left(\frac{b}{r^2}+V-\epsilon \right)-
+ *    p(\epsilon )-\frac{q'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p''(\epsilon ) \left(\frac{b}{r^2}+V-\epsilon \right)-
+ *      2 p'(\epsilon )-\frac{q''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p^{(3)}(\epsilon ) \left(\frac{b}{r^2}+V-\epsilon \right)-
+ *       3 p''(\epsilon )-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *  Here and below \f$ a = \alpha^2/2 \f$, \f$ b = \ell(\ell + 1) / 2 \f$.
+ *
+ *  Koelling-Harmon equation with \f$ M = 1 + \alpha^2 (\epsilon - V) / 2 \f$. Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *     \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *      \frac{p(\epsilon )}{r}\right) = 2 a q(\epsilon )+2 M q'(\epsilon )+\frac{p'(\epsilon )}{r} \\
+ *     \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 4 a q'(\epsilon )+2 M q''(\epsilon )+\frac{p''(\epsilon )}{r} \\
+ *     \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 6 a q''(\epsilon )+2 M q^{(3)}(\epsilon )+\frac{p^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +
+ *      \frac{b}{r^2 M(\epsilon )}\right) p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *      p(\epsilon ) \left(-\frac{a b}{M^2 r^2}-1\right)+p'(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-
+ *      \frac{q'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +
+ *      \frac{b}{r^2 M(\epsilon )}\right) p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *      \frac{2 a^2 b p(\epsilon )}{M^3 r^2}+2 p'(\epsilon ) \left(-\frac{a b}{M^2 r^2}-1\right)+
+ *      p''(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = -\frac{6 a^3 b p(\epsilon )}{M^4 r^2}+
+ *      \frac{6 a^2 b p'(\epsilon )}{M^3 r^2}+3 p''(\epsilon ) \left(-\frac{a b}{M^2 r^2}-1\right)+
+ *      p^{(3)}(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *
+ *  ZORA equation with \f$ M = 1 - \alpha^2 V / 2 \f$. Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *      \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 2 M q'(\epsilon )+\frac{p'(\epsilon )}{r} \\
+ *      \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(2 M(\epsilon ) q(\epsilon )+
+ *        \frac{p(\epsilon )}{r}\right) = 2 M q''(\epsilon )+\frac{p''(\epsilon )}{r} \\
+ *      \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 2 M q^{(3)}(\epsilon )+\frac{p^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *      \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *        p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *        p'(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-p(\epsilon )-\frac{q'(\epsilon )}{r} \\
+ *      \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *        p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *        p''(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-2 p'(\epsilon )-\frac{q''(\epsilon )}{r}\\
+ *      \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *        p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *        p^{(3)}(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-3 p''(\epsilon )-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *
+ *  IORA equation with \f$ M = M_0/(1 - \alpha^2 \epsilon / 2 / M_0) \f$. \f$ M_0 \f$ is ZORA electron mass.
+ *  Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *    \frac{p(\epsilon )}{r}\right) = \frac{2 a q(\epsilon )}{U^2}+2 M q'(\epsilon )+\frac{p'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(2 M(\epsilon ) q(\epsilon )+
+ *    \frac{p(\epsilon )}{r}\right) = \frac{4 a^2 q(\epsilon )}{M_0 U^3}+
+ *    \frac{4 a q'(\epsilon )}{U^2}+2 M q''(\epsilon )+\frac{p''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(2 M(\epsilon )
+ *    q(\epsilon )+\frac{p(\epsilon )}{r}\right) = \frac{12 a^3 q(\epsilon )}{M_0^2 U^4}+
+ *    \frac{12 a^2 q'(\epsilon )}{M_0 U^3}+\frac{6 a q''(\epsilon )}{U^2}+2 M q^{(3)}(\epsilon )+
+ *    \frac{p^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *     p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p(\epsilon ) \left(-\frac{a b}{\text{M0}^2 r^2}-1\right)+
+ *     p'(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *    p(\epsilon )-\frac{q(\epsilon )}{r}\right) = 2 p'(\epsilon ) \left(-\frac{a b}{\text{M0}^2 r^2}-1\right)+
+ *     p''(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *     p(\epsilon )-\frac{q(\epsilon )}{r}\right) = 3 p''(\epsilon ) \left(-\frac{a b}{\text{M0}^2 r^2}-1\right)+
+ *      p^{(3)}(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
  */
 class Radial_solver
 {
