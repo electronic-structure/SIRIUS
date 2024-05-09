@@ -163,9 +163,11 @@ class Atom
                                 Spline<double> s(type().radial_grid());
                                 for (int ir = 0; ir < nmtp; ir++) {
                                     s(ir) = veff_(lm, ir) * symmetry_class().radial_function(ir, i1) *
-                                        symmetry_class().radial_function(ir, i2) * std::pow(type().radial_grid(ir), 2);
+                                            symmetry_class().radial_function(ir, i2) *
+                                            std::pow(type().radial_grid(ir), 2);
                                 }
-                                h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = s.interpolate().integrate(0);
+                                h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) =
+                                        s.interpolate().integrate(0);
                             } else {
                                 h_radial_integrals_(lm, i1, i2) = symmetry_class().h_spherical_integral(i1, i2);
                                 h_radial_integrals_(lm, i2, i1) = symmetry_class().h_spherical_integral(i2, i1);
@@ -174,9 +176,11 @@ class Atom
                                 Spline<double> s(type().radial_grid());
                                 for (int ir = 0; ir < nmtp; ir++) {
                                     s(ir) = beff_[j](lm, ir) * symmetry_class().radial_function(ir, i1) *
-                                        symmetry_class().radial_function(ir, i2) * std::pow(type().radial_grid(ir), 2);
+                                            symmetry_class().radial_function(ir, i2) *
+                                            std::pow(type().radial_grid(ir), 2);
                                 }
-                                b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = s.interpolate().integrate(0);
+                                b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) =
+                                        s.interpolate().integrate(0);
                             }
                         }
                     }

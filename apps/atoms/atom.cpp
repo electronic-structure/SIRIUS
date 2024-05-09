@@ -14,6 +14,112 @@
 
 using namespace sirius;
 
+std::map<std::string, std::string> const fleur_core = {
+        {"H", ""},
+        {"He", ""},
+        {"Li", ""},
+        {"Be", ""},
+        {"B", "1s"},
+        {"C", "1s"},
+        {"N", "1s"},
+        {"O", "1s"},
+        {"F", "1s"},
+        {"Ne", "1s"},
+        {"Na", "1s"},
+        {"Mg", "1s"},
+        {"Al", "1s"},
+        {"Si", "1s"},
+        {"P", "1s2s"},
+        {"S", "1s2s2p"},
+        {"Cl", "1s2s2p"},
+        {"Ar", "1s2s2p"},
+        {"K", "1s2s2p"},
+        {"Ca", "1s2s2p"},
+        {"Sc", "1s2s2p"},
+        {"Ti", "1s2s2p"},
+        {"V", "1s2s2p"},
+        {"Cr", "1s2s2p"},
+        {"Mn", "1s2s2p"},
+        {"Fe", "1s2s2p"},
+        {"Co", "1s2s2p"},
+        {"Ni", "1s2s2p"},
+        {"Cu", "1s2s2p"},
+        {"Zn", "1s2s2p"},
+        {"Ga", "1s2s2p"},
+        {"Ge", "1s2s2p"},
+        {"As", "1s2s2p3s"},
+        {"Se", "1s2s2p3s3p"},
+        {"Br", "1s2s2p3s3p"},
+        {"Kr", "1s2s2p3s3p"},
+        {"Rb", "1s2s2p3s3p3d"},
+        {"Sr", "1s2s2p3s3p3d"},
+        {"Y", "1s2s2p3s3p3d"},
+        {"Zr", "1s2s2p3s3p3d"},
+        {"Nb", "1s2s2p3s3p3d"},
+        {"Mo", "1s2s2p3s3p3d"},
+        {"Tc", "1s2s2p3s3p3d"},
+        {"Ru", "1s2s2p3s3p3d"},
+        {"Rh", "1s2s2p3s3p3d"},
+        {"Pd", "1s2s2p3s3p3d"},
+        {"Ag", "1s2s2p3s3p3d"},
+        {"Cd", "1s2s2p3s3p3d"},
+        {"In", "1s2s2p3s3p3d"},
+        {"Sn", "1s2s2p3s3p3d"},
+        {"Sb", "1s2s2p3s3p4s3d"},
+        {"Te", "1s2s2p3s3p4s3d"},
+        {"I", "1s2s2p3s3p4s3d"},
+        {"Xe", "1s2s2p3s3p4s3d4p"},
+        {"Cs", "1s2s2p3s3p4s3d4p"},
+        {"Ba", "1s2s2p3s3p4s3d4p"},
+        {"La", "1s2s2p3s3p4s3d4p4d"},
+        {"Ce", "1s2s2p3s3p4s3d4p4d"},
+        {"Pr", "1s2s2p3s3p4s3d4p4d"},
+        {"Nd", "1s2s2p3s3p4s3d4p4d"},
+        {"Pm", "1s2s2p3s3p4s3d4p4d"},
+        {"Sm", "1s2s2p3s3p4s3d4p4d"},
+        {"Eu", "1s2s2p3s3p4s3d4p4d"},
+        {"Gd", "1s2s2p3s3p4s3d4p4d"},
+        {"Tb", "1s2s2p3s3p4s3d4p4d"},
+        {"Dy", "1s2s2p3s3p4s3d4p4d"},
+        {"Ho", "1s2s2p3s3p4s3d4p4d"},
+        {"Er", "1s2s2p3s3p4s3d4p4d"},
+        {"Tm", "1s2s2p3s3p4s3d4p4d"},
+        {"Yb", "1s2s2p3s3p4s3d4p4d"},
+        {"Lu", "1s2s2p3s3p4s3d4p4d"},
+        {"Hf", "1s2s2p3s3p4s3d4p4d"},
+        {"Ta", "1s2s2p3s3p4s3d4p4d"},
+        {"W", "1s2s2p3s3p4s3d4p4d"},
+        {"Re", "1s2s2p3s3p4s3d4p4d"},
+        {"Os", "1s2s2p3s3p4s3d4p4d"},
+        {"Ir", "1s2s2p3s3p4s3d4p4d"},
+        {"Pt", "1s2s2p3s3p4s3d4p4d4f"},
+        {"Au", "1s2s2p3s3p4s3d4p4d4f"},
+        {"Hg", "1s2s2p3s3p4s3d4p4d4f5s"},
+        {"Tl", "1s2s2p3s3p4s3d4p4d4f5s"},
+        {"Pb", "1s2s2p3s3p4s3d4p4d4f5s"},
+        {"Bi", "1s2s2p3s3p4s3d4p5s4d4f"},
+        {"Po", "1s2s2p3s3p4s3d4p5s4d4f"},
+        {"At", "1s2s2p3s3p4s3d4p5s4d4f"},
+        {"Rn", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Fr", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Ra", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Ac", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Th", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Pa", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"U", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Np", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Pu", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Am", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Cm", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Bk", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Cf", "1s2s2p3s3p4s3d4p5s4d5p4f"},
+        {"Es", "1s2s2p3s3p4s3d4p5s4d5p4f5d"},
+        {"Fm", "1s2s2p3s3p4s3d4p5s4d5p4f5d"},
+        {"Md", "1s2s2p3s3p4s3d4p5s4d5p4f5d"},
+        {"No", "1s2s2p3s3p4s3d4p5s4d5p4f5d"},
+        {"Lr", "1s2s2p3s3p4s3d4p5s4d5p6s4f5d6p"},
+};
+
 /// Helper class to compute free atom in spherical potential approximation.
 class Free_atom : public sirius::Atom_type
 {
@@ -530,6 +636,16 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
         }
     }
 
+    if (lo_type.find("lo5") != std::string::npos) {
+        for (int l = 0; l < 4; l++) {
+            if (n_v[l].size()) {
+                n_v[l].push_back(n_v[l].back() + 1);
+            } else {
+                n_v[l].push_back(l + 1);
+            }
+        }
+    }
+
     std::cout << "valence n for each l" << std::endl;
     for (int l = 0; l < 4; l++) {
         if (n_v[l].size()) {
@@ -588,6 +704,11 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     }
     std::cout << "core states : " << core_str << std::endl;
     dict["core"] = core_str;
+    if (fleur_core.at(a.symbol()) != core_str) {
+        std::cout << "Warning: different core-valence partitioning" << std::endl
+                  << "  FLEUR:  " << fleur_core.at(a.symbol()) << std::endl
+                  << "  SIRIUS: " << core_str << std::endl;
+    }
 
     radial_solution_descriptor_set rsds;
 
@@ -616,8 +737,39 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     }
 
     int idxlo{0};
-    for (int n = 1; n <= 7; n++) {
-        for (int l = 0; l < 4; l++) {
+    for (int l = 0; l < 4; l++) {
+        for (int n : n_v[l]) {
+
+            if (lo_type.find("lo5") != std::string::npos) {
+                int const auto_enu{1};
+                for (int dme : {0, 1}) {
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
+                }
+                idxlo++;
+                for (int dme : {0, 2}) {
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
+                }
+                idxlo++;
+                for (int dme : {1, 2}) {
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
+                }
+                idxlo++;
+                if (n <= 6 && nl_v(n + 1, l)) {
+                    for (int dme : {0, 1, 2}) {
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
+                        a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n + 1, l), 0, auto_enu);
+                        idxlo++;
+
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
+                        a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n + 1, l), 1, auto_enu);
+                        idxlo++;
+
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
+                        a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n + 1, l), 2, auto_enu);
+                        idxlo++;
+                    }
+                }
+            }
             /* for each valence state */
             if (nl_v(n, l)) {
                 /* add 2nd order local orbital composed of u_l(r, E_l) and \dot u_l(r, E_l)
@@ -638,6 +790,13 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                             a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
                         }
                         idxlo++;
+
+                        if (l + 1 < n) {
+                            for (int dme : {0, 1}) {
+                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                            }
+                            idxlo++;
+                        }
                     }
                 }
 
@@ -659,6 +818,13 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                             a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
                         }
                         idxlo++;
+
+                        if (l + 1 < n) {
+                            for (int dme : {1, 2}) {
+                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                            }
+                            idxlo++;
+                        }
                     }
                 }
 
@@ -685,7 +851,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
 
     /* add high angular momentum 2nd order local orbitals with fixed linearisation energies */
     if (lo_type.find("lo3") != std::string::npos) {
-        for (int l = lmax + 1; l < lmax + 4; l++) {
+        for (int l = lmax; l < lmax + 4; l++) {
             for (int dme : {0, 1}) {
                 a.add_lo_descriptor(idxlo, 0, l, 0.15, dme, 0);
             }
@@ -701,10 +867,16 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     if (lo_type.find("lo4") != std::string::npos) {
         for (int n = 1; n <= 6; n++) {
             for (int l = 0; l < n; l++) {
-                for (int dme : {0, 1}) {
-                    a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                if (!nl_c(n, l)) {
+                    for (int dme : {0, 1}) {
+                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                    }
+                    idxlo++;
+                    for (int dme : {1, 2}) {
+                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                    }
+                    idxlo++;
                 }
-                idxlo++;
             }
         }
     }
@@ -721,7 +893,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
 
     std::vector<double> veff;
     if (true) {
-        Radial_grid_pow<double> rg(nrmt, a.radial_grid(0), 1.8, 3);
+        Radial_grid_pow<double> rg(nrmt, a.radial_grid(0), core_radius, 3);
         auto x = rg.values();
         for (int ir = 0; ir < rg.num_points(); ir++) {
             veff.push_back(a.potential(rg[ir]) - a.zn() * rg.x_inv(ir));
@@ -762,7 +934,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
         return s.str();
     };
 
-    auto inc   = a1.check_lo_linear_independence(0.0001);
+    auto inc   = a1.check_lo_linear_independence(args.value<double>("lo_tol", 0.0001));
     dict["lo"] = json::array();
 
     for (int j = 0; j < a1.num_lo_descriptors(); j++) {
@@ -795,6 +967,7 @@ main(int argn, char** argv)
     args.register_key("--rmax=", "{double} maximum value of radial grid");
     args.register_key("--rmt=", "{double} set specific MT radius");
     args.register_key("--nrmt=", "{int} number of radial grid points");
+    args.register_key("--lo_tol=", "{double} tolerance on linear dependency of local orbitals");
     args.parse_args(argn, argv);
 
     if (argn == 1 || args.exist("help")) {
@@ -814,8 +987,8 @@ main(int argn, char** argv)
         std::cout << "  lo3  : two 2nd order high angular momentum local orbitals composed of {u_l(r, E=0.15), \\dot "
                      "u_l(e, E=0.15)}"
                   << std::endl;
-        std::cout << "  lo4  : same as lo1 for n <= 6" << std::endl;
         std::cout << "         and {\\dot u_l(r, E=0.15), \\ddot u_l(e, E=0.15)}" << std::endl;
+        std::cout << "  lo4  : same as lo1 for n <= 6" << std::endl;
         std::cout << "  LO1  : 3rd order valence local orbital composed of {u_l(r, E=0.15), \\dot u_l(r, E=0.15), "
                      "u_l(r, E_l)}"
                   << std::endl;

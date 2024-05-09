@@ -26,13 +26,17 @@
 
 namespace sirius {
 
+/// Result of the Radial_solver::solve() method.
 struct radial_solver_result_t
 {
+    /// Number of nodes of the radial function.
     int num_nodes;
+    /// p(r) = u(r)*r and u(r) is the radial part of atomic wave-function psi_{nlm}(r) = u_{nl}(r) * Y_{lm}(r)
     std::vector<double> p;
-    std::vector<double> dpdr;
-    std::vector<double> q;
-    std::vector<double> dqdr;
+    /// Stores r * u'(r)
+    std::vector<double> rdudr;
+    /// Stores surface 0-, 1- and 2-order derivatives u(R), u'(R) and u"(R)
+    std::array<double, 3> uderiv;
 };
 
 namespace radial_solver_local {
@@ -89,7 +93,6 @@ rel_mass_deriv(double enu__, double v__, double v_deriv__)
         }
     }
 };
-
 
 } // namespace radial_solver_local
 
@@ -674,8 +677,8 @@ class Radial_solver
         }
         auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
         for (int i = 0; i < radial_grid_.num_points(); i++) {
-            p__[i]    *= norm;
-            q__[i]    *= norm;
+            p__[i] *= norm;
+            q__[i] *= norm;
             dpdr__[i] *= norm;
             dqdr__[i] *= norm;
         }
@@ -699,8 +702,33 @@ class Radial_solver
         ve_.interpolate();
     }
 
+    /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
+    /** \param [in] rel Type of relativity
+     *  \param [in] dme Order of energy derivative.
+     *  \param [in] l Oribtal quantum number.
+     *  \param [in] enu Integration energy.
+     *
+     *  Returns number of nodes of the radial function, \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$, \f$ u(R) \f$,
+     *  \f$ u'(R) \f$ and \f$ u''(R) \f$.
+     *
+     *  Surface derivatives:
+     *
+     *  From
+     *  \f[
+     *    u(r) = \frac{p(r)}{r}
+     *  \f]
+     *  we have
+     *  \f[
+     *    u'(r) = \frac{p'(r)}{r} - \frac{p(r)}{r^2} = \frac{1}{r}\big(p'(r) - \frac{p(r)}{r}\big)
+     *  \f]
+     *
+     *  \f[
+     *    u''(r) = \frac{p''(r)}{r} - \frac{p'(r)}{r^2} - \frac{p'(r)}{r^2} + 2 \frac{p(r)}{r^3} =
+     *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
+     *  \f]
+     */
     auto
-    solve(relativity_t rel__, int dme__, int l__, int k__, double enu__) const
+    solve(relativity_t rel__, int dme__, int l__, double enu__) const
     {
         int nr = num_points();
         std::vector<std::vector<double>> p;
@@ -763,38 +791,38 @@ class Radial_solver
                         RTE_THROW(s);
                     }
                 } else if (rel__ == relativity_t::iora) {
-                    double ll_half  = l__ * (l__ + 1) / 2.0;
+                    double ll_half = l__ * (l__ + 1) / 2.0;
                     for (int i = 0; i < nr; i++) {
-                        double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                        double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                         double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                        double x = radial_grid_[i];
-                        chi_q(i) = -j * p[j - 1][i] * (1 + sq_alpha_half * ll_half / std::pow(M0 * x, 2));
+                        double x  = radial_grid_[i];
+                        chi_q(i)  = -j * p[j - 1][i] * (1 + sq_alpha_half * ll_half / std::pow(M0 * x, 2));
                     }
 
                     if (j == 1) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                            double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha_half * std::pow(U, -2);
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 2 * sq_alpha_half * std::pow(U, -2);
                         }
                     } else if (j == 2) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                            double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
                                        q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) * std::pow(U, -3) / M0;
                         }
                     } else if (j == 3) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
-                            double U = (1 - sq_alpha_half * enu__ / M0);
-                            chi_p(i) = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
                                        q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) * std::pow(U, -2) / (M0 * U) +
                                        q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) * std::pow(M0 * U, -2) *
-                                       std::pow(U, -2);
+                                               std::pow(U, -2);
                         }
                     } else {
                         std::stringstream s;
@@ -834,67 +862,25 @@ class Radial_solver
                 }
             }
         }
-
-        return radial_solver_result_t{nn, p.back(), dpdr.back(), q.back(), dqdr.back()};
-    }
-
-    /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
-    /** \param [in] rel Type of relativity
-     *  \param [in] dme Order of energy derivative.
-     *  \param [in] l Oribtal quantum number.
-     *  \param [in] enu Integration energy.
-     *  \param [out] p \f$ p(r) = ru(r) \f$ radial function.
-     *  \param [out] rdudr \f$ ru'(r) \f$.
-     *  \param [out] uderiv \f$ u'(R) \f$ and \f$ u''(R) \f$.
-     *
-     *  Returns \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$, \f$ u'(R) \f$ and \f$ u''(R) \f$.
-     *
-     *  Surface derivatives:
-     *
-     *  From
-     *  \f[
-     *    u(r) = \frac{p(r)}{r}
-     *  \f]
-     *  we have
-     *  \f[
-     *    u'(r) = \frac{p'(r)}{r} - \frac{p(r)}{r^2} = \frac{1}{r}\big(p'(r) - \frac{p(r)}{r}\big)
-     *  \f]
-     *
-     *  \f[
-     *    u''(r) = \frac{p''(r)}{r} - \frac{p'(r)}{r^2} - \frac{p'(r)}{r^2} + 2 \frac{p(r)}{r^3} =
-     *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
-     *  \f]
-     */
-    int
-    solve(relativity_t rel__, int dme__, int l__, double enu__, std::vector<double>& p__, std::vector<double>& rdudr__,
-          std::array<double, 2>& uderiv__) const
-    {
-        auto result = solve(rel__, dme__, l__, 0, enu__);
-        int nr      = num_points();
-
-        auto p0 = result.p;
-        auto p1 = result.dpdr;
-        auto q0 = result.q;
-        auto q1 = result.dqdr;
-
         /* save the results */
-        p__.resize(nr);
-        rdudr__.resize(nr);
-        for (int i = 0; i < radial_grid_.num_points(); i++) {
-            p__[i]     = p0[i];
-            rdudr__[i] = p1[i] - p0[i] * radial_grid_.x_inv(i);
+        std::vector<double> rdudr(nr);
+        for (int i = 0; i < nr; i++) {
+            rdudr[i] = dpdr.back()[i] - p.back()[i] * radial_grid_.x_inv(i);
         }
 
         double R = radial_grid_.last();
 
         /* 1st radial derivative of u(r) */
-        uderiv__[0] = (p1.back() - p0.back() / R) / R;
+        std::array<double, 3> uderiv;
+        /* p(r) = u(r)*r -> u(r) = p(r) / r */
+        uderiv[0] = p.back().back() / R;
+        uderiv[1] = (dpdr.back().back() - p.back().back() / R) / R;
         /* 2nd radial derivative of u(r) */
-        Spline<double> sdpdr(radial_grid_, p1);
+        Spline<double> sdpdr(radial_grid_, dpdr.back());
         sdpdr.interpolate();
-        uderiv__[1] = (sdpdr.deriv(1, nr - 1) - 2 * p1.back() / R + 2 * p0.back() / std::pow(R, 2)) / R;
+        uderiv[2] = (sdpdr.deriv(1, nr - 1) - 2 * dpdr.back().back() / R + 2 * p.back().back() / std::pow(R, 2)) / R;
 
-        return result.num_nodes;
+        return radial_solver_result_t{nn, p.back(), rdudr, uderiv};
     }
 
     inline int
