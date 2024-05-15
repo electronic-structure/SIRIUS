@@ -35,6 +35,13 @@ type sirius_kpoint_set_handler
     type(C_PTR) :: handler_ptr_
 end type
 
+!> @brief Opaque wrapper for K-point set handler.
+type sirius_md_extrapolation
+    type(C_PTR) :: handler_ptr_
+end type
+
+
+
 !> @brief Free any of the SIRIUS handlers (context, ground state or k-points).
 interface sirius_free_handler
     module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft
@@ -1785,6 +1792,117 @@ error_code_ptr = C_LOC(error_code)
 endif
 call sirius_create_ground_state_aux(ks_handler_ptr,gs_handler_ptr,error_code_ptr)
 end subroutine sirius_create_ground_state
+
+!
+!> @brief Create a MD extrapolation object.
+!> @param [in] md_handler MDExtrapolation handler
+!> @param [in] gs_handler DFT_ground_state handler
+!> @param [out] error_code Error code.
+subroutine sirius_create_md_extrapolation(md_handler,gs_handler,error_code)
+implicit none
+!
+type(sirius_md_extrapolation), target, intent(in) :: md_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: md_handler_ptr
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_create_md_extrapolation_aux(md_handler,gs_handler,error_code)&
+&bind(C, name="sirius_create_md_extrapolation")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: md_handler
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+md_handler_ptr = C_NULL_PTR
+md_handler_ptr = C_LOC(md_handler)
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_md_extrapolation_aux(md_handler_ptr,gs_handler_ptr,error_code_ptr)
+end subroutine sirius_create_md_extrapolation
+
+!
+!> @brief Store current time-step in MD object
+!> @param [in] md_handler MDExtrapolation handler
+!> @param [in] gs_handler DFT_ground_state handler
+!> @param [out] error_code Error code.
+subroutine sirius_md_store(md_handler,gs_handler,error_code)
+implicit none
+!
+type(sirius_md_extrapolation), target, intent(in) :: md_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: md_handler_ptr
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_md_store_aux(md_handler,gs_handler,error_code)&
+&bind(C, name="sirius_md_store")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: md_handler
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+md_handler_ptr = C_NULL_PTR
+md_handler_ptr = C_LOC(md_handler)
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_md_store_aux(md_handler_ptr,gs_handler_ptr,error_code_ptr)
+end subroutine sirius_md_store
+
+!
+!> @brief Apply MD extrapolation
+!> @param [in] md_handler MDExtrapolation handler
+!> @param [in] gs_handler DFT_ground_state handler
+!> @param [out] error_code Error code.
+subroutine sirius_md_extrapolate(md_handler,gs_handler,error_code)
+implicit none
+!
+type(sirius_md_extrapolation), target, intent(in) :: md_handler
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: md_handler_ptr
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_md_extrapolate_aux(md_handler,gs_handler,error_code)&
+&bind(C, name="sirius_md_extrapolate")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: md_handler
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+md_handler_ptr = C_NULL_PTR
+md_handler_ptr = C_LOC(md_handler)
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_md_extrapolate_aux(md_handler_ptr,gs_handler_ptr,error_code_ptr)
+end subroutine sirius_md_extrapolate
 
 !
 !> @brief Initialize k-point set.

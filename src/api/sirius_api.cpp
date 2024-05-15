@@ -29,12 +29,18 @@
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 #include "dft/dft_ground_state.hpp"
+#include "dft/md_extrapolation.hpp"
 #include "sirius.hpp"
 
 using namespace sirius;
 
 Simulation_context&
 get_sim_ctx(void* const* h);
+
+struct sirius_md_extrapolation_t
+{
+    void* MDExtrapolation_ptr_{nullptr};
+};
 
 enum class option_type_t : int
 {
@@ -233,37 +239,37 @@ template <typename F>
 static void
 call_sirius(F&& f__, int* error_code__)
 {
-    try {
-        f__();
-        if (error_code__) {
-            *error_code__ = SIRIUS_SUCCESS;
-            return;
-        }
-    } catch (std::runtime_error const& e) {
-        if (error_code__) {
-            *error_code__ = SIRIUS_ERROR_RUNTIME;
-            sirius_print_error(*error_code__, e.what());
-            return;
-        } else {
-            sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
-        }
-    } catch (std::exception const& e) {
-        if (error_code__) {
-            *error_code__ = SIRIUS_ERROR_EXCEPTION;
-            sirius_print_error(*error_code__, e.what());
-            return;
-        } else {
-            sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
-        }
-    } catch (...) {
-        if (error_code__) {
-            *error_code__ = SIRIUS_ERROR_UNKNOWN;
-            sirius_print_error(*error_code__);
-            return;
-        } else {
-            sirius_exit(SIRIUS_ERROR_UNKNOWN);
-        }
+    // try {
+    f__();
+    if (error_code__) {
+        *error_code__ = SIRIUS_SUCCESS;
+        return;
     }
+    // } catch (std::runtime_error const& e) {
+    //     if (error_code__) {
+    //         *error_code__ = SIRIUS_ERROR_RUNTIME;
+    //         sirius_print_error(*error_code__, e.what());
+    //         return;
+    //     } else {
+    //         sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
+    //     }
+    // } catch (std::exception const& e) {
+    //     if (error_code__) {
+    //         *error_code__ = SIRIUS_ERROR_EXCEPTION;
+    //         sirius_print_error(*error_code__, e.what());
+    //         return;
+    //     } else {
+    //         sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
+    //     }
+    // } catch (...) {
+    //     if (error_code__) {
+    //         *error_code__ = SIRIUS_ERROR_UNKNOWN;
+    //         sirius_print_error(*error_code__);
+    //         return;
+    //     } else {
+    //         sirius_exit(SIRIUS_ERROR_UNKNOWN);
+    //     }
+    // }
 }
 
 template <typename T>
@@ -298,6 +304,15 @@ get_ks(void* const* h)
         RTE_THROW("Non-existing K-point set handler");
     }
     return static_cast<any_ptr*>(*h)->get<K_point_set>();
+}
+
+md::MDExtrapolation&
+get_md_extrapolation(void* const* h)
+{
+    if (h == nullptr || *h == nullptr) {
+        RTE_THROW("Non-existing MDExtrapolation handler");
+    }
+    return static_cast<any_ptr*>(*h)->get<md::MDExtrapolation>();
 }
 
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
@@ -1699,6 +1714,100 @@ sirius_create_ground_state(void* const* ks_handler__, void** gs_handler__, int* 
 
 /*
 @api begin
+sirius_create_md_extrapolation:
+  doc: Create a MD extrapolation object.
+  arguments:
+    md_handler:
+      type: md_handler
+      attr: in, required
+      doc: MDExtrapolation handler
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT_ground_state handler
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_create_md_extrapolation(void** md_handler__, void* const* gs_handler__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs      = get_gs(gs_handler__);
+                *md_handler__ = new any_ptr(new md::LinearWfcExtrapolation(gs.k_point_set().ctx().spla_context_ptr()));
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_md_store:
+  doc: Store current time-step in MD object
+  arguments:
+    md_handler:
+      type: md_handler
+      attr: in, required
+      doc: MDExtrapolation handler
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT_ground_state handler
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_md_store(void** md_handler__, void* const* gs_handler__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs       = get_gs(gs_handler__);
+                auto& kset     = gs.k_point_set();
+                auto& md_extra = get_md_extrapolation(md_handler__);
+                md_extra.push_back_history(kset, gs.density(), gs.potential());
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_md_extrapolate:
+  doc: Apply MD extrapolation
+  arguments:
+    md_handler:
+      type: md_handler
+      attr: in, required
+      doc: MDExtrapolation handler
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT_ground_state handler
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_md_extrapolate(void** md_handler__, void** gs_handler__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs       = get_gs(gs_handler__);
+                auto& kset     = gs.k_point_set();
+                auto& md_extra = get_md_extrapolation(md_handler__);
+                md_extra.extrapolate(kset, gs.density(), gs.potential());
+            },
+            error_code__);
+}
+
+/*
+@api begin
 sirius_initialize_kset:
   doc: Initialize k-point set.
   arguments:
@@ -2495,7 +2604,7 @@ sirius_set_pw_coeffs(void* const* handler__, char const* label__, std::complex<d
                     mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
                     std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
-                    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
                     for (int i = 0; i < *ngv__; i++) {
                         r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
                         // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
