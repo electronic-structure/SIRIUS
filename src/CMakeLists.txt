@@ -36,6 +36,7 @@ set(_SOURCES
   "dft/dft_ground_state.cpp"
   "dft/energy.cpp"
   "dft/smearing.cpp"
+  "dft/md_extrapolation.cpp"
   "beta_projectors/beta_projectors_base.cpp"
   "hubbard/hubbard.cpp"
   "hubbard/hubbard_occupancies_derivatives.cpp"
