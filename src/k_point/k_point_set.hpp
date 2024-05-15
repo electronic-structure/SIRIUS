@@ -254,12 +254,14 @@ class K_point_set
         return -1;
     }
 
-    auto ctx() -> Simulation_context&
+    auto
+    ctx() -> Simulation_context&
     {
         return ctx_;
     }
 
-    auto ctx() const -> Simulation_context const&
+    auto
+    ctx() const -> Simulation_context const&
     {
         return ctx_;
     }
