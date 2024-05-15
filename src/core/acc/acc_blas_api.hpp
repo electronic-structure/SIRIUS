@@ -348,6 +348,15 @@ sscal(ARGS&&... args) -> status_t
 #endif // SIRIUS_ROCM
 }
 
+template <typename... ARGS>
+inline auto zdgmm(ARGS&&... args) -> status_t {
+#if defined(SIRIUS_ROCM)
+    return rocblas_zdgmm(std::forward<ARGS>(args)...);
+#else
+    return cublasZdgmm(std::forward<ARGS>(args)...);
+#endif // SIRIUS_ROCM
+}
+
 } // namespace blas_api
 } // namespace acc
 } // namespace sirius

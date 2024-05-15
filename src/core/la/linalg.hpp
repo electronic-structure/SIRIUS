@@ -14,10 +14,13 @@
 #ifndef __LINALG_HPP__
 #define __LINALG_HPP__
 
+#include <stdexcept>
 #include <stdint.h>
+#include <string>
 #include "core/memory.hpp"
 #include "core/rte/rte.hpp"
 #include "core/acc/acc.hpp"
+#include "core/rte/rte.hpp"
 #if defined(SIRIUS_GPU)
 #include "core/acc/acc_blas.hpp"
 #include "core/acc/acc_lapack.hpp"
@@ -264,6 +267,14 @@ class wrap
     template <typename T>
     inline void
     geqrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja);
+
+    template <typename T>
+    inline void
+    dgmm(char sidemode, int m, int n, T const* A, int lda, T const* x, int incx, T* C, int ldc) const;
+
+    template <typename T>
+    inline void
+    gesvd(char jobu, char jobvt, dmatrix<T> const& A, mdarray<real_type<T>, 1>& s, dmatrix<T>& U, dmatrix<T>& Vt) const;
 };
 
 template <>
@@ -2002,6 +2013,56 @@ wrap::lartg(ftn_double f, ftn_double g) const
     return std::make_tuple(cs, sn, r);
 }
 
+template <>
+inline void
+wrap::dgmm(char sidemode, int m, int n, const ftn_double_complex* A, int lda, const ftn_double_complex* x, int incx,
+           ftn_double_complex* C, int ldc) const
+{
+    switch (la_) {
+        case lib_t::blas: {
+            // https: // docs.nvidia.com/cuda/cublas/index.html?highlight=dgmm#id10
+            if (incx < 0) {
+                RTE_THROW("case not implemented");
+            }
+            switch (sidemode) {
+                case 'l':
+                case 'L': {
+#pragma omp parallel for
+                    for (int j = 0; j < n; ++j) {
+                        for (int i = 0; i < m; ++i) {
+                            C[i + j * ldc] = A[i + j * lda] * x[i * incx];
+                        }
+                    }
+                    return;
+                }
+                case 'r':
+                case 'R': {
+#pragma omp parallel for
+                    for (int j = 0; j < n; ++j) {
+                        ftn_double_complex xj = x[incx * j];
+                        for (int i = 0; i < m; ++i) {
+                            C[i + j * ldc] = A[i + j * lda] * xj;
+                        }
+                    }
+                    return;
+                }
+                default:
+                    throw std::runtime_error(linalg_msg_wrong_type);
+            }
+        }
+        case lib_t::gpublas: {
+            acc::blas::zdgmm(sidemode, m, n, reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                             reinterpret_cast<acc_complex_double_t const*>(x), incx,
+                             reinterpret_cast<acc_complex_double_t*>(C), ldc);
+            return;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+}
+
 template <typename T>
 inline void
 check_hermitian(std::string const& name, matrix<T> const& mtrx, int n = -1)
@@ -2146,6 +2207,121 @@ unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T> const& U__,
         wrap(lib_t::blas)
                 .gemm('N', c2, n__, n__, n__, &constant<T>::one(), tmp.at(memory_t::host), tmp.ld(),
                       U__.at(memory_t::host), U__.ld(), &constant<T>::zero(), A__.at(memory_t::host), A__.ld());
+    }
+}
+
+/** Perform one of the following operations:
+ *    A <= U A U^{H} (kind = 0)
+ *    A <= U^{H} A U (kind = 1)
+ *
+ *    where A is a diagonal
+ */
+template <typename T>
+auto
+unitary_similarity_transform(int kind__, mdarray<T, 1> const& a__, matrix<T> const& U__)
+{
+
+    if (!(kind__ == 0 || kind__ == 1)) {
+        RTE_THROW("wrong 'kind' parameter");
+    }
+
+    auto out = zeros_like(U__, get_memory_pool(memory_t::host));
+    auto tmp = zeros_like(U__, get_memory_pool(memory_t::host));
+
+    int num_wf = U__.size(0);
+
+    // kind__ == 0 -> tmp <- U*diag(a) (r)
+    // kind__ == 1 -> tmp <- diag(a)*U (l)
+    char lr = kind__ == 0 ? 'r' : 'l';
+    la::wrap(lib_t::blas)
+            .dgmm(lr, num_wf, num_wf, U__.at(memory_t::host), U__.ld(), a__.at(memory_t::host), 1,
+                  tmp.at(memory_t::host), tmp.ld());
+
+    if (kind__ == 0) {
+        // return tmp * U^H  = (U * diag(a)) U^H
+        la::wrap(lib_t::blas)
+                .gemm('N', 'C', num_wf, num_wf, num_wf, &constant<T>::one(), tmp.at(memory_t::host), tmp.ld(),
+                      U__.at(memory_t::host), U__.ld(), &constant<T>::zero(), out.at(memory_t::host), out.ld());
+    } else {
+        // return U^H * tmp =  U^H * (diag(a) * U)
+        la::wrap(lib_t::blas)
+                .gemm('C', 'N', num_wf, num_wf, num_wf, &constant<T>::one(), U__.at(memory_t::host), U__.ld(),
+                      tmp.at(memory_t::host), tmp.ld(), &constant<T>::zero(), out.at(memory_t::host), out.ld());
+    }
+    return out;
+}
+
+/**
+ * create a diagonal matrix form an array
+ */
+template <typename T>
+auto
+diag(mdarray<T, 1> const& a__) -> mdarray<T, 2>
+{
+    int n = a__.size(0);
+    mdarray<T, 2> out({n, n}, get_memory_pool(memory_t::host));
+    out.zero();
+    for (int i = 0; i < n; ++i) {
+        out(i, i) = a__(i);
+    }
+    return out;
+}
+
+/**
+ * obtain the diagonal
+ */
+template <typename T>
+auto
+diag(mdarray<T, 2> const& A__) -> mdarray<T, 1>
+{
+    int n = A__.size(0);
+    mdarray<T, 1> out({n}, get_memory_pool(memory_t::host));
+    out.zero();
+    for (int i = 0; i < n; ++i) {
+        out(i) = A__(i,i);
+    }
+    return out;
+}
+
+template <>
+inline void
+wrap::gesvd(char jobu, char jobvt, dmatrix<std::complex<double>> const& A, mdarray<double, 1>& s,
+            dmatrix<std::complex<double>>& U, dmatrix<std::complex<double>>& Vt) const
+{
+    switch (la_) {
+        case lib_t::scalapack: {
+            throw std::runtime_error("gesvd for scalapack has not been implemented");
+            break;
+        }
+        case lib_t::lapack: {
+            if (A.comm().size() > 1)
+                RTE_THROW("Matrix must not be distributed");
+            // https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-fortran/2024-0/gesvd.html
+            auto& mempool            = get_memory_pool(memory_t::host);
+            int m                    = A.num_rows();
+            int n                    = A.num_cols();
+            int lwork                = 2 * std::max(m, n) + std::max(m, n);
+            ftn_double_complex* work = mempool.allocate<ftn_double_complex>(lwork);
+            ftn_double* rwork        = mempool.allocate<ftn_double>(std::max(1, 5 * std::min(m, n)));
+            char jobu                = 'A';
+            char jobvt               = 'A';
+            int lda                  = A.ld();
+            int ldvt                 = Vt.ld();
+            int ldu                  = U.ld();
+            ftn_int info;
+            FORTRAN(zgesvd)
+            (&jobu, &jobvt, &m, &n, reinterpret_cast<ftn_double_complex const*>(A.host_data()), &lda, s.host_data(),
+             reinterpret_cast<ftn_double_complex*>(U.host_data()), &ldu,
+             reinterpret_cast<ftn_double_complex*>(Vt.host_data()), &ldvt, work, &lwork, rwork, &info);
+            // check info state
+            if (info != 0) {
+                RTE_THROW("gesvd error: info=" + std::to_string(info));
+            }
+            break;
+        }
+        default:
+            RTE_THROW("not implemented");
+            break;
     }
 }
 

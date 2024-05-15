@@ -704,6 +704,12 @@ class Simulation_context : public Simulation_parameters
         return *spla_ctx_;
     }
 
+    auto
+    spla_context_ptr()
+    {
+        return spla_ctx_;
+    }
+
     inline double
     evp_work_count(double w__ = 0) const
     {
