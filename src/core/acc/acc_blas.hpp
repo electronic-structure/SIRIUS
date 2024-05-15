@@ -381,10 +381,11 @@ zdgmm(char sidemode__, int m__, int n__, acc_complex_double_t const* A__, int ld
       int incx__, acc_complex_double_t* C__, int ldc__)
 {
 
-    acc::blas_api::side_mode_t side   = get_gpublasSideMode_t(sidemode__);
+    acc::blas_api::side_mode_t side = get_gpublasSideMode_t(sidemode__);
     CALL_GPU_BLAS(acc::blas_api::zdgmm,
                   (null_stream_handle(), side, m__, n__, reinterpret_cast<const acc::blas_api::complex_double_t*>(A__),
-                   lda__, reinterpret_cast<const acc::blas_api::complex_double_t*>(x__), incx__, reinterpret_cast<acc::blas_api::complex_double_t*>(C__), ldc__));
+                   lda__, reinterpret_cast<const acc::blas_api::complex_double_t*>(x__), incx__,
+                   reinterpret_cast<acc::blas_api::complex_double_t*>(C__), ldc__));
 }
 
 #if defined(SIRIUS_CUDA)
