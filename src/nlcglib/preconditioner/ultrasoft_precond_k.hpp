@@ -48,7 +48,7 @@ class DiagonalPreconditioner
 {
   public:
     DiagonalPreconditioner(Simulation_context const& ctx)
-        // : ctx_(ctx)
+    // : ctx_(ctx)
     {
     }
     mdarray<numeric_t, 2>
@@ -142,8 +142,9 @@ template <class numeric_t>
 class Ultrasoft_preconditioner : public local::OperatorBase
 {
   public:
-    Ultrasoft_preconditioner(Simulation_context const& simulation_context, std::shared_ptr<Q_operator<double> const> q_op,
-                             int ispn, std::shared_ptr<Beta_projectors_base<double> const> bp, const fft::Gvec& gkvec);
+    Ultrasoft_preconditioner(Simulation_context const& simulation_context,
+                             std::shared_ptr<Q_operator<double> const> q_op, int ispn,
+                             std::shared_ptr<Beta_projectors_base<double> const> bp, const fft::Gvec& gkvec);
 
     mdarray<numeric_t, 2>
     apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
@@ -175,7 +176,7 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
                                                               const fft::Gvec& gkvec)
     : local::OperatorBase(gkvec.count())
     // , ctx_(simulation_context)
-    ,  pm_(simulation_context.processing_unit_memory_t())
+    , pm_(simulation_context.processing_unit_memory_t())
     , P(simulation_context, gkvec)
     , q_op(q_op)
     , ispn_(ispn)
@@ -183,10 +184,7 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
 {
     using complex_t = std::complex<double>;
     /* compute C <- <ϐ|P|ϐ> */
-    auto C = inner_beta(this->pm_, *bp,
-                        [pm=this->pm_, &P = this->P](auto& Y) {
-                            return P.apply(Y, pm);
-                        });
+    auto C = inner_beta(this->pm_, *bp, [pm = this->pm_, &P = this->P](auto& Y) { return P.apply(Y, pm); });
 
     matrix<numeric_t> CQ({C.size(0), q_op->size(1)}, memory_t::host);
     if (is_device_memory(this->pm_)) {
