@@ -47,8 +47,8 @@ template <class numeric_t>
 class DiagonalPreconditioner
 {
   public:
-    DiagonalPreconditioner(Simulation_context& ctx)
-        : ctx_(ctx)
+    DiagonalPreconditioner(Simulation_context const& ctx)
+        // : ctx_(ctx)
     {
     }
     mdarray<numeric_t, 2>
@@ -58,7 +58,7 @@ class DiagonalPreconditioner
 
   protected:
     mdarray<numeric_t, 1> d_;
-    Simulation_context& ctx_;
+    // Simulation_context& ctx_;
 };
 
 template <class numeric_t>
@@ -107,7 +107,7 @@ template <class numeric_t>
 class Teter : DiagonalPreconditioner<numeric_t>, public local::OperatorBase
 {
   public:
-    Teter(Simulation_context& ctx, const fft::Gvec& gkvec)
+    Teter(Simulation_context const& ctx, fft::Gvec const& gkvec)
         : DiagonalPreconditioner<numeric_t>(ctx)
         , local::OperatorBase(gkvec.count())
     {
@@ -142,38 +142,40 @@ template <class numeric_t>
 class Ultrasoft_preconditioner : public local::OperatorBase
 {
   public:
-    Ultrasoft_preconditioner(Simulation_context& simulation_context, const Q_operator<double>& q_op, int ispn,
-                             const Beta_projectors_base<double>& bp, const fft::Gvec& gkvec);
+    Ultrasoft_preconditioner(Simulation_context const& simulation_context, std::shared_ptr<Q_operator<double> const> q_op,
+                             int ispn, std::shared_ptr<Beta_projectors_base<double> const> bp, const fft::Gvec& gkvec);
 
     mdarray<numeric_t, 2>
     apply(const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
     void
     apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
-    const Simulation_context&
-    ctx() const
-    {
-        return ctx_;
-    }
+    // const Simulation_context&
+    // ctx() const
+    // {
+    //     return ctx_;
+    // }
 
   private:
     // cannot be const, because memory pool is used
-    Simulation_context& ctx_;
+    // Simulation_context& ctx_;
+    memory_t pm_;
     Teter<numeric_t> P;
-    const Q_operator<double>& q_op;
+    std::shared_ptr<Q_operator<double> const> q_op;
     int ispn_;
-    const Beta_projectors_base<double>& bp_;
+    std::shared_ptr<Beta_projectors_base<double> const> bp_;
     mdarray<int, 1> ipiv_;
     mdarray<numeric_t, 2> LU_;
 };
 
 template <class numeric_t>
-Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context& simulation_context,
-                                                              const Q_operator<double>& q_op, int ispn,
-                                                              const Beta_projectors_base<double>& bp,
+Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context const& simulation_context,
+                                                              std::shared_ptr<Q_operator<double> const> q_op, int ispn,
+                                                              std::shared_ptr<Beta_projectors_base<double> const> bp,
                                                               const fft::Gvec& gkvec)
     : local::OperatorBase(gkvec.count())
-    , ctx_(simulation_context)
+    // , ctx_(simulation_context)
+    ,  pm_(simulation_context.processing_unit_memory_t())
     , P(simulation_context, gkvec)
     , q_op(q_op)
     , ispn_(ispn)
@@ -181,17 +183,18 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
 {
     using complex_t = std::complex<double>;
     /* compute C <- <ϐ|P|ϐ> */
-    auto C = inner_beta(bp, simulation_context, [&simulation_context = this->ctx_, &P = this->P](auto& Y) {
-        return P.apply(Y, simulation_context.processing_unit_memory_t());
-    });
+    auto C = inner_beta(this->pm_, *bp,
+                        [pm=this->pm_, &P = this->P](auto& Y) {
+                            return P.apply(Y, pm);
+                        });
 
-    matrix<numeric_t> CQ({C.size(0), q_op.size(1)}, memory_t::host);
-    if (is_device_memory(ctx_.processing_unit_memory_t())) {
+    matrix<numeric_t> CQ({C.size(0), q_op->size(1)}, memory_t::host);
+    if (is_device_memory(this->pm_)) {
         C.allocate(memory_t::host);
         C.copy_to(memory_t::host);
     }
     /* compute C <- C@Q */
-    this->q_op.lmatmul(CQ, C, this->ispn_, memory_t::host);
+    this->q_op->lmatmul(CQ, C, this->ispn_, memory_t::host);
     /* compute C <- 1 + C */
     int n = CQ.size(0);
     // add identiy matrix
@@ -206,13 +209,12 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
     la::wrap(la::lib_t::lapack)
             .getrf(n, n, this->LU_.at(memory_t::host), this->LU_.ld(), this->ipiv_.at(memory_t::host));
     // copy LU factorization to device if needed
-    auto mem = ctx_.processing_unit_memory_t();
-    if (is_device_memory(mem)) {
-        ipiv_.allocate(mem);
-        ipiv_.copy_to(mem);
+    if (is_device_memory(this->pm_)) {
+        ipiv_.allocate(this->pm_);
+        ipiv_.copy_to(this->pm_);
 
-        LU_.allocate(mem);
-        LU_.copy_to(mem);
+        LU_.allocate(this->pm_);
+        LU_.copy_to(this->pm_);
     }
 }
 
@@ -220,7 +222,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 Ultrasoft_preconditioner<numeric_t>::apply(const mdarray<numeric_t, 2>& X, memory_t pm)
 {
-    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? this->pm_ : pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -229,10 +231,10 @@ template <class numeric_t>
 void
 Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm)
 {
-    int num_beta = bp_.num_beta();
+    int num_beta = bp_->num_beta();
     int nbnd     = X.size(1);
 
-    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? this->pm_ : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
 
     la::lib_t la{la::lib_t::blas};
@@ -240,12 +242,12 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
         la = la::lib_t::gpublas;
     }
 
-    auto bp_gen      = bp_.make_generator(pu);
+    auto bp_gen      = bp_->make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd}, get_memory_pool(pm));
     // compute inner Beta^H X -> goes to host memory
-    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors
         auto G         = P.apply(beta_coeffs.pw_coeffs_a_, pm);
@@ -254,6 +256,16 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
         la::wrap(la).gemm('C', 'N', G.size(1), nbnd, G.size(0), &la::constant<numeric_t>::one(), G.at(pm), G.ld(),
                           X.at(pm), X.ld(), &la::constant<numeric_t>::zero(), bphi.at(pm, row_offset, 0), bphi.ld());
     }
+    if (bp_->comm().size() > 1) {
+#ifdef SIRIUS_CUDA
+        cudaDeviceSynchronize();
+#endif
+#ifdef SIRIUS_ROCM
+        hipDeviceSynchronize();
+#endif
+        bp_->comm().allreduce(bphi.at(pm), bphi.size());
+    }
+
     assert(num_beta == static_cast<int>(bphi.size(0)) && nbnd == static_cast<int>(bphi.size(1)));
 
     la::lib_t lapack{la::lib_t::lapack};
@@ -263,12 +275,12 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
     la::wrap(lapack).getrs('N', num_beta, nbnd, LU_.at(pm), LU_.ld(), ipiv_.at(pm), bphi.at(pm), bphi.ld());
 
     auto R = empty_like(bphi, get_memory_pool(pm));
-    q_op.rmatmul(R, bphi, ispn_, pm, -1);
+    q_op->rmatmul(R, bphi, ispn_, pm, -1);
 
     // compute Y <- (1+T')^(-1) X
     this->P.apply(Y, X, pm);
 
-    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
         // apply preconditioner to beta projectors in place
         auto G = P.apply(beta_coeffs.pw_coeffs_a_, pm);
