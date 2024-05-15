@@ -18,6 +18,7 @@ namespace sirius {
 
 namespace md {
 
+
 /** Aligns subspace between two wave-functions.
  *  R = arg min_R' || Ψᵒ R' -  Ψⁱ ||
  *  O = <Ψᵒ|S|Ψⁱ>
@@ -91,6 +92,115 @@ subspace_alignment(Simulation_context& ctx, wf::Wave_functions<T>& wf_out, wf::W
     return rots;
 }
 
+/**
+ *   Compute C(t_{n-2}) * C(t_{n-2}).H *  S(t_{n-2}) * C(t_{n-1})
+ */
+template <class T, class Op>
+void
+transform_dm_extrapolation(Simulation_context& ctx, K_point<T>& kp, wf::Wave_functions<T>& wf_out,
+                           wf::Wave_functions<T> const& wf_n1, wf::Wave_functions<T> const& wf_n2, Op s_op)
+{
+    const int num_spinors = (ctx.num_mag_dims() == 1) ? 2 : 1;
+    const bool nc_mag     = ctx.num_mag_dims() == 3;
+    auto num_wf           = wf::num_bands(wf_n1.num_wf());
+    auto num_mag_dims     = wf::num_mag_dims(ctx.num_mag_dims());
+    int n                 = wf_n1.num_wf();
+
+    auto sphi_n1 = wf::Wave_functions<T>(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::host);
+
+    auto proc_mem_t = ctx.processing_unit_memory_t();
+
+    for (int ispn_step = 0; ispn_step < num_spinors; ++ispn_step) {
+
+        auto Ol = la::dmatrix<std::complex<T>>(num_wf, num_wf, memory_t::host);
+        {
+            auto wf_n1_guard = wf_n1.memory_guard(proc_mem_t, wf::copy_to::device);
+            auto wf_n2_guard = wf_n2.memory_guard(proc_mem_t, wf::copy_to::device);
+            auto sphi_n1_guard  = sphi_n1.memory_guard(proc_mem_t, wf::copy_to::host);
+            s_op[ispn_step]->apply(sphi_n1.pw_coeffs(wf::spin_index(ispn_step)),
+                                   wf_n1.pw_coeffs(wf::spin_index(ispn_step)), proc_mem_t);
+            auto br = wf::band_range(0, num_wf);
+            auto sr = nc_mag ? wf::spin_range(0, 2) : wf::spin_range(ispn_step);
+            // spla inner product
+            wf::inner(ctx.spla_context(), proc_mem_t, sr, wf_n2, br, sphi_n1, br, Ol, 0, 0);
+        }
+        // transform wf_n2 with it
+        wf::transform(ctx.spla_context(), memory_t::host, Ol, 0, 0,             // irow0, jcol0
+                      1.0, wf_n2, wf::spin_index(ispn_step), wf::band_range(n), // input
+                      0.0,                                                      // beta
+                      wf_out, wf::spin_index(ispn_step), wf::band_range(n)      // output
+        );
+    }
+}
+
+template <class T>
+void
+loewdin(Simulation_context& ctx, K_point<T>& kp, Hamiltonian0<T>& H0, wf::Wave_functions<T>& wf_out,
+        wf::Wave_functions<T> const& wf_in)
+{
+    auto Hk               = H0(kp);
+    const int num_spinors = (ctx.num_mag_dims() == 1) ? 2 : 1;
+    const bool nc_mag     = ctx.num_mag_dims() == 3;
+    auto num_wf           = wf::num_bands(wf_in.num_wf());
+    auto num_mag_dims     = wf::num_mag_dims(ctx.num_mag_dims());
+    auto proc_mem_t       = ctx.processing_unit_memory_t();
+
+    // std::cout << "lowedin: wf_in: " << wf_in.checksum(memory_t::host)  << "\n";
+
+
+    std::array<la::dmatrix<std::complex<double>>, 2> ovlp;
+    {
+        wf::Wave_functions<T> swf(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::device);
+        auto wf_in_guard = wf_in.memory_guard(proc_mem_t, wf::copy_to::device);
+
+        for (auto ispin_step = 0; ispin_step < num_spinors; ++ispin_step) {
+            ovlp[ispin_step] = la::dmatrix<std::complex<T>>(num_wf, num_wf, memory_t::host);
+            auto br          = wf::band_range(0, num_wf);
+            auto sr          = nc_mag ? wf::spin_range(0, 2) : wf::spin_range(ispin_step);
+            if (ctx.gamma_point()) {
+                Hk.template apply_s<double>(sr, br, wf_in, swf);
+            } else {
+                Hk.template apply_s<std::complex<double>>(sr, br, wf_in, swf);
+            }
+            /*   compute overlap <wf_out|S|wf_in>   */
+            wf::inner(ctx.spla_context(), proc_mem_t, sr, wf_in, br, swf, br, ovlp[ispin_step], 0, 0);
+
+            // /// DEBUG
+            // std::cout << "OVLP" << "\n";
+            // for (int i = 0; i < ovlp[ispin_step].num_rows(); ++i) {
+            //     for (int j = 0; j < ovlp[ispin_step].num_cols(); ++j) {
+            //         std::cout << ovlp[ispin_step](i,j) << " ";
+            //     }
+            //     std::cout << "\n";
+            // }
+        }
+    }
+    for (int ispn = 0; ispn < wf_in.num_sc(); ++ispn) {
+        la::dmatrix<std::complex<double>> Z(num_wf, num_wf);
+        la::Eigensolver_lapack lapack_ev;
+        std::vector<double> eval(num_wf);
+
+        int ovlp_index = nc_mag ? 0 : ispn;
+        lapack_ev.solve(num_wf, ovlp[ovlp_index], eval.data(), Z);
+        mdarray<std::complex<double>, 1> d({num_wf.get()});
+        for (int i = 0; i < num_wf; ++i) {
+            d[i] = 1 / sqrt(eval[i]);
+
+        }
+        /* R = U * diag(1/sqrt(eval)) * U^H */
+        mdarray<std::complex<double>, 2> tmp = unitary_similarity_transform(0 /* kind */, d, Z);
+        la::dmatrix<std::complex<double>> R_loewdin(num_wf, num_wf);
+        auto_copy(R_loewdin, tmp, device_t::CPU);
+        int n          = wf_in.num_wf();
+        // call spla to transform wfc
+        wf::transform(ctx.spla_context(), memory_t::host, R_loewdin, 0, 0, // irow0, jcol0
+                      1.0, wf_in, wf::spin_index(ispn), wf::band_range(n), // input
+                      0.0,                                                 // beta
+                      wf_out, wf::spin_index(ispn), wf::band_range(n)      // output
+        );
+    }
+}
+
 LinearWfcExtrapolation::LinearWfcExtrapolation(std::shared_ptr<spla::Context> spla_context)
     : spla_context_(spla_context)
 {
@@ -135,7 +245,7 @@ LinearWfcExtrapolation::push_back_history(const K_point_set& kset__, const Densi
             wf::copy(memory_t::host, kp.spinor_wave_functions(), wf::spin_index(i), wf::band_range(nbnd), *wf_tmp,
                      wf::spin_index(i), wf::band_range(nbnd));
 
-            mdarray<std::complex<double>, 1> ek_loc({nbnd});
+            mdarray<double, 1> ek_loc({nbnd});
             for (int ie = 0; ie < nbnd; ++ie) {
                 ek_loc(ie) = kp.band_energy(ie, i);
             }
@@ -175,7 +285,7 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
     }
 
     if (wfc_.size() != 2) {
-        throw std::runtime_error("expected size =2");
+        throw std::runtime_error("expected size == 2");
     }
 
     std::stringstream ss;
@@ -190,8 +300,6 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         RTE_THROW("non-collinear case not implemented");
     }
 
-    const int num_spinors = (ctx.num_mag_dims() == 1) ? 2 : 1;
-
     // Ψ⁽ⁿ⁺¹⁾ = Löwdin(2 Ψ⁽ⁿ⁾ - Ψ⁽ⁿ⁻¹⁾)
     for (auto it : kset__.spl_num_kpoints()) {
         auto& kp          = *kset__.get<double>(it.i);
@@ -200,92 +308,40 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         auto num_wf       = wf::num_bands(wfc.num_wf());
         auto num_mag_dims = wf::num_mag_dims(ctx.num_mag_dims());
 
+
+        auto& wfc_prev = *(wfc_.back().at(it.i));
+
+        // psi_tilde <- 2*C(t_{n-1})
         wf::Wave_functions<double> psi_tilde(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::host);
+        auto br = wf::band_range(0, wfc.num_wf());
+        auto sr = wf::spin_range(num_mag_dims+1);
+        std::vector<double> twos(num_wf, 2);
+        std::vector<double> zeros(num_wf, 0);
+        wf::axpby(memory_t::host, sr, br, twos.data(), &wfc, zeros.data(), &psi_tilde);
 
-        auto& wfc_prev = wfc_.back().at(it.i);
-        auto rot_up_dn = subspace_alignment(ctx, wfc, *wfc_prev, kp, H0);
+        wf::Wave_functions<double> wf_tmp(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::host);
+        transform_dm_extrapolation(ctx, kp, wf_tmp /* output */, wfc, wfc_prev, this->s_op_.back().at(it.i));
+        // psi_tilde <- psi_tilde - wf_tmp
+        std::vector<double> minus_ones(num_wf, -1.0);
+        std::vector<double> ones(num_wf, 1.0);
+        wf::axpby(memory_t::host, wf::spin_range(0, num_mag_dims + 1), wf::band_range(0, wfc.num_wf()), minus_ones.data(),
+                  &wf_tmp, ones.data(), &psi_tilde);
+        // std::cout << "after axpby: " << psi_tilde.checksum(memory_t::host) << "\n";
 
-        for (int ispn = 0; ispn < num_sc; ++ispn) {
-            auto sp             = wf::spin_index(ispn);
-            auto* psi_tilde_ptr = psi_tilde.pw_coeffs(sp).host_data();
-            auto* psi_ptr       = wfc.pw_coeffs(sp).host_data();
-            auto* psi_prev_ptr  = wfc_prev->pw_coeffs(sp).host_data();
+        // re-orthogonalize and write result back to wfc stored in k-point (host memory)
+        loewdin(ctx, kp, H0, wfc, psi_tilde);
+        // std::cout << "after loewdin: " << wfc.checksum(memory_t::host) << "\n";
+        // extrapolate band energies
+        for (int ispn=0; ispn < num_sc; ++ispn) {
+            // extrapolate band energies
+            int nbnd = ctx.num_bands();
+            std::vector<double> enew(nbnd);
+            auto& en_curr = this->band_energies_.front().at(it.i)[ispn];
+            auto& en_prev = this->band_energies_.back().at(it.i)[ispn];
             #pragma omp parallel for
-            for (auto i = 0ul; i < wfc.pw_coeffs(sp).size(); ++i) {
-                *(psi_tilde_ptr + i) = 2.0 * (*(psi_ptr + i)) - (*(psi_prev_ptr + i));
+            for (int ib = 0; ib < ctx.num_bands(); ++ib) {
+                kp.band_energy(ib, ispn, 2 * en_curr[ib] - en_prev[ib]);
             }
-        }
-        /* Löwdin orthogonalization */
-        auto Hk         = H0(kp);
-        auto proc_mem_t = ctx.processing_unit_memory_t();
-        std::array<la::dmatrix<std::complex<double>>, 2> ovlp_spinor;
-        // compute S|psi~>
-        {
-            auto sphi = std::make_shared<wf::Wave_functions<double>>(kp.gkvec_sptr(), num_mag_dims, num_wf, proc_mem_t);
-            auto phi_guard = psi_tilde.memory_guard(proc_mem_t, wf::copy_to::device);
-
-            for (auto ispin_step = 0; ispin_step < num_spinors; ++ispin_step) {
-                ovlp_spinor[ispin_step] = la::dmatrix<std::complex<double>>(num_wf, num_wf, memory_t::host);
-                auto br                 = wf::band_range(0, num_wf);
-                auto sr                 = nc_mag ? wf::spin_range(0, 2) : wf::spin_range(ispin_step);
-                if (ctx.gamma_point()) {
-                    Hk.apply_s<double>(sr, br, psi_tilde, *sphi);
-                } else {
-                    Hk.apply_s<std::complex<double>>(sr, br, psi_tilde, *sphi);
-                }
-                /*   compute overlap <psi~|S|psi~>   */
-                wf::inner(kset__.ctx().spla_context(), proc_mem_t, sr, psi_tilde, br, *sphi, br,
-                          ovlp_spinor[ispin_step], 0, 0);
-            }
-        }
-        la::lib_t la{la::lib_t::blas};
-        for (int ispn = 0; ispn < num_sc; ++ispn) {
-            int ovlp_index = nc_mag ? 0 : ispn;
-            /*   compute eig(<psi|S|psi>)   */
-            la::dmatrix<std::complex<double>> Z(num_wf, num_wf);
-            la::Eigensolver_lapack lapack_ev;
-            std::vector<double> eval(num_wf);
-            lapack_ev.solve(num_wf, ovlp_spinor[ovlp_index], eval.data(), Z);
-
-            mdarray<std::complex<double>, 1> d({num_wf.get()});
-            for (int i = 0; i < num_wf; ++i) {
-                d[i] = 1 / sqrt(eval[i]);
-            }
-
-            /* R = U * diag(1/sqrt(eval)) * U^H */
-            auto R_lowedin = unitary_similarity_transform(0, d, Z);
-            auto ptr_one   = &la::constant<std::complex<double>>::one();
-            auto ptr_zero  = &la::constant<std::complex<double>>::zero();
-            const std::complex<double>* psi_tilde_ptr =
-                    psi_tilde.at(memory_t::host, 0, wf::spin_index(ispn), wf::band_index(0));
-
-            /* band energies */
-            matrix<std::complex<double>> U_e({num_wf.get(), num_wf.get()});
-            auto eprev = la::diag(band_energies_.back().at(it.i)[ispn]);
-            auto ecur  = la::unitary_similarity_transform(1, band_energies_.back().at(it.i)[ispn], rot_up_dn[ispn]);
-
-            auto eprime = empty_like(ecur);
-#pragma omp parallel for
-            for (auto ii = 0ul; ii < ecur.size(); ++ii) {
-                *(eprime.at(memory_t::host) + ii) =
-                        2.0 * (*(ecur.at(memory_t::host) + ii)) - *(eprev.at(memory_t::host) + ii);
-            }
-            // // diagonalize eprime, U_e
-            std::vector<double> enew(num_wf.get());
-            lapack_ev.solve_(num_wf.get(), eprime, enew.data(), U_e);
-            for (auto ib = 0ul; ib < enew.size(); ++ib) {
-                kp.band_energy(ib, ispn, enew[ib]);
-            }
-            ///  U_final <- R_loweding * U_e
-            matrix<std::complex<double>> U_final = empty_like(U_e);
-            la::wrap(la).gemm('N', 'N', num_wf, num_wf, num_wf, ptr_one, R_lowedin.at(memory_t::host), R_lowedin.ld(),
-                              U_e.at(memory_t::host), U_e.ld(), ptr_zero, U_final.at(memory_t::host), U_final.ld());
-
-            /* transform wfc  with U_final */
-            int num_gkvec_loc = kp.num_gkvec_loc();
-            auto wf_i_ptr     = wfc.at(memory_t::host, 0, wf::spin_index(ispn), wf::band_index(0));
-            la::wrap(la).gemm('N', 'N', num_gkvec_loc, num_wf, num_wf, ptr_one, psi_tilde_ptr, psi_tilde.ld(),
-                              U_final.at(memory_t::host), U_final.ld(), ptr_zero, wf_i_ptr, num_gkvec_loc);
         }
     }
 
