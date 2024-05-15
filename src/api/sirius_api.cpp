@@ -5728,8 +5728,8 @@ sirius_nlcg_params(void* const* gs_handler__, void* const* ks_handler__, double 
 
                 sirius::Hamiltonian0<double> H0(potential, false);
 
-                sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
-                sirius::Overlap_operators<sirius::S_k<std::complex<double>>> S(kset, ctx, H0.Q());
+                sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q_ptr());
+                sirius::Overlap_operators<sirius::S_k<std::complex<double>>> S(kset, ctx, H0.Q_ptr());
 
                 // ultrasoft pp
                 nlcglib::nlcg_info info;
