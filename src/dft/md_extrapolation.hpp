@@ -43,7 +43,7 @@ class LinearWfcExtrapolation : MDExtrapolation
     std::list<kp_map<s_op_vt>> s_op_;
     /// store band energies as complex, they need to be transformed into a
     /// pseudo-Hamiltonian matrix, which is complex
-    using e_vec_t = mdarray<std::complex<double>, 1>;
+    using e_vec_t = mdarray<double, 1>;
     /// spin up/dn band energy
     using e_vec_kp_t = std::array<e_vec_t, 2>;
     std::list<kp_map<e_vec_kp_t>> band_energies_;
