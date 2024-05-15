@@ -2027,7 +2027,7 @@ wrap::dgmm(char sidemode, int m, int n, const ftn_double_complex* A, int lda, co
             switch (sidemode) {
                 case 'l':
                 case 'L': {
-#pragma omp parallel for
+                    #pragma omp parallel for
                     for (int j = 0; j < n; ++j) {
                         for (int i = 0; i < m; ++i) {
                             C[i + j * ldc] = A[i + j * lda] * x[i * incx];
@@ -2037,7 +2037,7 @@ wrap::dgmm(char sidemode, int m, int n, const ftn_double_complex* A, int lda, co
                 }
                 case 'r':
                 case 'R': {
-#pragma omp parallel for
+                    #pragma omp parallel for
                     for (int j = 0; j < n; ++j) {
                         ftn_double_complex xj = x[incx * j];
                         for (int i = 0; i < m; ++i) {
@@ -2278,7 +2278,7 @@ diag(mdarray<T, 2> const& A__) -> mdarray<T, 1>
     mdarray<T, 1> out({n}, get_memory_pool(memory_t::host));
     out.zero();
     for (int i = 0; i < n; ++i) {
-        out(i) = A__(i,i);
+        out(i) = A__(i, i);
     }
     return out;
 }
