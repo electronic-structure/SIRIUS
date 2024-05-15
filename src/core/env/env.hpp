@@ -16,7 +16,6 @@
 
 #include <cstdlib>
 #include <string>
-#include <algorithm>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -143,7 +142,8 @@ check_scf_density()
 }
 
 inline bool
-skip_wfct_extrapolation() {
+skip_wfct_extrapolation()
+{
     auto val = env::get_value_ptr<int>("SIRIUS_SKIP_WFC_EXTRAPOLATION");
     if (val) {
         return *val;
