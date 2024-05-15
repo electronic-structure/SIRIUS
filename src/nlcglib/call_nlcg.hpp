@@ -60,8 +60,8 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
 
     Hamiltonian0<double> H0(potential, false /* precompute laplw */);
 
-    sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
-    sirius::Overlap_operators<sirius::S_k<numeric_t>> S(kset, ctx, H0.Q());
+    sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q_ptr());
+    sirius::Overlap_operators<sirius::S_k<numeric_t>> S(kset, ctx, H0.Q_ptr());
 
     // ultrasoft pp
     switch (nlcg_pu) {

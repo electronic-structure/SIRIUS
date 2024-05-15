@@ -14,9 +14,7 @@
 #ifndef __APPLY_HAMILTONIAN_HPP__
 #define __APPLY_HAMILTONIAN_HPP__
 
-#include "potential/potential.hpp"
 #include "hamiltonian/hamiltonian.hpp"
-#include "density/density.hpp"
 #include "core/wf/wave_functions.hpp"
 #include <memory>
 #include <complex>

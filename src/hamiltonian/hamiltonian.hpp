@@ -75,10 +75,10 @@ class Hamiltonian0
     std::unique_ptr<Local_operator<T>> local_op_;
 
     /// D operator (non-local part of Hamiltonian).
-    std::unique_ptr<D_operator<T>> d_op_;
+    std::shared_ptr<D_operator<T>> d_op_;
 
     /// Q operator (non-local part of S-operator).
-    std::unique_ptr<Q_operator<T>> q_op_;
+    std::shared_ptr<Q_operator<T>> q_op_;
 
     std::vector<mdarray<std::complex<T>, 2>> hmt_;
 
@@ -123,6 +123,12 @@ class Hamiltonian0
     Q() const
     {
         return *q_op_;
+    }
+
+    auto
+    Q_ptr() const -> std::shared_ptr<Q_operator<T> const>
+    {
+        return q_op_;
     }
 
     inline D_operator<T>&

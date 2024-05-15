@@ -155,7 +155,7 @@ class K_point
     int num_ranks_row_;
 
     /// Beta projectors for a local set of G+k vectors.
-    std::unique_ptr<Beta_projectors<T>> beta_projectors_{nullptr};
+    std::shared_ptr<Beta_projectors<T>> beta_projectors_{nullptr};
 
     /// Beta projectors for row G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
@@ -755,6 +755,12 @@ class K_point
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
         return *beta_projectors_;
+    }
+
+    auto
+    beta_projectors_ptr() const -> std::shared_ptr<Beta_projectors<T> const>
+    {
+        return beta_projectors_;
     }
 
     auto

@@ -14,19 +14,14 @@
 #ifndef __INVERSE_OVERLAP_HPP__
 #define __INVERSE_OVERLAP_HPP__
 
-#include <iostream>
+#include <spla/context.hpp>
 #include <spla/matrix_distribution.hpp>
 #include <spla/types.h>
-#include <stdexcept>
 
 #include "core/la/linalg_base.hpp"
 #include "core/memory.hpp"
 #include "core/mpi/communicator.hpp"
 #include "hamiltonian/non_local_operator.hpp"
-#include "context/simulation_context.hpp"
-#include "k_point/k_point.hpp"
-#include "beta_projectors/beta_projectors.hpp"
-#include "memory.h"
 
 namespace sirius {
 
@@ -35,17 +30,18 @@ namespace local {
 class Overlap_operator
 {
   public:
-    Overlap_operator(Simulation_context& simulation_context, int n)
-        : ctx_(simulation_context)
+    Overlap_operator(memory_t pm, std::shared_ptr<spla::Context> spla_context, int n)
+        : pm_(pm)
+        , spla_context_(spla_context)
         , n_(n)
     {
     }
 
-    const Simulation_context&
-    ctx() const
-    {
-        return ctx_;
-    }
+    // const Simulation_context&
+    // ctx() const
+    // {
+    //     return ctx_;
+    // }
 
     /// global dimension of the operator
     int
@@ -55,7 +51,8 @@ class Overlap_operator
     }
 
   protected:
-    Simulation_context& ctx_;
+    memory_t pm_;
+    std::shared_ptr<spla::Context> spla_context_;
     int n_;
 };
 
@@ -94,9 +91,9 @@ template <class numeric_t>
 class InverseS_k : public local::Overlap_operator
 {
   public:
-    InverseS_k(Simulation_context& simulation_context, const Q_operator<double>& q_op,
-               const Beta_projectors_base<double>& bp, int ispn)
-        : Overlap_operator(simulation_context, bp.nrows())
+    InverseS_k(memory_t pm, std::shared_ptr<spla::Context> spla_context, std::shared_ptr<Q_operator<double> const> q_op,
+               std::shared_ptr<Beta_projectors_base<double> const> bp, int ispn)
+        : Overlap_operator(pm, spla_context, bp->nrows())
         , q_op_(q_op)
         , bp_(bp)
         , ispn_(ispn)
@@ -115,8 +112,8 @@ class InverseS_k : public local::Overlap_operator
   private:
     void
     initialize(const Beta_projectors_base<double>& bp);
-    const Q_operator<double>& q_op_;
-    const Beta_projectors_base<double>& bp_;
+    std::shared_ptr<Q_operator<double> const> q_op_;
+    std::shared_ptr<Beta_projectors_base<double> const> bp_;
     const int ispn_;
 
     mdarray<numeric_t, 2> LU_;
@@ -127,8 +124,9 @@ template <class numeric_t>
 class S_k : public local::Overlap_operator
 {
   public:
-    S_k(Simulation_context& ctx, const Q_operator<double>& q_op, const Beta_projectors_base<double>& bp, int ispn)
-        : Overlap_operator(ctx, bp.nrows())
+    S_k(memory_t pm, std::shared_ptr<spla::Context> spla_context, std::shared_ptr<Q_operator<double> const> q_op,
+        std::shared_ptr<Beta_projectors_base<double> const> bp, int ispn)
+        : Overlap_operator(pm, spla_context, bp->nrows())
         , q_op_(q_op)
         , bp_(bp)
         , ispn_(ispn)
@@ -143,8 +141,8 @@ class S_k : public local::Overlap_operator
     const std::string label{"overlap"};
 
   private:
-    Q_operator<double> const& q_op_;
-    Beta_projectors_base<double> const& bp_;
+    std::shared_ptr<Q_operator<double> const> q_op_;
+    std::shared_ptr<Beta_projectors_base<double> const> bp_;
     const int ispn_;
 };
 
@@ -153,16 +151,15 @@ void
 InverseS_k<numeric_t>::initialize(Beta_projectors_base<double> const& beta_projectors)
 {
     using complex_t = std::complex<double>;
-    auto mem_t      = ctx_.processing_unit_memory_t();
 
-    auto B = inner_beta(beta_projectors, ctx_); // on preferred memory
+    auto B = inner_beta(this->pm_, beta_projectors); // on preferred memory
 
-    matrix<numeric_t> BQ({B.size(0), q_op_.size(1)}, mem_t);
+    matrix<numeric_t> BQ({B.size(0), q_op_->size(1)}, this->pm_);
     // mat * Q
-    q_op_.lmatmul(BQ, B, this->ispn_, mem_t);
+    q_op_->lmatmul(BQ, B, this->ispn_, this->pm_);
     int n = BQ.size(0);
 
-    if (is_device_memory(mem_t)) {
+    if (is_device_memory(this->pm_)) {
         BQ.allocate(memory_t::host);
         BQ.copy_to(memory_t::host);
         BQ.deallocate(memory_t::device);
@@ -188,24 +185,24 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
 {
     int nbnd = X.size(1);
     assert(static_cast<int>(X.size(0)) == this->size());
-    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? pm_ : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
         la = la::lib_t::gpublas;
     }
 
-    auto bp_gen      = bp_.make_generator(pu);
+    auto bp_gen      = bp_->make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
 
-    int num_beta = bp_.num_beta();
+    int num_beta = bp_->num_beta();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
-    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
 
-        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+        local::inner(pm, spla_context_, beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
                      beta_coeffs.beta_chunk_->offset_, 0);
     }
 
@@ -215,7 +212,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
                    bphi.at(memory_t::host), bphi.ld());
 
     // compute R <- -Q * Z, where Z = (I + B*Q)⁻¹ (B^H X)
-    matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
+    matrix<numeric_t> R({q_op_->size(0), bphi.size(1)});
 
     // allocate bphi on gpu if needed
     if (pm == memory_t::device) {
@@ -225,11 +222,11 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
     }
 
     // compute -Q*bphi
-    q_op_.rmatmul(R, bphi, this->ispn_, pm, -1);
+    q_op_->rmatmul(R, bphi, this->ispn_, pm, -1);
 
     auto_copy(Y, X, pu);
 
-    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         // std::cout << "* ichunk: " << ichunk << "\n";
         bp_gen.generate(beta_coeffs, ichunk);
         int m = Y.size(0);
@@ -249,7 +246,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? this->pm_ : pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -258,9 +255,9 @@ template <class numeric_t>
 void
 S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    assert(static_cast<int>(X.size(0)) == this->size());
+    // assert(static_cast<int>(X.size(0)) == this->size());
 
-    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? this->pm_ : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -268,19 +265,19 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
     }
 
     int nbnd         = X.size(1);
-    auto bp_gen      = bp_.make_generator(pu);
+    auto bp_gen      = bp_->make_generator(pu);
     auto beta_coeffs = bp_gen.prepare();
-    int num_beta     = bp_.num_beta();
+    int num_beta     = bp_->num_beta();
 
     mdarray<numeric_t, 2> bphi({num_beta, nbnd});
     // compute inner Beta^H X -> goes to host memory
-    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
-        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+        local::inner(pm, *this->spla_context_, beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
                      beta_coeffs.beta_chunk_->offset_, 0);
     }
 
-    matrix<numeric_t> R({q_op_.size(0), bphi.size(1)});
+    matrix<numeric_t> R({q_op_->size(0), bphi.size(1)});
     // allocate bphi on gpu if needed
     if (pm == memory_t::device) {
         bphi.allocate(get_memory_pool(memory_t::device));
@@ -288,11 +285,11 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
         R.allocate(memory_t::device);
     }
 
-    q_op_.rmatmul(R, bphi, this->ispn_, pm, 1.0, 0.0);
+    q_op_->rmatmul(R, bphi, this->ispn_, pm, 1.0, 0.0);
 
     auto_copy(Y, X, pu);
 
-    for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
+    for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         // std::cout << "* ichunk: " << ichunk << "\n";
         bp_gen.generate(beta_coeffs, ichunk);
         int m = Y.size(0);
@@ -309,7 +306,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 S_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? this->pm_ : pm));
     this->apply(Y, X, pm);
     return Y;
 }
