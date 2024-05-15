@@ -14,8 +14,10 @@
 #ifndef __K_POINT_SET_HPP__
 #define __K_POINT_SET_HPP__
 
+#include "context/simulation_context.hpp"
 #include "k_point.hpp"
 #include "dft/smearing.hpp"
+#include "unit_cell/unit_cell.hpp"
 
 namespace sirius {
 
@@ -107,9 +109,9 @@ class K_point_set
     void
     sync_band();
 
-    /// Find Fermi energy and band occupation numbers.
+    /// Find Fermi energy and band occupation numbers. Returns ne_diff (Newton protocol)
     template <typename T>
-    void
+    double
     find_band_occupancies();
 
     /// Print basic info to the standard output.
@@ -253,14 +255,20 @@ class K_point_set
         return -1;
     }
 
-    inline auto&
-    ctx()
+    auto
+    ctx() -> Simulation_context&
     {
         return ctx_;
     }
 
-    const auto&
-    unit_cell()
+    auto
+    ctx() const -> Simulation_context const&
+    {
+        return ctx_;
+    }
+
+    auto
+    unit_cell() -> Unit_cell const&
     {
         return ctx_.unit_cell();
     }

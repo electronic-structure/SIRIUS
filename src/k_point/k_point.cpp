@@ -398,7 +398,7 @@ K_point<T>::update()
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::make_unique<Beta_projectors<T>>(ctx_, gkvec());
+        beta_projectors_ = std::make_shared<Beta_projectors<T>>(ctx_, gkvec());
 
         if (ctx_.cfg().iterative_solver().type() == "exact") {
             beta_projectors_row_ = std::make_unique<Beta_projectors<T>>(ctx_, *gkvec_row_);

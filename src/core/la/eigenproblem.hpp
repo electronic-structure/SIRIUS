@@ -78,7 +78,7 @@ class Eigensolver_lapack : public Eigensolver
     /// Solve a standard eigen-value problem for all eigen-pairs.
     template <typename T>
     int
-    solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
+    solve_(ftn_int matrix_size__, matrix<T>& A__, real_type<T>* eval__, matrix<T>& Z__)
     {
         ftn_int info;
         ftn_int lda = A__.ld();
