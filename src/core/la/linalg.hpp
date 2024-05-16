@@ -2050,12 +2050,14 @@ wrap::dgmm(char sidemode, int m, int n, const ftn_double_complex* A, int lda, co
                     throw std::runtime_error(linalg_msg_wrong_type);
             }
         }
+#ifdef SIRIUS_GPU
         case lib_t::gpublas: {
             acc::blas::zdgmm(sidemode, m, n, reinterpret_cast<acc_complex_double_t const*>(A), lda,
                              reinterpret_cast<acc_complex_double_t const*>(x), incx,
                              reinterpret_cast<acc_complex_double_t*>(C), ldc);
             return;
         }
+#endif
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
