@@ -46,8 +46,9 @@ init_operators(py::module& m)
             .def_property_readonly("U", &Hamiltonian_k<PT>::U, py::return_value_policy::reference_internal);
 
     py::class_<S_k<complex_double>>(m, "S_k")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
+            .def(py::init<memory_t, std::shared_ptr<spla::Context>, std::shared_ptr<Q_operator<PT> const>,
+                          std::shared_ptr<Beta_projectors_base<PT> const>, int>(),
+                 py::keep_alive<1, 2>())
             .def_property_readonly("size", &S_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t = S_k<complex_double>;
@@ -72,8 +73,8 @@ init_operators(py::module& m)
             });
 
     py::class_<InverseS_k<complex_double>>(m, "InverseS_k")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
+            .def(py::init<memory_t, std::shared_ptr<spla::Context>, std::shared_ptr<Q_operator<PT> const>,
+                          std::shared_ptr<Beta_projectors_base<PT> const>, int>())
             .def_property_readonly("size", &InverseS_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t       = InverseS_k<complex_double>;
@@ -98,9 +99,9 @@ init_operators(py::module& m)
             });
 
     py::class_<Ultrasoft_preconditioner<complex_double>>(m, "Precond_us")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, int, const Beta_projectors_base<PT>&,
-                          const fft::Gvec&>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 5>(), py::keep_alive<1, 6>())
+            .def(py::init<Simulation_context&, std::shared_ptr<Q_operator<PT> const>, int,
+                          std::shared_ptr<Beta_projectors_base<PT> const>, const fft::Gvec&>(),
+                 py::keep_alive<1, 2>())
             .def_property_readonly("size", &Ultrasoft_preconditioner<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t    = Ultrasoft_preconditioner<complex_double>;

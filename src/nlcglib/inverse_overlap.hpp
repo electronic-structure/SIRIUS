@@ -98,7 +98,7 @@ class InverseS_k : public local::Overlap_operator
         , bp_(bp)
         , ispn_(ispn)
     {
-        initialize(bp);
+        initialize(*bp);
     }
 
     mdarray<numeric_t, 2>
@@ -202,7 +202,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
     for (int ichunk = 0; ichunk < bp_->num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
 
-        local::inner(pm, spla_context_, beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+        local::inner(pm, *spla_context_, beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
                      beta_coeffs.beta_chunk_->offset_, 0);
     }
 

@@ -14,6 +14,7 @@
 #ifndef __K_POINT_HPP__
 #define __K_POINT_HPP__
 
+#include "context/simulation_context.hpp"
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
@@ -784,8 +785,8 @@ class K_point
         return *beta_projectors_col_;
     }
 
-    auto const&
-    ctx() const
+    auto
+    ctx() const -> Simulation_context const&
     {
         return ctx_;
     }

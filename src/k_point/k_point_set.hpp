@@ -17,6 +17,7 @@
 #include "context/simulation_context.hpp"
 #include "k_point.hpp"
 #include "dft/smearing.hpp"
+#include "unit_cell/unit_cell.hpp"
 
 namespace sirius {
 
@@ -266,8 +267,8 @@ class K_point_set
         return ctx_;
     }
 
-    const auto&
-    unit_cell()
+    auto
+    unit_cell() -> Unit_cell const&
     {
         return ctx_.unit_cell();
     }
