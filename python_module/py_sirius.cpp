@@ -6,7 +6,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "k_point/k_point_set.hpp"
+#include "context/simulation_context.hpp"
+#include "k_point/k_point.hpp"
 #include "python_module_includes.hpp"
 #include <mpi.h>
 
@@ -415,7 +416,8 @@ PYBIND11_MODULE(py_sirius, m)
             .def(py::init<Simulation_context&, r3::vector<int>, r3::vector<int>, bool>(), py::keep_alive<1, 2>())
             .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
             .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
-            .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
+            .def("ctx", static_cast<Simulation_context const& (K_point_set::*)() const>(&K_point_set::ctx),
+                 py::return_value_policy::reference_internal)
             .def("unit_cell", &K_point_set::unit_cell, py::return_value_policy::reference_internal)
             .def("_num_kpoints", &K_point_set::num_kpoints)
             .def("size", [](K_point_set& ks) -> int { return ks.spl_num_kpoints().local_size(); })
