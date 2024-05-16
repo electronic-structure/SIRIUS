@@ -1518,7 +1518,7 @@ empty_like(const mdarray<T, N>& src, memory_pool& mempool)
 
 template <typename T, int N>
 auto
-zeros_like(const mdarray<T, N>& src) -> mdarray<T,N>
+zeros_like(const mdarray<T, N>& src) -> mdarray<T, N>
 {
     auto res = empty_like(src);
     res.zero();
