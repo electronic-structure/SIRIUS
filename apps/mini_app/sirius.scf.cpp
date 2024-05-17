@@ -236,8 +236,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         if (ctx.comm().rank() == 0) {
             std::string output_file = args.value<std::string>("output", std::string("output_") + ctx.start_time_tag() +
                                                                                 std::string(".json"));
-            std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
-            ofs << dict.dump(4);
+            write_json_to_file(dict, output_file);
         }
 
         // if (args.exist("aiida_output")) {
@@ -378,7 +377,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     /* wait for all */
     ctx.comm().barrier();
 
-    return result["energy"]["total"].get<double>();
+    return result["energy"]["free"].get<double>();
 }
 
 /// Run a task based on a command line input.
@@ -417,7 +416,7 @@ run_tasks(cmd_args const& args)
         int write_output{0};
 
         int rank{0};
-        int num_steps{10};
+        int num_steps{7};
         std::vector<double> volume;
         std::vector<double> energy;
         for (int i = 0; i < num_steps; i++) {
@@ -437,6 +436,10 @@ run_tasks(cmd_args const& args)
             for (int i = 0; i < num_steps; i++) {
                 std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
             }
+            json dict;
+            dict["volume"] = volume;
+            dict["energy"] = energy;
+            write_json_to_file(dict, "output_eos.json");
         }
     }
 

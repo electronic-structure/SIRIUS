@@ -36,8 +36,7 @@ int
 main(int argn, char** argv)
 {
     cmd_args args(argn, argv,
-                  {{"file=", "(string) atomic file name"},
-                   {"method=", "(string) electronic structure method"}});
+                  {{"file=", "(string) atomic file name"}, {"method=", "(string) electronic structure method"}});
     sirius::initialize(1);
     read_atom(args);
     sirius::finalize();
