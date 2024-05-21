@@ -63,7 +63,7 @@ rewrite_relative_paths(json& dict__, fs::path const& working_directory = fs::cur
     }
 }
 
-nlohmann::json
+auto
 preprocess_json_input(std::string fname__)
 {
     if (fname__.find("{") == std::string::npos) {
@@ -97,7 +97,7 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
     return ctx_ptr;
 }
 
-double
+auto
 ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
 {
     print_memory_usage(ctx.out(), FILE_LINE);
@@ -163,7 +163,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         compute_forces = true;
     }
 
-    nlohmann::json result;
+    json result;
 
     Lattice_relaxation lr(dft);
 
@@ -377,7 +377,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     /* wait for all */
     ctx.comm().barrier();
 
-    return result["energy"]["free"].get<double>();
+    return result;
 }
 
 /// Run a task based on a command line input.
@@ -415,6 +415,11 @@ run_tasks(cmd_args const& args)
 
         int write_output{0};
 
+        json dict;
+        json_output_common(dict);
+        // dict["context"] = ctx.serialize();
+        dict["result"] = {};
+
         int rank{0};
         int num_steps{7};
         std::vector<double> volume;
@@ -428,15 +433,15 @@ run_tasks(cmd_args const& args)
             ctx->unit_cell().set_lattice_vectors(lv);
             ctx->initialize();
             auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+            dict["result"] += e;
             volume.push_back(ctx->unit_cell().omega());
-            energy.push_back(e);
+            energy.push_back(e["energy"]["free"].get<double>());
         }
         if (rank == 0) {
             std::cout << "final result:" << std::endl;
             for (int i = 0; i < num_steps; i++) {
                 std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
             }
-            json dict;
             dict["volume"] = volume;
             dict["energy"] = energy;
             write_json_to_file(dict, "output_eos.json");
