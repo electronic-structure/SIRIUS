@@ -405,8 +405,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         for (int ir = 0; ir < density_.rho().rg().spfft().local_slice_size(); ir++) {
             rho_min = std::min(rho_min, density_.rho().rg().value(ir));
         }
-        dict["rho_min"] = rho_min;
         ctx_.comm().allreduce<double, mpi::op_t::min>(&rho_min, 1);
+        dict["rho_min"] = rho_min;
     }
 
     dict["scf_time"]     = std::chrono::duration_cast<std::chrono::duration<double>>(tstop - tstart).count();
@@ -422,11 +422,6 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     if (env::check_scf_density()) {
         check_scf_density();
     }
-
-    // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
-    // dict["volume_units"] = "angstrom^3";
-    // dict["energy"] = dft.total_energy() * ha2ev;
-    // dict["energy_units"] = "eV";
 
     return dict;
 }
