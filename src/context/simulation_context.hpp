@@ -285,6 +285,9 @@ class Simulation_context : public Simulation_parameters
     /// Stores all radial integrals.
     radial_integrals_t ri_;
 
+    /// MPI grid for muffin-tin symmetrization.
+    std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
+
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
     /// Total number of iterative solver steps.
@@ -845,6 +848,12 @@ class Simulation_context : public Simulation_parameters
             ptr = &pf_ext_ptr.at(label__);
         }
         return ptr;
+    }
+
+    inline auto const&
+    mpi_grid_mt_sym(int ic__) const
+    {
+        return *mpi_grid_mt_sym_[ic__];
     }
 };
 

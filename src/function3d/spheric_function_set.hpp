@@ -24,13 +24,16 @@ class Spheric_function_set
     /// Text label of the function set.
     std::string label_;
     /// List of atoms for which the spherical expansion is defined.
+    /** Global atom index in the range [0, unit_cell.num_atoms()) is stored here. */
     std::vector<int> atoms_;
     /// Split the number of atoms between MPI ranks.
     /** If the pointer is null, spheric functions set is treated as global, without MPI distribution */
     splindex_block<I> const* spl_atoms_{nullptr};
     /// List of spheric functions.
     std::vector<Spheric_function<function_domain_t::spectral, T>> func_;
-
+    /// Store lmax function.
+    std::function<lmax_t(int)> lmax_;
+    /// True if atom index is not split between MPI ranks.
     bool all_atoms_{false};
 
     void
@@ -72,6 +75,7 @@ class Spheric_function_set
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , spl_atoms_{spl_atoms__}
+        , lmax_{lmax__}
         , all_atoms_{true}
     {
         atoms_.resize(unit_cell__.num_atoms());
@@ -91,6 +95,7 @@ class Spheric_function_set
         , label_{label__}
         , atoms_{atoms__}
         , spl_atoms_{spl_atoms__}
+        , lmax_{lmax__}
         , all_atoms_{false}
     {
         if (spl_atoms_) {
@@ -135,6 +140,12 @@ class Spheric_function_set
                 }
             }
         }
+    }
+
+    inline int
+    lmax(int ia__) const
+    {
+        return lmax_(ia__);
     }
 
     /// Synchronize global function.

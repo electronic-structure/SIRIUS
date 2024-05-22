@@ -33,7 +33,7 @@ class Atom_symmetry_class
     /// List of atoms of this class.
     std::vector<int> atom_id_;
 
-    /// Pointer to atom type.
+    /// Reference to atom type.
     Atom_type const& atom_type_;
 
     /// Spherical part of the effective potential.

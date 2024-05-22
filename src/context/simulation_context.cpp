@@ -507,6 +507,21 @@ Simulation_context::initialize()
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
 
+    auto make_mpi_grid_mt_sym = [](int na, int np) {
+        std::vector<int> result;
+        for (int ia = 1; ia <= na; ia++) {
+            if (na % ia == 0 && np % ia == 0) {
+                result = std::vector<int>({ia, np / ia});
+            }
+        }
+        return result;
+    };
+
+    for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
+        auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
+        mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
+    }
+
     initialized_ = true;
     cfg().lock();
 }
