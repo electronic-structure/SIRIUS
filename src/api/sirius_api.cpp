@@ -6053,10 +6053,14 @@ sirius_linear_solver:
       type: int
       attr: in, required
       doc: Current spin channel.
-    nbnd_occ:
+    nbnd_occ_k:
       type: int
       attr: in, required
-      doc: Number of occupied bands.
+      doc: Number of occupied bands at k.
+    nbnd_occ_kq:
+      type: int
+      attr: in, required
+      doc: Number of occupied bands at k+q.
     tol:
       type: double
       attr: in, optional
@@ -6075,8 +6079,8 @@ void
 sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num_gvec_kq_loc__,
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
-                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ__, double const* tol__,
-                     int* niter__, int* error_code__)
+                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
+                     double const* tol__, int* niter__, int* error_code__)
 {
     using namespace sirius;
     PROFILE("sirius_api::sirius_linear_solver");
@@ -6085,9 +6089,10 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                 /* works for non-magnetic and collinear cases */
                 RTE_ASSERT(*num_spin_comp__ == 1);
 
-                int nbnd_occ = *nbnd_occ__;
+                int nbnd_occ_k  = *nbnd_occ_k__;
+                int nbnd_occ_kq = *nbnd_occ_kq__;
 
-                if (nbnd_occ == 0) {
+                if (nbnd_occ_k == 0) {
                     return;
                 }
 
@@ -6123,29 +6128,36 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                 auto Hk = H0(kp);
 
                 /* copy eigenvalues (factor 2 for rydberg/hartree) */
-                std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ);
+                std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ_k);
                 for (auto& val : eigvals_vec) {
                     val /= 2;
                 }
 
                 // Setup dpsi (unknown), psi (part of projector), and dvpsi (right-hand side)
-                mdarray<std::complex<double>, 3> psi({*ld__, *num_spin_comp__, nbnd_occ}, psi__);
-                mdarray<std::complex<double>, 3> dpsi({*ld__, *num_spin_comp__, nbnd_occ}, dpsi__);
-                mdarray<std::complex<double>, 3> dvpsi({*ld__, *num_spin_comp__, nbnd_occ}, dvpsi__);
+                mdarray<std::complex<double>, 3> psi({*ld__, *num_spin_comp__, nbnd_occ_kq}, psi__);
+                mdarray<std::complex<double>, 3> dpsi({*ld__, *num_spin_comp__, nbnd_occ_k}, dpsi__);
+                mdarray<std::complex<double>, 3> dvpsi({*ld__, *num_spin_comp__, nbnd_occ_k}, dvpsi__);
 
-                auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ),
+                auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                      wf::num_mag_dims(0), false);
-                auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ),
+                auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_kq),
                                                                     wf::num_mag_dims(0), false);
-                auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ),
+                auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                       wf::num_mag_dims(0), false);
-                auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ),
+                auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                     wf::num_mag_dims(0), false);
 
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
-                    for (int i = 0; i < nbnd_occ; i++) {
+                    for (int i = 0; i < nbnd_occ_kq; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i))  = psi(ig, ispn, i);
+                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
+                        }
+                    }
+                }
+
+                for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    for (int i = 0; i < nbnd_occ_k; i++) {
+                        for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
                             // divide by two to account for hartree / rydberg, this is
                             // dv * psi and dv should be 2x smaller in sirius.
@@ -6159,19 +6171,19 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                     sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
                     kp.initialize();
                     auto Hk = H0(kp);
-                    sirius::check_wave_functions<double, std::complex<double>>(
-                            Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ), eigvals_vec.data());
+                    // sirius::check_wave_functions<double, std::complex<double>>(
+                    //         Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
                 }
 
                 /* setup auxiliary state vectors for CG */
-                auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0),
+                auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
                                                                false);
-                auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0),
+                auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
                                                                false);
 
-                auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ),
+                auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                      wf::num_mag_dims(0), false);
-                auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ),
+                auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                      wf::num_mag_dims(0), false);
 
                 auto mem = sctx.processing_unit_memory_t();
@@ -6192,7 +6204,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                                                                      eigvals_vec, Hphi_wf.get(), Sphi_wf.get(),
                                                                      psi_wf.get(), tmp_wf.get(),
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
-                                                                     wf::band_range(0, nbnd_occ), sr, mem);
+                                                                     wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
                 auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
                 auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
@@ -6211,7 +6223,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                 sirius::lr::Smoothed_diagonal_preconditioner preconditioner{std::move(h_o_diag.first),
                                                                             std::move(h_o_diag.second),
                                                                             std::move(eigvals_mdarray),
-                                                                            nbnd_occ,
+                                                                            nbnd_occ_k,
                                                                             mem,
                                                                             sr};
 
@@ -6230,7 +6242,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
 
                 /* bring wave functions back in order of QE */
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
-                    for (int i = 0; i < nbnd_occ; i++) {
+                    for (int i = 0; i < nbnd_occ_k; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
                         }
