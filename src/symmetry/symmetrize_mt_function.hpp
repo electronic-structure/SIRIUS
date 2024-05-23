@@ -125,8 +125,9 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
 /// Symmetrize spherical expansion coefficients of the scalar and vector function for atoms of the same symmetry class.
 template <typename Index_t>
 inline void
-symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const& atom_class__,
-        mpi::Grid const& mpi_grid__, int num_mag_dims__, std::vector<Spheric_function_set<double, Index_t>*> frlm__)
+symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double, 2>> const& rotm__,
+        Atom_symmetry_class const& atom_class__, mpi::Grid const& mpi_grid__, int num_mag_dims__,
+        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
     PROFILE("sirius::symmetrize_mt_function");
 
@@ -156,9 +157,6 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const&
     int nr_loc = spl_rgrid.local_size();
     int ir_loc = spl_rgrid.global_offset();
 
-    /* space for real Rlm rotation matrix */
-    mdarray<double, 2> rotm({lmmax, lmmax});
-
     /* symmetry-transformed functions */
     mdarray<double, 4> fsym_loc({lmmax, nr, num_mag_dims__ + 1, spl_atoms.local_size()},
             get_memory_pool(memory_t::host));
@@ -173,8 +171,6 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const&
         for (int i = 0; i < sym__.size(); i++) {
             /* full space-group symmetry operation is S{R|t} */
             auto S = sym__[i].spin_rotation;
-            /* compute Rlm rotation matrix */
-            sht::rotation_matrix(lmax, sym__[i].spg_op.euler_angles, sym__[i].spg_op.proper, rotm);
 
             for (auto it : spl_atoms) {
                 /* get global index of the atom */
@@ -183,7 +179,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const&
                 /* apply {R|t} part of symmetry operation to all components */
                 for (int j = 0; j < num_mag_dims__ + 1; j++) {
                     la::wrap(la::lib_t::blas)
-                            .gemm('N', 'N', lmmax, nr_loc, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                            .gemm('N', 'N', lmmax, nr_loc, lmmax, &alpha, rotm__[i].at(memory_t::host), rotm__[i].ld(),
                                   (*frlm__[j])[ja].at(memory_t::host, 0, ir_loc), (*frlm__[j])[ja].ld(),
                                   &la::constant<double>::zero(), ftmp.at(memory_t::host, 0, ir_loc, j), ftmp.ld());
                 }

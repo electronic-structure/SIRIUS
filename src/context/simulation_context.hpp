@@ -286,7 +286,9 @@ class Simulation_context : public Simulation_parameters
     radial_integrals_t ri_;
 
     /// MPI grid for muffin-tin symmetrization.
+    /** MPI grid is defined for each atom symmetry class */
     std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
+    std::vector<mdarray<double, 2>> rotm_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -854,6 +856,12 @@ class Simulation_context : public Simulation_parameters
     mpi_grid_mt_sym(int ic__) const
     {
         return *mpi_grid_mt_sym_[ic__];
+    }
+
+    inline auto const&
+    rotm() const
+    {
+        return rotm_;
     }
 };
 
