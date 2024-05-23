@@ -50,7 +50,7 @@ namespace sirius {
 #if defined(SIRIUS_CUDA)
 using acc_stream_t = cudaStream_t;
 #elif defined(SIRIUS_ROCM)
-using acc_stream_t         = hipStream_t;
+using acc_stream_t = hipStream_t;
 #else
 using acc_stream_t = void*;
 #endif
@@ -58,9 +58,9 @@ using acc_stream_t = void*;
 #if defined(SIRIUS_CUDA)
 using acc_error_t = cudaError_t;
 #elif defined(SIRIUS_ROCM)
-using acc_error_t          = hipError_t;
+using acc_error_t = hipError_t;
 #else
-using acc_error_t  = void;
+using acc_error_t = void;
 #endif
 
 #if defined(SIRIUS_CUDA)
