@@ -32,7 +32,7 @@ class Spheric_function_set
     /// List of spheric functions.
     std::vector<Spheric_function<function_domain_t::spectral, T>> func_;
     /// Store lmax function.
-    std::function<lmax_t(int)> lmax_;
+    std::vector<int> lmax_;
     /// True if atom index is not split between MPI ranks.
     bool all_atoms_{false};
 
@@ -40,6 +40,11 @@ class Spheric_function_set
     init(std::function<lmax_t(int)> lmax__, spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
     {
         func_.resize(unit_cell_->num_atoms());
+
+        lmax_.resize(unit_cell_->num_atoms());
+        for (int ia = 0; ia < unit_cell_->num_atoms(); ia++) {
+            lmax_[ia] = lmax__(ia);
+        }
 
         auto set_func = [&](int ia) {
             if (sptr__) {
@@ -75,7 +80,6 @@ class Spheric_function_set
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , spl_atoms_{spl_atoms__}
-        , lmax_{lmax__}
         , all_atoms_{true}
     {
         atoms_.resize(unit_cell__.num_atoms());
@@ -95,7 +99,6 @@ class Spheric_function_set
         , label_{label__}
         , atoms_{atoms__}
         , spl_atoms_{spl_atoms__}
-        , lmax_{lmax__}
         , all_atoms_{false}
     {
         if (spl_atoms_) {
@@ -145,7 +148,7 @@ class Spheric_function_set
     inline int
     lmax(int ia__) const
     {
-        return lmax_(ia__);
+        return lmax_[ia__];
     }
 
     /// Synchronize global function.
