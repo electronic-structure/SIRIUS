@@ -33,7 +33,7 @@ class Spheric_function_set
     std::vector<Spheric_function<function_domain_t::spectral, T>> func_;
     /// Store lmax function.
     std::vector<int> lmax_;
-    /// True if atom index is not split between MPI ranks.
+    /// True if atoms of the unit cell are included (this is normal LAPW case).
     bool all_atoms_{false};
 
     void

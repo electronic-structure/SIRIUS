@@ -160,10 +160,11 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const&
     mdarray<double, 2> rotm({lmmax, lmmax});
 
     /* symmetry-transformed functions */
-    mdarray<double, 4> fsym_loc({lmmax, nr, num_mag_dims__ + 1, spl_atoms.local_size()});
+    mdarray<double, 4> fsym_loc({lmmax, nr, num_mag_dims__ + 1, spl_atoms.local_size()},
+            get_memory_pool(memory_t::host));
     fsym_loc.zero();
 
-    mdarray<double, 3> ftmp({lmmax, nr, num_mag_dims__ + 1});
+    mdarray<double, 3> ftmp({lmmax, nr, num_mag_dims__ + 1}, get_memory_pool(memory_t::host));
 
     double alpha = 1.0 / sym__.size();
 
@@ -219,7 +220,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const&
     /* gather radial grid points */
     for (int i = 0; i < spl_atoms.local_size(); i++) {
         for (int j = 0; j < num_mag_dims__ + 1; j++) {
-            double* sbuf = nr_loc ? fsym_loc.at(memory_t::host, 0, ir_loc, j, i) : nullptr;
+            double* sbuf = fsym_loc.at(memory_t::host, 0, 0, j, i);
             comm_r.allgather(sbuf, lmmax * nr_loc, lmmax * ir_loc);
         }
     }
@@ -228,7 +229,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, Atom_symmetry_class const&
     double* sbuf = spl_atoms.local_size() ? fsym_loc.at(memory_t::host) : nullptr;
     auto ld      = lmmax * nr * (num_mag_dims__ + 1);
 
-    mdarray<double, 4> fsym_glob({lmmax, nr, num_mag_dims__ + 1, na});
+    mdarray<double, 4> fsym_glob({lmmax, nr, num_mag_dims__ + 1, na}, get_memory_pool(memory_t::host));
 
     comm_a.allgather(sbuf, fsym_glob.at(memory_t::host), ld * spl_atoms.local_size(), ld * spl_atoms.global_offset());
 
