@@ -6080,7 +6080,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
                      double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
-		     double const* tol__, int* niter__, int* error_code__)
+                     double const* tol__, int* niter__, int* error_code__)
 {
     using namespace sirius;
     PROFILE("sirius_api::sirius_linear_solver");
@@ -6089,7 +6089,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                 /* works for non-magnetic and collinear cases */
                 RTE_ASSERT(*num_spin_comp__ == 1);
 
-                int nbnd_occ_k = *nbnd_occ_k__;
+                int nbnd_occ_k  = *nbnd_occ_k__;
                 int nbnd_occ_kq = *nbnd_occ_kq__;
 
                 if (nbnd_occ_k == 0) {
@@ -6150,7 +6150,7 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                     for (int i = 0; i < nbnd_occ_kq; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
-                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i))  = psi(ig, ispn, i);
+                            psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
                         }
                     }
                 }
@@ -6171,8 +6171,8 @@ sirius_linear_solver(void* const* handler__, double const* vkq__, int const* num
                     sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
                     kp.initialize();
                     auto Hk = H0(kp);
-                    //sirius::check_wave_functions<double, std::complex<double>>(
-                    //        Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
+                    // sirius::check_wave_functions<double, std::complex<double>>(
+                    //         Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
                 }
 
                 /* setup auxiliary state vectors for CG */
