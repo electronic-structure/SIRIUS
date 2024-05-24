@@ -33,8 +33,6 @@ class Spheric_function_set
     std::vector<Spheric_function<function_domain_t::spectral, T>> func_;
     /// Store lmax function.
     std::vector<int> lmax_;
-    /// True if atoms of the unit cell are included (this is normal LAPW case).
-    bool all_atoms_{false};
 
     void
     init(std::function<lmax_t(int)> lmax__, spheric_function_set_ptr_t<T> const* sptr__ = nullptr)
@@ -80,7 +78,6 @@ class Spheric_function_set
         : unit_cell_{&unit_cell__}
         , label_{label__}
         , spl_atoms_{spl_atoms__}
-        , all_atoms_{true}
     {
         atoms_.resize(unit_cell__.num_atoms());
         std::iota(atoms_.begin(), atoms_.end(), 0);
@@ -99,7 +96,6 @@ class Spheric_function_set
         , label_{label__}
         , atoms_{atoms__}
         , spl_atoms_{spl_atoms__}
-        , all_atoms_{false}
     {
         if (spl_atoms_) {
             if (spl_atoms_->size() != static_cast<int>(atoms__.size())) {
