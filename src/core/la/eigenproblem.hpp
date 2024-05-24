@@ -1089,6 +1089,18 @@ class Eigensolver_scalapack : public Eigensolver
         ftn_int descz[9];
         linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
+        
+        std::cout << ">>> DEBUG (ScaLAPACK) <<< matrix_size__ = " << matrix_size__ 
+                  << " | A__.bs_row() = " << A__.bs_row() 
+                  << " | A__.bs_col() = " << A__.bs_col() 
+                  << " | A__.ld() = " << static_cast<int>(A__.ld()) 
+                  << " | B__.bs_row() = " << B__.bs_row() 
+                  << " | B__.bs_col() = " << B__.bs_col() 
+                  << " | B__.ld() = " << static_cast<int>(B__.ld()) 
+                  << " | Z__.bs_row() = " << Z__.bs_row() 
+                  << " | Z__.bs_col() = " << Z__.bs_col() 
+                  << " | Z__.ld() = " << static_cast<int>(Z__.ld()) 
+                  << '\n';  
 
         auto& mph = get_memory_pool(memory_t::host);
 
@@ -1252,10 +1264,22 @@ class Eigensolver_dlaf : public Eigensolver
     int
     solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
+        int lda = static_cast<int>(A__.ld()) == 0 ? 1 : static_cast<int>(A__.ld());
+        int ldz = static_cast<int>(Z__.ld()) == 0 ? 1 : static_cast<int>(Z__.ld());
+
         DLAF_descriptor desca{
-                matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, static_cast<int>(A__.ld())};
+                matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, lda};
         DLAF_descriptor descz{
-                matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
+                matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, ldz};
+        
+        std::cout << ">>> DEBUG (DLA-Future | geneig) <<< matrix_size__ = " << matrix_size__ 
+                  << " | A__.bs_row() = " << A__.bs_row() 
+                  << " | A__.bs_col() = " << A__.bs_col() 
+                  << " | A__.ld() = " << lda 
+                  << " | Z__.bs_row() = " << Z__.bs_row() 
+                  << " | Z__.bs_col() = " << Z__.bs_col() 
+                  << " | Z__.ld() = " << ldz 
+                  << '\n';  
 
         if (std::is_same_v<T, std::complex<double>>) {
             return dlaf_hermitian_eigensolver_z(A__.blacs_grid().context(), 'L',
@@ -1359,13 +1383,29 @@ class Eigensolver_dlaf : public Eigensolver
     template <typename T>
     int
     solve_(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__)
-    {
+    { 
+        int lda = static_cast<int>(A__.ld()) == 0 ? 1 : static_cast<int>(A__.ld());
+        int ldb = static_cast<int>(B__.ld()) == 0 ? 1 : static_cast<int>(B__.ld());
+        int ldz = static_cast<int>(Z__.ld()) == 0 ? 1 : static_cast<int>(Z__.ld());
+
         DLAF_descriptor desca{
-                matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, static_cast<int>(A__.ld())};
+                matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, lda};
         DLAF_descriptor descb{
-                matrix_size__, matrix_size__, B__.bs_row(), B__.bs_col(), 0, 0, 0, 0, static_cast<int>(B__.ld())};
+                matrix_size__, matrix_size__, B__.bs_row(), B__.bs_col(), 0, 0, 0, 0, ldb};
         DLAF_descriptor descz{
-                matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
+                matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, ldz};
+        
+        std::cout << ">>> DEBUG (DLA-Future | geneig) <<< matrix_size__ = " << matrix_size__ 
+                  << " | A__.bs_row() = " << A__.bs_row() 
+                  << " | A__.bs_col() = " << A__.bs_col() 
+                  << " | A__.ld() = " << static_cast<int>(A__.ld()) 
+                  << " | B__.bs_row() = " << B__.bs_row() 
+                  << " | B__.bs_col() = " << B__.bs_col() 
+                  << " | B__.ld() = " << static_cast<int>(B__.ld()) 
+                  << " | Z__.bs_row() = " << Z__.bs_row() 
+                  << " | Z__.bs_col() = " << Z__.bs_col() 
+                  << " | Z__.ld() = " << static_cast<int>(Z__.ld()) 
+                  << '\n';  
 
         if (std::is_same_v<T, std::complex<double>>) {
             return dlaf_hermitian_generalized_eigensolver_z(
