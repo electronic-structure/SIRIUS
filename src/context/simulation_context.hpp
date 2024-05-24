@@ -288,6 +288,8 @@ class Simulation_context : public Simulation_parameters
     /// MPI grid for muffin-tin symmetrization.
     /** MPI grid is defined for each atom symmetry class */
     std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
+
+    /// Rotation matrices for real spherical harmonics.
     std::vector<mdarray<double, 2>> rotm_;
 
     mutable double evp_work_count_{0};
@@ -853,9 +855,9 @@ class Simulation_context : public Simulation_parameters
     }
 
     inline auto const&
-    mpi_grid_mt_sym(int ic__) const
+    mpi_grid_mt_sym() const
     {
-        return *mpi_grid_mt_sym_[ic__];
+        return mpi_grid_mt_sym_;
     }
 
     inline auto const&
