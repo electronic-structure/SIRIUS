@@ -248,8 +248,10 @@ symmetrize_mt_function(Unit_cell const& uc__, std::vector<mdarray<double, 2>> co
                        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
     for (int ic = 0; ic < uc__.num_atom_symmetry_classes(); ic++) {
-        symmetrize_mt_function(uc__.symmetry(), rotm__, uc__.atom_symmetry_class(ic), *mpi_grid__[ic], num_mag_dims__,
-                frlm__);
+        if (mpi_grid__[ic]) {
+            symmetrize_mt_function(uc__.symmetry(), rotm__, uc__.atom_symmetry_class(ic), *mpi_grid__[ic], num_mag_dims__,
+                    frlm__);
+        }
     }
 }
 

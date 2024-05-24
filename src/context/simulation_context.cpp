@@ -490,8 +490,12 @@ Simulation_context::initialize()
     };
 
     for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
-        auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
-        mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
+        if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
+            auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
+            mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
+        } else {
+            mpi_grid_mt_sym_.push_back(nullptr);
+        }
     }
 
     /* create G-vectors on the first call to update() */
