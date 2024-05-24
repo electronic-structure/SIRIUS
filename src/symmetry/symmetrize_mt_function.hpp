@@ -155,18 +155,17 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
     /* split radial grid points */
     splindex_block spl_rgrid(nr, n_blocks(comm_r.size()), block_id(comm_r.rank()));
     int nr_loc = spl_rgrid.local_size();
-    int ir_loc = spl_rgrid.global_offset();
+    int i0_loc = spl_rgrid.global_offset();
 
     /* symmetry-transformed functions */
     mdarray<double, 4> fsym_loc({lmmax, nr, num_mag_dims__ + 1, spl_atoms.local_size()},
             get_memory_pool(memory_t::host));
     fsym_loc.zero();
 
-    mdarray<double, 3> ftmp({lmmax, nr, num_mag_dims__ + 1}, get_memory_pool(memory_t::host));
-
     double alpha = 1.0 / sym__.size();
 
     if (nr_loc) {
+        mdarray<double, 3> ftmp({lmmax, nr_loc, num_mag_dims__ + 1}, get_memory_pool(memory_t::host));
         /* loop over crystal symmetries */
         for (int i = 0; i < sym__.size(); i++) {
             /* full space-group symmetry operation is S{R|t} */
@@ -180,20 +179,20 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
                 for (int j = 0; j < num_mag_dims__ + 1; j++) {
                     la::wrap(la::lib_t::blas)
                             .gemm('N', 'N', lmmax, nr_loc, lmmax, &alpha, rotm__[i].at(memory_t::host), rotm__[i].ld(),
-                                  (*frlm__[j])[ja].at(memory_t::host, 0, ir_loc), (*frlm__[j])[ja].ld(),
-                                  &la::constant<double>::zero(), ftmp.at(memory_t::host, 0, ir_loc, j), ftmp.ld());
+                                  (*frlm__[j])[ja].at(memory_t::host, 0, i0_loc), (*frlm__[j])[ja].ld(),
+                                  &la::constant<double>::zero(), ftmp.at(memory_t::host, 0, 0, j), ftmp.ld());
                 }
                 /* always symmetrize the scalar component */
                 for (int ir = 0; ir < nr_loc; ir++) {
                     for (int lm = 0; lm < lmmax; lm++) {
-                        fsym_loc(lm, ir + ir_loc, 0, it.li) += ftmp(lm, ir + ir_loc, 0);
+                        fsym_loc(lm, ir + i0_loc, 0, it.li) += ftmp(lm, ir, 0);
                     }
                 }
                 /* apply S part to [0, 0, z] collinear vector */
                 if (num_mag_dims__ == 1) {
                     for (int ir = 0; ir < nr_loc; ir++) {
                         for (int lm = 0; lm < lmmax; lm++) {
-                            fsym_loc(lm, ir + ir_loc, 1, it.li) += ftmp(lm, ir + ir_loc, 1) * S(2, 2);
+                            fsym_loc(lm, ir + i0_loc, 1, it.li) += ftmp(lm, ir, 1) * S(2, 2);
                         }
                     }
                 }
@@ -203,7 +202,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
                         for (int j : {0, 1, 2}) {
                             for (int ir = 0; ir < nr_loc; ir++) {
                                 for (int lm = 0; lm < lmmax; lm++) {
-                                    fsym_loc(lm, ir + ir_loc, 1 + k, it.li) += ftmp(lm, ir + ir_loc, 1 + j) * S(k, j);
+                                    fsym_loc(lm, ir + i0_loc, 1 + k, it.li) += ftmp(lm, ir, 1 + j) * S(k, j);
                                 }
                             }
                         }
@@ -217,7 +216,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
     for (int i = 0; i < spl_atoms.local_size(); i++) {
         for (int j = 0; j < num_mag_dims__ + 1; j++) {
             double* sbuf = fsym_loc.at(memory_t::host, 0, 0, j, i);
-            comm_r.allgather(sbuf, lmmax * nr_loc, lmmax * ir_loc);
+            comm_r.allgather(sbuf, lmmax * nr_loc, lmmax * i0_loc);
         }
     }
 

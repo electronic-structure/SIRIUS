@@ -416,6 +416,10 @@ Density::initial_density_full_pot()
                 }
             }
         }
+        /* synchronize muffin-tin part */
+        for (int iv = 0; iv < ctx_.num_mag_dims(); iv++) {
+            this->component(1 + iv).mt().sync(ctx_.unit_cell().spl_num_atoms());
+        }
     }
 }
 
