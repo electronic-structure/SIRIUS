@@ -126,8 +126,8 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, mpi::Communicator const& c
 template <typename Index_t>
 inline void
 symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double, 2>> const& rotm__,
-        Atom_symmetry_class const& atom_class__, mpi::Grid const& mpi_grid__, int num_mag_dims__,
-        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
+                       Atom_symmetry_class const& atom_class__, mpi::Grid const& mpi_grid__, int num_mag_dims__,
+                       std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
     PROFILE("sirius::symmetrize_mt_function");
 
@@ -159,7 +159,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
 
     /* symmetry-transformed functions */
     mdarray<double, 4> fsym_loc({lmmax, nr, num_mag_dims__ + 1, spl_atoms.local_size()},
-            get_memory_pool(memory_t::host));
+                                get_memory_pool(memory_t::host));
     fsym_loc.zero();
 
     double alpha = 1.0 / sym__.size();
