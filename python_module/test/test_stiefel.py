@@ -1,7 +1,7 @@
-from sirius import DFT_ground_state, K_point_set, Simulation_context
+from sirius import DFT_ground_state, K_point_set, Simulation_context  # type: ignore
 import json
-import sirius.baarman as st
-import sirius.ot as ot
+import sirius.baarman as st  # type: ignore
+import sirius.ot as ot  # type: ignore
 import numpy as np
 import pytest
 
@@ -126,7 +126,7 @@ def test_stiefel(dft):
             -2.9669315713350635,
             -2.966942394030096,
             -2.966950379053774,
-            -2.966955526400021
+            -2.966955526400021,
         ]
     )
     assert es == pytest.approx(es_ref, abs=1e-8)
