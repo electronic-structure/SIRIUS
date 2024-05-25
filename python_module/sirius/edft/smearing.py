@@ -1,6 +1,6 @@
 from ..coefficient_array import CoefficientArray
 from scipy.constants import physical_constants
-from typing import Union
+from typing import Union, ModuleType
 from mpi4py import MPI
 import numpy as np
 from copy import deepcopy
@@ -108,15 +108,19 @@ def find_chemical_potential(focc, ek, kT, nel, kw, comm):
     return mu
 
 
+SmearingType = Union[
+    ModuleType,
+    cxx_smearing.cold,
+    cxx_smearing.methfessel_paxton,
+    cxx_smearing.gaussian,
+    cxx_smearing.fermi_dirac,
+]
+
+
 class Smearing:
     def __init__(
         self,
-        smearing_obj: Union[
-            cxx_smearing.cold,
-            cxx_smearing.methfessel_paxton,
-            cxx_smearing.gaussian,
-            cxx_smearing.fermi_dirac,
-        ],
+        smearing_obj: SmearingType,
         kT,
         mo,
         kw,
