@@ -1,4 +1,3 @@
-from ..py_sirius import smearing
 from ..coefficient_array import CoefficientArray
 from scipy.constants import physical_constants
 from typing import Union
@@ -113,10 +112,10 @@ class Smearing:
     def __init__(
         self,
         smearing_obj: Union[
-            smearing.cold,
-            smearing.methfessel_paxton,
-            smearing.gaussian,
-            smearing.fermi_dirac,
+            cxx_smearing.cold,
+            cxx_smearing.methfessel_paxton,
+            cxx_smearing.gaussian,
+            cxx_smearing.fermi_dirac,
         ],
         kT,
         mo,
