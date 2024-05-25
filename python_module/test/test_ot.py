@@ -1,5 +1,6 @@
-from sirius import DFT_ground_state_find
-from sirius.ot import (
+from sirius import DFT_ground_state_find  # type: ignore
+
+from sirius.ot import (  # type: ignore
     minimize,
     Energy,
     ApplyHamiltonian,
@@ -7,7 +8,7 @@ from sirius.ot import (
     ConstrainedGradient,
     make_kinetic_precond,
 )
-from sirius import get_c0_x
+from sirius import get_c0_x  # type: ignore
 import json
 import pytest
 

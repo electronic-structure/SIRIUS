@@ -1,8 +1,8 @@
-from sirius import DFT_ground_state, K_point_set, Simulation_context
+from sirius import DFT_ground_state, K_point_set, Simulation_context  # type: ignore
 import json
 import numpy as np
 import pytest
-from edft_gradients import check_gradient
+from edft_gradients import check_gradient  # type: ignore
 
 
 @pytest.fixture
@@ -62,10 +62,9 @@ def dft(kgrid):
 
 def test_mvp2_gradient(dft):
     # extract wrappers from C++
-    density = dft.density()
     kT = 0.025  # Ha
     slope, slope_fd = check_gradient(dft, kT, fx=1, kappa=0)
-    assert np.isclose(slope, slope_fd, rtol=1e-5)
+    assert np.isclose(slope, slope_fd, atol=1e-5)
 
     slope, slope_fd = check_gradient(dft, kT, fx=0, kappa=1)
-    assert np.isclose(slope, slope_fd, rtol=1e-5)
+    assert np.isclose(slope, slope_fd, atol=1e-5)

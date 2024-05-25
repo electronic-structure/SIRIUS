@@ -1,4 +1,4 @@
-import sirius
+import sirius  # type: ignore
 import json
 import numpy as np
 import pytest
@@ -61,9 +61,7 @@ stress_ref = np.array(
 )
 
 force_ref = np.array(
-    [[0.1532408, -0.1532408],
-     [-0.29043797, 0.29043797],
-     [0.1532408, -0.1532408]]
+    [[0.1532408, -0.1532408], [-0.29043797, 0.29043797], [0.1532408, -0.1532408]]
 )
 
 
