@@ -71,20 +71,20 @@ Potential::generate_PAW_effective_potential(Density const& density)
         ae_comp.push_back(&paw_potential_->ae_component(j));
         ps_comp.push_back(&paw_potential_->ps_component(j));
     }
-    sirius::symmetrize_mt_function(unit_cell_.symmetry(), unit_cell_.comm(), ctx_.num_mag_dims(), ae_comp);
-    sirius::symmetrize_mt_function(unit_cell_.symmetry(), unit_cell_.comm(), ctx_.num_mag_dims(), ps_comp);
+    sirius::symmetrize_mt_function(unit_cell_, ctx_.rotm(), ctx_.mpi_grid_mt_sym(), ctx_.num_mag_dims(), ae_comp);
+    sirius::symmetrize_mt_function(unit_cell_, ctx_.rotm(), ctx_.mpi_grid_mt_sym(), ctx_.num_mag_dims(), ps_comp);
 
     /* symmetrize ae- component of Exc */
     paw_ae_exc_->sync(unit_cell_.spl_num_paw_atoms());
     ae_comp.clear();
     ae_comp.push_back(paw_ae_exc_.get());
-    sirius::symmetrize_mt_function(unit_cell_.symmetry(), unit_cell_.comm(), 0, ae_comp);
+    sirius::symmetrize_mt_function(unit_cell_, ctx_.rotm(), ctx_.mpi_grid_mt_sym(), 0, ae_comp);
 
     /* symmetrize ps- component of Exc */
     paw_ps_exc_->sync(unit_cell_.spl_num_paw_atoms());
     ps_comp.clear();
     ps_comp.push_back(paw_ps_exc_.get());
-    sirius::symmetrize_mt_function(unit_cell_.symmetry(), unit_cell_.comm(), 0, ps_comp);
+    sirius::symmetrize_mt_function(unit_cell_, ctx_.rotm(), ctx_.mpi_grid_mt_sym(), 0, ps_comp);
 
     /* calculate PAW Dij matrix */
     #pragma omp parallel for

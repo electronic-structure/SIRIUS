@@ -478,6 +478,26 @@ Simulation_context::initialize()
     /* set the smearing */
     smearing(cfg().parameters().smearing());
 
+    /* create auxiliary mpi grid for symmetrization */
+    auto make_mpi_grid_mt_sym = [](int na, int np) {
+        std::vector<int> result;
+        for (int ia = 1; ia <= na; ia++) {
+            if (na % ia == 0 && np % ia == 0) {
+                result = std::vector<int>({ia, np / ia});
+            }
+        }
+        return result;
+    };
+
+    for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
+        if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
+            auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
+            mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
+        } else {
+            mpi_grid_mt_sym_.push_back(nullptr);
+        }
+    }
+
     /* create G-vectors on the first call to update() */
     update();
 
@@ -797,6 +817,19 @@ Simulation_context::update()
 
     /* update unit cell (reciprocal lattice, etc.) */
     unit_cell().update();
+
+    /* cache rotation symmetry matrices */
+    int lmax  = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho()) : 2 * this->unit_cell().lmax();
+    int lmmax = sf::lmmax(lmax);
+    rotm_.resize(this->unit_cell().symmetry().size());
+    /* loop over crystal symmetries */
+    #pragma omp parallel for
+    for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
+        rotm_[i] = mdarray<double, 2>({lmmax, lmmax});
+        /* compute Rlm rotation matrix */
+        sht::rotation_matrix(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                             this->unit_cell().symmetry()[i].spg_op.proper, rotm_[i]);
+    }
 
     /* get new reciprocal vector */
     auto rlv = unit_cell().reciprocal_lattice_vectors();
