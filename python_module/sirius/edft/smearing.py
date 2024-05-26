@@ -1,6 +1,7 @@
 from ..coefficient_array import CoefficientArray
 from scipy.constants import physical_constants
-from typing import Union, ModuleType
+from typing import Union
+from types import ModuleType
 from mpi4py import MPI
 import numpy as np
 from copy import deepcopy
