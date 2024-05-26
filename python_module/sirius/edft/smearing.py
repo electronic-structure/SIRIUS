@@ -109,19 +109,19 @@ def find_chemical_potential(focc, ek, kT, nel, kw, comm):
     return mu
 
 
-SmearingType = Union[
-    ModuleType,
-    cxx_smearing.cold,
-    cxx_smearing.methfessel_paxton,
-    cxx_smearing.gaussian,
-    cxx_smearing.fermi_dirac,
-]
+# SmearingType = Union[
+#     ModuleType,
+#     cxx_smearing.cold,
+#     cxx_smearing.methfessel_paxton,
+#     cxx_smearing.gaussian,
+#     cxx_smearing.fermi_dirac,
+# ]
 
 
 class Smearing:
     def __init__(
         self,
-        smearing_obj: SmearingType,
+        smearing_obj,
         kT,
         mo,
         kw,
