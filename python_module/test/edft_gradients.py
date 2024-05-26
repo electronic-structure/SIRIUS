@@ -1,7 +1,7 @@
-from sirius import S_operator, Sinv_operator  # type: ignore
+from sirius.operators import S_operator, Sinv_operator  # type: ignore
 from sirius.coefficient_array import diag, inner, l2norm  # type: ignore
 from sirius.ot import ApplyHamiltonian, Energy  # type: ignore
-from sirius import smearing as cxx_smearing  # type: ignore
+from sirius.py_sirius import smearing as cxx_smearing  # type: ignore
 from sirius.edft import smearing, loewdin  # type: ignore
 from sirius.edft.neugebauer import grad_eta  # type: ignore
 from sirius.edft.free_energy import FreeEnergy  # type: ignore

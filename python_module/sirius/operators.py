@@ -1,5 +1,5 @@
 from .py_sirius import InverseS_k, S_k, Precond_us, Hamiltonian0
-from .coefficient_array import threaded
+# from .coefficient_array import threaded
 from scipy.sparse.linalg import LinearOperator
 import numpy as np
 

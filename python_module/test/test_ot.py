@@ -7,7 +7,7 @@ from sirius.ot import (  # type: ignore
     c,
     ConstrainedGradient,
     make_kinetic_precond,
-    get_c0_x
+    get_c0_x,
 )
 import json
 import pytest

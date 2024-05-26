@@ -1,9 +1,8 @@
 import numpy as np
-from numpy.linalg import eigh, solve
-from ..coefficient_array import PwCoeffs, allthreaded
-
 from numpy.typing import NDArray
 from typing import TypeAlias
+from numpy.linalg import eigh, solve
+from ..coefficient_array import PwCoeffs, allthreaded
 
 complex_array_t: TypeAlias = NDArray[np.complex128]
 
@@ -263,9 +262,6 @@ class ConstrainedGradient:
 
 def get_c0_x(kpointset, eps=0):
     """ """
-    from .coefficient_array import PwCoeffs
-    import numpy as np
-
     c0 = PwCoeffs(kpointset)
     x = PwCoeffs()
     for key, c0_loc in c0.items():
