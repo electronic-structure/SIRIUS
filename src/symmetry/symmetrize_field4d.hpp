@@ -35,7 +35,8 @@ symmetrize_field4d(Field4D& f__)
                            f__.pw_components());
 
     if (ctx.full_potential()) {
-        symmetrize_mt_function(ctx.unit_cell().symmetry(), ctx.comm(), ctx.num_mag_dims(), f__.mt_components());
+        symmetrize_mt_function(ctx.unit_cell(), ctx.rotm(), ctx.mpi_grid_mt_sym(), ctx.num_mag_dims(),
+                               f__.mt_components());
     }
 }
 

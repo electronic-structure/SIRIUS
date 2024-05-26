@@ -320,7 +320,7 @@ struct Linear_response_operator
         , br(br)
         , sr(sr)
         , mem(mem)
-        , overlap(br.size(), br.size())
+        , overlap(br.size(), Hphi->num_wf())
     {
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:

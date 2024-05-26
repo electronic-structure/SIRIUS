@@ -13,6 +13,7 @@
 
 #include "atom_type.hpp"
 #include "core/ostream_tools.hpp"
+#include "core/traits.hpp"
 #include <algorithm>
 
 namespace sirius {
@@ -302,9 +303,9 @@ Atom_type::print_info(std::ostream& out__) const
 
         out__ << std::endl;
         out__ << "augmented wave basis" << std::endl;
-        for (int j = 0; j < (int)aw_descriptors_.size(); j++) {
+        for (int j = 0; j < static_cast<int>(aw_descriptors_.size()); j++) {
             out__ << "[";
-            for (int order = 0; order < (int)aw_descriptors_[j].size(); order++) {
+            for (int order = 0; order < static_cast<int>(aw_descriptors_[j].size()); order++) {
                 if (order) {
                     out__ << ", ";
                 }
@@ -375,7 +376,7 @@ void
 Atom_type::read_input_core(nlohmann::json const& parser)
 {
     std::string core_str = std::string(parser["core"]);
-    if (int size = (int)core_str.size()) {
+    if (int size = static_cast<int>(core_str.size())) {
         if (size % 2) {
             std::stringstream s;
             s << "wrong core configuration string : " << core_str;
@@ -546,7 +547,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
             // -1/2 or l + 1/2 by changing the sign of l
 
             double j = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"].get<double>();
-            if (j < (double)l) {
+            if (j < static_cast<double>(l)) {
                 l *= -1;
             }
         }
@@ -566,6 +567,10 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
     d_mtrx.zero();
     auto v = parser["pseudo_potential"]["D_ion"].get<std::vector<double>>();
 
+    if (v.size() != nbf * nbf) {
+        RTE_THROW("wrong size of D_ion");
+    }
+
     for (int i = 0; i < nbf; i++) {
         for (int j = 0; j < nbf; j++) {
             d_mtrx(i, j) = v[j * nbf + i];
@@ -579,7 +584,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
             int j    = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
             int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
             auto qij = parser["pseudo_potential"]["augmentation"][k]["radial_function"].get<std::vector<double>>();
-            if ((int)qij.size() != num_mt_points()) {
+            if (static_cast<int>(qij.size()) != num_mt_points()) {
                 RTE_THROW("wrong size of qij");
             }
             add_q_radial_function(i, j, l, qij);
@@ -595,7 +600,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         for (size_t k = 0; k < nwf; k++) {
             auto v = dict[k]["radial_function"].get<std::vector<double>>();
 
-            if ((int)v.size() != num_mt_points()) {
+            if (static_cast<int>(v.size()) != num_mt_points()) {
                 std::stringstream s;
                 s << "wrong size of atomic functions for atom type " << symbol_ << " (label: " << label_ << ")"
                   << std::endl
@@ -666,7 +671,7 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
         /* read ae wave func */
         auto wfc = parser["pseudo_potential"]["paw_data"]["ae_wfc"][i]["radial_function"].get<std::vector<double>>();
 
-        if ((int)wfc.size() > num_mt_points()) {
+        if (static_cast<int>(wfc.size()) > num_mt_points()) {
             std::stringstream s;
             s << "wrong size of ae_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of ae_wfc radial functions in the file: " << wfc.size() << std::endl
@@ -678,7 +683,7 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
 
         wfc = parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"].get<std::vector<double>>();
 
-        if ((int)wfc.size() > num_mt_points()) {
+        if (static_cast<int>(wfc.size()) > num_mt_points()) {
             std::stringstream s;
             s << "wrong size of ps_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of ps_wfc radial functions in the file: " << wfc.size() << std::endl
@@ -741,40 +746,38 @@ is_upf_file(std::string const& str__)
     const std::string ftype = ".upf";
     auto lcstr              = str__;
     lcstr                   = trim(lcstr);
-    std::transform(lcstr.begin(), lcstr.end(), lcstr.begin(), ::tolower);
-    return lcstr.find(ftype) == lcstr.size() - ftype.size();
+    if (lcstr.size() < ftype.size()) {
+        return false;
+    }
+    return std::equal(ftype.rbegin(), ftype.rend(), lcstr.rbegin(),
+                      [](char a, char b) { return std::tolower(a) == std::tolower(b); });
 }
 
 #ifdef SIRIUS_USE_PUGIXML
 template <typename T>
 std::vector<T>
-vec_from_str(std::string const& str__, T const scaling)
+vec_from_str(std::string const& str__, identity_t<T> scaling = T{1})
 {
-    std::vector<T> vec;
-    std::istringstream iss(str__);
-
-    std::copy(std::istream_iterator<T>(iss), std::istream_iterator<T>(), std::back_inserter(vec));
-    std::transform(vec.begin(), vec.end(), vec.begin(), [&scaling](T val) { return val * scaling; });
-
-    return vec;
-}
-
-template <typename T>
-std::vector<T>
-vec_from_str(std::string const& str__)
-{
-    std::vector<T> vec;
-    std::istringstream iss(str__);
-
-    std::copy(std::istream_iterator<T>(iss), std::istream_iterator<T>(), std::back_inserter(vec));
-
-    return vec;
+    std::string s;
+    std::istringstream ss(str__);
+    std::vector<T> data;
+    while (ss >> s) {
+        if constexpr (std::is_same_v<T, double>) {
+            data.push_back(std::stod(s) * scaling);
+        } else if constexpr (std::is_same_v<T, int>) {
+            data.push_back(std::stoi(s) * scaling);
+        } else if constexpr (std::is_same_v<T, float>) {
+            data.push_back(std::stof(s) * scaling);
+        } else {
+            static_assert(!std::is_same_v<T, T>, "type not implemented");
+        }
+    }
+    return data;
 }
 
 void
 Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
 {
-
     pugi::xml_node header = upf.child("PP_HEADER");
     symbol_               = header.attribute("element").as_string();
 
@@ -844,7 +847,7 @@ Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
             pugi::xml_node so_node = upf.child("PP_SPIN_ORB").child(bstr.data());
 
             double j = so_node.attribute("jjj").as_double();
-            if (j < (double)l) {
+            if (j < static_cast<double>(l)) {
                 l *= -1;
             }
         }
@@ -893,7 +896,7 @@ Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
                     pugi::xml_node ijl_node = nl_node.child("PP_AUGMENTATION").child(ijl_str.data());
 
                     auto qij = vec_from_str<double>(ijl_node.child_value());
-                    if ((int)qij.size() != num_mt_points()) {
+                    if (static_cast<int>(qij.size()) != num_mt_points()) {
                         RTE_THROW("wrong size of qij");
                     }
                     add_q_radial_function(i, j, l, qij);
@@ -913,7 +916,7 @@ Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
 
             auto v = vec_from_str<double>(wfc_node.child_value());
 
-            if ((int)v.size() != num_mt_points()) {
+            if (static_cast<int>(v.size()) != num_mt_points()) {
                 std::stringstream s;
                 s << "wrong size of atomic functions for atom type " << symbol_ << " (label: " << label_ << ")"
                   << std::endl
@@ -991,7 +994,7 @@ Atom_type::read_pseudo_paw(pugi::xml_node const& upf)
         pugi::xml_node wfc_node = upf.child("PP_FULL_WFC").child(wstr.data());
         auto wfc                = vec_from_str<double>(wfc_node.child_value());
 
-        if ((int)wfc.size() > num_mt_points()) {
+        if (static_cast<int>(wfc.size()) > num_mt_points()) {
             std::stringstream s;
             s << "wrong size of ae_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of ae_wfc radial functions in the file: " << wfc.size() << std::endl
@@ -1005,7 +1008,7 @@ Atom_type::read_pseudo_paw(pugi::xml_node const& upf)
         wfc_node = upf.child("PP_FULL_WFC").child(wstr.data());
         wfc      = vec_from_str<double>(wfc_node.child_value());
 
-        if ((int)wfc.size() > num_mt_points()) {
+        if (static_cast<int>(wfc.size()) > num_mt_points()) {
             std::stringstream s;
             s << "wrong size of ps_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of ps_wfc radial functions in the file: " << wfc.size() << std::endl
