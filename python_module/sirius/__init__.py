@@ -1,6 +1,6 @@
 import json
 from .coefficient_array import CoefficientArray, PwCoeffs
-from .py_sirius import K_point_set, Density
+from .py_sirius import K_point_set, Density, Gvec
 import numpy as np
 from numpy import array, zeros
 from .py_sirius import vector3d_double, matrix3d, matrix3di, vector3d_int
