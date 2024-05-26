@@ -202,20 +202,6 @@ def dphk_factory(config="sirius.json"):
     }
 
 
-def get_c0_x(kpointset, eps=0):
-    """ """
-    from .coefficient_array import PwCoeffs
-    import numpy as np
-
-    c0 = PwCoeffs(kpointset)
-    x = PwCoeffs()
-    for key, c0_loc in c0.items():
-        x_loc = np.zeros_like(c0_loc)
-        x[key] = x_loc
-
-    return c0, x
-
-
 def kpoint_index(kp, ctx):
     """
     Returns tuple (idx, idy, idz), which corresponds
