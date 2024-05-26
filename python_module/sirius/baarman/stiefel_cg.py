@@ -1,15 +1,8 @@
 import numpy as np
-import json
-from sirius import DFT_ground_state_find
-from sirius.ot.minimize import minimize, inner
-from sirius.ot import Energy, ApplyHamiltonian, ConstrainedGradient
-from sirius.baarman import stiefel_project_tangent, stiefel_decompose_tangent, stiefel_transport_operators
-from sirius.baarman import FreeEnergy
-from scipy.optimize import root
-from copy import copy, deepcopy
+from sirius.baarman import stiefel_project_tangent, stiefel_transport_operators
 import sirius.ot as ot
 import h5py
-from sirius import kpoint_index, Logger
+from sirius import Logger
 
 logger = Logger()
 
@@ -25,8 +18,8 @@ def save_state(kset, X, Y, f, y, tau_min, sigma_min, prefix='fail'):
     from mpi4py import MPI
     rank = MPI.COMM_WORLD.rank
     with h5py.File(prefix+'%d.h5' % rank, 'w') as fh5:
-        grpX = ot.save(fh5, 'X', X, kset)
-        grpf = ot.save(fh5, 'fn', f, kset)
+        _ = ot.save(fh5, 'X', X, kset)
+        _ = ot.save(fh5, 'fn', f, kset)
         grpY = ot.save(fh5, 'Y', Y, kset)
         grpy = ot.save(fh5, 'y', y, kset)
         grpY.attrs['tau_min'] = tau_min
