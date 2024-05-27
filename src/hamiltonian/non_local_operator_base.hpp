@@ -170,17 +170,6 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::
             }
         }
     }
-    // switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
-    //     case device_t::GPU: {
-    //         /* wait for previous zgemms */
-    //         #pragma omp parallel
-    //         acc::sync_stream(acc::stream_id(omp_get_thread_num()));
-    //         break;
-    //     }
-    //     case device_t::CPU: {
-    //         break;
-    //     }
-    // }
 
     auto sp = op_phi__.actual_spin_index(wf::spin_index(ispn_block__ & 1));
 
