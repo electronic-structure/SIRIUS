@@ -6649,7 +6649,7 @@ sirius_set_nonlocal_occupation_matrix(void** handler__, int const* atom_pair__, 
                 int n2    = n__[1];
                 int l1    = l__[0];
                 int l2    = l__[1];
-                int spin  = *spin__;
+                int spin  = *spin__ - 1;
                 r3::vector<int> T(T__);
 
                 bool found{false};
