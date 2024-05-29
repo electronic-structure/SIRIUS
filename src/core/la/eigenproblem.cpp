@@ -331,9 +331,9 @@ Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>
 void
 Eigensolver_dlaf::initialize()
 {
-    const char* pika_argv[] = {"sirius", "--pika:print-bind"};
+    const char* pika_argv[] = {"sirius"};
     const char* dlaf_argv[] = {"sirius"};
-    dlaf_initialize(2, pika_argv, 1, dlaf_argv);
+    dlaf_initialize(1, pika_argv, 1, dlaf_argv);
 }
 
 void
