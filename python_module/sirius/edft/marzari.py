@@ -161,7 +161,7 @@ class CG:
         kset = self.free_energy.energy.kpointset
         potential = self.free_energy.energy.potential
         ctx = kset.ctx()
-        self.is_ultrasoft = np.any([type.augment for type in kset.ctx().unit_cell().atom_types])
+        self.is_ultrasoft = kset.ctx().unit_cell().augmented
         if self.is_ultrasoft:
             self.Si = Sinv_operator(ctx, potential, kset)
             self.S = S_operator(ctx, potential, kset)

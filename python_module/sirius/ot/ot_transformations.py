@@ -1,10 +1,11 @@
 import numpy as np
+from numpy.typing import NDArray
+from typing import TypeAlias
 from numpy.linalg import eigh, solve
 from ..coefficient_array import PwCoeffs, allthreaded
 
-from numpy.typing import NDArray
-from typing import TypeAlias
 complex_array_t: TypeAlias = NDArray[np.complex128]
+
 
 def matview(x):
     return np.matrix(x, copy=False)
@@ -17,6 +18,7 @@ def lagrangeMult(p, c0, P=None):
     c0 --
     """
     from ..coefficient_array import CoefficientArray
+
     if isinstance(p, CoefficientArray):
         out = PwCoeffs()
         for key, v in p.items():
@@ -36,20 +38,21 @@ def lagrangeMult(p, c0, P=None):
             correction = -c0 * oc
         return correction
 
+
 def _c(x: complex_array_t, c0: complex_array_t) -> complex_array_t:
     x = matview(x)
-    assert np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7
+    assert np.linalg.norm(np.dot(x.H, c0), "fro") < 1e-7
     XX = np.dot(x.H, x)
     w, R = eigh(XX)
     w = np.where(np.abs(w) < 1e-14, 0, w)
     w = np.sqrt(w)
     R = matview(R)
-    err = np.linalg.norm(R.H @ R - np.eye(*R.shape), 'fro')
+    err = np.linalg.norm(R.H @ R - np.eye(*R.shape), "fro")
     # TODO: remove: check that we are not losing accuracy for small x
     assert np.isclose(R * np.diag(w**2) * R.H, XX).all()
     assert err < 1e-11
 
-    Wsinc = np.diag(np.sinc(w/np.pi))
+    Wsinc = np.diag(np.sinc(w / np.pi))
     sincU = np.dot(np.dot(R, Wsinc), R.H)
 
     Wcos = np.diag(np.cos(w))
@@ -90,7 +93,7 @@ class ConstrainedGradient:
         x = np.matrix(x, copy=False)
 
         # check that x fulfills constraint condition
-        assert np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7
+        assert np.linalg.norm(np.dot(x.H, c0), "fro") < 1e-7
 
         # compute eigenvectors and eigenvalues of U
         XX = np.dot(x.H, x)
@@ -100,11 +103,11 @@ class ConstrainedGradient:
         # note: U = V * sqrt(Λ) * V.H = sqrt(X.T X)
 
         # check for orthonormality
-        err = np.linalg.norm(R.H * R - np.eye(*R.shape), 'fro')
+        err = np.linalg.norm(R.H * R - np.eye(*R.shape), "fro")
         assert err < 1e-10
 
         # pre-compute matrix functions sin, cos, and inverse of U
-        Wsinc = np.diag(np.sinc(w/np.pi))
+        Wsinc = np.diag(np.sinc(w / np.pi))
         sincU = np.dot(np.dot(R, Wsinc), R.H)
         # cos
         Wcos = np.diag(np.cos(w))
@@ -130,7 +133,7 @@ class ConstrainedGradient:
         depending on type of x: np.matrix or PwCoeffs
         """
         if isinstance(x, PwCoeffs):
-            assert(isinstance(self.c0, PwCoeffs))
+            assert isinstance(self.c0, PwCoeffs)
             Hx_out = PwCoeffs()
             Gx_out = PwCoeffs()
             for ki in x.kvalues():
@@ -141,21 +144,28 @@ class ConstrainedGradient:
                 # plane-wave coefficients c(x, c0)
                 c = PwCoeffs()
                 for key, val in xk.items():
-                    fX[key] = {k: t for k, t in zip(['c', 'Λ', 'sincU', 'R'],
-                                                    self._prepare_fX(x=val, c0=self.c0[key]))}
+                    fX[key] = {
+                        k: t
+                        for k, t in zip(
+                            ["c", "Λ", "sincU", "R"],
+                            self._prepare_fX(x=val, c0=self.c0[key]),
+                        )
+                    }
                     # this makes a copy ...
-                    c[key] = fX[key]['c']
+                    c[key] = fX[key]["c"]
                 # apply Hamiltonian for all spin-components in a single k-point
                 Hc = self.hamiltonian(c)
                 # now call _apply_single for every element
                 for key, val in xk.items():
                     Hc_loc = Hc[key]
-                    Gx, Hx = self._apply_single(x=xk[key],
-                                                c0=self.c0[key],
-                                                Λ=fX[key]['Λ'],
-                                                Hc=Hc_loc,
-                                                sincU=fX[key]['sincU'],
-                                                R=fX[key]['R'])
+                    Gx, Hx = self._apply_single(
+                        x=xk[key],
+                        c0=self.c0[key],
+                        Λ=fX[key]["Λ"],
+                        Hc=Hc_loc,
+                        sincU=fX[key]["sincU"],
+                        R=fX[key]["R"],
+                    )
                     Gx_out[key] = Gx
                     Hx_out[key] = Hx
             # return ∂E/∂x as PwCoeffs
@@ -169,12 +179,9 @@ class ConstrainedGradient:
             # compute ∂E/∂c
             Hc = self.hamiltonian(c, ki=ki, ispn=ispn)
             # return ∂E/∂x as np.matrix
-            return self._apply_single(x=x,
-                                      c0=np.matrix(self.c0, copy=False),
-                                      Λ=Λ,
-                                      Hc=Hc,
-                                      sincU=sincU,
-                                      R=R)
+            return self._apply_single(
+                x=x, c0=np.matrix(self.c0, copy=False), Λ=Λ, Hc=Hc, sincU=sincU, R=R
+            )
 
     @staticmethod
     def _apply_single(x, c0, Λ, Hc, sincU, R):
@@ -202,7 +209,7 @@ class ConstrainedGradient:
         # assert isinstance(Hc, np.matrix)
         # assert isinstance(c0, np.matrix)
 
-        v = np.sinc(np.sqrt(Λ)/np.pi)
+        v = np.sinc(np.sqrt(Λ) / np.pi)
         v = v[:, np.newaxis]
         diffL = Λ[:, np.newaxis] - Λ[:, np.newaxis].T
         mask = np.abs(diffL) < 1e-10
@@ -216,9 +223,11 @@ class ConstrainedGradient:
             """
             pos_index = la > 1e-10
             out = np.zeros(la.shape, dtype=la.dtype)
-            out[pos_index] = 0.5*(np.cos(np.sqrt(la[pos_index])) / la[pos_index]
-                                  - np.sin(np.sqrt(la[pos_index])) / (la[pos_index]**(1.5)))
-            out[~pos_index] = -1/6
+            out[pos_index] = 0.5 * (
+                np.cos(np.sqrt(la[pos_index])) / la[pos_index]
+                - np.sin(np.sqrt(la[pos_index])) / (la[pos_index] ** (1.5))
+            )
+            out[~pos_index] = -1 / 6
             # if (~pos_index).any():
             #     print('OUTPUT: encountered small eigenvalue!')
             if (la < -1e-10).any():
@@ -234,14 +243,14 @@ class ConstrainedGradient:
         v = v[:, np.newaxis]
         D2 = np.ma.masked_array(v - v.T, mask=mask) / diffL
         # D2(x1, x2) = -1/2 sin(sqrt(x)) / sqrt(x) if x1==x2
-        D2[irow, icol] = -0.5*np.sinc(np.sqrt(Λ[irow])/np.pi)
+        D2[irow, icol] = -0.5 * np.sinc(np.sqrt(Λ[irow]) / np.pi)
 
         # compute K: TODO copy/paste formula from the paper
         RtHCtxR = np.array(R.H * (Hc.H * x) * R)
         RtHCtc0R = np.array(R.H * Hc.H * c0 * R)
-        K = np.matrix(RtHCtxR*np.array(D1) + RtHCtc0R*np.array(D2))
+        K = np.matrix(RtHCtxR * np.array(D1) + RtHCtc0R * np.array(D2))
         # compute ∂E/∂x
-        dEdx = Hc*sincU + x*(R*(K.H + K)*R.H)
+        dEdx = Hc * sincU + x * (R * (K.H + K) * R.H)
 
         # Lagrange multiplier
         # TODO: this can be precomputed and stored
@@ -249,3 +258,14 @@ class ConstrainedGradient:
         correction = -1 * c0 @ lM
 
         return dEdx + correction, dEdx
+
+
+def get_c0_x(kpointset, eps=0):
+    """ """
+    c0 = PwCoeffs(kpointset)
+    x = PwCoeffs()
+    for key, c0_loc in c0.items():
+        x_loc = np.zeros_like(c0_loc)
+        x[key] = x_loc
+
+    return c0, x

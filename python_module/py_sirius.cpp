@@ -6,6 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "k_point/k_point_set.hpp"
 #include "python_module_includes.hpp"
 #include <mpi.h>
 
@@ -16,6 +17,7 @@
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
+#include <pybind11/attr.h>
 #include <string>
 #include <vector>
 #include <list>
@@ -198,6 +200,8 @@ PYBIND11_MODULE(py_sirius, m)
             .def("gvec", &Simulation_context::gvec, py::return_value_policy::reference_internal)
             .def("full_potential", &Simulation_context::full_potential)
             .def_property_readonly("hubbard_correction", &Simulation_context::hubbard_correction)
+            .def_property_readonly("kT", py::overload_cast<>(&Simulation_context::smearing_width, py::const_))
+            .def_property_readonly("smearing_type", py::overload_cast<>(&Simulation_context::smearing, py::const_))
             .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
                  py::return_value_policy::reference)
             .def("pw_cutoff", py::overload_cast<>(&Simulation_context::pw_cutoff, py::const_))
@@ -263,6 +267,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def_property_readonly("num_electrons", &Unit_cell::num_electrons)
             .def_property_readonly("num_atoms", &Unit_cell::num_atoms)
             .def_property_readonly("num_valence_electrons", &Unit_cell::num_valence_electrons)
+            .def_property_readonly("augmented", &Unit_cell::augment)
             .def_property_readonly("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
             .def("generate_radial_functions", &Unit_cell::generate_radial_functions)
             .def_property_readonly("min_mt_radius", &Unit_cell::min_mt_radius)
@@ -510,7 +515,6 @@ PYBIND11_MODULE(py_sirius, m)
             });
 
     py::enum_<device_t>(m, "DeviceEnum").value("CPU", device_t::CPU).value("GPU", device_t::GPU);
-
     py::enum_<memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
     py::enum_<wf::copy_to>(m, "CopyEnum")
             .value("none", wf::copy_to::none)
@@ -580,6 +584,9 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Periodic_function<double>>(m, "RPeriodic_function");
 
     m.def("total_energy", &total_energy);
+    m.def("ks_energy",
+          py::overload_cast<Simulation_context const&, K_point_set const&, Density const&, Potential const&>(
+                  &ks_energy));
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
@@ -600,12 +607,17 @@ PYBIND11_MODULE(py_sirius, m)
 
     /* sirius.smearing submodules */
     py::module smearing_module = m.def_submodule("smearing");
+    py::enum_<smearing::smearing_t>(smearing_module, "SmearingEnum")
+            .value("gauss", smearing::smearing_t::gaussian)
+            .value("methfessel_paxton", smearing::smearing_t::methfessel_paxton)
+            .value("fermi_dirac", smearing::smearing_t::fermi_dirac)
+            .value("cold", smearing::smearing_t::cold);
     {
         py::module mpm = smearing_module.def_submodule("methfessel_paxton");
-        mpm.def("entropy", py::vectorize(&smearing::methfessel_paxton::entropy), "x"_a, "w"_a, "n"_a);
-        mpm.def("delta", py::vectorize(&smearing::methfessel_paxton::delta), "x"_a, "w"_a, "n"_a);
-        mpm.def("occupancy", py::vectorize(&smearing::methfessel_paxton::occupancy), "x"_a, "w"_a, "n"_a);
-        mpm.def("dxdelta", py::vectorize(&smearing::methfessel_paxton::dxdelta), "x"_a, "w"_a, "n"_a);
+        mpm.def("entropy", py::vectorize(&smearing::methfessel_paxton::entropy), "x"_a, "w"_a, "n"_a = int{1});
+        mpm.def("delta", py::vectorize(&smearing::methfessel_paxton::delta), "x"_a, "w"_a, "n"_a = int{1});
+        mpm.def("occupancy", py::vectorize(&smearing::methfessel_paxton::occupancy), "x"_a, "w"_a, "n"_a = int{1});
+        mpm.def("dxdelta", py::vectorize(&smearing::methfessel_paxton::dxdelta), "x"_a, "w"_a, "n"_a = int{1});
     }
     {
         py::module mcold = smearing_module.def_submodule("cold");
@@ -625,6 +637,7 @@ PYBIND11_MODULE(py_sirius, m)
         py::module mgauss = smearing_module.def_submodule("gaussian");
         mgauss.def("delta", py::vectorize(&smearing::gaussian::delta), "x"_a, "w"_a);
         mgauss.def("occupancy", py::vectorize(&smearing::gaussian::occupancy), "x"_a, "w"_a);
+        mgauss.def("entropy", py::vectorize(&smearing::gaussian::entropy), "x"_a, "w"_a);
     }
     /* sirius.smearing submodules (end) */
 }

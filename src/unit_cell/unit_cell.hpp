@@ -15,10 +15,12 @@
 #define __UNIT_CELL_HPP__
 
 #include <algorithm>
+#include <memory>
 #include "atom.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/json.hpp"
 #include "context/simulation_parameters.hpp"
+#include "unit_cell/atom_type.hpp"
 
 namespace sirius {
 

@@ -1,4 +1,4 @@
-from .py_sirius import spin_range
+from .py_sirius import spin_range  # type: ignore
 
 # collinear case
 spin_up = spin_range(0, 1)

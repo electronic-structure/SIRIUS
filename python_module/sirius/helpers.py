@@ -1,11 +1,12 @@
 from __future__ import print_function
-
+import numpy as np
 import h5py
 from mpi4py import MPI
+import json
 from .coefficient_array import PwCoeffs, CoefficientArray
-from .py_sirius import MemoryEnum
 from .logger import Logger
-import numpy as np
+from .py_sirius import Simulation_context, K_point_set, DFT_ground_state, MemoryEnum
+
 
 logger = Logger()
 
@@ -79,14 +80,14 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
         for key, v in cn.items():
             k, ispn = key
             psi = kpointset[k].spinor_wave_functions()
-            psi.pw_coeffs(ispn)[:, :v.shape[1]] = v
+            psi.pw_coeffs(ispn)[:, : v.shape[1]] = v
             on_device = pmem_t == MemoryEnum.device
             if on_device:
                 psi.copy_to_gpu()
     else:
         psi = kpointset[ki].spinor_wave_functions()
         on_device = pmem_t == MemoryEnum.device
-        psi.pw_coeffs(ispn)[:, :cn.shape[1]] = cn
+        psi.pw_coeffs(ispn)[:, : cn.shape[1]] = cn
         if on_device:
             psi.copy_to_gpu()
 
@@ -109,11 +110,6 @@ def DFT_ground_state_find(num_dft_iter=1, config="sirius.json"):
     - potential (Potential instance)
     - ctx (Simulation_context instance)
     """
-    from . import (Simulation_context,
-                   K_point_set,
-                   DFT_ground_state)
-    import json
-
     if isinstance(config, dict):
         ctx = Simulation_context(json.dumps(config))
         siriusJson = config
@@ -121,8 +117,8 @@ def DFT_ground_state_find(num_dft_iter=1, config="sirius.json"):
         siriusJson = json.load(open(config))
         ctx = Simulation_context(json.dumps(siriusJson))
     ctx.initialize()
-    if 'vk' in siriusJson['parameters']:
-        vk = siriusJson['parameters']['vk']
+    if "vk" in siriusJson["parameters"]:
+        vk = siriusJson["parameters"]["vk"]
         kPointSet = K_point_set(ctx, vk)
     else:
         if "shiftk" in siriusJson["parameters"]:
@@ -141,10 +137,10 @@ def DFT_ground_state_find(num_dft_iter=1, config="sirius.json"):
     dft_gs = DFT_ground_state(kPointSet)
     dft_gs.initial_state()
 
-    if 'density_tol' not in siriusJson['parameters']:
+    if "density_tol" not in siriusJson["parameters"]:
         density_tol = 1e-5
     else:
-        density_tol = siriusJson['parameters']['density_tol']
+        density_tol = siriusJson["parameters"]["density_tol"]
 
     if "energy_tol" not in siriusJson["parameters"]:
         energy_tol = 1e-5
@@ -204,20 +200,6 @@ def dphk_factory(config="sirius.json"):
         "density": density,
         "potential": potential,
     }
-
-
-def get_c0_x(kpointset, eps=0):
-    """ """
-    from .coefficient_array import PwCoeffs
-    import numpy as np
-
-    c0 = PwCoeffs(kpointset)
-    x = PwCoeffs()
-    for key, c0_loc in c0.items():
-        x_loc = np.zeros_like(c0_loc)
-        x[key] = x_loc
-
-    return c0, x
 
 
 def kpoint_index(kp, ctx):
