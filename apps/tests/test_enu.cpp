@@ -42,23 +42,24 @@ test_enu(cmd_args const& args__)
 
     Radial_solver solver(zn, v, rgrid);
 
-    std::vector<double> p1, p2, p3, rdudr;
-    std::array<double, 2> uderiv;
-
     int dme{0};
 
-    solver.solve(rel, dme, l, e.ebot(), p1, rdudr, uderiv);
-    solver.solve(rel, dme, l, e.etop(), p2, rdudr, uderiv);
-    solver.solve(rel, dme, l, e.enu(), p3, rdudr, uderiv);
-
-    printf("uderiv: %12.6f %12.6f\n", uderiv[0], uderiv[1]);
+    auto result1 = solver.solve(rel, dme, l, e.ebot());
+    auto result2 = solver.solve(rel, dme, l, e.etop());
+    auto result3 = solver.solve(rel, dme, l, e.enu());
 
     FILE* fout = fopen("radial_solution.dat", "w");
     for (int i = 0; i < rgrid.num_points(); i++) {
         double x = rgrid[i];
-        fprintf(fout, "%18.12f %18.12f %18.12f %18.12f\n", x, p1[i] / x, p2[i] / x, p3[i] / x);
+        fprintf(fout, "%18.12f %18.12f %18.12f %18.12f\n", x, result1.p[i] / x, result2.p[i] / x, result3.p[i] / x);
     }
     fclose(fout);
+
+    auto enu2 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1).enu();
+    auto enu3 = Enu_finder(rel, zn, n, l, rgrid, v, enu2).enu();
+
+    std::cout << "enu2: " << enu2 << ", enu3: " << enu3 << ", diff: " << std::abs(enu2 - enu3) << std::endl;
+
     return 0;
 }
 

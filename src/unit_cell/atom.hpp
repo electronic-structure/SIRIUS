@@ -142,14 +142,55 @@ class Atom
             RTE_THROW("not yet mpi parallel");
         }
 
-        splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
-
         auto l_by_lm = sf::l_by_lm(lmax_pot_);
 
         h_radial_integrals_.zero();
         if (num_mag_dims) {
             b_radial_integrals_.zero();
         }
+
+        if (type().parameters().cfg().settings().simple_lapw_ri()) {
+            #pragma omp parallel for
+            for (int lm = 0; lm < lmmax; lm++) {
+                int l = l_by_lm[lm];
+
+                for (int i2 = 0; i2 < type().indexr().size(); i2++) {
+                    int l2 = type().indexr(i2).am.l();
+                    for (int i1 = 0; i1 <= i2; i1++) {
+                        int l1 = type().indexr(i1).am.l();
+                        if ((l + l1 + l2) % 2 == 0) {
+                            if (lm) {
+                                Spline<double> s(type().radial_grid());
+                                for (int ir = 0; ir < nmtp; ir++) {
+                                    s(ir) = veff_(lm, ir) * symmetry_class().radial_function(ir, i1) *
+                                            symmetry_class().radial_function(ir, i2) *
+                                            std::pow(type().radial_grid(ir), 2);
+                                }
+                                h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) =
+                                        s.interpolate().integrate(0);
+                            } else {
+                                h_radial_integrals_(lm, i1, i2) = symmetry_class().h_spherical_integral(i1, i2);
+                                h_radial_integrals_(lm, i2, i1) = symmetry_class().h_spherical_integral(i2, i1);
+                            }
+                            for (int j = 0; j < num_mag_dims; j++) {
+                                Spline<double> s(type().radial_grid());
+                                for (int ir = 0; ir < nmtp; ir++) {
+                                    s(ir) = beff_[j](lm, ir) * symmetry_class().radial_function(ir, i1) *
+                                            symmetry_class().radial_function(ir, i2) *
+                                            std::pow(type().radial_grid(ir), 2);
+                                }
+                                b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) =
+                                        s.interpolate().integrate(0);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return;
+        }
+
+        splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
 
         /* copy radial functions to spline objects */
         std::vector<Spline<double>> rf_spline(nrf);

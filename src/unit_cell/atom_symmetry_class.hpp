@@ -37,7 +37,7 @@ class Atom_symmetry_class
     Atom_type const& atom_type_;
 
     /// Spherical part of the effective potential.
-    /** Used by the LAPW radial solver. */
+    /** Used by the LAPW radial solver. Actual value is stored, not the Y00 component. */
     std::vector<double> spherical_potential_;
 
     /// List of radial functions for the LAPW basis.

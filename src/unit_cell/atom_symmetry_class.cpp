@@ -69,9 +69,6 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
     auto compute_all_orders = [&](int l, double enu_shift) -> bool {
         Spline<double> s(atom_type_.radial_grid());
-        std::vector<double> p;
-        std::vector<double> rdudr;
-        std::array<double, 2> uderiv;
 
         for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
             auto rsd = aw_descriptor(l)[order];
@@ -79,21 +76,14 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
 
             /* integrate radial equation forward and find radial solution */
-            solver.solve(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift, p, rdudr, uderiv);
-
-            /* normalize */
-            for (int ir = 0; ir < nmtp; ir++) {
-                s(ir) = std::pow(p[ir], 2);
-            }
-            double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+            auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift);
 
             for (int ir = 0; ir < nmtp; ir++) {
-                rf__(ir, idxrf, 0) = p[ir] * norm;
-                rf__(ir, idxrf, 1) = rdudr[ir] * norm;
+                rf__(ir, idxrf, 0) = result.p[ir];
+                rf__(ir, idxrf, 1) = result.rdudr[ir];
             }
-            sd__(0, idxrf) = norm * p.back() / atom_type_.mt_radius();
-            for (int i : {0, 1}) {
-                sd__(i + 1, idxrf) = uderiv[i] * norm;
+            for (int i : {0, 1, 2}) {
+                sd__(i, idxrf) = result.uderiv[i];
             }
 
             /* orthogonalize to previous radial functions */
@@ -116,11 +106,11 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
                 }
             }
 
-            /* normalize again */
+            /* normalize orthogonal function */
             for (int ir = 0; ir < nmtp; ir++) {
                 s(ir) = std::pow(rf__(ir, idxrf, 0), 2);
             }
-            norm = s.interpolate().integrate(0);
+            auto norm = s.interpolate().integrate(0);
 
             /* in case of linear dependency continue to increase energy */
             if (std::abs(norm) < 1e-8) {
@@ -186,35 +176,27 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         int num_rs = static_cast<int>(lo_descriptor(idxlo).rsd_set.size());
         RTE_ASSERT(num_rs <= 3);
 
-        std::vector<std::vector<double>> p(num_rs);
+        std::vector<std::vector<double>> u(num_rs);
         std::vector<std::vector<double>> rdudr(num_rs);
-        std::array<double, 2> uderiv;
 
         for (int order = 0; order < num_rs; order++) {
             auto rsd = lo_descriptor(idxlo).rsd_set[order];
 
-            solver.solve(rel__, rsd.dme, rsd.l, rsd.enu, p[order], rdudr[order], uderiv);
+            auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu);
 
-            /* find norm of the radial solution */
-            for (int ir = 0; ir < nmtp; ir++) {
-                s(ir) = std::pow(p[order][ir], 2);
-            }
-            double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+            u[order]     = result.p;
+            rdudr[order] = result.rdudr;
 
-            /* normalize radial solution and divide by r */
+            /* divide by r */
             for (int ir = 0; ir < nmtp; ir++) {
                 /* store u(r) = p(r)/r */
-                p[order][ir] *= (norm * atom_type_.radial_grid().x_inv(ir));
-                /* don't divide rdudr by r */
-                rdudr[order][ir] *= norm;
+                u[order][ir] *= atom_type_.radial_grid().x_inv(ir);
             }
-            uderiv[0] *= norm;
-            uderiv[1] *= norm;
 
             /* matrix of derivatives */
-            a[order][0] = p[order].back();
-            a[order][1] = uderiv[0];
-            a[order][2] = uderiv[1];
+            a[order][0] = result.uderiv[0];
+            a[order][1] = result.uderiv[1];
+            a[order][2] = result.uderiv[2];
 
             for (int i : {0, 1, 2}) {
                 rderiv[order][i] = a[order][i];
@@ -248,7 +230,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         for (int order = 0; order < num_rs; order++) {
             for (int ir = 0; ir < nmtp; ir++) {
                 /* u(r) function */
-                rf__(ir, idxrf, 0) += b[order] * p[order][ir];
+                rf__(ir, idxrf, 0) += b[order] * u[order][ir];
                 /* r(du/dr) function */
                 rf__(ir, idxrf, 1) += b[order] * rdudr[order][ir];
             }
@@ -672,10 +654,18 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                     if (order1 == order2) {
                         o_radial_integrals_(l, order1, order2) = 1.0;
                     } else {
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                        if (atom_type_.parameters().cfg().settings().simple_lapw_ri()) {
+                            for (int ir = 0; ir < nmtp; ir++) {
+                                s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *
+                                        std::pow(atom_type_.radial_grid(ir), 2);
+                            }
+                            o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(0);
+                        } else {
+                            for (int ir = 0; ir < nmtp; ir++) {
+                                s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                            }
+                            o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
                         }
-                        o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
                     }
                 }
             }
@@ -691,12 +681,12 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                 if (atom_type_.indexr(i1).am.l() == atom_type_.indexr(i2).am.l()) {
                     int ll = atom_type_.indexr(i1).am.l() * (atom_type_.indexr(i1).am.l() + 1);
                     for (int ir = 0; ir < nmtp; ir++) {
-                        double Minv = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
+                        double Minv2 = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
                         /* u_1(r) * u_2(r) */
                         double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
                         /* r*u'_1(r) * r*u'_2(r) */
                         double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                        s(ir)     = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
+                        s(ir)     = sq_alpha_half * 0.5 * Minv2 * (t1 + t0 * ll);
                     }
                     o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                 }

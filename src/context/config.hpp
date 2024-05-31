@@ -197,6 +197,30 @@ class config_t
             }
             dict_["/settings/fft_grid_size"_json_pointer] = fft_grid_size__;
         }
+        /// If true, coarse FFT grid is used to apply Hamiltonian and compute charge density from wave-functions.
+        inline auto use_coarse_fft_grid() const
+        {
+            return dict_.at("/settings/use_coarse_fft_grid"_json_pointer).get<bool>();
+        }
+        inline void use_coarse_fft_grid(bool use_coarse_fft_grid__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/use_coarse_fft_grid"_json_pointer] = use_coarse_fft_grid__;
+        }
+        /// Simplified calculation of LAPW radial integrals.
+        inline auto simple_lapw_ri() const
+        {
+            return dict_.at("/settings/simple_lapw_ri"_json_pointer).get<bool>();
+        }
+        inline void simple_lapw_ri(bool simple_lapw_ri__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/simple_lapw_ri"_json_pointer] = simple_lapw_ri__;
+        }
         /// Default radial grid for LAPW species.
         inline auto radial_grid() const
         {
