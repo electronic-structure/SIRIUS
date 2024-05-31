@@ -610,7 +610,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
             }
 
             int l = dict[k]["angular_momentum"].get<int>();
-            int n = -1;
+            int n{-1};
             double occ{0};
             if (dict[k].count("occupation")) {
                 occ = dict[k]["occupation"].get<double>();
