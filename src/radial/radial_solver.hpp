@@ -1190,16 +1190,16 @@ class Enu_finder : public Radial_solver
         double e0;
         /* 1st pass: estimate upper and lower boundaries of the etop*/
         e0 = integrate_forward_until(rel__, enu_start__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                          [&s, &sp, &denu, this](int iter, int nn, double& enu) {
-                                              sp = s;
-                                              s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
-                                              if (s != sp && iter > 0) {
-                                                  return true;
-                                              }
-                                              denu *= 10;
-                                              enu += s * denu;
-                                              return false;
-                                          });
+                                     [&s, &sp, &denu, this](int iter, int nn, double& enu) {
+                                         sp = s;
+                                         s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
+                                         if (s != sp && iter > 0) {
+                                             return true;
+                                         }
+                                         denu *= 10;
+                                         enu += s * denu;
+                                         return false;
+                                     });
 
         double e1 = e0;
         double e2 = e0 - sp * denu;
@@ -1237,7 +1237,7 @@ class Enu_finder : public Radial_solver
          * at the muffin-tin boundary. This will be the bottom of the band. Here we look at a sign change
          * of the derivative. */
         denu = 1e-8;
-        e0 = integrate_forward_until(rel__, etop_, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+        e0   = integrate_forward_until(rel__, etop_, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
                                        [&denu, sd, &surface_deriv, this](int iter, int nn, double& enu) {
                                          if (surface_deriv() * sd <= 0 || denu > 20) {
                                              return true;
@@ -1248,8 +1248,8 @@ class Enu_finder : public Radial_solver
                                      });
 
         /* refine bottom energy */
-        e1 = e0;
-        e2 = e0 + denu;
+        e1    = e0;
+        e2    = e0 + denu;
         ebot_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
                                         [&e1, &e2, sd, &surface_deriv, this](int iter, int nn, double& enu) {
                                             if (surface_deriv() * sd > 0) {
