@@ -163,7 +163,7 @@ class Free_atom : public sirius::Atom_type
 
             rho = [](int i) { return 0; };
 
-            // std::memset(&rho(0), 0, rho.num_points() * sizeof(double));
+            PROFILE_START("atom::bound_state")
             #pragma omp parallel default(shared)
             {
                 std::vector<double> rho_t(rho.num_points(), 0);
@@ -190,6 +190,7 @@ class Free_atom : public sirius::Atom_type
                     rho(i) += rho_t[i];
                 }
             }
+            PROFILE_STOP("atom::bound_state")
 
             charge_rms = 0.0;
             for (int i = 0; i < np; i++) {
