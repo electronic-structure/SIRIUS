@@ -1169,7 +1169,7 @@ class Enu_finder : public Radial_solver
     double ebot_;
 
     void
-    find_enu(relativity_t rel__, double enu_start__)
+    find_enu(relativity_t rel__, double enu_start__, int auto_enu__)
     {
         int np = num_points();
 
@@ -1261,13 +1261,25 @@ class Enu_finder : public Radial_solver
                                             return std::abs(surface_deriv()) < 1e-8;
                                         });
 
-        enu_ = (ebot_ + etop_) / 2.0;
+        switch (auto_enu__) {
+            case 1: {
+                enu_ = (ebot_ + etop_) / 2.0;
+                break;
+            }
+            case 2: {
+                enu_ = ebot_;
+                break;
+            }
+            default: {
+                RTE_THROW("wrong type of auto_enu");
+            }
+        }
     }
 
   public:
     /// Constructor
     Enu_finder(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
-               std::vector<double> const& v__, double enu_start__)
+               std::vector<double> const& v__, double enu_start__, int auto_enu__)
         : Radial_solver(zn__, v__, radial_grid__)
         , n_(n__)
         , l_(l__)
@@ -1275,7 +1287,7 @@ class Enu_finder : public Radial_solver
         if (l_ >= n_) {
             RTE_THROW("wrong orbital quantum number");
         }
-        find_enu(rel__, enu_start__);
+        find_enu(rel__, enu_start__, auto_enu__);
     }
 
     inline double
