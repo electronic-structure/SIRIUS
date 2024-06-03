@@ -1261,8 +1261,7 @@ class Enu_finder : public Radial_solver
                                             return std::abs(surface_deriv()) < 1e-8;
                                         });
 
-        //enu_ = (ebot_ + etop_) / 2.0;
-        enu_ = ebot_;
+        enu_ = (ebot_ + etop_) / 2.0;
     }
 
   public:
