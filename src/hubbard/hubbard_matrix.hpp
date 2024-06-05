@@ -241,7 +241,7 @@ class Hubbard_matrix
     find_orbital_index(const int ia__, const int n__, const int l__) const
     {
         for (int at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
-            int lo_ind  = atomic_orbitals_[at_lvl].second;
+            int lo_ind = atomic_orbitals_[at_lvl].second;
 
             if ((atomic_orbitals_[at_lvl].first == ia__) &&
                 (ctx_.unit_cell().atom(ia__).type().lo_descriptor_hub(lo_ind).n() == n__) &&

@@ -1159,10 +1159,6 @@ Atom_type::read_hubbard_input()
             if (ho.contains("beta")) {
                 coeff[5] = ho.beta();
             }
-            /* now convert eV in Ha */
-            for (int s = 0; s < 6; s++) {
-                coeff[s] /= ha2ev;
-            }
 
             std::vector<double> initial_occupancy;
 

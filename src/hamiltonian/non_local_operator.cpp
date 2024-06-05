@@ -92,8 +92,6 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
     return O;
 }
 
-
-
 template <typename T>
 D_operator<T>::D_operator(Simulation_context const& ctx_)
     : Non_local_operator<T>(ctx_)
