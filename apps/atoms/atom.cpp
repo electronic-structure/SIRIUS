@@ -163,7 +163,7 @@ class Free_atom : public sirius::Atom_type
 
             rho = [](int i) { return 0; };
 
-            // std::memset(&rho(0), 0, rho.num_points() * sizeof(double));
+            PROFILE_START("atom::bound_state")
             #pragma omp parallel default(shared)
             {
                 std::vector<double> rho_t(rho.num_points(), 0);
@@ -190,6 +190,7 @@ class Free_atom : public sirius::Atom_type
                     rho(i) += rho_t[i];
                 }
             }
+            PROFILE_STOP("atom::bound_state")
 
             charge_rms = 0.0;
             for (int i = 0; i < np; i++) {
@@ -418,8 +419,6 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
 
     double apw_enu = args.value<double>("apw_enu", 0.15);
 
-    int auto_apw_enu = args.value<int>("auto_apw_enu", 1);
-
     // JSON_write jw(fname);
     json dict;
     dict["name"]   = a.name();
@@ -609,7 +608,9 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     }
     a.aw_default_l(rsds);
 
-    if (auto_apw_enu) {
+    int auto_enu = args.value<int>("auto_enu", 1);
+
+    if (auto_enu) {
         for (int l = 0; l <= lmax; l++) {
             int n{0};
             /* APW for s,p,d,f is constructed for the highest valence state */
@@ -620,17 +621,19 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
             }
             dict["valence"].push_back(json::object({{"n", n}, {"l", l}, {"basis", json::array({})}}));
             for (int o = 0; o < apw_order; o++) {
-                dict["valence"].back()["basis"].push_back({{"enu", apw_enu}, {"dme", o}, {"auto", 1}});
+                dict["valence"].back()["basis"].push_back({{"enu", apw_enu}, {"dme", o}, {"auto", auto_enu}});
             }
         }
     }
 
     int idxlo{0};
+    if (auto_enu == 0) {
+        auto_enu = 1;
+    }
     for (int l = 0; l < 4; l++) {
         for (int n : n_v[l]) {
 
             if (lo_type.find("lo5") != std::string::npos) {
-                int const auto_enu{1};
                 for (int dme : {0, 1}) {
                     a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
                 }
@@ -665,24 +668,24 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                    linearization energy E_l is searched automatically */
                 if (lo_type.find("lo1") != std::string::npos) {
                     for (int dme : {0, 1}) {
-                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, 1);
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
                     }
                     idxlo++;
 
                     if (lo_type.find("lo11") != std::string::npos) {
                         for (int dme : {0, 1}) {
-                            a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 0.25, dme, 1);
+                            a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 0.25, dme, auto_enu);
                         }
                         idxlo++;
 
                         for (int dme : {0, 1}) {
-                            a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                            a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, auto_enu);
                         }
                         idxlo++;
 
                         if (l + 1 < n) {
                             for (int dme : {0, 1}) {
-                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, auto_enu);
                             }
                             idxlo++;
                         }
@@ -693,24 +696,24 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                    linearization energy E_l is searched automatically */
                 if (lo_type.find("lo2") != std::string::npos) {
                     for (int dme : {1, 2}) {
-                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, 1);
+                        a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), dme, auto_enu);
                     }
                     idxlo++;
 
                     if (lo_type.find("lo22") != std::string::npos) {
                         for (int dme : {1, 2}) {
-                            a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 0.25, dme, 1);
+                            a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 0.25, dme, auto_enu);
                         }
                         idxlo++;
 
                         for (int dme : {1, 2}) {
-                            a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                            a.add_lo_descriptor(idxlo, n + 1, l + 1, e_nl_v(n, l) + 0.25, dme, auto_enu);
                         }
                         idxlo++;
 
                         if (l + 1 < n) {
                             for (int dme : {1, 2}) {
-                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, 1);
+                                a.add_lo_descriptor(idxlo, n, l + 1, e_nl_v(n, l) + 0.25, dme, auto_enu);
                             }
                             idxlo++;
                         }
@@ -722,7 +725,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                 if (lo_type.find("LO1") != std::string::npos) {
                     a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
                     a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
-                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), 0, 1);
+                    a.add_lo_descriptor(idxlo, n, l, e_nl_v(n, l), 0, auto_enu);
                     idxlo++;
                 }
 
@@ -731,7 +734,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
                 if (lo_type.find("LO2") != std::string::npos) {
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 0, 0);
                     a.add_lo_descriptor(idxlo, 0, l, 1.15, 1, 0);
-                    a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 1, 0, 1);
+                    a.add_lo_descriptor(idxlo, n + 1, l, e_nl_v(n, l) + 1, 0, auto_enu);
                     idxlo++;
                 }
             }
@@ -758,11 +761,11 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
             for (int l = 0; l < n; l++) {
                 if (!nl_c(n, l)) {
                     for (int dme : {0, 1}) {
-                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, auto_enu);
                     }
                     idxlo++;
                     for (int dme : {1, 2}) {
-                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, 1);
+                        a.add_lo_descriptor(idxlo, n, l, 0.15, dme, auto_enu);
                     }
                     idxlo++;
                 }
@@ -851,7 +854,7 @@ main(int argn, char** argv)
     args.register_key("--core=", "{double} cutoff for core states: energy (in Ha, if <0), radius (in a.u. if >0)");
     args.register_key("--order=", "{int} order of augmentation; 1: APW, 2: LAPW");
     args.register_key("--apw_enu=", "{double} default value for APW linearization energies");
-    args.register_key("--auto_apw_enu=", "{int} allow search of APW linearization energies of valence states");
+    args.register_key("--auto_enu=", "{int} search algorithm type for linearization energies");
     args.register_key("--rel", "use scalar-relativistic solver");
     args.register_key("--num_points=", "{int} number of radial grid points");
     args.register_key("--rmax=", "{double} maximum value of radial grid");

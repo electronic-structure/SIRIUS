@@ -607,6 +607,10 @@ main(int argn, char** argv)
         exception_thrown = true;
     }
 
+    if (exception_thrown) {
+        mpi::Communicator::world().abort(-1);
+    }
+
     sirius::finalize(1);
 
     if (my_rank == 0) {

@@ -26,12 +26,14 @@ test_enu(cmd_args const& args__)
         v[ir] = -double(zn) / rgrid[ir];
     }
 
-    Enu_finder e(rel, zn, n, l, rgrid, v, -0.1);
+    int auto_enu{1};
+
+    Enu_finder e(rel, zn, n, l, rgrid, v, -0.1, auto_enu);
     auto enu_ref = e.enu();
 
     #pragma omp parallel for
     for (int i = 0; i < 100; i++) {
-        auto enu1 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1).enu();
+        auto enu1 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1, auto_enu).enu();
         if (enu1 != enu_ref) {
             std::cout << "wrong enu : " << enu1 << " " << enu_ref << std::endl;
         }
@@ -55,8 +57,8 @@ test_enu(cmd_args const& args__)
     }
     fclose(fout);
 
-    auto enu2 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1).enu();
-    auto enu3 = Enu_finder(rel, zn, n, l, rgrid, v, enu2).enu();
+    auto enu2 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1, auto_enu).enu();
+    auto enu3 = Enu_finder(rel, zn, n, l, rgrid, v, enu2, auto_enu).enu();
 
     std::cout << "enu2: " << enu2 << ", enu3: " << enu3 << ", diff: " << std::abs(enu2 - enu3) << std::endl;
 
