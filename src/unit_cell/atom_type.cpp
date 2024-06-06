@@ -610,7 +610,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
             }
 
             int l = dict[k]["angular_momentum"].get<int>();
-            int n = -1;
+            int n{-1};
             double occ{0};
             if (dict[k].count("occupation")) {
                 occ = dict[k]["occupation"].get<double>();
@@ -1158,10 +1158,6 @@ Atom_type::read_hubbard_input()
             }
             if (ho.contains("beta")) {
                 coeff[5] = ho.beta();
-            }
-            /* now convert eV in Ha */
-            for (int s = 0; s < 6; s++) {
-                coeff[s] /= ha2ev;
             }
 
             std::vector<double> initial_occupancy;

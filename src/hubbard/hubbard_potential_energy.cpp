@@ -43,16 +43,14 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
 {
     auto nl = ctx__.cfg().hubbard().nonlocal(index__);
     um__.zero();
-
-    double v_ij = nl.V() / ha2ev;
-    int il      = nl.l()[0];
-    int jl      = nl.l()[1];
+    const int il = nl.l()[0];
+    const int jl = nl.l()[1];
     um__.zero();
     // second term of Eq. 2
     for (int is = 0; is < ctx__.num_spins(); is++) {
         for (int m2 = 0; m2 < 2 * jl + 1; m2++) {
             for (int m1 = 0; m1 < 2 * il + 1; m1++) {
-                um__(m1, m2, is) = -v_ij * om__(m1, m2, is);
+                um__(m1, m2, is) = -nl.V() * om__(m1, m2, is);
             }
         }
     }
@@ -208,15 +206,15 @@ calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int i
 {
     auto nl = ctx__.cfg().hubbard().nonlocal(index__);
     double hubbard_energy{0.0};
-    double v_ij_ = nl.V() / ha2ev;
-    int il       = nl.l()[0];
-    int jl       = nl.l()[1];
+
+    const int il = nl.l()[0];
+    const int jl = nl.l()[1];
 
     // second term of Eq. 2
     for (int is = 0; is < ctx__.num_spins(); is++) {
         for (int m1 = 0; m1 < 2 * jl + 1; m1++) {
             for (int m2 = 0; m2 < 2 * il + 1; m2++) {
-                hubbard_energy += v_ij_ * std::real(om__(m2, m1, is) * conj(om__(m2, m1, is)));
+                hubbard_energy += nl.V() * std::real(om__(m2, m1, is) * conj(om__(m2, m1, is)));
             }
         }
     }
