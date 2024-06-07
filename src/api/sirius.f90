@@ -6008,7 +6008,8 @@ type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_linear_solver_aux(handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,niter,error_code)&
+&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,niter,&
+&error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
