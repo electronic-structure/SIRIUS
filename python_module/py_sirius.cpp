@@ -217,6 +217,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("update", &Simulation_context::update)
             .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
             .def("processing_unit_memory_t", &Simulation_context::processing_unit_memory_t)
+            .def("spla_context", &Simulation_context::spla_context_ptr)
             .def(
                     "comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
                     py::return_value_policy::reference_internal)
@@ -404,8 +405,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
             .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
             .def("weight", &K_point<double>::weight)
-            .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors, py::const_),
-                 py::return_value_policy::reference_internal)
+            .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors_ptr, py::const_))
             .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
                  py::return_value_policy::reference_internal);
 
