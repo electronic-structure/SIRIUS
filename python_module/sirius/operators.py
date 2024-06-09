@@ -1,4 +1,5 @@
-from .py_sirius import InverseS_k, S_k, Precond_us, Hamiltonian0
+from .py_sirius import InverseS_k, S_k, Precond_us, Hamiltonian0, MemoryEnum
+
 # from .coefficient_array import threaded
 from scipy.sparse.linalg import LinearOperator
 import numpy as np
@@ -24,7 +25,11 @@ class S_operator(KpointOperatorBase):
         for ik, kp in enumerate(kpointset):
             for ispn in range(ctx.num_spins()):
                 self.ops[ik, ispn] = S_k(
-                    ctx, hamiltonian0.Q(), kp.beta_projectors(), ispn
+                    MemoryEnum.host,
+                    ctx.spla_context(),
+                    hamiltonian0.Q(),
+                    kp.beta_projectors(),
+                    ispn,
                 )
 
     def apply(self, cn):
@@ -37,8 +42,11 @@ class S_operator(KpointOperatorBase):
     def __getitem__(self, key):
         def _matvec(X):
             return np.array(self.ops[key].apply(np.asfortranarray(X)))
+
         n = self.ops[key].size
-        return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
+        return LinearOperator(
+            dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec
+        )
 
     def __matmul__(self, cn):
         return self.apply(cn)
@@ -53,7 +61,11 @@ class Sinv_operator(KpointOperatorBase):
         for ik, kp in enumerate(kpointset):
             for ispn in range(ctx.num_spins()):
                 self.ops[ik, ispn] = InverseS_k(
-                    ctx, hamiltonian0.Q(), kp.beta_projectors(), ispn
+                    MemoryEnum.host,
+                    ctx.spla_context(),
+                    hamiltonian0.Q(),
+                    kp.beta_projectors(),
+                    ispn,
                 )
 
     def apply(self, cn):
@@ -65,8 +77,11 @@ class Sinv_operator(KpointOperatorBase):
     def __getitem__(self, key):
         def _matvec(X):
             return np.array(self.ops[key].apply(np.asfortranarray(X)))
+
         n = self.ops[key].size
-        return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
+        return LinearOperator(
+            dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec
+        )
 
     def __matmul__(self, cn):
         return self.apply(cn)
@@ -99,8 +114,11 @@ class US_Precond(KpointOperatorBase):
     def __getitem__(self, key):
         def _matvec(X):
             return np.array(self.ops[key].apply(np.asfortranarray(X)))
+
         n = self.ops[key].size
-        return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
+        return LinearOperator(
+            dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec
+        )
 
     def __matmul__(self, cn):
         return self.apply(cn)
