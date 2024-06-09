@@ -172,7 +172,8 @@ init_operators(py::module& m)
             .def("make_generator", py::overload_cast<device_t>(&Beta_projectors_base<PT>::make_generator, py::const_),
                  py::keep_alive<1, 0>());
 
-    py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>, std::shared_ptr<Beta_projectors<PT>>>(m, "Beta_projectors");
+    py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>, std::shared_ptr<Beta_projectors<PT>>>(m,
+                                                                                                    "Beta_projectors");
     m.def("apply_U_operator", &apply_U_operator<double>, py::arg("ctx"), py::arg("spin_range"), py::arg("band_range"),
           py::arg("hub_wf"), py::arg("phi"), py::arg("u_op"), py::arg("hphi"));
 
