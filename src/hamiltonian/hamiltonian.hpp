@@ -137,6 +137,12 @@ class Hamiltonian0
         return *d_op_;
     }
 
+    auto
+    D_ptr() const -> std::shared_ptr<D_operator<T> const>
+    {
+        return d_op_;
+    }
+
     auto const&
     hmt(int ia__) const
     {
