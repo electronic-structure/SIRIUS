@@ -18,7 +18,6 @@ namespace sirius {
 
 namespace md {
 
-
 /** Aligns subspace between two wave-functions.
  *  R = arg min_R' || Ψᵒ R' -  Ψⁱ ||
  *  O = <Ψᵒ|S|Ψⁱ>
@@ -114,9 +113,9 @@ transform_dm_extrapolation(Simulation_context& ctx, K_point<T>& kp, wf::Wave_fun
 
         auto Ol = la::dmatrix<std::complex<T>>(num_wf, num_wf, memory_t::host);
         {
-            auto wf_n1_guard = wf_n1.memory_guard(proc_mem_t, wf::copy_to::device);
-            auto wf_n2_guard = wf_n2.memory_guard(proc_mem_t, wf::copy_to::device);
-            auto sphi_n1_guard  = sphi_n1.memory_guard(proc_mem_t, wf::copy_to::host);
+            auto wf_n1_guard   = wf_n1.memory_guard(proc_mem_t, wf::copy_to::device);
+            auto wf_n2_guard   = wf_n2.memory_guard(proc_mem_t, wf::copy_to::device);
+            auto sphi_n1_guard = sphi_n1.memory_guard(proc_mem_t, wf::copy_to::host);
             s_op[ispn_step]->apply(sphi_n1.pw_coeffs(wf::spin_index(ispn_step)),
                                    wf_n1.pw_coeffs(wf::spin_index(ispn_step)), proc_mem_t);
             auto br = wf::band_range(0, num_wf);
@@ -146,7 +145,6 @@ loewdin(Simulation_context& ctx, K_point<T>& kp, Hamiltonian0<T>& H0, wf::Wave_f
     auto proc_mem_t       = ctx.processing_unit_memory_t();
 
     // std::cout << "lowedin: wf_in: " << wf_in.checksum(memory_t::host)  << "\n";
-
 
     std::array<la::dmatrix<std::complex<double>>, 2> ovlp;
     {
@@ -185,13 +183,12 @@ loewdin(Simulation_context& ctx, K_point<T>& kp, Hamiltonian0<T>& H0, wf::Wave_f
         mdarray<std::complex<double>, 1> d({num_wf.get()});
         for (int i = 0; i < num_wf; ++i) {
             d[i] = 1 / sqrt(eval[i]);
-
         }
         /* R = U * diag(1/sqrt(eval)) * U^H */
         mdarray<std::complex<double>, 2> tmp = unitary_similarity_transform(0 /* kind */, d, Z);
         la::dmatrix<std::complex<double>> R_loewdin(num_wf, num_wf);
         auto_copy(R_loewdin, tmp, device_t::CPU);
-        int n          = wf_in.num_wf();
+        int n = wf_in.num_wf();
         // call spla to transform wfc
         wf::transform(ctx.spla_context(), memory_t::host, R_loewdin, 0, 0, // irow0, jcol0
                       1.0, wf_in, wf::spin_index(ispn), wf::band_range(n), // input
@@ -308,13 +305,12 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         auto num_wf       = wf::num_bands(wfc.num_wf());
         auto num_mag_dims = wf::num_mag_dims(ctx.num_mag_dims());
 
-
         auto& wfc_prev = *(wfc_.back().at(it.i));
 
         // psi_tilde <- 2*C(t_{n-1})
         wf::Wave_functions<double> psi_tilde(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::host);
         auto br = wf::band_range(0, wfc.num_wf());
-        auto sr = wf::spin_range(num_mag_dims+1);
+        auto sr = wf::spin_range(0, num_mag_dims+1);
         std::vector<double> twos(num_wf, 2);
         std::vector<double> zeros(num_wf, 0);
         wf::axpby(memory_t::host, sr, br, twos.data(), &wfc, zeros.data(), &psi_tilde);
@@ -324,15 +320,14 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         // psi_tilde <- psi_tilde - wf_tmp
         std::vector<double> minus_ones(num_wf, -1.0);
         std::vector<double> ones(num_wf, 1.0);
-        wf::axpby(memory_t::host, wf::spin_range(0, num_mag_dims + 1), wf::band_range(0, wfc.num_wf()), minus_ones.data(),
-                  &wf_tmp, ones.data(), &psi_tilde);
+        wf::axpby(memory_t::host, sr, br, minus_ones.data(), &wf_tmp, ones.data(), &psi_tilde);
         // std::cout << "after axpby: " << psi_tilde.checksum(memory_t::host) << "\n";
 
         // re-orthogonalize and write result back to wfc stored in k-point (host memory)
         loewdin(ctx, kp, H0, wfc, psi_tilde);
         // std::cout << "after loewdin: " << wfc.checksum(memory_t::host) << "\n";
         // extrapolate band energies
-        for (int ispn=0; ispn < num_sc; ++ispn) {
+        for (int ispn = 0; ispn < num_sc; ++ispn) {
             // extrapolate band energies
             int nbnd = ctx.num_bands();
             std::vector<double> enew(nbnd);
