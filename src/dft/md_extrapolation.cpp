@@ -144,11 +144,9 @@ loewdin(Simulation_context& ctx, K_point<T>& kp, Hamiltonian0<T>& H0, wf::Wave_f
     auto num_mag_dims     = wf::num_mag_dims(ctx.num_mag_dims());
     auto proc_mem_t       = ctx.processing_unit_memory_t();
 
-    // std::cout << "lowedin: wf_in: " << wf_in.checksum(memory_t::host)  << "\n";
-
     std::array<la::dmatrix<std::complex<double>>, 2> ovlp;
     {
-        wf::Wave_functions<T> swf(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::device);
+        wf::Wave_functions<T> swf(kp.gkvec_sptr(), num_mag_dims, num_wf, proc_mem_t);
         auto wf_in_guard = wf_in.memory_guard(proc_mem_t, wf::copy_to::device);
 
         for (auto ispin_step = 0; ispin_step < num_spinors; ++ispin_step) {
@@ -162,15 +160,6 @@ loewdin(Simulation_context& ctx, K_point<T>& kp, Hamiltonian0<T>& H0, wf::Wave_f
             }
             /*   compute overlap <wf_out|S|wf_in>   */
             wf::inner(ctx.spla_context(), proc_mem_t, sr, wf_in, br, swf, br, ovlp[ispin_step], 0, 0);
-
-            // /// DEBUG
-            // std::cout << "OVLP" << "\n";
-            // for (int i = 0; i < ovlp[ispin_step].num_rows(); ++i) {
-            //     for (int j = 0; j < ovlp[ispin_step].num_cols(); ++j) {
-            //         std::cout << ovlp[ispin_step](i,j) << " ";
-            //     }
-            //     std::cout << "\n";
-            // }
         }
     }
     for (int ispn = 0; ispn < wf_in.num_sc(); ++ispn) {
@@ -275,6 +264,10 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
     auto& ctx = kset__.ctx();
 
     if (wfc_.size() < 2 || this->skip_) {
+        std::stringstream ss;
+        ss << "extrapolate skip";
+        ctx.message(1, __func__, ss);
+
         // skip extrapolation, but regenerate density with updated ionic positions
         density__.generate<double>(kset__, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
         potential__.generate(density__, ctx.use_symmetry(), true);
