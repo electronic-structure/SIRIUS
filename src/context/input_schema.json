@@ -95,6 +95,12 @@
                     ],
                     "title": "Initial dimenstions for the fine-grain FFT grid"
                 },
+                "pseudo_grid_cutoff": {
+                    "type": "number",
+                    "default": 10.0,
+                    "title": "Hard cutoff of the pseudopotential radial grids (a.u.)",
+                    "description": "Integration grid for the local part of the pseudopotential is truncated at this value. This is because many pseudopotentials do not have properly decaying tails. The default is 10 a.u., and it comes from QE."
+                },
                 "use_coarse_fft_grid": {
                     "type": "boolean",
                     "default": true,

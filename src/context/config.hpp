@@ -209,6 +209,18 @@ class config_t
             }
             dict_["/settings/use_coarse_fft_grid"_json_pointer] = use_coarse_fft_grid__;
         }
+        /// Cutoff radius for pseudopotential radial grid integration
+        inline auto pseudo_grid_cutoff() const
+        {
+            return dict_.at("/settings/pseudo_grid_cutoff"_json_pointer).get<double>();
+        }
+        inline auto pseudo_grid_cutoff(double pseudo_grid_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/pseudo_grid_cutoff"_json_pointer] = pseudo_grid_cutoff__;
+        }
         /// Simplified calculation of LAPW radial integrals.
         inline auto simple_lapw_ri() const
         {
