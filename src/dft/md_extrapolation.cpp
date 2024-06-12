@@ -215,29 +215,21 @@ LinearWfcExtrapolation::push_back_history(const K_point_set& kset__, const Densi
     kp_map<std::shared_ptr<wf::Wave_functions<double>>> wfc_k;
     kp_map<s_op_vt> s_k;
     decltype(this->band_energies_)::value_type e_k;
-    auto num_wf       = wf::num_bands(nbnd);
-    auto num_mag_dims = wf::num_mag_dims(ctx.num_mag_dims());
 
     for (auto it : kset__.spl_num_kpoints()) {
-
         // wf::Wave_functions<double>
         auto& kp = *kset__.get<double>(it.i);
-        auto wf_tmp =
-                std::make_shared<wf::Wave_functions<double>>(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::host);
         const auto& wfc = kp.spinor_wave_functions();
+
         int num_sc      = wfc.num_sc();
         for (int i = 0; i < num_sc; ++i) {
-
-            wf::copy(memory_t::host, kp.spinor_wave_functions(), wf::spin_index(i), wf::band_range(nbnd), *wf_tmp,
-                     wf::spin_index(i), wf::band_range(nbnd));
-
             mdarray<double, 1> ek_loc({nbnd});
             for (int ie = 0; ie < nbnd; ++ie) {
                 ek_loc(ie) = kp.band_energy(ie, i);
             }
             e_k[it.i][i] = std::move(ek_loc);
         }
-        wfc_k[it.i] = wf_tmp;
+        wfc_k[it.i] = copy(wfc);
 
         // S operator
         auto q_op = std::make_shared<Q_operator<double>>(ctx);
@@ -270,10 +262,14 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         ctx.message(2, __func__, ss);
         // orthogonalize wfc (overlap matrix depends on ion positions)
         for (auto it : kset__.spl_num_kpoints()) {
-            auto& kp  = *kset__.get<double>(it.i);
-            auto& wfc = kp.spinor_wave_functions();
-            auto& wfc_prev = *(wfc_.back().at(it.i));
-            loewdin(ctx, kp, H0, wfc, wfc_prev);
+            auto& kp       = *kset__.get<double>(it.i);
+            auto& wfc      = kp.spinor_wave_functions();
+            if (wfc_.size() == 1) {
+                auto& wfc_prev = *(wfc_.back().at(it.i));
+                loewdin(ctx, kp, H0, wfc, wfc_prev);
+            } else {
+                loewdin(ctx, kp, H0, wfc, *wf::copy(wfc));
+            }
         }
         // skip extrapolation, but regenerate density with updated ionic positions
         density__.generate<double>(kset__, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
