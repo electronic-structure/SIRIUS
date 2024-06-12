@@ -1511,6 +1511,20 @@ copy(memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::b
     }
 }
 
+/// Duplicate a wave function (host memory only)
+template <typename T>
+std::shared_ptr<Wave_functions<T>>
+copy(Wave_functions<T> const& in__)
+{
+    auto swf = std::make_shared<Wave_functions<T>>(in__.gkvec_sptr(), in__.num_md(), in__.num_wf(), memory_t::host);
+    wf::band_range br(0, in__.num_wf());
+    for (int sc = 0; sc < in__.num_sc(); ++sc) {
+        wf::spin_index s(sc);
+        copy(memory_t::host, in__, s, br, *swf, s, br);
+    }
+    return swf;
+}
+
 /// Apply linear transformation to the wave-functions.
 /**
  * \tparam T Precision type of the wave-functions (float or double).
