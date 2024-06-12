@@ -262,12 +262,19 @@ void
 LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Potential& potential__) const
 {
     auto& ctx = kset__.ctx();
+    auto H0 = Hamiltonian0<double>(potential__, false);
 
     if (wfc_.size() < 2 || this->skip_) {
         std::stringstream ss;
         ss << "extrapolate skip";
-        ctx.message(1, __func__, ss);
-
+        ctx.message(2, __func__, ss);
+        // orthogonalize wfc (overlap matrix depends on ion positions)
+        for (auto it : kset__.spl_num_kpoints()) {
+            auto& kp  = *kset__.get<double>(it.i);
+            auto& wfc = kp.spinor_wave_functions();
+            auto& wfc_prev = *(wfc_.back().at(it.i));
+            loewdin(ctx, kp, H0, wfc, wfc_prev);
+        }
         // skip extrapolation, but regenerate density with updated ionic positions
         density__.generate<double>(kset__, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
         potential__.generate(density__, ctx.use_symmetry(), true);
@@ -280,9 +287,7 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
 
     std::stringstream ss;
     ss << "extrapolate";
-    ctx.message(1, __func__, ss);
-    /* H0 */
-    auto H0 = Hamiltonian0<double>(potential__, false);
+    ctx.message(2, __func__, ss);
 
     /* true if this is a non-collinear case */
     const bool nc_mag = ctx.num_mag_dims() == 3;
