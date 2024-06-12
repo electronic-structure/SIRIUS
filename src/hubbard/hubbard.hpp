@@ -185,6 +185,11 @@ class Hubbard
     }
 };
 
+extern void
+add_hubbard_atom_pair(Simulation_context& ctx__, int* const atom_pair__, int* const translation__, int* const n__,
+                      int* const l__, const double coupling__);
+extern void
+parse_hubbard_file(Simulation_context& ctx__, const std::string& data_file__);
 } // namespace sirius
 
 #endif // __HUBBARD_HPP__

@@ -41,6 +41,7 @@ set(_SOURCES
   "hubbard/hubbard_occupancies_derivatives.cpp"
   "hubbard/hubbard_potential_energy.cpp"
   "hubbard/hubbard_matrix.cpp"
+  "hubbard/hubbard_utils.cpp"
   "potential/generate_d_operator_matrix.cpp"
   "potential/generate_pw_coeffs.cpp"
   "potential/paw_potential.cpp"

@@ -1629,6 +1629,21 @@ class config_t
             : dict_(dict__)
         {
         }
+        /// Name of the input file containing all information about hubbard orbital for U and V contributions.
+        /**
+            Name of the input file containing all information about hubbard orbital for U and V contribution. The schema should follow QE standard
+        */
+        inline auto input_file() const
+        {
+            return dict_.at("/hubbard/input_file"_json_pointer).get<std::string>();
+        }
+        inline void input_file(std::string input_file__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/hubbard/input_file"_json_pointer] = input_file__;
+        }
         /// Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions
         inline auto hubbard_subspace_method() const
         {
