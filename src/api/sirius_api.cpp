@@ -240,37 +240,47 @@ template <typename F>
 static void
 call_sirius(F&& f__, int* error_code__)
 {
-    // try {
-    f__();
-    if (error_code__) {
-        *error_code__ = SIRIUS_SUCCESS;
+    auto val = env::get_value_ptr<int>("SIRIUS_COREDUMP");
+    bool coredump = false;
+    if(val != nullptr) {
+        coredump = *val == 1;
+    }
+    if (coredump) {
+        f__();
         return;
     }
-    // } catch (std::runtime_error const& e) {
-    //     if (error_code__) {
-    //         *error_code__ = SIRIUS_ERROR_RUNTIME;
-    //         sirius_print_error(*error_code__, e.what());
-    //         return;
-    //     } else {
-    //         sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
-    //     }
-    // } catch (std::exception const& e) {
-    //     if (error_code__) {
-    //         *error_code__ = SIRIUS_ERROR_EXCEPTION;
-    //         sirius_print_error(*error_code__, e.what());
-    //         return;
-    //     } else {
-    //         sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
-    //     }
-    // } catch (...) {
-    //     if (error_code__) {
-    //         *error_code__ = SIRIUS_ERROR_UNKNOWN;
-    //         sirius_print_error(*error_code__);
-    //         return;
-    //     } else {
-    //         sirius_exit(SIRIUS_ERROR_UNKNOWN);
-    //     }
-    // }
+
+    try {
+        f__();
+        if (error_code__) {
+            *error_code__ = SIRIUS_SUCCESS;
+            return;
+        }
+    } catch (std::runtime_error const& e) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_RUNTIME;
+            sirius_print_error(*error_code__, e.what());
+            return;
+        } else {
+            sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
+        }
+    } catch (std::exception const& e) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_EXCEPTION;
+            sirius_print_error(*error_code__, e.what());
+            return;
+        } else {
+            sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
+        }
+    } catch (...) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_UNKNOWN;
+            sirius_print_error(*error_code__);
+            return;
+        } else {
+            sirius_exit(SIRIUS_ERROR_UNKNOWN);
+        }
+    }
 }
 
 template <typename T>
