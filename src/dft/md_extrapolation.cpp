@@ -218,10 +218,10 @@ LinearWfcExtrapolation::push_back_history(const K_point_set& kset__, const Densi
 
     for (auto it : kset__.spl_num_kpoints()) {
         // wf::Wave_functions<double>
-        auto& kp = *kset__.get<double>(it.i);
+        auto& kp        = *kset__.get<double>(it.i);
         const auto& wfc = kp.spinor_wave_functions();
 
-        int num_sc      = wfc.num_sc();
+        int num_sc = wfc.num_sc();
         for (int i = 0; i < num_sc; ++i) {
             mdarray<double, 1> ek_loc({nbnd});
             for (int ie = 0; ie < nbnd; ++ie) {
@@ -254,7 +254,7 @@ void
 LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Potential& potential__) const
 {
     auto& ctx = kset__.ctx();
-    auto H0 = Hamiltonian0<double>(potential__, false);
+    auto H0   = Hamiltonian0<double>(potential__, false);
 
     if (wfc_.size() < 2 || this->skip_) {
         std::stringstream ss;
@@ -262,8 +262,8 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         ctx.message(2, __func__, ss);
         // orthogonalize wfc (overlap matrix depends on ion positions)
         for (auto it : kset__.spl_num_kpoints()) {
-            auto& kp       = *kset__.get<double>(it.i);
-            auto& wfc      = kp.spinor_wave_functions();
+            auto& kp  = *kset__.get<double>(it.i);
+            auto& wfc = kp.spinor_wave_functions();
             if (wfc_.size() == 1) {
                 auto& wfc_prev = *(wfc_.back().at(it.i));
                 loewdin(ctx, kp, H0, wfc, wfc_prev);
@@ -304,7 +304,7 @@ LinearWfcExtrapolation::extrapolate(K_point_set& kset__, Density& density__, Pot
         // psi_tilde <- 2*C(t_{n-1})
         wf::Wave_functions<double> psi_tilde(kp.gkvec_sptr(), num_mag_dims, num_wf, memory_t::host);
         auto br = wf::band_range(0, wfc.num_wf());
-        auto sr = wf::spin_range(0, num_mag_dims+1);
+        auto sr = wf::spin_range(0, num_mag_dims + 1);
         std::vector<double> twos(num_wf, 2);
         std::vector<double> zeros(num_wf, 0);
         wf::axpby(memory_t::host, sr, br, twos.data(), &wfc, zeros.data(), &psi_tilde);
