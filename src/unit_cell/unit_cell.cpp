@@ -620,7 +620,7 @@ Atom_type&
 Unit_cell::add_atom_type(const std::string label__, const std::string file_name__)
 {
     int id = next_atom_type_id(label__);
-    atom_types_.push_back(std::shared_ptr<Atom_type>(new Atom_type(parameters_, id, label__, file_name__)));
+    atom_types_.push_back(std::make_shared<Atom_type>(parameters_, id, label__, file_name__));
     return *atom_types_.back();
 }
 
@@ -639,7 +639,7 @@ Unit_cell::add_atom(const std::string label, r3::vector<double> position, r3::ve
         RTE_THROW(s);
     }
 
-    atoms_.push_back(std::shared_ptr<Atom>(new Atom(atom_type(label), position, vector_field)));
+    atoms_.push_back(std::make_shared<Atom>(atom_type(label), position, vector_field));
     atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 

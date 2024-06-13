@@ -26,6 +26,19 @@
 
 namespace sirius {
 
+/// Result of the Radial_solver::solve() method.
+struct radial_solver_result_t
+{
+    /// Number of nodes of the radial function.
+    int num_nodes;
+    /// p(r) = u(r)*r and u(r) is the radial part of atomic wave-function psi_{nlm}(r) = u_{nl}(r) * Y_{lm}(r)
+    std::vector<double> p;
+    /// Stores r * u'(r)
+    std::vector<double> rdudr;
+    /// Stores surface 0-, 1- and 2-order derivatives u(R), u'(R) and u"(R)
+    std::array<double, 3> uderiv;
+};
+
 namespace radial_solver_local {
 
 double const rest_energy = std::pow(speed_of_light, 2);
@@ -51,6 +64,29 @@ rel_mass(double enu__, double v__)
         case relativity_t::iora: {
             double m0 = 1.0 - sq_alpha_half * v__;
             return m0 / (1 - sq_alpha_half * enu__ / m0);
+        }
+        default: {
+            return 1.0;
+        }
+    }
+};
+
+template <relativity_t rel>
+inline double
+rel_mass_deriv(double enu__, double v__, double v_deriv__)
+{
+    switch (rel) {
+        case relativity_t::none: {
+            return 0.0;
+        }
+        case relativity_t::koelling_harmon:
+        case relativity_t::zora: {
+            return -sq_alpha_half * v_deriv__;
+        }
+        case relativity_t::iora: {
+            double K = 1.0 - sq_alpha_half * enu__ / (1.0 - sq_alpha_half * v__);
+            return (-sq_alpha_half * v_deriv__ / K +
+                    std::pow(sq_alpha_half / K, 2) * enu__ * v_deriv__ / (1 - sq_alpha_half * v__));
         }
         default: {
             return 1.0;
@@ -97,7 +133,11 @@ rel_mass(double enu__, double v__)
  *    p'(r) &=& 2q(r) + \frac{p(r)}{r} \\
  *    q'(r) &=& \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r)
  *  \f}
- *  Scalar-relativistic equations look similar. For m = 0 (no energy derivative) we have:
+ *  Scalar-relativistic Koelling-Harmon equations look similar. Second-order ODE
+ *  \f[
+ *    p''(r) - \frac{\ell(\ell +1)}{r^2}p(r) = 2 M \big(V - E\big)p(r) + \frac{M'}{M}\big(p'(r) - \frac{p(r)}{r}\big)
+ *  \f]
+ *  decouples into a system of 1st order ODE:
  *  \f{eqnarray*}{
  *    p'(r) &=& 2Mq(r) + \frac{p(r)}{r} \\
  *    q'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) p(r) - \frac{q(r)}{r}
@@ -150,7 +190,7 @@ rel_mass(double enu__, double v__)
  *                                \frac{\dot{q}(r)}{r} -
  *                                \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) p(r)
  *    \end{array}
- *    \right
+ *    \right.
  *  \f]
  *  The second energy derivatives are:
  *  \f[
@@ -166,6 +206,121 @@ rel_mass(double enu__, double v__)
  *                                  2 \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) \dot{p}(r)
  *    \end{array}
  *    \right.
+ *  \f]
+ *
+ *  \section ederiv Full derivation of energy derivatives.
+ *
+ *  Schroedinger equation with \f$ M = 1 \f$. Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *      \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *      \frac{p(\epsilon )}{r}\right) = \frac{p'(\epsilon )}{r}+2 q'(\epsilon ) \\
+ *    \displaystyle \frac{\partial ^2\left(2 M(\epsilon ) q(\epsilon )+
+ *    \frac{p(\epsilon )}{r}\right)}{\partial \epsilon ^2} = \frac{p''(\epsilon )}{r}+2 q''(\epsilon ) \\
+ *    \displaystyle \frac{\partial ^3\left(2 M(\epsilon ) q(\epsilon )+
+ *     \frac{p(\epsilon )}{r}\right)}{\partial \epsilon ^3} = \frac{p^{(3)}(\epsilon )}{r}+2 q^{(3)}(\epsilon )
+ *    \end{array}
+ *  \f]
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p'(\epsilon ) \left(\frac{b}{r^2}+V-\epsilon \right)-
+ *    p(\epsilon )-\frac{q'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p''(\epsilon ) \left(\frac{b}{r^2}+V-\epsilon \right)-
+ *      2 p'(\epsilon )-\frac{q''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p^{(3)}(\epsilon ) \left(\frac{b}{r^2}+V-\epsilon \right)-
+ *       3 p''(\epsilon )-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *  Here and below \f$ a = \alpha^2/2 \f$, \f$ b = \ell(\ell + 1) / 2 \f$.
+ *
+ *  Koelling-Harmon equation with \f$ M = 1 + \alpha^2 (\epsilon - V) / 2 \f$. Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *     \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *      \frac{p(\epsilon )}{r}\right) = 2 a q(\epsilon )+2 M q'(\epsilon )+\frac{p'(\epsilon )}{r} \\
+ *     \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 4 a q'(\epsilon )+2 M q''(\epsilon )+\frac{p''(\epsilon )}{r} \\
+ *     \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 6 a q''(\epsilon )+2 M q^{(3)}(\epsilon )+\frac{p^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +
+ *      \frac{b}{r^2 M(\epsilon )}\right) p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *      p(\epsilon ) \left(-\frac{a b}{M^2 r^2}-1\right)+p'(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-
+ *      \frac{q'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +
+ *      \frac{b}{r^2 M(\epsilon )}\right) p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *      \frac{2 a^2 b p(\epsilon )}{M^3 r^2}+2 p'(\epsilon ) \left(-\frac{a b}{M^2 r^2}-1\right)+
+ *      p''(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *      p(\epsilon )-\frac{q(\epsilon )}{r}\right) = -\frac{6 a^3 b p(\epsilon )}{M^4 r^2}+
+ *      \frac{6 a^2 b p'(\epsilon )}{M^3 r^2}+3 p''(\epsilon ) \left(-\frac{a b}{M^2 r^2}-1\right)+
+ *      p^{(3)}(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *
+ *  ZORA equation with \f$ M = 1 - \alpha^2 V / 2 \f$. Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *      \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 2 M q'(\epsilon )+\frac{p'(\epsilon )}{r} \\
+ *      \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(2 M(\epsilon ) q(\epsilon )+
+ *        \frac{p(\epsilon )}{r}\right) = 2 M q''(\epsilon )+\frac{p''(\epsilon )}{r} \\
+ *      \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(2 M(\epsilon ) q(\epsilon )+
+ *       \frac{p(\epsilon )}{r}\right) = 2 M q^{(3)}(\epsilon )+\frac{p^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *      \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *        p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *        p'(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-p(\epsilon )-\frac{q'(\epsilon )}{r} \\
+ *      \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *        p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *        p''(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-2 p'(\epsilon )-\frac{q''(\epsilon )}{r}\\
+ *      \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *        p(\epsilon )-\frac{q(\epsilon )}{r}\right) =
+ *        p^{(3)}(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-3 p''(\epsilon )-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *
+ *  IORA equation with \f$ M = M_0/(1 - \alpha^2 \epsilon / 2 / M_0) \f$. \f$ M_0 \f$ is ZORA electron mass.
+ *  Energy derivatives of p:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(2 M(\epsilon ) q(\epsilon )+
+ *    \frac{p(\epsilon )}{r}\right) = \frac{2 a q(\epsilon )}{U^2}+2 M q'(\epsilon )+\frac{p'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(2 M(\epsilon ) q(\epsilon )+
+ *    \frac{p(\epsilon )}{r}\right) = \frac{4 a^2 q(\epsilon )}{M_0 U^3}+
+ *    \frac{4 a q'(\epsilon )}{U^2}+2 M q''(\epsilon )+\frac{p''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(2 M(\epsilon )
+ *    q(\epsilon )+\frac{p(\epsilon )}{r}\right) = \frac{12 a^3 q(\epsilon )}{M_0^2 U^4}+
+ *    \frac{12 a^2 q'(\epsilon )}{M_0 U^3}+\frac{6 a q''(\epsilon )}{U^2}+2 M q^{(3)}(\epsilon )+
+ *    \frac{p^{(3)}(\epsilon )}{r}
+ *    \end{array}
+ *  \f]
+ *  Energy derivatives of q:
+ *  \f[
+ *    \begin{array}{ll}
+ *    \displaystyle \frac{\partial }{\partial \epsilon ^1}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *     p(\epsilon )-\frac{q(\epsilon )}{r}\right) = p(\epsilon ) \left(-\frac{a b}{\text{M0}^2 r^2}-1\right)+
+ *     p'(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q'(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^2}{\partial \epsilon ^2}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *    p(\epsilon )-\frac{q(\epsilon )}{r}\right) = 2 p'(\epsilon ) \left(-\frac{a b}{\text{M0}^2 r^2}-1\right)+
+ *     p''(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q''(\epsilon )}{r} \\
+ *    \displaystyle \frac{\partial ^3}{\partial \epsilon ^3}\left(\left(V-\epsilon +\frac{b}{r^2 M(\epsilon )}\right)
+ *     p(\epsilon )-\frac{q(\epsilon )}{r}\right) = 3 p''(\epsilon ) \left(-\frac{a b}{\text{M0}^2 r^2}-1\right)+
+ *      p^{(3)}(\epsilon ) \left(\frac{b}{M r^2}+V-\epsilon \right)-\frac{q^{(3)}(\epsilon )}{r}
+ *    \end{array}
  *  \f]
  */
 class Radial_solver
@@ -186,7 +341,7 @@ class Radial_solver
     /// Integrate system of two first-order differential equations forward starting from the origin.
     template <relativity_t rel>
     int
-    integrate_forward_gsl(double enu__, int l__, int k__, Spline<double> const& chi_p__, Spline<double> const& chi_q__,
+    integrate_forward_gsl(double enu__, int l__, int k__, Spline<double>& chi_p__, Spline<double>& chi_q__,
                           std::vector<double>& p__, std::vector<double>& dpdr__, std::vector<double>& q__,
                           std::vector<double>& dqdr__, bool bound_state__) const
     {
@@ -236,25 +391,14 @@ class Radial_solver
             switch (rel) {
                 case relativity_t::none:
                 case relativity_t::koelling_harmon:
-                case relativity_t::zora: {
+                case relativity_t::zora:
+                case relativity_t::iora: {
                     double ll_half = p->l * (p->l + 1) / 2.0;
                     double M       = rel_mass<rel>(p->enu, V);
                     /* p'(x) = 2 * M(x) * q(x) + p(x) / x + chi_p(x) */
                     f[0] = 2 * M * y[1] + y[0] / x + chi_p;
                     /* q'(x) = (V(x) - enu + l * (l + 1) / 2 / M(x) / x^2) * p(x) - q(x) / x + chi_q(x) */
                     f[1] = (V - p->enu + ll_half / (M * std::pow(x, 2))) * y[0] - y[1] / x + chi_q;
-                    break;
-                }
-                case relativity_t::iora: {
-                    double ll_half = p->l * (p->l + 1) / 2.0;
-                    double M       = rel_mass<rel>(p->enu, V);
-                    double M0      = rel_mass<relativity_t::zora>(p->enu, V);
-
-                    f[0] = 2 * M * y[1] + y[0] / x + chi_p;
-                    f[1] = (V - p->enu + ll_half / (M0 * std::pow(x, 2)) -
-                            ll_half * sq_alpha_half * p->enu / std::pow(x * M0, 2)) *
-                                   y[0] -
-                           y[1] / x + chi_q;
                     break;
                 }
                 case relativity_t::dirac: {
@@ -274,7 +418,6 @@ class Radial_solver
             double ll_half = p->l * (p->l + 1) / 2.0;
             double V       = p->ve->operator()(p->ir, dx) - p->zn / x;
             double M       = rel_mass<rel>(p->enu, V);
-            double M0      = rel_mass<relativity_t::zora>(p->enu, V);
 
             double ve_deriv    = p->ve->deriv(1, p->ir, dx);
             double chi_p_deriv = p->chi_p->deriv(1, p->ir, dx);
@@ -282,6 +425,13 @@ class Radial_solver
 
             auto dfdy_mat = gsl_matrix_view_array(dfdy, 2, 2);
             auto m        = &dfdy_mat.matrix;
+
+            double xinv  = std::pow(x, -1);
+            double x2inv = std::pow(x, -2);
+            double x3inv = std::pow(x, -3);
+
+            double V_deriv = p->zn * x2inv + ve_deriv;
+            double M_deriv = rel_mass_deriv<rel>(p->enu, V, V_deriv);
             /* derivatives of right hand side of coupled radial equations
              * ----------------------------------------------------------
              *
@@ -312,48 +462,18 @@ class Radial_solver
              *   ZORA case:
              *     same as scalar-relativistic with M(x) = 1 - 0.5 * alpha^2 * V(x)
              */
-            double xinv  = std::pow(x, -1);
-            double x2inv = std::pow(x, -2);
             switch (rel) {
-                case relativity_t::none: {
-                    gsl_matrix_set(m, 0, 0, xinv);
-                    gsl_matrix_set(m, 0, 1, 2.0);
-                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half * x2inv);
-                    gsl_matrix_set(m, 1, 1, -xinv);
-
-                    dfdx[0] = -y[0] * x2inv;
-                    dfdx[1] = y[0] * (ve_deriv + p->zn * x2inv - ll_half * 2.0 * xinv * x2inv) + y[1] * x2inv +
-                              chi_q_deriv;
-                    break;
-                }
+                case relativity_t::none:
                 case relativity_t::koelling_harmon:
-                case relativity_t::zora: {
-                    gsl_matrix_set(m, 0, 0, xinv);
-                    gsl_matrix_set(m, 0, 1, 2.0 * M);
-                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half / (M * std::pow(x, 2)));
-                    gsl_matrix_set(m, 1, 1, -1.0 / x);
-
-                    double M_deriv = sq_alpha_half * (-p->zn * x2inv - ve_deriv);
-
-                    dfdx[0] = 2 * y[1] * sq_alpha_half * M_deriv - y[0] * x2inv + chi_p_deriv;
-                    dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M * std::pow(x, 3)) -
-                               M_deriv * ll_half / std::pow(x * M, 2)) *
-                                      y[0] +
-                              y[1] * x2inv + chi_q_deriv;
-                    break;
-                }
+                case relativity_t::zora:
                 case relativity_t::iora: {
                     gsl_matrix_set(m, 0, 0, xinv);
                     gsl_matrix_set(m, 0, 1, 2.0 * M);
-                    gsl_matrix_set(m, 1, 0,
-                                   V - p->enu + ll_half / (M0 * std::pow(x, 2)) -
-                                           ll_half * sq_alpha_half * p->enu / std::pow(x * M0, 2));
+                    gsl_matrix_set(m, 1, 0, V - p->enu + ll_half * x2inv / M);
                     gsl_matrix_set(m, 1, 1, -xinv);
 
-                    dfdx[0] = -y[0] * x2inv + chi_p_deriv;
-                    dfdx[1] = (ve_deriv + p->zn * x2inv - 2 * ll_half / (M0 * std::pow(x, 3)) +
-                               2 * sq_alpha_half * ll_half * p->enu / (std::pow(x * M0, 2) * x)) *
-                                      y[0] +
+                    dfdx[0] = 2 * M_deriv * y[1] - y[0] * x2inv + chi_p_deriv;
+                    dfdx[1] = (V_deriv - ll_half * M_deriv * x2inv / std::pow(M, 2) - 2 * ll_half * x3inv / M) * y[0] +
                               y[1] * x2inv + chi_q_deriv;
                     break;
                 }
@@ -470,14 +590,19 @@ class Radial_solver
                 p__[p.ir + 1] = y[0];
                 q__[p.ir + 1] = y[1];
 
-                if (std::abs(y[0]) > 1e6) {
+                double const max_val{1e6};
+
+                if (std::abs(y[0]) > max_val) {
                     ridx.push_back(p.ir + 1);
                     for (int j = 0; j <= p.ir + 1; j++) {
-                        p__[j] /= 1e6;
-                        q__[j] /= 1e6;
+                        p__[j] /= max_val;
+                        q__[j] /= max_val;
                     }
-                    y[0] /= 1e6;
-                    y[1] /= 1e6;
+                    y[0] /= max_val;
+                    y[1] /= max_val;
+
+                    chi_p__.scale(1.0 / max_val);
+                    chi_q__.scale(1.0 / max_val);
                 }
             }
             gsl_odeiv2_evolve_free(e);
@@ -520,51 +645,100 @@ class Radial_solver
             }
         }
 
-        Spline<double> s(radial_grid_);
-        for (int i = 0; i < radial_grid_.num_points(); i++) {
-            s(i) = std::pow(p__[i], 2);
-        }
-        auto norm = s.interpolate().integrate(0);
-        norm      = 1.0 / std::sqrt(norm);
-        for (int i = 0; i < radial_grid_.num_points(); i++) {
-            p__[i] = norm * p__[i];
-            q__[i] = norm * q__[i];
-        }
-
         double ll_half = l__ * (l__ + 1) / 2.0;
 
         for (int i = 0; i < radial_grid_.num_points(); i++) {
-            double x  = radial_grid_.x(i);
-            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
-            double M  = radial_solver_local::rel_mass<rel>(enu__, V);
-            double M0 = radial_solver_local::rel_mass<relativity_t::zora>(enu__, V);
-            double v1 = ll_half / std::pow(radial_grid_[i], 2);
+            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+            double M = radial_solver_local::rel_mass<rel>(enu__, V);
 
             switch (rel) {
                 case relativity_t::none:
                 case relativity_t::koelling_harmon:
-                case relativity_t::zora: {
+                case relativity_t::zora:
+                case relativity_t::iora: {
                     /* p' = 2Mq + \frac{p}{r} + chi_p */
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
                     /* q' = (V - enu + \frac{\ell(\ell + 1)}{2 M x^2}) p - \frac{p}{r} + chi_q */
-                    dqdr__[i] = (V - enu__ + v1 / M) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
-                    break;
-                }
-                case relativity_t::iora: {
-                    dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
-                    dqdr__[i] = (V - enu__ + v1 / M0 -
-                                 radial_solver_local::sq_alpha_half * ll_half * enu__ / std::pow(M0 * x, 2)) *
-                                        p__[i] -
+                    dqdr__[i] = (V - enu__ + ll_half / std::pow(radial_grid_.x(i), 2) / M) * p__[i] -
                                 q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                     break;
                 }
                 case relativity_t::dirac: {
-                    /* Dirac equatio is only solved for core states and p' and q' are not needed */
+                    /* Dirac equation is only solved for core states and p' and q' are not needed */
                     break;
                 }
             }
         }
+
+        /* normalize */
+        Spline<double> s(radial_grid_);
+        for (int i = 0; i < radial_grid_.num_points(); i++) {
+            s(i) = std::pow(p__[i], 2);
+        }
+        auto norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
+        for (int i = 0; i < radial_grid_.num_points(); i++) {
+            p__[i] *= norm;
+            q__[i] *= norm;
+            dpdr__[i] *= norm;
+            dqdr__[i] *= norm;
+        }
+
         return nn;
+    }
+
+    inline double
+    integrate_forward_until(relativity_t rel__, double enu__, int l__, int k__, Spline<double>& chi_p__,
+                            Spline<double>& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
+                            std::vector<double>& q__, std::vector<double>& dqdr__, bool bound_state__,
+                            std::function<bool(int, int, double&)> condition__)
+    {
+
+        auto integrate_forward = [&](double enu__) -> int {
+            int nn{0};
+            switch (rel__) {
+                case relativity_t::none: {
+                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::koelling_harmon: {
+                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, k__, chi_p__, chi_q__, p__,
+                                                                              dpdr__, q__, dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::zora: {
+                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::iora: {
+                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::dirac: {
+                    nn = integrate_forward_gsl<relativity_t::dirac>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                    dqdr__, bound_state__);
+                    break;
+                }
+                default: {
+                    RTE_THROW("unsupported relativity type");
+                }
+            }
+            return nn;
+        };
+
+        for (int i = 0; i < 1000; i++) {
+            int nn = integrate_forward(enu__);
+            if (condition__(i, nn, enu__)) {
+                return enu__;
+            }
+        }
+        std::stringstream s;
+        s << "integrate_forward_until(): condition is not achieved in 1000 iterations" << std::endl
+          << "  curent value of enu: " << enu__;
+        RTE_THROW(s);
+        return 0.0;
     }
 
   public:
@@ -583,8 +757,33 @@ class Radial_solver
         ve_.interpolate();
     }
 
-    std::tuple<int, std::vector<double>, std::vector<double>, std::vector<double>, std::vector<double>>
-    solve(relativity_t rel__, int dme__, int l__, int k__, double enu__) const
+    /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
+    /** \param [in] rel Type of relativity
+     *  \param [in] dme Order of energy derivative.
+     *  \param [in] l Oribtal quantum number.
+     *  \param [in] enu Integration energy.
+     *
+     *  Returns number of nodes of the radial function, \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$, \f$ u(R) \f$,
+     *  \f$ u'(R) \f$ and \f$ u''(R) \f$.
+     *
+     *  Surface derivatives:
+     *
+     *  From
+     *  \f[
+     *    u(r) = \frac{p(r)}{r}
+     *  \f]
+     *  we have
+     *  \f[
+     *    u'(r) = \frac{p'(r)}{r} - \frac{p(r)}{r^2} = \frac{1}{r}\big(p'(r) - \frac{p(r)}{r}\big)
+     *  \f]
+     *
+     *  \f[
+     *    u''(r) = \frac{p''(r)}{r} - \frac{p'(r)}{r^2} - \frac{p'(r)}{r^2} + 2 \frac{p(r)}{r^3} =
+     *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
+     *  \f]
+     */
+    auto
+    solve(relativity_t rel__, int dme__, int l__, double enu__) const
     {
         int nr = num_points();
         std::vector<std::vector<double>> p;
@@ -647,26 +846,38 @@ class Radial_solver
                         RTE_THROW(s);
                     }
                 } else if (rel__ == relativity_t::iora) {
-                    double sq_alpha = std::pow(speed_of_light, -2);
-                    double ll_half  = l__ * (l__ + 1) / 2.0;
+                    double ll_half = l__ * (l__ + 1) / 2.0;
+                    for (int i = 0; i < nr; i++) {
+                        double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                        double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                        double x  = radial_grid_[i];
+                        chi_q(i)  = -j * p[j - 1][i] * (1 + sq_alpha_half * ll_half / std::pow(M0 * x, 2));
+                    }
 
                     if (j == 1) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
-                            double M = 1 - 0.5 * sq_alpha * V;
-                            double x = radial_grid_[i];
-                            chi_p(i) = q[j - 1][i] * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2);
-                            chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 2 * sq_alpha_half * std::pow(U, -2);
                         }
                     } else if (j == 2) {
                         for (int i = 0; i < nr; i++) {
-                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
-                            double M = 1 - 0.5 * sq_alpha * V;
-                            double x = radial_grid_[i];
-                            chi_p(i) = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) +
-                                       q[j - 2][i] * std::pow(sq_alpha, 2) / 2 / M /
-                                               std::pow(1 - sq_alpha * enu__ / 2 / M, 3);
-                            chi_q(i) = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
+                                       q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) * std::pow(U, -3) / M0;
+                        }
+                    } else if (j == 3) {
+                        for (int i = 0; i < nr; i++) {
+                            double V  = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M0 = rel_mass<relativity_t::zora>(enu__, V);
+                            double U  = (1 - sq_alpha_half * enu__ / M0);
+                            chi_p(i)  = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
+                                       q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) * std::pow(U, -2) / (M0 * U) +
+                                       q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) * std::pow(M0 * U, -2) *
+                                               std::pow(U, -2);
                         }
                     } else {
                         std::stringstream s;
@@ -706,67 +917,25 @@ class Radial_solver
                 }
             }
         }
-
-        return std::make_tuple(nn, p.back(), dpdr.back(), q.back(), dqdr.back());
-    }
-
-    /// Integrates the radial equation for a given energy and finds the m-th energy derivative of the radial solution.
-    /** \param [in] rel Type of relativity
-     *  \param [in] dme Order of energy derivative.
-     *  \param [in] l Oribtal quantum number.
-     *  \param [in] enu Integration energy.
-     *  \param [out] p \f$ p(r) = ru(r) \f$ radial function.
-     *  \param [out] rdudr \f$ ru'(r) \f$.
-     *  \param [out] uderiv \f$ u'(R) \f$ and \f$ u''(R) \f$.
-     *
-     *  Returns \f$ p(r) = ru(r) \f$, \f$ ru'(r)\f$, \f$ u'(R) \f$ and \f$ u''(R) \f$.
-     *
-     *  Surface derivatives:
-     *
-     *  From
-     *  \f[
-     *    u(r) = \frac{p(r)}{r}
-     *  \f]
-     *  we have
-     *  \f[
-     *    u'(r) = \frac{p'(r)}{r} - \frac{p(r)}{r^2} = \frac{1}{r}\big(p'(r) - \frac{p(r)}{r}\big)
-     *  \f]
-     *
-     *  \f[
-     *    u''(r) = \frac{p''(r)}{r} - \frac{p'(r)}{r^2} - \frac{p'(r)}{r^2} + 2 \frac{p(r)}{r^3} =
-     *      \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big)
-     *  \f]
-     */
-    int
-    solve(relativity_t rel__, int dme__, int l__, double enu__, std::vector<double>& p__, std::vector<double>& rdudr__,
-          std::array<double, 2>& uderiv__) const
-    {
-        auto result = solve(rel__, dme__, l__, 0, enu__);
-        int nr      = num_points();
-
-        auto p0 = std::get<1>(result);
-        auto p1 = std::get<2>(result);
-        auto q0 = std::get<3>(result);
-        auto q1 = std::get<4>(result);
-
         /* save the results */
-        p__.resize(nr);
-        rdudr__.resize(nr);
-        for (int i = 0; i < radial_grid_.num_points(); i++) {
-            p__[i]     = p0[i];
-            rdudr__[i] = p1[i] - p0[i] * radial_grid_.x_inv(i);
+        std::vector<double> rdudr(nr);
+        for (int i = 0; i < nr; i++) {
+            rdudr[i] = dpdr.back()[i] - p.back()[i] * radial_grid_.x_inv(i);
         }
 
         double R = radial_grid_.last();
 
         /* 1st radial derivative of u(r) */
-        uderiv__[0] = (p1.back() - p0.back() / R) / R;
+        std::array<double, 3> uderiv;
+        /* p(r) = u(r)*r -> u(r) = p(r) / r */
+        uderiv[0] = p.back().back() / R;
+        uderiv[1] = (dpdr.back().back() - p.back().back() / R) / R;
         /* 2nd radial derivative of u(r) */
-        Spline<double> sdpdr(radial_grid_, p1);
+        Spline<double> sdpdr(radial_grid_, dpdr.back());
         sdpdr.interpolate();
-        uderiv__[1] = (sdpdr.deriv(1, nr - 1) - 2 * p1.back() / R + 2 * p0.back() / std::pow(R, 2)) / R;
+        uderiv[2] = (sdpdr.deriv(1, nr - 1) - 2 * dpdr.back().back() / R + 2 * p.back().back() / std::pow(R, 2)) / R;
 
-        return std::get<0>(result);
+        return radial_solver_result_t{nn, p.back(), rdudr, uderiv};
     }
 
     inline int
@@ -820,7 +989,7 @@ class Bound_state : public Radial_solver
 
     std::vector<double> dpdr_;
 
-    void
+    inline void
     solve(relativity_t rel__, double enu_start__, double alpha0__, double alpha1__)
     {
         int np = num_points();
@@ -836,53 +1005,44 @@ class Bound_state : public Radial_solver
 
         int s{1};
         int sp;
-        enu_ = enu_start__;
-        double denu{0.1};
+        double denu = enu_tolerance_;
 
-        /* search for the bound state */
-        for (int iter = 0; iter < 1000; iter++) {
-            int nn{0};
+        /* 1st pass: estimate upper and lower boundaries */
+        enu_ = integrate_forward_until(rel__, enu_start__, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
+                                       [&s, &sp, &denu, alpha0__, alpha1__, this](int iter, int nn, double& enu) {
+                                           sp = s;
+                                           s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
+                                           if (s != sp && iter > 1) {
+                                               return true;
+                                           }
+                                           denu = (s != sp) ? denu * alpha0__ : denu * alpha1__;
+                                           enu += s * denu;
+                                           return false;
+                                       });
 
-            switch (rel__) {
-                case relativity_t::none: {
-                    nn = integrate_forward_gsl<relativity_t::none>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-                    break;
-                }
-                case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q,
-                                                                              dqdr, true);
-                    break;
-                }
-                case relativity_t::zora: {
-                    nn = integrate_forward_gsl<relativity_t::zora>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-                    break;
-                }
-                case relativity_t::dirac: {
-                    nn = integrate_forward_gsl<relativity_t::dirac>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr,
-                                                                    true);
-                    break;
-                }
-                default: {
-                    RTE_THROW("unsupported relativity type");
-                }
-            }
+        double e1 = enu_;
+        double e2 = enu_ - sp * denu;
 
-            if (denu < enu_tolerance_ && nn == (n_ - l_ - 1)) {
-                break;
-            }
-
-            sp   = s;
-            s    = (nn > (n_ - l_ - 1)) ? -1 : 1;
-            denu = (s != sp) ? denu * alpha0__ : denu * alpha1__;
-            enu_ += s * denu;
+        /* e1 is bottom, e2 is top energy */
+        if (e1 > e2) {
+            std::swap(e1, e2);
         }
 
-        if (std::abs(denu) >= enu_tolerance_) {
-            std::stringstream s;
-            s << "enu is not found for n = " << n_ << " and l = " << l_ << std::endl
-              << "last value of enu: " << enu_ << ", denu: " << denu;
-            RTE_THROW(s);
-        }
+        /* 2nd pass: refine by bisection */
+        enu_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
+                                       [&e1, &e2, this](int iter, int nn, double& enu) {
+                                           if (nn > (n_ - l_ - 1)) {
+                                               e2 = enu;
+                                           } else {
+                                               e1 = enu;
+                                           }
+                                           enu = (e1 + e2) / 2.0;
+                                           return std::abs(e1 - e2) < enu_tolerance_;
+                                       });
+
+        /* final choice for enu: bottom enery of the refined interval */
+        enu_ = integrate_forward_until(rel__, e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
+                                       [](int iter, int nn, double& enu) { return true; });
 
         /* compute r * u'(r) */
         for (int i = 0; i < num_points(); i++) {
@@ -946,7 +1106,7 @@ class Bound_state : public Radial_solver
 
   public:
     Bound_state(relativity_t rel__, int zn__, int n__, int l__, int k__, Radial_grid<double> const& radial_grid__,
-                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.5, double alpha1__ = 1.25,
+                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.5, double alpha1__ = 10.0,
                 double epsabs__ = 1e-3, double epsrel__ = 1e-3)
         : Radial_solver(zn__, v__, radial_grid__, epsabs__, epsrel__)
         , n_(n__)
@@ -1009,7 +1169,7 @@ class Enu_finder : public Radial_solver
     double ebot_;
 
     void
-    find_enu(relativity_t rel__, double enu_start__)
+    find_enu(relativity_t rel__, double enu_start__, int auto_enu__)
     {
         int np = num_points();
 
@@ -1021,58 +1181,45 @@ class Enu_finder : public Radial_solver
         std::vector<double> dpdr(np);
         std::vector<double> dqdr(np);
 
-        double enu = enu_start__;
-        double de  = 0.01;
-        bool found = false;
-        int nndp   = 0;
-
-        auto integrate_forward = [&](double enu__) -> int {
-            int nn{0};
-            switch (rel__) {
-                case relativity_t::none: {
-                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-                    break;
-                }
-                case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q,
-                                                                              dqdr, false);
-                    break;
-                }
-                case relativity_t::zora: {
-                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-                    break;
-                }
-                case relativity_t::iora: {
-                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false);
-                    break;
-                }
-                default: {
-                    RTE_THROW("unsupported relativity type");
-                }
-            }
-            return nn;
-        };
-
         /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
          * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
          * of the band. */
-        for (int i = 0; i < 1000; i++) {
-            int nnd = integrate_forward(enu);
-            nnd -= (n_ - l_ - 1);
+        int s{1};
+        int sp;
+        double denu{1e-8};
+        double e0;
+        /* 1st pass: estimate upper and lower boundaries of the etop*/
+        e0 = integrate_forward_until(rel__, enu_start__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                     [&s, &sp, &denu, this](int iter, int nn, double& enu) {
+                                         sp = s;
+                                         s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
+                                         if (s != sp && iter > 0) {
+                                             return true;
+                                         }
+                                         denu *= 10;
+                                         enu += s * denu;
+                                         return false;
+                                     });
 
-            enu = (nnd > 0) ? enu - de : enu + de;
+        double e1 = e0;
+        double e2 = e0 - sp * denu;
 
-            if (i) {
-                de = (nnd != nndp) ? de * 0.5 : de * 1.25;
-            }
-
-            if (std::abs(de) < 1e-10) {
-                found = true;
-                break;
-            }
-            nndp = nnd;
+        /* e1 is bottom, e2 is top energy */
+        if (e1 > e2) {
+            std::swap(e1, e2);
         }
-        etop_ = (!found) ? enu_start__ : enu;
+
+        /* 2nd pass: refine by bisection */
+        etop_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                        [&e1, &e2, this](int iter, int nn, double& enu) {
+                                            if (nn > (n_ - l_ - 1)) {
+                                                e2 = enu;
+                                            } else {
+                                                e1 = enu;
+                                            }
+                                            enu = (e1 + e2) / 2.0;
+                                            return std::abs(e1 - e2) < 1e-9;
+                                        });
 
         auto surface_deriv = [this, &dpdr, &p]() {
             if (true) {
@@ -1087,47 +1234,52 @@ class Enu_finder : public Radial_solver
         double sd = surface_deriv();
 
         /* Now we go down in energy and search for enu such that the wave-function derivative is zero
-         * at the muffin-tin boundary. This will be the bottom of the band. */
-        de = 1e-4;
-        for (int i = 0; i < 1000; i++) {
-            de *= 1.1;
-            enu -= de;
-            integrate_forward(enu);
-            if (surface_deriv() * sd <= 0) {
-                break;
-            }
-        }
-
-        ebot_ = enu + de / 2.0;
+         * at the muffin-tin boundary. This will be the bottom of the band. Here we look at a sign change
+         * of the derivative. */
+        denu = 1e-8;
+        e0   = integrate_forward_until(rel__, etop_, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                       [&denu, sd, &surface_deriv, this](int iter, int nn, double& enu) {
+                                         if (surface_deriv() * sd <= 0 || denu > 20) {
+                                             return true;
+                                         }
+                                         denu *= 2;
+                                         enu -= denu;
+                                         return false;
+                                     });
 
         /* refine bottom energy */
-        double e1 = enu;
-        double e0 = enu + de;
+        e1    = e0;
+        e2    = e0 + denu;
+        ebot_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                        [&e1, &e2, sd, &surface_deriv, this](int iter, int nn, double& enu) {
+                                            if (surface_deriv() * sd > 0) {
+                                                e2 = enu;
+                                            } else {
+                                                e1 = enu;
+                                            }
+                                            enu = (e1 + e2) / 2.0;
+                                            return std::abs(surface_deriv()) < 1e-8;
+                                        });
 
-        for (int i = 0; i < 100; i++) {
-            enu = (e1 + e0) / 2.0;
-            integrate_forward(enu);
-            /* derivative at the boundary */
-            if (std::abs(surface_deriv()) < 1e-10) {
+        switch (auto_enu__) {
+            case 1: {
+                enu_ = (ebot_ + etop_) / 2.0;
                 break;
             }
-
-            if (surface_deriv() * sd > 0) {
-                e0 = enu;
-            } else {
-                e1 = enu;
+            case 2: {
+                enu_ = ebot_;
+                break;
+            }
+            default: {
+                RTE_THROW("wrong type of auto_enu");
             }
         }
-
-        ebot_ = enu;
-
-        enu_ = (ebot_ + etop_) / 2.0;
     }
 
   public:
     /// Constructor
     Enu_finder(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
-               std::vector<double> const& v__, double enu_start__)
+               std::vector<double> const& v__, double enu_start__, int auto_enu__)
         : Radial_solver(zn__, v__, radial_grid__)
         , n_(n__)
         , l_(l__)
@@ -1135,7 +1287,7 @@ class Enu_finder : public Radial_solver
         if (l_ >= n_) {
             RTE_THROW("wrong orbital quantum number");
         }
-        find_enu(rel__, enu_start__);
+        find_enu(rel__, enu_start__, auto_enu__);
     }
 
     inline double

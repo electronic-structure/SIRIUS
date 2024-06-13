@@ -1,38 +1,13 @@
 import typing
 from ..coefficient_array import CoefficientArray
 from ..py_sirius import (
-    ewald_energy,
-    energy_bxc,
     Wave_functions,
     MemoryEnum,
     Hamiltonian0,
-    total_energy
+    ks_energy,
 )
 from ..coefficient_array import PwCoeffs
 import numpy as np
-
-
-def pp_total_energy(potential, density, k_point_set, ctx):
-    """
-    Keyword Arguments:
-    potential   --
-    density     --
-    k_point_set --
-    ctx         --
-    """
-    gvec = ctx.gvec()
-    unit_cell = ctx.unit_cell()
-    # TODO: Ewald energy is constant...
-    return (
-        k_point_set.valence_eval_sum()
-        - potential.energy_vxc(density)
-        - potential.PAW_one_elec_energy(density)
-        - 0.5 * potential.energy_vha()
-        - energy_bxc(density, potential)
-        + potential.energy_exc(density)
-        + potential.PAW_total_energy()
-        + ewald_energy(ctx, gvec, unit_cell)
-    )
 
 
 class Energy:
@@ -80,21 +55,16 @@ class Energy:
             self.density, use_sym=self.ctx.use_symmetry(), transform_to_rg=True
         )
 
-        # print checksums before applying hamiltonian
-        # print('density checksum_pw: %.8f + %.8f I' % (np.real(self.density.get_rho().checksum_pw()), np.imag(self.density.get_rho().checksum_pw())))
-        # print('density checksum_rg: %.8f' % self.density.get_rho().checksum_rg())
-
-        # print('potential checksum_pw: %.8f + %.8f I' % (np.real(self.potential.scalar().checksum_pw()), np.imag(self.potential.scalar().checksum_pw())))
-        # print('potential checksum_rg: %.8f' % self.potential.scalar().checksum_rg())
-
         yn = self.H(X, scale=False)
 
         for key, val in yn.items():
             k, ispn = key
             benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex128)
             if self.ctx.gamma_point:
-                tmp = np.einsum("ij,ij->j", val[1:,:], np.conj(X[key])[1:, :])
-                benergies[: val.shape[1]] = (np.array(val[0,:]) * np.array(X[key][0,:]) + 2 * np.real(tmp)).flatten()
+                tmp = np.einsum("ij,ij->j", val[1:, :], np.conj(X[key])[1:, :])
+                benergies[: val.shape[1]] = (
+                    np.array(val[0, :]) * np.array(X[key][0, :]) + 2 * np.real(tmp)
+                ).flatten()
             else:
                 benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 
@@ -104,15 +74,13 @@ class Energy:
 
         self.kpointset.sync_band_energy()
 
-        Etot = total_energy(self.ctx, self.kpointset, self.density, self.potential)
-
+        Etot = ks_energy(self.ctx, self.kpointset, self.density, self.potential)
 
         # comps = total_energy_components(self.ctx, self.kpointset, self.density, self.potential, 1000)
 
         # print('energy by components:')
         # for k in comps:
         #     print(k, '%.12f' % comps[k])
-
         return Etot, yn
 
     def __call__(self, cn: PwCoeffs, fn: typing.Optional[CoefficientArray] = None):
@@ -137,7 +105,12 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-        from ..py_sirius import apply_hamiltonian, num_mag_dims, num_bands, apply_hamiltonian_gamma
+        from ..py_sirius import (
+            apply_hamiltonian,
+            num_mag_dims,
+            num_bands,
+            apply_hamiltonian_gamma,
+        )
 
         ctx = self.kpointset.ctx()
         pmem_t = ctx.processing_unit_memory_t()
@@ -153,12 +126,8 @@ class ApplyHamiltonian:
                 # num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
                 md = num_mag_dims(ctx.num_mag_dims())
                 nb = num_bands(ctx.num_bands())
-                Psi_x = Wave_functions(
-                    kpoint.gkvec(), md, nb, MemoryEnum.host
-                )
-                Psi_y = Wave_functions(
-                    kpoint.gkvec(), md, nb, MemoryEnum.host
-                )
+                Psi_x = Wave_functions(kpoint.gkvec(), md, nb, MemoryEnum.host)
+                Psi_y = Wave_functions(kpoint.gkvec(), md, nb, MemoryEnum.host)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, : val.shape[1]] = val
 

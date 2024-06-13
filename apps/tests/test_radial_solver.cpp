@@ -27,20 +27,16 @@ test_radial_solver(cmd_args const& args__)
     }
 
     Radial_solver rsolver(zn, v, rgrid);
-    std::vector<double> p_ref, rdudr_ref;
-    std::array<double, 2> uderiv_ref;
-    rsolver.solve(rel, dme, l, enu, p_ref, rdudr_ref, uderiv_ref);
+    auto result_ref = rsolver.solve(rel, dme, l, enu);
 
     #pragma omp parallel for
     for (int i = 0; i < 1000; i++) {
-        std::vector<double> p, rdudr;
-        std::array<double, 2> uderiv;
-        rsolver.solve(rel, dme, l, enu, p, rdudr, uderiv);
-        if ((uderiv[0] != uderiv_ref[0]) || (uderiv[1] != uderiv_ref[1])) {
+        auto result = rsolver.solve(rel, dme, l, enu);
+        if ((result.uderiv[1] != result_ref.uderiv[1]) || (result.uderiv[2] != result_ref.uderiv[2])) {
             std::cout << "wrong uderiv" << std::endl;
         }
         for (int j = 0; j < rgrid.num_points(); j++) {
-            if (p[j] != p_ref[j]) {
+            if (result.p[j] != result_ref.p[j]) {
                 std::cout << "wrong p" << std::endl;
             }
         }

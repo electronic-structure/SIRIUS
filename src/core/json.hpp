@@ -19,6 +19,8 @@
 #include "nlohmann_json.hpp"
 #include "core/rte/rte.hpp"
 
+namespace sirius {
+
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
 inline nlohmann::json
@@ -66,12 +68,21 @@ read_json_from_file_or_string(std::string const& str__)
     if (str__.empty()) {
         return {};
     }
-    // Detect JSON
+    /* detect JSON */
     if (str__.find("{") == std::string::npos) {
         return read_json_from_file(str__);
     } else {
         return read_json_from_string(str__);
     }
 }
+
+inline void
+write_json_to_file(nlohmann::json const& dict__, std::string const& file_name__)
+{
+    std::ofstream ofs(file_name__, std::ofstream::out | std::ofstream::trunc);
+    ofs << dict__.dump(4);
+}
+
+} // namespace sirius
 
 #endif /* __JSON_HPP__ */

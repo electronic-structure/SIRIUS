@@ -119,7 +119,11 @@ Simulation_context::init_fft_grid()
     }
 
     /* create FFT grid for coarse mesh */
-    fft_coarse_grid_ = fft::get_min_grid(2 * gk_cutoff(), rlv);
+    if (cfg().settings().use_coarse_fft_grid()) {
+        fft_coarse_grid_ = fft::get_min_grid(2 * gk_cutoff(), rlv);
+    } else {
+        fft_coarse_grid_ = fft_grid_;
+    }
 }
 
 double

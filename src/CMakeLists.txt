@@ -30,7 +30,6 @@ set(_SOURCES
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
-  "hamiltonian/s_u_operator.cpp"
   "density/density.cpp"
   "density/augmentation_operator.cpp"
   "density/occupation_matrix.cpp"
