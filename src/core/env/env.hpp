@@ -146,7 +146,7 @@ skip_wfct_extrapolation()
 {
     auto val = env::get_value_ptr<int>("SIRIUS_SKIP_WFC_EXTRAPOLATION");
     if (val) {
-        return *val;
+        return (*val == 1);
     } else {
         return 0;
     }
