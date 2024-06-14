@@ -22,16 +22,19 @@ INTEGER, PARAMETER, PUBLIC :: SIRIUS_ARRAY_ARRAY_TYPE = 12
 
 !> @brief Opaque wrapper for simulation context handler.
 type sirius_context_handler
+    private
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
 !> @brief Opaque wrapper for DFT ground statee handler.
 type sirius_ground_state_handler
+    private
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
 !> @brief Opaque wrapper for K-point set handler.
 type sirius_kpoint_set_handler
+    private
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
