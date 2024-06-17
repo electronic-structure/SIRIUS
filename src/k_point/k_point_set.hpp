@@ -184,9 +184,9 @@ class K_point_set
     void
     add_kpoint(r3::vector<double> vk__, double weight__)
     {
-        kpoints_.push_back(std::unique_ptr<K_point<double>>(new K_point<double>(ctx_, vk__, weight__)));
+        kpoints_.push_back(std::make_unique<K_point<double>>(ctx_, vk__, weight__));
 #ifdef SIRIUS_USE_FP32
-        kpoints_float_.push_back(std::unique_ptr<K_point<float>>(new K_point<float>(ctx_, vk__, weight__)));
+        kpoints_float_.push_back(std::make_unique<K_point<float>>(ctx_, vk__, weight__));
 #endif
     }
 
