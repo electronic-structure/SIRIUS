@@ -1,6 +1,6 @@
 set(_tests "test_alloc;test_hdf5;test_allgather;\
 read_atom;test_mdarray;test_xc;test_hloc;test_vector_calculus;\
-test_mpi_grid;test_enu;test_eigen;test_gemm;test_gemm2;test_wf_inner;test_memop;\
+test_mpi_grid;test_enu;test_eigen;test_gemm;test_wf_inner;test_memop;\
 test_mem_pool;test_mem_alloc;test_examples;test_bcast;test_p2p_cyclic;\
 test_wf_ortho;test_mixer;test_davidson;test_lapw_xc;test_phase;test_bessel;test_fp;test_pppw_xc;\
 test_exc_vxc;test_atomic_orbital_index;test_sym;test_blacs;test_reduce;test_comm_split;test_wf_trans;\
