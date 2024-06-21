@@ -7,12 +7,21 @@
  */
 
 #include <sirius.hpp>
+#include "testing.hpp"
 
 using namespace sirius;
 
-void
+int
 read_atom(cmd_args const& args__)
 {
+    if (!args__.exist("method")) {
+        std::cout << "electronic structure method is not specified\n" << std::endl;
+        return 0;
+    }
+    if (!args__.exist("file")) {
+        std::cout << "file name is not provided\n" << std::endl;
+        return 0;
+    }
     Simulation_parameters params;
     params.electronic_structure_method(args__.value<std::string>("method"));
 
@@ -30,6 +39,7 @@ read_atom(cmd_args const& args__)
         a1.generate_radial_functions(relativity_t::none);
         a1.check_lo_linear_independence(1e-5);
     }
+    return 0;
 }
 
 int
@@ -38,6 +48,7 @@ main(int argn, char** argv)
     cmd_args args(argn, argv,
                   {{"file=", "(string) atomic file name"}, {"method=", "(string) electronic structure method"}});
     sirius::initialize(1);
-    read_atom(args);
+    int result = call_test("read_atom", read_atom, args);
     sirius::finalize();
+    return result;
 }
