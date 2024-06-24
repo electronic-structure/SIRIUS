@@ -125,17 +125,10 @@ run_test(cmd_args& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--cutoff=", "{double} cutoff radius in G-space");
-    args.register_key("--verbose", "enable verbose output");
-    args.register_key("--fp32", "run in FP32 arithmetics");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv, {
+        {"cutoff=", "{double} cutoff radius in G-space"},
+        {"verbose", "enable verbose output"},
+        {"fp32", "run in FP32 arithmetics"}});
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);

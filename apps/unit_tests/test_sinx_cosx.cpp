@@ -38,8 +38,6 @@ main(int argn, char** argv)
 {
     cmd_args args;
 
-    args.parse_args(argn, argv);
-
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
     int result = run_test(args);

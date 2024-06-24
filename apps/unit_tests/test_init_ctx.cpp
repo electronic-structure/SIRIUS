@@ -54,8 +54,6 @@ main(int argn, char** argv)
 {
     cmd_args args;
 
-    args.parse_args(argn, argv);
-
     sirius::initialize(true);
     auto result = call_test(argv[0], run_test, args);
     sirius::finalize();

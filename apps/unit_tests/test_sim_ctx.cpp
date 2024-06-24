@@ -22,15 +22,8 @@ run_test(cmd_args& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--control.verbosity=", "{int} verbosity level");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv, {
+        {"control.verbosity=", "{int} verbosity level"}});
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);

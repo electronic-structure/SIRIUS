@@ -80,17 +80,11 @@ run_test(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--cutoff=", "{double} wave-functions cutoff");
-    args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
+    cmd_args args(argn, argv, {
+        {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+        {"cutoff=", "{double} wave-functions cutoff"},
+        {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"}});
 
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     sirius::initialize(1);
     int result = sirius::call_test(argv[0], run_test, args);
     sirius::finalize();

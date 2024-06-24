@@ -80,16 +80,9 @@ run_test(cmd_args& args, device_t pu__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--dims=", "{vector3d<int>} FFT dimensions");
-    args.register_key("--cutoff=", "{double} cutoff radius in G-space");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv, {
+            {"dims=", "{vector3d<int>} FFT dimensions"},
+            {"cutoff=", "{double} cutoff radius in G-space"}});
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
