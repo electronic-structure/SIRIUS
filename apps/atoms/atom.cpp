@@ -867,7 +867,6 @@ main(int argn, char** argv)
         std::cout << "Atom (L)APW+lo basis generation." << std::endl;
         std::cout << std::endl;
         std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
-        args.print_help();
         std::cout << std::endl;
         std::cout << "Definition of the local orbital types:" << std::endl;
         std::cout << "  lo1  : 2nd order valence local orbitals composed of {u_l(r, E_l), \\dot u_l(e, E_l)}"

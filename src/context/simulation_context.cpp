@@ -822,17 +822,19 @@ Simulation_context::update()
     /* update unit cell (reciprocal lattice, etc.) */
     unit_cell().update();
 
-    /* cache rotation symmetry matrices */
-    int lmax  = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho()) : 2 * this->unit_cell().lmax();
-    int lmmax = sf::lmmax(lmax);
-    rotm_.resize(this->unit_cell().symmetry().size());
-    /* loop over crystal symmetries */
-    #pragma omp parallel for
-    for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
-        rotm_[i] = mdarray<double, 2>({lmmax, lmmax});
-        /* compute Rlm rotation matrix */
-        sht::rotation_matrix(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
-                             this->unit_cell().symmetry()[i].spg_op.proper, rotm_[i]);
+    if (unit_cell().num_atoms()) {
+        /* cache rotation symmetry matrices */
+        int lmax  = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho()) : 2 * this->unit_cell().lmax();
+        int lmmax = sf::lmmax(lmax);
+        rotm_.resize(this->unit_cell().symmetry().size());
+        /* loop over crystal symmetries */
+        #pragma omp parallel for
+        for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
+            rotm_[i] = mdarray<double, 2>({lmmax, lmmax});
+            /* compute Rlm rotation matrix */
+            sht::rotation_matrix(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                                 this->unit_cell().symmetry()[i].spg_op.proper, rotm_[i]);
+        }
     }
 
     /* get new reciprocal vector */

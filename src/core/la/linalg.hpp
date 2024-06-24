@@ -1986,6 +1986,7 @@ wrap::lartg(ftn_double f, ftn_double g) const
     switch (la_) {
         case lib_t::lapack: {
             FORTRAN(dlartg)(&f, &g, &cs, &sn, &r);
+            return std::make_tuple(cs, sn, r);
         }
         default: {
             RTE_THROW(linalg_msg_wrong_type);

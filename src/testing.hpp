@@ -28,19 +28,19 @@
 
 namespace sirius {
 
-template <typename F>
+template <typename F, typename... Args>
 inline int
-call_test(std::string label__, F&& f__)
+call_test(std::string label__, F&& f__, Args&&... args__)
 {
     int err{0};
     std::string msg;
     try {
-        err = f__();
+        err = f__(std::forward<Args>(args__)...);
     } catch (std::exception const& e) {
         err = 1;
         msg = e.what();
     } catch (...) {
-        err = 1;
+        err = 2;
         msg = "unknown exception";
     }
     if (err) {
@@ -53,26 +53,6 @@ call_test(std::string label__, F&& f__)
         std::cout << label__ << " : OK" << std::endl;
     }
     return err;
-}
-
-template <typename F>
-inline int
-call_test(std::string label__, F&& f__, cmd_args const& args__)
-{
-    printf("running %-30s : ", label__.c_str());
-    int result = f__(args__);
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
-    return result;
 }
 
 class Measurement : public std::vector<double>
