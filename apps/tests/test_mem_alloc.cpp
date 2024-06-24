@@ -12,11 +12,10 @@
 using namespace sirius;
 
 int
-test(cmd_args const& args)
+test_mem_alloc(cmd_args const& args)
 {
     auto sizes = args.value("sizes", std::vector<int>({1024}));
     auto M = get_memory_t(args.value<std::string>("memory_t", "host"));
-    auto fill = args.exist("fill");
 
     std::vector<char*> ptrs;
     for (auto sm : sizes) {
@@ -27,25 +26,21 @@ test(cmd_args const& args)
         ptrs.push_back(ptr);
         auto t2 = time_now();
         /* this will be allocation time + fill time */
-        if (fill) {
-            if (is_host_memory(M)) {
-                std::fill(ptr, ptr + s, 0);
-            } else {
+        if (is_host_memory(M)) {
+            std::fill(ptr, ptr + s, 0);
+        } else {
 #ifdef SIRIUS_GPU
-                acc::zero(ptr, s);
+            acc::zero(ptr, s);
 #endif
-            }
         }
         auto t3 = time_now();
         /* this will be only fill time; memory is already allocated */
-        if (fill) {
-            if (is_host_memory(M)) {
-                std::fill(ptr, ptr + s, 0);
-            } else {
+        if (is_host_memory(M)) {
+            std::fill(ptr, ptr + s, 0);
+        } else {
 #ifdef SIRIUS_GPU
-                acc::zero(ptr, s);
+            acc::zero(ptr, s);
 #endif
-            }
         }
         auto t4 = time_now();
 
@@ -69,10 +64,10 @@ main(int argn, char** argv)
 {
     cmd_args args(argn, argv, {
             {"memory_t=", "{string} type of the memory"},
-            {"sizes=", "{vector} list of chunk sizes in Mb"},
-            {"fill", "fill memory with zeroes (touch memory)"}});
+            {"sizes=", "{vector} list of chunk sizes in Mb"}});
 
     sirius::initialize(1);
-    call_test("test_mem_alloc", test, args);
+    int result = call_test("test_mem_alloc", test_mem_alloc, args);
     sirius::finalize();
+    return result;
 }

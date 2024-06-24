@@ -12,7 +12,7 @@
 
 using namespace sirius;
 
-void
+int
 test_sym(cmd_args const& args__)
 {
     auto pw_cutoff = args__.value<double>("pw_cutoff", 10);
@@ -212,6 +212,7 @@ test_sym(cmd_args const& args__)
             }
         }
     }
+    return 0;
 }
 
 int
@@ -223,18 +224,8 @@ main(int argn, char** argv)
                           {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
                   });
 
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
     sirius::initialize(1);
-    test_sym(args);
-    int rank = mpi::Communicator::world().rank();
+    int result = call_test("test_sym", test_sym, args);
     sirius::finalize();
-    if (rank == 0) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-    }
+    return result;
 }

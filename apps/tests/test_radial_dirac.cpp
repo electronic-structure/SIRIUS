@@ -12,7 +12,7 @@
 using namespace sirius;
 
 int
-test_dirac_solver(cmd_args const& args__)
+test_radial_dirac(cmd_args const& args__)
 {
     int num_points = args__.value<int>("num_points", 10000);
 
@@ -75,8 +75,5 @@ main(int argn, char** argv)
     printf("Test of radial solver for bare nuclear potential V(r) = -z / r \n");
     printf("\n");
 
-    sirius::initialize(1);
-    call_test("test_dirac_solver", test_dirac_solver, args);
-    sirius::finalize();
-
+    return call_test("test_radial_dirac", test_radial_dirac, args);
 }

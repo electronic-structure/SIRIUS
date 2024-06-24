@@ -18,7 +18,7 @@ using namespace sirius;
 using namespace sirius::acc;
 
 int
-run_test(cmd_args const& args)
+test_potrf(cmd_args const& args)
 {
 #if defined(SIRIUS_CUDA)
     std::vector<int> sizes({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 100, 1000});
@@ -43,10 +43,8 @@ main(int argn, char** argv)
 {
     cmd_args args;
 
-    args.parse_args(argn, argv);
-
     sirius::initialize(true);
-    auto result = call_test("test_potrf", run_test, args);
+    auto result = call_test("test_potrf", test_potrf, args);
     sirius::finalize();
     return result;
 }

@@ -12,7 +12,7 @@
 using namespace sirius;
 
 int
-test_comm_split(cmd_args const& args__)
+test_mpi_comm_split(cmd_args const& args__)
 {
     int comm_size = args__.value<int>("comm_size", 1);
 
@@ -42,6 +42,6 @@ main(int argn, char** argv)
         {"comm_size=", "{int} size of sub-communicator"}});
 
     sirius::initialize(1);
-    call_test("test_comm_split", test_comm_split, args);
+    call_test("test_mpi_comm_split", test_mpi_comm_split, args);
     sirius::finalize();
 }

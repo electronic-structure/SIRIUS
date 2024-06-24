@@ -13,7 +13,7 @@ using namespace sirius;
 
 template <typename T>
 void
-run_test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
+test_hloc_impl(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
 {
     auto gvec     = ctx__.gvec_coarse_sptr();
     auto gvec_fft = ctx__.gvec_coarse_fft_sptr();
@@ -114,12 +114,12 @@ test_hloc(cmd_args const& args)
     for (int i = 0; i < repeat; i++) {
         if (fp32) {
 #if defined(SIRIUS_USE_FP32)
-            run_test_hloc<float>(*ctx, num_bands, use_gpu);
+            test_hloc_impl<float>(*ctx, num_bands, use_gpu);
 #else
             RTE_THROW("Not compiled with FP32 support");
 #endif
         } else {
-            run_test_hloc<double>(*ctx, num_bands, use_gpu);
+            test_hloc_impl<double>(*ctx, num_bands, use_gpu);
         }
     }
     return 0;
@@ -140,12 +140,7 @@ main(int argn, char** argv)
             {"fp32", "use FP32 arithmetics"}});
 
     sirius::initialize(1);
-    int my_rank = mpi::Communicator::world().rank();
-    call_test("test_hloc", test_hloc, args);
+    int result = call_test("test_hloc", test_hloc, args);
     sirius::finalize(1);
-
-    if (my_rank == 0) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-    }
+    return result;
 }

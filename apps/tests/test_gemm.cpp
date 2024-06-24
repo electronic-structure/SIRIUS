@@ -20,7 +20,7 @@ int const nop_gemm = 8;
 #endif
 
 double
-run_single_gemm(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memory_t memB__, memory_t memC__)
+test_gemm_impl(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__, memory_t memB__, memory_t memC__)
 {
     mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
@@ -91,13 +91,14 @@ int test_gemm(cmd_args const& args__)
     int repeat = args__.value<int>("repeat", 5);
 
     std::string lib_t_str = args__.value<std::string>("lib_t", "blas");
-    auto memA             = get_memory_t(args__.value<std::string>("memA", "host"));
-    auto memB             = get_memory_t(args__.value<std::string>("memB", "host"));
-    auto memC             = get_memory_t(args__.value<std::string>("memC", "host"));
+
+    auto memA = get_memory_t(args__.value<std::string>("memA", "host"));
+    auto memB = get_memory_t(args__.value<std::string>("memB", "host"));
+    auto memC = get_memory_t(args__.value<std::string>("memC", "host"));
 
     sirius::Measurement perf;
     for (int i = 0; i < repeat; i++) {
-        perf.push_back(run_single_gemm(M, N, K, transa, la::get_lib_t(lib_t_str), memA, memB, memC));
+        perf.push_back(test_gemm_impl(M, N, K, transa, la::get_lib_t(lib_t_str), memA, memB, memC));
     }
     printf("average performance: %12.6f GFlops, sigma: %12.6f\n", perf.average(), perf.sigma());
 
@@ -119,6 +120,7 @@ main(int argn, char** argv)
             {"memC=", "{string} type of memory of matrix C"}});
 
     sirius::initialize(true);
-    call_test("test_gemm", test_gemm, args);
+    int result = call_test("test_gemm", test_gemm, args);
     sirius::finalize();
+    return result;
 }

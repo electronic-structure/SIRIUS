@@ -75,8 +75,5 @@ main(int argn, char** argv)
                    {"n=", "(int) principal quantum number"},
                    {"R=", "(double) muffin-tin radius"}});
 
-    sirius::initialize(1);
-    int result = call_test("test_enu", test_enu, args);
-    sirius::finalize();
-    return result;
+    return call_test("test_enu", test_enu, args);
 }
