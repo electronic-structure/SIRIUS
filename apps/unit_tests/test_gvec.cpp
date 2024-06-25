@@ -7,14 +7,14 @@
  */
 
 #include <sirius.hpp>
-#include <thread>
+#include <testing.hpp>
 
 /* test G-vectors */
 
 using namespace sirius;
 
 int
-run_test(cmd_args& args)
+test_gvec(cmd_args& args)
 {
     auto vd = args.value("dims", std::vector<int>({132, 132, 132}));
     r3::vector<int> dims(vd[0], vd[1], vd[2]);
@@ -43,20 +43,7 @@ main(int argn, char** argv)
         {"cutoff=", "{double} cutoff radius in G-space"}});
 
     sirius::initialize(true);
-    printf("running %-30s : ", argv[0]);
-    int result = run_test(args);
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
+    int result = call_test(argv[0], test_gvec, args);
     sirius::finalize();
-
     return result;
 }

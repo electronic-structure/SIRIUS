@@ -7,7 +7,7 @@
  */
 
 #include <sirius.hpp>
-#include "testing.hpp"
+#include <testing.hpp>
 
 using namespace sirius;
 

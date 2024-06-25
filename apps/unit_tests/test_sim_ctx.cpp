@@ -7,11 +7,12 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
 int
-run_test(cmd_args& args)
+test_sim_ctx(cmd_args const& args)
 {
     Simulation_context ctx;
     ctx.import(args);
@@ -26,20 +27,7 @@ main(int argn, char** argv)
         {"control.verbosity=", "{int} verbosity level"}});
 
     sirius::initialize(true);
-    printf("running %-30s : ", argv[0]);
-    int result = run_test(args);
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
+    int result = call_test(argv[0], test_sim_ctx, args);
     sirius::finalize();
-
     return result;
 }

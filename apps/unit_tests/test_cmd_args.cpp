@@ -63,5 +63,5 @@ main(int arg, char** argv)
                    {"d1=", "(double) double parameter"},
                    {"vi1=", "(vector<int>) vector of integers"}});
 
-    return sirius::call_test(argv[0], run_test, args);
+    return call_test(argv[0], run_test, args);
 }

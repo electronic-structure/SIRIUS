@@ -7,14 +7,14 @@
  */
 
 #include <cmath>
-#include "core/cmd_args.hpp"
+#include <testing.hpp>
 
 /* test for NaN and IEEE arithmetics */
 
 using namespace sirius;
 
 int
-run_test(cmd_args const& args)
+test_nan()
 {
     double val = std::nan("");
     if (val != val) {
@@ -27,21 +27,5 @@ run_test(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-
-    printf("running %-30s : ", argv[0]);
-    int result = run_test(args);
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
-
-    return result;
+    return call_test(argv[0], test_nan);
 }

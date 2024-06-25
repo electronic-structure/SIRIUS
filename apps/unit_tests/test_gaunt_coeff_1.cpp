@@ -12,7 +12,7 @@
 using namespace sirius;
 
 int
-test1()
+test_gaunt_yyy()
 {
     int const lmax                      = 3;
     int const lmmax                     = (lmax + 1) * (lmax + 1);
@@ -300,9 +300,5 @@ test1()
 int
 main(int argn, char** argv)
 {
-    int err{0};
-
-    err += call_test("<Ylm|Ylm|Ylm>", test1);
-
-    return std::min(err, 1);
+    return call_test(argv[0], test_gaunt_yyy);
 }

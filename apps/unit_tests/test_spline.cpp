@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
@@ -503,10 +504,8 @@ test12()
 }
 
 int
-main(int argn, char** argv)
+test_spline()
 {
-    sirius::initialize(1);
-
     test6a();
     test6();
 
@@ -557,23 +556,11 @@ main(int argn, char** argv)
     test11();
     test12();
 
-    // for (int i = 0; i < 5; i++) {
-    //     printf("grid type: %i\n", i);
-    //     printf("testing in double\n");
-    //     test8<double>(i);
-    //     printf("testing in long double\n");
-    //     test8<long double>(i);
-    // }
-
-    // for (int i = 0; i < 5; i++) {
-    //     printf("grid type: %i\n", i);
-    //     printf("testing in double\n");
-    //     test9<double>(i);
-    //     //printf("testing in long double\n");
-    //     //test9<long double>(i);
-    // }
-
-    sirius::finalize();
-
     return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    return call_test(argv[0], test_spline);
 }

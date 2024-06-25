@@ -14,7 +14,7 @@
 using namespace sirius;
 
 int
-run_test(cmd_args const& args)
+run_test()
 {
     void* ptr = new any_ptr(new mdarray<int, 1>({100}, get_memory_pool(memory_t::host)));
     delete static_cast<any_ptr*>(ptr);
@@ -24,7 +24,5 @@ run_test(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {});
-
-    return sirius::call_test(argv[0], run_test, args);
+    return call_test(argv[0], run_test);
 }
