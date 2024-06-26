@@ -143,6 +143,7 @@ test_wf_trans(cmd_args const& args)
     } else {
         return test_wf_trans_impl<double>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
     }
+    return 0;
 }
 
 

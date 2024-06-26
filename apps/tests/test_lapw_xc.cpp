@@ -83,6 +83,8 @@ test_lapw_xc(cmd_args const& args__)
 
     Potential pot(ctx);
     pot.xc(rho);
+
+    return 0;
 }
 
 int
