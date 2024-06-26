@@ -87,7 +87,8 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     return 0;
 }
 
-int test_wf_inner(cmd_args const& args)
+int
+test_wf_inner(cmd_args const& args)
 {
     auto mpi_grid_dims       = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff              = args.value<double>("cutoff", 8.0);
@@ -101,13 +102,12 @@ int test_wf_inner(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-            {"cutoff=", "{double} wave-functions cutoff"},
-            {"bs=", "{int} block size"},
-            {"num_bands=", "{int} number of bands"},
-            {"memory_t=", "{string} type of the memory"}});
-
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"bs=", "{int} block size"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"memory_t=", "{string} type of the memory"}});
 
     sirius::initialize(1);
     int result = call_test("test_wf_inner", test_wf_inner, args);

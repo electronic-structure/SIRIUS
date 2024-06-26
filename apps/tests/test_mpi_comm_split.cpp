@@ -38,8 +38,7 @@ test_mpi_comm_split(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"comm_size=", "{int} size of sub-communicator"}});
+    cmd_args args(argn, argv, {{"comm_size=", "{int} size of sub-communicator"}});
 
     sirius::initialize(1);
     call_test("test_mpi_comm_split", test_mpi_comm_split, args);

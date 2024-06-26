@@ -824,7 +824,7 @@ Simulation_context::update()
 
     if (unit_cell().num_atoms()) {
         /* cache rotation symmetry matrices */
-        int lmax  = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho()) : 2 * this->unit_cell().lmax();
+        int lmax = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho()) : 2 * this->unit_cell().lmax();
         int lmmax = sf::lmmax(lmax);
         rotm_.resize(this->unit_cell().symmetry().size());
         /* loop over crystal symmetries */

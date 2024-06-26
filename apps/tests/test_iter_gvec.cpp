@@ -12,7 +12,8 @@
 
 using namespace sirius;
 
-int test_iter_gvec()
+int
+test_iter_gvec()
 {
     r3::matrix<double> M({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     fft::Gvec gv(M, 10, mpi::Communicator::world(), false);

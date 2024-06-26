@@ -15,7 +15,7 @@ using namespace la;
 template <typename T, typename F>
 int
 test_wf_ortho_aux(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-              memory_t mem__)
+                  memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
@@ -86,7 +86,7 @@ test_wf_ortho_aux(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands
 template <typename T>
 int
 test_wf_ortho_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-          memory_t mem__, int repeat__)
+                   memory_t mem__, int repeat__)
 {
     std::unique_ptr<BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -105,7 +105,8 @@ test_wf_ortho_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
             if (mpi::Communicator::world().rank() == 0) {
                 std::cout << "calling test_wf_ortho<T, std::complex<double>>()" << std::endl;
             }
-            ierr += test_wf_ortho_aux<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);
+            ierr += test_wf_ortho_aux<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__,
+                                                               mem__);
         }
     }
     return ierr;
@@ -136,14 +137,14 @@ test_wf_ortho(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-            {"cutoff=", "{double} wave-functions cutoff"},
-            {"bs=", "{int} block size"},
-            {"num_bands=", "{int} number of bands"},
-            {"num_mag_dims=", "{int} number of magnetic dimensions"},
-            {"memory_t=", "{string} type of memory"},
-            {"fp32", "use FP32 arithmetics"}});
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"bs=", "{int} block size"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"num_mag_dims=", "{int} number of magnetic dimensions"},
+                   {"memory_t=", "{string} type of memory"},
+                   {"fp32", "use FP32 arithmetics"}});
 
     sirius::initialize(1);
     int result = call_test("test_wf_ortho", test_wf_ortho, args);

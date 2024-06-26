@@ -163,12 +163,12 @@ test_mixer(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"max_history=", "{int} maximum number of vecs to store"},
-        {"beta=", "{double} first jacobian approximation as diagonal matrix"},
-        {"dim=", "{size_t} problem dimension"},
-        {"max_iter=", "{int} maximum number of iterations"},
-        {"tol=", "{double} tolerance"}});
+    cmd_args args(argn, argv,
+                  {{"max_history=", "{int} maximum number of vecs to store"},
+                   {"beta=", "{double} first jacobian approximation as diagonal matrix"},
+                   {"dim=", "{size_t} problem dimension"},
+                   {"max_iter=", "{int} maximum number of iterations"},
+                   {"tol=", "{double} tolerance"}});
 
     return call_test("test_mixer", test_mixer, args);
 }

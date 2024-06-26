@@ -15,7 +15,7 @@ int
 test_mem_alloc(cmd_args const& args)
 {
     auto sizes = args.value("sizes", std::vector<int>({1024}));
-    auto M = get_memory_t(args.value<std::string>("memory_t", "host"));
+    auto M     = get_memory_t(args.value<std::string>("memory_t", "host"));
 
     std::vector<char*> ptrs;
     for (auto sm : sizes) {
@@ -44,12 +44,12 @@ test_mem_alloc(cmd_args const& args)
         }
         auto t4 = time_now();
 
-        double fill_time = time_interval(t3, t4);
+        double fill_time              = time_interval(t3, t4);
         double allocate_and_fill_time = time_interval(t0, t1) + time_interval(t2, t3);
-        double allocate_time = allocate_and_fill_time - fill_time;
+        double allocate_time          = allocate_and_fill_time - fill_time;
 
-        std::cout << "block size (Mb) : " << sm
-                  << ", alloc. time : " << allocate_time << ", alloc. speed : " << sm / allocate_time << " Mb/s"
+        std::cout << "block size (Mb) : " << sm << ", alloc. time : " << allocate_time
+                  << ", alloc. speed : " << sm / allocate_time << " Mb/s"
                   << ", fill time : " << fill_time << ", fill speed : " << sm / fill_time << " Mb/s" << std::endl;
         print_memory_usage(std::cout, FILE_LINE);
     }
@@ -62,9 +62,8 @@ test_mem_alloc(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"memory_t=", "{string} type of the memory"},
-            {"sizes=", "{vector} list of chunk sizes in Mb"}});
+    cmd_args args(argn, argv,
+                  {{"memory_t=", "{string} type of the memory"}, {"sizes=", "{vector} list of chunk sizes in Mb"}});
 
     sirius::initialize(1);
     int result = call_test("test_mem_alloc", test_mem_alloc, args);

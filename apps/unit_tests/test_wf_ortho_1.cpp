@@ -80,10 +80,10 @@ test_wf_ortho(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-        {"cutoff=", "{double} wave-functions cutoff"},
-        {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"}});
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"}});
 
     sirius::initialize(1);
     int result = sirius::call_test(argv[0], test_wf_ortho, args);

@@ -50,7 +50,8 @@ test()
     return s.interpolate().integrate(0) / s1.interpolate().integrate(0);
 }
 
-int test_sht_lapl()
+int
+test_sht_lapl()
 {
     double diff;
     if ((diff = test<std::complex<double>>()) > 1e-12) {

@@ -16,8 +16,8 @@ using namespace sirius;
 int
 test_memory_pool(cmd_args const& args__)
 {
-    auto M = get_memory_t(args__.value<std::string>("memory_t", "host"));
-    auto nGb = args__.value<size_t>("nGb", 2);
+    auto M    = get_memory_t(args__.value<std::string>("memory_t", "host"));
+    auto nGb  = args__.value<size_t>("nGb", 2);
     auto gran = args__.value<uint32_t>("gran", 32);
 
     auto& mpool = get_memory_pool(M);
@@ -38,16 +38,17 @@ test_memory_pool(cmd_args const& args__)
     for (int k = 0; k < 10; k++) {
         auto t0 = time_now();
         v.clear();
-        for (auto s: sizes) {
+        for (auto s : sizes) {
             v.push_back(mdarray<char, 1>({s}, mpool));
             v.back().zero(M);
         }
         std::shuffle(v.begin(), v.end(), std::mt19937());
-        for (auto& e: v) {
+        for (auto& e : v) {
             e.deallocate(M);
         }
         double t = time_interval(t0);
-        std::cout << "pass : " << k << ", time : " << t << ", effective throughput : " << tot_size / t / (1 << 20) << " Mb/s\n";
+        std::cout << "pass : " << k << ", time : " << t << ", effective throughput : " << tot_size / t / (1 << 20)
+                  << " Mb/s\n";
     }
     return 0;
 }
@@ -55,10 +56,10 @@ test_memory_pool(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"memory_t=", "{string} type of the memory"},
-            {"nGb=", "{int} total number of Gigabytes to allocate"},
-            {"gran=", "{int} block granularity in Mb"}});
+    cmd_args args(argn, argv,
+                  {{"memory_t=", "{string} type of the memory"},
+                   {"nGb=", "{int} total number of Gigabytes to allocate"},
+                   {"gran=", "{int} block granularity in Mb"}});
 
     sirius::initialize(1);
     int result = call_test("test_memory_pool", test_memory_pool, args);

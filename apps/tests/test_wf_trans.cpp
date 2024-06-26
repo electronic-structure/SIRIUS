@@ -14,7 +14,7 @@ using namespace sirius;
 template <typename T, typename F>
 int
 test_wf_trans_aux(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-              memory_t mem__)
+                  memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
@@ -109,7 +109,7 @@ test_wf_trans_aux(la::BLACS_grid const& blacs_grid__, double cutoff__, int num_b
 template <typename T>
 int
 test_wf_trans_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-          memory_t mem__, int repeat__)
+                   memory_t mem__, int repeat__)
 {
     std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -120,7 +120,8 @@ test_wf_trans_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
     }
     int ierr{0};
     for (int i = 0; i < repeat__; i++) {
-        ierr += test_wf_trans_aux<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);
+        ierr += test_wf_trans_aux<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__,
+                                                           mem__);
     }
     return ierr;
 }
@@ -146,18 +147,17 @@ test_wf_trans(cmd_args const& args)
     return 0;
 }
 
-
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-            {"cutoff=", "{double} wave-functions cutoff"},
-            {"bs=", "{int} block size"},
-            {"num_bands=", "{int} number of bands"},
-            {"num_mag_dims=", "{int} number of magnetic dimensions"},
-            {"memory_t=", "{string} type of memory"},
-            {"fp32", "use FP32 arithmetics"}});
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"bs=", "{int} block size"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"num_mag_dims=", "{int} number of magnetic dimensions"},
+                   {"memory_t=", "{string} type of memory"},
+                   {"fp32", "use FP32 arithmetics"}});
 
     sirius::initialize(1);
     int result = call_test("test_wf_trans", test_wf_trans, args);

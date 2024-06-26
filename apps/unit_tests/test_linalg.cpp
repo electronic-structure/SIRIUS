@@ -150,7 +150,8 @@ int test3()
 #endif
 */
 
-int test_linalg()
+int
+test_linalg()
 {
     int err = test1();
     err += test2<double>();

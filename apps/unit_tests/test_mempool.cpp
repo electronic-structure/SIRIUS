@@ -250,4 +250,3 @@ main(int argn, char** argv)
 {
     return call_test(argv[0], test_mempool);
 }
-

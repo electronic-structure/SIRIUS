@@ -24,7 +24,7 @@ test1(double x0, double x1, int m, double exact_result)
         s(i) = std::sin(r[i]);
     }
 
-    double d   = s.interpolate().integrate(m);
+    double d = s.interpolate().integrate(m);
     if (rel_diff(d, exact_result) > 1e-10) {
         std::cout << "wrong result" << std::endl;
         return 1;
@@ -39,7 +39,7 @@ test2(F&& f, double x0, double x1, double ref_val)
     Radial_grid_pow<double> rgrid(2000, x0, x1, 2);
     Spline<double> s(rgrid, f);
     double val = s.integrate(0);
-    auto diff = rel_diff(val, ref_val);
+    auto diff  = rel_diff(val, ref_val);
     if (diff > 1e-9) {
         std::cout << "test2: wrong integral" << std::endl
                   << "       val: " << val << ", ref_val: " << ref_val << ", diff: " << diff << std::endl;
@@ -85,7 +85,6 @@ test3()
     return 0;
 }
 
-
 int
 test4()
 {
@@ -97,12 +96,12 @@ test4()
 
     int N{2000};
     Radial_grid_lin_exp<double> r(N, x0, x1);
-    Spline<double> s(r, [](double x){return std::exp(x);});
+    Spline<double> s(r, [](double x) { return std::exp(x); });
 
     printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x0, s(0), s.deriv(0, 0),
-            s.deriv(1,0), s.deriv(2, 0));
-    printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x1, s(N - 1),
-            s.deriv(0, N - 1), s.deriv(1, N - 1), s.deriv(2, N - 1));
+           s.deriv(1, 0), s.deriv(2, 0));
+    printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x1, s(N - 1), s.deriv(0, N - 1),
+           s.deriv(1, N - 1), s.deriv(2, N - 1));
 
     return 0;
 }
@@ -306,7 +305,6 @@ test_spline()
           [](double x) {
               return (-2 * std::cos(x)) / std::pow(x, 2) + (2 * std::sin(x)) / std::pow(x, 3) - std::sin(x) / x;
           });
-
 
     ierr += test10([](double x) { return std::log(0.01 + x); }, 0.9794054710686494);
     ierr += test10([](double x) { return std::exp(-10 * x); }, 0.001999999088970099);

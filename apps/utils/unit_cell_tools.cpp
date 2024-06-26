@@ -320,15 +320,15 @@ scale_lattice(cmd_args& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"input=", "{string} input file name"},
-        {"supercell=", "{string} transformation matrix (9 numbers)"},
-        {"qe", "create input for QE"},
-        {"xml", "create Exciting XML input"},
-        {"find_primitive", "find a primitive cell"},
-        {"cif", "create CIF file"},
-        {"mol", "convert to molecule input file"},
-        {"scale=", "scale lattice"}});
+    cmd_args args(argn, argv,
+                  {{"input=", "{string} input file name"},
+                   {"supercell=", "{string} transformation matrix (9 numbers)"},
+                   {"qe", "create input for QE"},
+                   {"xml", "create Exciting XML input"},
+                   {"find_primitive", "find a primitive cell"},
+                   {"cif", "create CIF file"},
+                   {"mol", "convert to molecule input file"},
+                   {"scale=", "scale lattice"}});
 
     sirius::initialize(1);
     if (args.exist("supercell")) {

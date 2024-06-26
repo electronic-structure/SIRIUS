@@ -42,7 +42,8 @@ test_atomic_orbital_index(cmd_args const& args)
         for (int o = 0; o < ri.max_order(l); o++) {
             for (auto j : ri.subshell(l, o)) {
                 auto idx = ri.index_of(j, o);
-                std::cout << "l : " << ri.am(idx).l() << ", o : " << o << ", s : " << ri.am(idx).s() << ", idx : " << idx << std::endl;
+                std::cout << "l : " << ri.am(idx).l() << ", o : " << o << ", s : " << ri.am(idx).s()
+                          << ", idx : " << idx << std::endl;
             }
         }
     }

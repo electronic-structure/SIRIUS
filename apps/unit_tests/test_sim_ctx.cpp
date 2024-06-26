@@ -23,8 +23,7 @@ test_sim_ctx(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"control.verbosity=", "{int} verbosity level"}});
+    cmd_args args(argn, argv, {{"control.verbosity=", "{int} verbosity level"}});
 
     sirius::initialize(true);
     int result = call_test(argv[0], test_sim_ctx, args);

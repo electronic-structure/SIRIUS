@@ -43,8 +43,7 @@ test_gvec_send_recv(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"cutoff=", "{double} wave-functions cutoff"}});
+    cmd_args args(argn, argv, {{"cutoff=", "{double} wave-functions cutoff"}});
 
     sirius::initialize(1);
     int result = call_test("test_gvec_send_recv", test_gvec_send_recv, args);

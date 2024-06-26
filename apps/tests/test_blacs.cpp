@@ -17,8 +17,8 @@ test_blacs()
 #if defined(SIRIUS_SCALAPACK)
     std::cout << "self_comm_size : " << mpi::Communicator::self().size()
               << ", self_comm_rank : " << mpi::Communicator::self().rank() << std::endl;
-    std::cout << "world_comm_size : " << mpi::Communicator::world().size()
-              << ", world_comm_rank " << mpi::Communicator::world().rank() << std::endl;
+    std::cout << "world_comm_size : " << mpi::Communicator::world().size() << ", world_comm_rank "
+              << mpi::Communicator::world().rank() << std::endl;
 
     auto blacs_handler = la::linalg_base::create_blacs_handler(mpi::Communicator::self().native());
     blacs_handler      = la::linalg_base::create_blacs_handler(mpi::Communicator::world().native());

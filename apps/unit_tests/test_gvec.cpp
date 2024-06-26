@@ -38,9 +38,8 @@ test_gvec(cmd_args& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"dims=", "{vector<int>} FFT dimensions"},
-        {"cutoff=", "{double} cutoff radius in G-space"}});
+    cmd_args args(argn, argv,
+                  {{"dims=", "{vector<int>} FFT dimensions"}, {"cutoff=", "{double} cutoff radius in G-space"}});
 
     sirius::initialize(true);
     int result = call_test(argv[0], test_gvec, args);

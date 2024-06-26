@@ -14,7 +14,7 @@ using namespace sirius;
 int
 test_allreduce()
 {
-    int mb{1<<20};
+    int mb{1 << 20};
     int N = 100 * mb;
     std::vector<int> vec(N, 0);
 

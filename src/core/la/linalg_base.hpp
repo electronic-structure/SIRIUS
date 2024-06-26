@@ -297,7 +297,8 @@ class linalg_base
         if (info) {
             std::stringstream s;
             s << "error in descinit()" << std::endl
-              << "m=" << m << " n=" << n << " mb=" << mb << " nb=" << nb << " irsrc=" << irsrc << " icsrc=" << icsrc << " lld=" << lld;
+              << "m=" << m << " n=" << n << " mb=" << mb << " nb=" << nb << " irsrc=" << irsrc << " icsrc=" << icsrc
+              << " lld=" << lld;
             RTE_THROW(s);
         }
     }

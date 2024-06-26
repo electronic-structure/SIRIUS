@@ -742,7 +742,8 @@ Unit_cell::get_symmetry()
     }
 
     symmetry_ = std::make_unique<Crystal_symmetry>(lattice_vectors_, num_atoms(), num_atom_types(), types, positions,
-            spins, parameters_.so_correction(), parameters_.spglib_tolerance(), parameters_.use_symmetry());
+                                                   spins, parameters_.so_correction(), parameters_.spglib_tolerance(),
+                                                   parameters_.use_symmetry());
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);
@@ -751,8 +752,7 @@ Unit_cell::get_symmetry()
         if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
-            atom_symmetry_classes_.push_back(
-                    std::make_shared<Atom_symmetry_class>(atom_class_id, atom(i).type()));
+            atom_symmetry_classes_.push_back(std::make_shared<Atom_symmetry_class>(atom_class_id, atom(i).type()));
 
             /* scan all atoms */
             for (int j = 0; j < num_atoms(); j++) {

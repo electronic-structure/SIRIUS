@@ -65,11 +65,11 @@ test_radial_dirac(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"grid_type=", "{int} type of the radial grid"},
-            {"num_points=", "{int} number of grid points"},
-            {"rmin=", "{double} first grid point"},
-            {"zn=", "{int} element number"}});
+    cmd_args args(argn, argv,
+                  {{"grid_type=", "{int} type of the radial grid"},
+                   {"num_points=", "{int} number of grid points"},
+                   {"rmin=", "{double} first grid point"},
+                   {"zn=", "{int} element number"}});
 
     printf("\n");
     printf("Test of radial solver for bare nuclear potential V(r) = -z / r \n");

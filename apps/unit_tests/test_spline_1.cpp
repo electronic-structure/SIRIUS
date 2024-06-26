@@ -24,11 +24,12 @@ check_spline(Spline<double> const& s__, std::function<double(double)> f__, doubl
     int const np{10000};
     Radial_grid_lin<double> rgrid(np, x0__, x1__);
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
-        double x = rgrid[ir];
+        double x    = rgrid[ir];
         double diff = rel_diff(s__.at_point(x), f__(x));
         if (diff > 1e-6) {
             std::cout << "wrong spline interpolation at x = " << x << std::endl
-                      << "true value: " << f__(x) << ", spline value: " << s__.at_point(x) << ", diff: " << diff << std::endl;
+                      << "true value: " << f__(x) << ", spline value: " << s__.at_point(x) << ", diff: " << diff
+                      << std::endl;
             return 1;
         }
     }
@@ -99,7 +100,7 @@ test_spline()
     err += test_function([](double x) { return stdsin(x) / stdexp(2 * x); });
 
     printf("testing f(x)=Sin(x)/x\n");
-    err+= test_function([](double x) { return stdsin(x) / x; });
+    err += test_function([](double x) { return stdsin(x) / x; });
 
     return err;
 }

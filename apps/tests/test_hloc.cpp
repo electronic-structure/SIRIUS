@@ -128,16 +128,16 @@ test_hloc(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-            {"cutoff=", "{double} wave-functions cutoff"},
-            {"reduce_gvec=", "{int} 0: use full set of G-vectors, 1: use reduced set of G-vectors"},
-            {"num_bands=", "{int} number of bands"},
-            {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"},
-            {"gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU"},
-            {"repeat=", "{int} number of repetitions"},
-            {"t_file=", "{string} name of timing output file"},
-            {"fp32", "use FP32 arithmetics"}});
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"reduce_gvec=", "{int} 0: use full set of G-vectors, 1: use reduced set of G-vectors"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"},
+                   {"gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU"},
+                   {"repeat=", "{int} number of repetitions"},
+                   {"t_file=", "{string} name of timing output file"},
+                   {"fp32", "use FP32 arithmetics"}});
 
     sirius::initialize(1);
     int result = call_test("test_hloc", test_hloc, args);

@@ -39,8 +39,7 @@ test_mpi_alltoall_impl(int M__, int N__)
 
     if (comm.rank() == 0) {
         printf("number of ranks: %i\n", comm.size());
-        printf("local buffer size: %f Mb\n",
-               spl_M.local_size() * N__ * sizeof(std::complex<double>) / double(1 << 20));
+        printf("local buffer size: %f Mb\n", spl_M.local_size() * N__ * sizeof(std::complex<double>) / double(1 << 20));
     }
 
     /* P MPI ranks reshuffle data. Each rank stores N * M / P elements which it sends and receives.
@@ -80,10 +79,10 @@ test_mpi_alltoall(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"N=", "{int} number of matrix rows"},
-        {"M=", "{int} number of matrix columns"},
-        {"repeat=", "{int} repeat test number of times"}});
+    cmd_args args(argn, argv,
+                  {{"N=", "{int} number of matrix rows"},
+                   {"M=", "{int} number of matrix columns"},
+                   {"repeat=", "{int} repeat test number of times"}});
 
     sirius::initialize(1);
     int result = call_test("test_mpi_alltoall", test_mpi_alltoall, args);

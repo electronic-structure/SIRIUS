@@ -14,7 +14,7 @@ using namespace sirius;
 int
 test_allgather()
 {
-    int mb{1<<20};
+    int mb{1 << 20};
     int N = 1 * mb;
     std::vector<double> vec(N, 0.0);
 

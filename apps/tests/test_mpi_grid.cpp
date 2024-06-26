@@ -35,8 +35,7 @@ test_mpi_grid(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"mpi_grid=", "{vector3d<int>} MPI grid"}});
+    cmd_args args(argn, argv, {{"mpi_grid=", "{vector3d<int>} MPI grid"}});
 
     sirius::initialize(1);
     int result = call_test("test_mpi_grid", test_mpi_grid, args);

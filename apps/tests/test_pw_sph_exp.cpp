@@ -98,13 +98,15 @@ test1(int mu, r3::vector<double> G)
             }
         }
 
-        diff += std::abs(z - std::complex<double>(0, coord[mu] * r) * std::exp(std::complex<double>(0, r * dot(coord, G))));
+        diff += std::abs(z -
+                         std::complex<double>(0, coord[mu] * r) * std::exp(std::complex<double>(0, r * dot(coord, G))));
     }
 
     std::cout << "derivatives diff=" << diff << std::endl;
 }
 
-int test_pw_sph_exp()
+int
+test_pw_sph_exp()
 {
     test({0.4, 0, 0});
     test({0, 0.4, 0});

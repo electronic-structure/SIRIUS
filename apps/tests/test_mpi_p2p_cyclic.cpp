@@ -50,8 +50,7 @@ test_p2p_cyclic(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"size=", "buffer size in bytes"}});
+    cmd_args args(argn, argv, {{"size=", "buffer size in bytes"}});
 
     sirius::initialize(1);
     int result = call_test("test_p2p_cyclic", test_p2p_cyclic, args);

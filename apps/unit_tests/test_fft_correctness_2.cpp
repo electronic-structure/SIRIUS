@@ -78,9 +78,7 @@ test_fft(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"cutoff=", "{double} cutoff radius in G-space"},
-            {"fp32", "run in FP32 arithmetics"}});
+    cmd_args args(argn, argv, {{"cutoff=", "{double} cutoff radius in G-space"}, {"fp32", "run in FP32 arithmetics"}});
 
     sirius::initialize(true);
     int result{0};

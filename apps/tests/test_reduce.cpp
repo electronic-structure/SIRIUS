@@ -46,14 +46,12 @@ test_reduce()
     if (pr) {
         std::cout << "allreduce<reinterpret_cast<std::complex<double>>> " << std::endl;
     }
-    comm.allreduce(reinterpret_cast<double*>(tmp.at(memory_t::host)),
-                                    2 * static_cast<int>(tmp.size()));
+    comm.allreduce(reinterpret_cast<double*>(tmp.at(memory_t::host)), 2 * static_cast<int>(tmp.size()));
 
     if (pr) {
         std::cout << "reduce<reinterpret_cast<std::complex<double>>> " << std::endl;
     }
-    comm.reduce(reinterpret_cast<double*>(tmp.at(memory_t::host)), 2 * static_cast<int>(tmp.size()),
-                                 1);
+    comm.reduce(reinterpret_cast<double*>(tmp.at(memory_t::host)), 2 * static_cast<int>(tmp.size()), 1);
 
     if (pr) {
         std::cout << "allreduce<std::complex<double>> " << std::endl;

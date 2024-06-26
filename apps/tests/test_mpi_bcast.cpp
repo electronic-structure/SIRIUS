@@ -14,7 +14,7 @@ using namespace sirius;
 int
 test1(cmd_args const& args__)
 {
-    int mb{1<<20};
+    int mb{1 << 20};
 
     auto size = args__.value("size", mb);
 
@@ -23,7 +23,7 @@ test1(cmd_args const& args__)
 
     /* P MPI ranks broadcast one by one the buffer of `size` bytes. Each of P-1 ranks recieves a copy
      * of a buffer. Number of bytes moved across the network: P * (P-1) * size */
-    int P = mpi::Communicator::world().size();
+    int P   = mpi::Communicator::world().size();
     auto t0 = time_now();
     for (int r = 0; r < P; r++) {
         mpi::Communicator::world().bcast(buf.at(memory_t::host), size, r);
@@ -39,8 +39,7 @@ test1(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-        {"size=", "buffer size in bytes"}});
+    cmd_args args(argn, argv, {{"size=", "buffer size in bytes"}});
 
     sirius::initialize(1);
     call_test("test_bcast_v2", test1, args);

@@ -80,7 +80,8 @@ test_gemm_impl(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__,
     return perf;
 }
 
-int test_gemm(cmd_args const& args__)
+int
+test_gemm(cmd_args const& args__)
 {
     int M = args__.value<int>("M", 512);
     int N = args__.value<int>("N", 512);
@@ -108,16 +109,16 @@ int test_gemm(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {
-            {"M=", "{int} M"},
-            {"N=", "{int} N"},
-            {"K=", "{int} K"},
-            {"opA=", "{0|1|2} 0: op(A) = A, 1: op(A) = A', 2: op(A) = conjg(A')"},
-            {"repeat=", "{int} repeat test number of times"},
-            {"lib_t=", "{string} type of the linear algebra driver"},
-            {"memA=", "{string} type of memory of matrix A"},
-            {"memB=", "{string} type of memory of matrix B"},
-            {"memC=", "{string} type of memory of matrix C"}});
+    cmd_args args(argn, argv,
+                  {{"M=", "{int} M"},
+                   {"N=", "{int} N"},
+                   {"K=", "{int} K"},
+                   {"opA=", "{0|1|2} 0: op(A) = A, 1: op(A) = A', 2: op(A) = conjg(A')"},
+                   {"repeat=", "{int} repeat test number of times"},
+                   {"lib_t=", "{string} type of the linear algebra driver"},
+                   {"memA=", "{string} type of memory of matrix A"},
+                   {"memB=", "{string} type of memory of matrix B"},
+                   {"memC=", "{string} type of memory of matrix C"}});
 
     sirius::initialize(true);
     int result = call_test("test_gemm", test_gemm, args);
