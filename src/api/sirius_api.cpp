@@ -239,9 +239,9 @@ template <typename F>
 static void
 call_sirius(F&& f__, int* error_code__)
 {
-    auto val = env::get_value_ptr<int>("SIRIUS_COREDUMP");
+    auto val      = env::get_value_ptr<int>("SIRIUS_COREDUMP");
     bool coredump = false;
-    if(val != nullptr) {
+    if (val != nullptr) {
         coredump = *val == 1;
     }
     if (coredump) {
@@ -6481,7 +6481,7 @@ sirius_generate_rhoaug_q(void* const* handler__, int const* iat__, int const* nu
                     PROFILE_STOP("sirius_generate_rhoaug_q:gemm")
 
                     PROFILE_START("sirius_generate_rhoaug_q:sum")
-                    #pragma omp parallel for
+#pragma omp parallel for
                     for (int ig = 0; ig < num_gvec_loc; ig++) {
                         std::complex<double> z(0, 0);
                         for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
