@@ -240,9 +240,9 @@ template <typename F>
 static void
 call_sirius(F&& f__, int* error_code__)
 {
-    auto val = env::get_value_ptr<int>("SIRIUS_COREDUMP");
+    auto val      = env::get_value_ptr<int>("SIRIUS_COREDUMP");
     bool coredump = false;
-    if(val != nullptr) {
+    if (val != nullptr) {
         coredump = *val == 1;
     }
     if (coredump) {
