@@ -2624,7 +2624,7 @@ sirius_set_pw_coeffs(void* const* gs_handler__, char const* label__, std::comple
                     mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
                     std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < *ngv__; i++) {
                         r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
                         // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
@@ -6503,7 +6503,7 @@ sirius_generate_rhoaug_q(void* const* gs_handler__, int const* iat__, int const*
                     PROFILE_STOP("sirius_generate_rhoaug_q:gemm")
 
                     PROFILE_START("sirius_generate_rhoaug_q:sum")
-#pragma omp parallel for
+                    #pragma omp parallel for
                     for (int ig = 0; ig < num_gvec_loc; ig++) {
                         std::complex<double> z(0, 0);
                         for (int i = 0; i < sctx.unit_cell().atom_type(iat).num_atoms(); i++) {
