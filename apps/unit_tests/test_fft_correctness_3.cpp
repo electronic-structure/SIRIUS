@@ -81,10 +81,10 @@ test_fft_impl(cmd_args const& args, device_t fft_pu__)
     mdarray<std::complex<T>, 1> g({gvp.count()});
     spfft.forward(spfft.processing_unit(), reinterpret_cast<T*>(&g[0]), SPFFT_FULL_SCALING);
 
-    mdarray<std::complex<double>, 1> f_glob({gvec_r.num_gvec()});
+    mdarray<std::complex<T>, 1> f_glob({gvec_r.num_gvec()});
     gvp_r.gather_pw_global(&f[0], &f_glob[0]);
 
-    mdarray<std::complex<double>, 1> g_glob({gvec.num_gvec()});
+    mdarray<std::complex<T>, 1> g_glob({gvec.num_gvec()});
     gvp.gather_pw_global(&g[0], &g_glob[0]);
 
     double diff{0};
