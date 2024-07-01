@@ -1,6 +1,6 @@
 {
   "control" : {
-      "verbosity" : 1,
+      "verbosity" : 2,
       "processing_unit" : "cpu",
       "print_forces" : true,
       "print_stress" : true
@@ -51,8 +51,8 @@
 
         "atoms" : {
             "Fe" : [
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-                [0.5, 0.5, 0.5, 0.0, 0.0, 1.0]
+                [0.0, 0.0, 0.0, 0.0, 0.0, 2.0],
+                [0.5, 0.5, 0.5, 0.0, 0.0, 2.0]
             ]
         }
     },
@@ -60,7 +60,8 @@
     "mixer" : {
         "beta" : 0.7,
         "type" : "anderson",
-        "max_history" : 8
+        "max_history" : 8,
+        "use_hartree" : true
     }
 
 }
