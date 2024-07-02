@@ -38,6 +38,7 @@
 #include <complex>
 #include <vector>
 #include <stdio.h>
+#include <iomanip>
 
 namespace sirius {
 
@@ -314,13 +315,12 @@ print_device_info(int device_id__, std::ostream& out__)
           << "  asyncEngineCount                 : " << devprop.asyncEngineCount << std::endl
           << "  ECCEnabled                       : " << devprop.ECCEnabled << std::endl
           << "  memPitch                         : " << devprop.memPitch << std::endl;
+    out__ << "  uuid                             : ";
+    for (int s = 0; s < 16; s++) {
+         out__ << std::hex << std::setw(2) << std::setfill('0') << (int)devprop.uuid.bytes[s];
+    }
+    out__ << std::endl;
 #endif
-    // this is cuda10
-    // printf("  uuid                             : ");
-    // for (int s = 0; s < 16; s++) {
-    //     std::printf("%#2x ", (unsigned char)devprop.uuid.bytes[s]);
-    // }
-    // printf("\n");
 #endif
 }
 
