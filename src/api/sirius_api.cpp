@@ -243,7 +243,7 @@ call_sirius(F&& f__, int* error_code__)
     auto val      = env::get_value_ptr<int>("SIRIUS_COREDUMP");
     bool coredump = false;
     if (val != nullptr) {
-        coredump = *val == 1;
+        coredump = (*val == 1);
     }
     if (coredump) {
         f__();
