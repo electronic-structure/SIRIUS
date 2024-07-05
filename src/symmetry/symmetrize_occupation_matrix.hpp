@@ -21,6 +21,7 @@ namespace sirius {
 inline void
 symmetrize_occupation_matrix(Occupation_matrix& om__)
 {
+    PROFILE("sirius::symmetrize_occupation_matrix");
     auto& ctx = om__.ctx();
     auto& uc  = ctx.unit_cell();
 
