@@ -240,6 +240,7 @@ class Hubbard_matrix
     auto
     find_orbital_index(const int ia__, const int n__, const int l__) const
     {
+        PROFILE("Hubbard_matrix::find_orbital_index");
         for (int at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
             int lo_ind = atomic_orbitals_[at_lvl].second;
 
