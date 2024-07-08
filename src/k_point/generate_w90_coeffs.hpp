@@ -2,7 +2,7 @@
  *
  *  \brief Interface to W90 library.
  */
-#ifdef SIRIUS_WANNIER90
+//////#ifdef SIRIUS_WANNIER90
 
 #ifndef __GENERATE_W90_COEFFS_HPP__
 #define __GENERATE_W90_COEFFS_HPP__
@@ -77,4 +77,4 @@ calculate_Mmn(mdarray<std::complex<double>, 4>& M, K_point_set& kset_fbz, int co
 } // namespace sirius
 
 #endif
-#endif // SIRIUS_WANNIER90
+///////#endif // SIRIUS_WANNIER90

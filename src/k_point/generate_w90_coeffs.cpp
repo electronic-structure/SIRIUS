@@ -2,7 +2,7 @@
  *
  *  \brief Interface to W90 library.
  */
-#ifdef SIRIUS_WANNIER90
+////////#ifdef SIRIUS_WANNIER90
 
 #include <limits>
 #include "dft/smearing.hpp"
@@ -882,4 +882,4 @@ K_point_set::generate_w90_coeffs() // sirius::K_point_set& k_set__)
 }
 
 } // namespace sirius
-#endif // SIRIUS_WANNIER90
+///////////#endif // SIRIUS_WANNIER90
