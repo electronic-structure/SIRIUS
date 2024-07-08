@@ -232,6 +232,11 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             ofs << dict.dump(4);
         }
 
+///#if defined(SIRIUS_WANNIER90)
+    if (ctx.cfg().parameters().wannier()) {
+        kset.generate_w90_coeffs();
+    }
+////#endif
         // if (args.exist("aiida_output")) {
         //     json dict;
         //     json_output_common(dict);
@@ -257,11 +262,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         dft.check_scf_density();
     }
 
-#if defined(SIRIUS_WANNIER90)
-    if (ctx.cfg().parameters().wannier()) {
-        kset.generate_w90_coeffs();
-    }
-#endif
+
 
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {
