@@ -49,11 +49,11 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
     }
 
     std::vector<std::vector<mdarray<double, 2>>> rotms(sym.size());
-    for(int isym = 0; isym < sym.size(); ++isym) {
-        int pr    = sym[isym].spg_op.proper;
-        auto eang = sym[isym].spg_op.euler_angles;
-        auto tmp = sht::rotation_matrix<double>(4, eang, pr);
-        rotms[isym] = std::vector<mdarray<double,2>>(tmp.size());
+    for (int isym = 0; isym < sym.size(); ++isym) {
+        int pr      = sym[isym].spg_op.proper;
+        auto eang   = sym[isym].spg_op.euler_angles;
+        auto tmp    = sht::rotation_matrix<double>(4, eang, pr);
+        rotms[isym] = std::vector<mdarray<double, 2>>(tmp.size());
         for (int l = 0; l < static_cast<int>(tmp.size()); ++l) {
             rotms[isym][l] = mdarray<double, 2>({tmp[l].size(0), tmp[l].size(1)});
             auto_copy(rotms[isym][l], tmp[l]);
@@ -72,7 +72,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             // local_[at_lvl].zero();
             mdarray<std::complex<double>, 3> dm_ia({lmmax_at, lmmax_at, 4});
             for (int isym = 0; isym < sym.size(); isym++) {
-                auto& rotm         = rotms[isym];
+                auto& rotm        = rotms[isym];
                 auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
                 int iap = sym[isym].spg_op.inv_sym_atom[ia];
