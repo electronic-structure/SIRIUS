@@ -1116,7 +1116,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
             if (occupation_matrix_) {
                 /* all symmetrization is done in the occupation_matrix class */
-                symmetrize_occupation_matrix(*occupation_matrix_, ctx_.rotm());
+                symmetrize_occupation_matrix(*occupation_matrix_);
             }
 
             /* compare with reference density matrix */

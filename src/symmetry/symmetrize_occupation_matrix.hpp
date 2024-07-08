@@ -19,7 +19,7 @@
 namespace sirius {
 
 inline void
-symmetrize_occupation_matrix(Occupation_matrix& om__, std::vector<mdarray<double, 2>> const& rotm__)
+symmetrize_occupation_matrix(Occupation_matrix& om__)
 {
     PROFILE("sirius::symmetrize_occupation_matrix");
     auto& ctx = om__.ctx();
@@ -61,7 +61,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__, std::vector<mdarray<double
             for (int isym = 0; isym < sym.size(); isym++) {
                 int pr            = sym[isym].spg_op.proper;
                 auto eang         = sym[isym].spg_op.euler_angles;
-                auto& rotm        = rotm__[isym];
+                auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
                 auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
                 int iap = sym[isym].spg_op.inv_sym_atom[ia];
