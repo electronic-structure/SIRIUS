@@ -49,6 +49,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
     }
 
     std::vector<std::vector<mdarray<double, 2>>> rotms(sym.size());
+    #pragma omp parllel for
     for (int isym = 0; isym < sym.size(); ++isym) {
         int pr      = sym[isym].spg_op.proper;
         auto eang   = sym[isym].spg_op.euler_angles;
