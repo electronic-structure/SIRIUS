@@ -181,6 +181,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
         auto T  = nl.T();
         om__.nonlocal(i).zero();
         for (int isym = 0; isym < sym.size(); isym++) {
+            int pr            = sym[isym].spg_op.proper;
+            auto eang         = sym[isym].spg_op.euler_angles;
             auto& rotm        = rotms[isym];
             auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
