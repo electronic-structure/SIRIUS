@@ -299,6 +299,7 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
 {
 
     A.zero();
+    la::dmatrix<std::complex<double>> Ak(num_bands, num_wann); // matrix at the actual k point
 
     std::vector<int> atoms(kset_fbz.ctx().unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0); // we need to understand which orbitals to pick up, I am using every here
@@ -311,7 +312,6 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
     // atdotat.zero();
     std::cout << "Calculating Amn...\n";
     auto mem = kset_fbz.ctx().processing_unit_memory_t();
-    la::dmatrix<std::complex<double>> Ak(num_bands, num_wann); // matrix at the actual k point
     if( is_device_memory(mem) ) {
         Ak.allocate(mem);
     }
@@ -325,7 +325,6 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
         auto q_op =
                 (kset_fbz.ctx().unit_cell().augment()) ? std::make_unique<Q_operator<double>>(kset_fbz.ctx()) : nullptr;
         // kset_fbz.kpoints_[ik]->beta_projectors().prepare();
-        
         //Swf_k = std::make_unique<wf::Wave_functions<double>>(kset_fbz.get<double>(ik)->gkvec_sptr(),
         //                                                     wf::num_mag_dims(0), wf::num_bands(num_bands),
         //                                                     kset_fbz.ctx().host_memory_t());
@@ -429,7 +428,6 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
         }
 
         std::copy(Ak.begin(), Ak.end(), A.at(memory_t::host, 0, 0, ik));
-        
 
         std::cout << "Calculated Amn in rank " << kset_fbz.ctx().comm().rank() << " ik: " << ik << std::endl;
     } // end ik loop for Amn
