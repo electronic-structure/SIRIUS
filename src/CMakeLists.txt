@@ -128,11 +128,11 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
 )
 
-target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+target_include_directories(sirius_cxx PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 
-target_compile_definitions(sirius PUBLIC
+target_compile_definitions(sirius_cxx PUBLIC
   $<$<BOOL:${SIRIUS_USE_PROFILER}>:SIRIUS_PROFILE>
   $<$<BOOL:${SIRIUS_USE_SCALAPACK}>:SIRIUS_SCALAPACK>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:SIRIUS_USE_MEMORY_POOL>

@@ -258,9 +258,9 @@ rotate_wavefunctions(K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<k
             r3::vector<int> invRG;
             for (int ig = 0; ig < kset_fbz.get<double>(ik)->gkvec().num_gvec(); ig++) {
                 // WARNING!! I suppose always that ik2ig[ik]=0 so i don't have it in the equation.
-                invRG   = r3::dot(kset_fbz.get<double>(ik)->gkvec().gvec<index_domain_t::local>(ig), k_temp[ik].invR);
+                invRG   = r3::dot(kset_fbz.get<double>(ik)->gkvec().gvec(gvec_index_t::local(ig)), k_temp[ik].invR);
                 exp2    = exp(-imtwopi *
-                              r3::dot(kset_fbz.get<double>(ik)->gkvec().gvec<index_domain_t::local>(ig), k_temp[ik].t));
+                              r3::dot(kset_fbz.get<double>(ik)->gkvec().gvec(gvec_index_t::local(ig)), k_temp[ik].t));
                 int ig_ = gvec_IBZ->index_by_gvec(invRG);
                 assert((ig_ != -1));
 
@@ -299,7 +299,6 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
 {
 
     A.zero();
-    la::dmatrix<std::complex<double>> Ak(num_bands, num_wann); // matrix at the actual k point
 
     std::vector<int> atoms(kset_fbz.ctx().unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0); // we need to understand which orbitals to pick up, I am using every here
@@ -312,6 +311,10 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
     // atdotat.zero();
     std::cout << "Calculating Amn...\n";
     auto mem = kset_fbz.ctx().processing_unit_memory_t();
+    la::dmatrix<std::complex<double>> Ak(num_bands, num_wann); // matrix at the actual k point
+    if( is_device_memory(mem) ) {
+        Ak.allocate(mem);
+    }
 
     PROFILE_START("sirius::K_point_set::generate_w90_coeffs::calculate_Amn");
 
@@ -322,17 +325,17 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
         auto q_op =
                 (kset_fbz.ctx().unit_cell().augment()) ? std::make_unique<Q_operator<double>>(kset_fbz.ctx()) : nullptr;
         // kset_fbz.kpoints_[ik]->beta_projectors().prepare();
-
-        Swf_k = std::make_unique<wf::Wave_functions<double>>(kset_fbz.get<double>(ik)->gkvec_sptr(),
-                                                             wf::num_mag_dims(0), wf::num_bands(num_bands),
-                                                             kset_fbz.ctx().host_memory_t());
+        
+        //Swf_k = std::make_unique<wf::Wave_functions<double>>(kset_fbz.get<double>(ik)->gkvec_sptr(),
+        //                                                     wf::num_mag_dims(0), wf::num_bands(num_bands),
+        //                                                     kset_fbz.ctx().host_memory_t());
 
         auto bp_gen    = kset_fbz.get<double>(ik)->beta_projectors().make_generator();
         auto bp_coeffs = bp_gen.prepare();
 
-        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen,
-                                                       bp_coeffs, (kset_fbz.get<double>(ik)->spinor_wave_functions()),
-                                                       q_op.get(), *Swf_k);
+        //apply_S_operator<double, std::complex<double>>(memory_t::host, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen,
+        //                                               bp_coeffs, (kset_fbz.get<double>(ik)->spinor_wave_functions()),
+        //                                               q_op.get(), *Swf_k);
 
         kset_fbz.get<double>(ik)->generate_atomic_wave_functions(
                 atoms, [&](int iat) { return &kset_fbz.ctx().unit_cell().atom_type(iat).indexb_wfs(); },
@@ -382,35 +385,51 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
         // also, why do we need orthogonalized atomic orbitals for the initial guess?
 
         // ORTHOGONALIZING -CHECK HUBBARD FUNCTION
-        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
+
+      apply_S_operator<double, std::complex<double>>(memory_t::host, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
                                                        bp_coeffs, kset_fbz.get<double>(ik)->atomic_wave_functions(),
                                                        q_op.get(), kset_fbz.get<double>(ik)->atomic_wave_functions_S());
 
         int BS = kset_fbz.ctx().cyclic_block_size();
         la::dmatrix<std::complex<double>> ovlp(num_wann, num_wann, kset_fbz.ctx().blacs_grid(), BS, BS);
-        wf::inner(kset_fbz.ctx().spla_context(), mem, wf::spin_range(0),
+        wf::inner(kset_fbz.ctx().spla_context(), memory_t::host, wf::spin_range(0),
                   kset_fbz.get<double>(ik)->atomic_wave_functions(), wf::band_range(0, num_wann),
                   kset_fbz.get<double>(ik)->atomic_wave_functions_S(), wf::band_range(0, num_wann), ovlp, 0, 0);
 
         auto B = std::get<0>(inverse_sqrt(ovlp, num_wann));
-        wf::transform(kset_fbz.ctx().spla_context(), mem, *B, 0, 0, 1.0,
+        wf::transform(kset_fbz.ctx().spla_context(), memory_t::host, *B, 0, 0, 1.0,
                       kset_fbz.get<double>(ik)->atomic_wave_functions(), wf::spin_index(0), wf::band_range(0, num_wann),
                       0.0, kset_fbz.get<double>(ik)->atomic_wave_functions_S(), wf::spin_index(0),
                       wf::band_range(0, num_wann));
-        wf::copy(mem, kset_fbz.get<double>(ik)->atomic_wave_functions_S(), wf::spin_index(0),
+        wf::copy(memory_t::host, kset_fbz.get<double>(ik)->atomic_wave_functions_S(), wf::spin_index(0),
                  wf::band_range(0, num_wann), kset_fbz.get<double>(ik)->atomic_wave_functions(), wf::spin_index(0),
                  wf::band_range(0, num_wann));
-        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
+        // END of the orthogonalization.
+        apply_S_operator<double, std::complex<double>>(memory_t::host, wf::spin_range(0), wf::band_range(0, num_wann), bp_gen,
                                                        bp_coeffs, kset_fbz.get<double>(ik)->atomic_wave_functions(),
                                                        q_op.get(), kset_fbz.get<double>(ik)->atomic_wave_functions_S());
-        // END of the orthogonalization.
+
+        //copy to device
+        if( is_device_memory(mem) ) {
+            kset_fbz.get<double>(ik)->spinor_wave_functions().allocate(memory_t::device);
+            kset_fbz.get<double>(ik)->spinor_wave_functions().copy_to(memory_t::device);
+            kset_fbz.get<double>(ik)->atomic_wave_functions_S().allocate(memory_t::device);
+            kset_fbz.get<double>(ik)->atomic_wave_functions_S().copy_to(memory_t::device);
+        }
 
         wf::inner(kset_fbz.ctx().spla_context(), mem, wf::spin_range(0),
                   kset_fbz.get<double>(ik)->spinor_wave_functions(), wf::band_range(0, num_bands),
                   kset_fbz.get<double>(ik)->atomic_wave_functions_S(), wf::band_range(0, num_wann), Ak, 0, 0);
         // already in the correct way, we just copy in the bigger array. (alternative:: create dmatrix with an index
         // as multiindex to avoid copies) note!! we need +1 to copy the last element
+        if( is_device_memory(mem) ) {
+            kset_fbz.get<double>(ik)->spinor_wave_functions().deallocate(memory_t::device);
+            kset_fbz.get<double>(ik)->atomic_wave_functions_S().deallocate(memory_t::device);
+            Ak.copy_to(memory_t::host);
+        }
+
         std::copy(Ak.begin(), Ak.end(), A.at(memory_t::host, 0, 0, ik));
+        
 
         std::cout << "Calculated Amn in rank " << kset_fbz.ctx().comm().rank() << " ik: " << ik << std::endl;
     } // end ik loop for Amn
@@ -503,6 +522,10 @@ calculate_Mmn(mdarray<std::complex<double>, 4>& M, K_point_set& kset_fbz, int co
     Mbk.zero();
     auto mem = kset_fbz.ctx().processing_unit_memory_t();
 
+    if( mem == memory_t::device ) {
+        Mbk.allocate(mem);
+    }
+
     for (auto it : kset_fbz.spl_num_kpoints()) {
         int ik = it.i;
         std::cout << "Calculating Mmn. ik = " << ik << std::endl;
@@ -514,7 +537,7 @@ calculate_Mmn(mdarray<std::complex<double>, 4>& M, K_point_set& kset_fbz, int co
         auto Swf_k     = std::make_unique<wf::Wave_functions<double>>(kset_fbz.get<double>(ik)->gkvec_sptr(),
                                                                   wf::num_mag_dims(0), wf::num_bands(num_bands),
                                                                   kset_fbz.ctx().host_memory_t());
-        apply_S_operator<double, std::complex<double>>(mem, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen,
+        apply_S_operator<double, std::complex<double>>(memory_t::host, wf::spin_range(0), wf::band_range(0, num_bands), bp_gen,
                                                        bp_coeffs, (kset_fbz.get<double>(ik)->spinor_wave_functions()),
                                                        q_op.get(), *Swf_k);
 
@@ -530,7 +553,7 @@ calculate_Mmn(mdarray<std::complex<double>, 4>& M, K_point_set& kset_fbz, int co
             r3::vector<int> G;
             for (int ig = 0; ig < kset_fbz.get<double>(ik)->gkvec().num_gvec(); ig++) {
                 // compute the total vector to use to get the index in kpb
-                G = kset_fbz.get<double>(ik)->gkvec().gvec<index_domain_t::local>(ig);
+                G = kset_fbz.get<double>(ik)->gkvec().gvec(gvec_index_t::local(ig));
                 G += r3::vector<int>(nncell(0, ik, ib), nncell(1, ik, ib), nncell(2, ik, ib));
                 int ig_ = gvec_kpb[index_ikpb]->index_by_gvec(G); // kpoints_[ikpb]->gkvec_->index_by_gvec(G);
                 if (ig_ == -1) {
@@ -542,8 +565,22 @@ calculate_Mmn(mdarray<std::complex<double>, 4>& M, K_point_set& kset_fbz, int co
                 }
             } // end ig
 
+
+            if( is_device_memory(mem) ) {
+                Swf_k->allocate(memory_t::device);
+                Swf_k->copy_to(memory_t::device);
+                aux_psi_kpb->allocate(memory_t::device);
+                aux_psi_kpb->copy_to(memory_t::device);
+            }
             wf::inner(kset_fbz.ctx().spla_context(), mem, wf::spin_range(0), *aux_psi_kpb, wf::band_range(0, num_bands),
                       *Swf_k, wf::band_range(0, num_bands), Mbk, 0, 0);
+                      
+            if( is_device_memory(mem) ) {
+                Swf_k->deallocate(memory_t::device);
+                aux_psi_kpb->deallocate(memory_t::device);
+                Mbk.copy_to(memory_t::host);
+            }
+            
             for (int n = 0; n < num_bands; n++) {
                 for (int m = 0; m < num_bands; m++) {
                     M(m, n, ib, ik) = std::conj(Mbk(n, m));
