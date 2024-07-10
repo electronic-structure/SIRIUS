@@ -24,8 +24,8 @@
     "gk_cutoff" : 8.0,
     "pw_cutoff" : 30.00,
 
-    "energy_tol" : 1e-7,
-    "density_tol" : 1e-5,
+    "energy_tol" : 1e-8,
+    "density_tol" : 1e-7,
 
     "num_dft_iter" : 100,
 
@@ -59,6 +59,7 @@
     },
     "mixer" : {
         "beta" : 0.5,
-        "max_history" : 8
+        "max_history" : 8,
+        "use_hartree" : true
     }
 }
