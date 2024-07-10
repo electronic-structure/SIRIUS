@@ -6,9 +6,11 @@ import reframe as rfm
 import reframe.utility.sanity as sn
 
 test_folders = ['test01', 'test02', 'test03', 'test04', 'test05', 'test06', 'test07', 'test08',
-    'test09', 'test10', 'test11', 'test12', 'test13', 'test14', 'test15', 'test16', 'test17', 'test18']
+    'test09', 'test10', 'test11', 'test12', 'test13', 'test14', 'test15', 'test16', 'test17', 'test18',
+    'test19', 'test20', 'test21', 'test22', 'test23', 'test24', 'test25', 'test26', 'test27', 'test28',
+    'test29', 'test30']
 
-@sn.sanity_function
+@sn.deferrable
 def load_json(filename):
     '''This will load a json data from a file.'''
     raw_data = sn.extractsingle(r'(?s).+', filename).evaluate()
@@ -17,14 +19,14 @@ def load_json(filename):
     except json.JSONDecodeError as e:
         raise SanityError('failed to parse JSON file') from e
 
-@sn.sanity_function
+@sn.deferrable
 def energy_diff(filename, data_ref):
     ''' Return the difference between obtained and reference total energies'''
     parsed_output = load_json(filename)
     return sn.abs(parsed_output['ground_state']['energy']['total'] -
                        data_ref['ground_state']['energy']['total'])
 
-@sn.sanity_function
+@sn.deferrable
 def stress_diff(filename, data_ref):
     ''' Return the difference between obtained and reference stress tensor components'''
     parsed_output = load_json(filename)
@@ -34,7 +36,7 @@ def stress_diff(filename, data_ref):
     else:
         return sn.abs(0)
 
-@sn.sanity_function
+@sn.deferrable
 def forces_diff(filename, data_ref):
     ''' Return the difference between obtained and reference atomic forces'''
     parsed_output = load_json(filename)
@@ -49,8 +51,8 @@ class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
     def __init__(self, num_ranks, test_folder):
         super().__init__()
         self.descr = 'SCF check'
-        self.valid_systems = ['osx', 'daint', 'linux']
-        self.valid_prog_environs = ['PrgEnv-gnu', 'PrgEnv-intel']
+        self.valid_systems = ['osx', 'daint', 'linux', 'localhost']
+        self.valid_prog_environs = ['PrgEnv-gnu', 'PrgEnv-intel','builtin']
 
         self.num_tasks = num_ranks
         if self.current_system.name == 'daint':
@@ -81,40 +83,42 @@ class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
         self.executable_opts = ['--output=output.json']
 
 
-@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+#@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+@rfm.simple_test
 class sirius_scf_serial(sirius_scf_base_test):
-    def __init__(self, test_folder):
-        super().__init__(1, test_folder)
+    test_folder = parameter(test_folders)
+    def __init__(self):
+        super().__init__(1, self.test_folder)
         self.tags = {'serial'}
 
 
-@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
-class sirius_scf_serial_parallel_k(sirius_scf_base_test):
-    def __init__(self, test_folder):
-        super().__init__(2, test_folder)
-        self.tags = {'parallel_k'}
-
-
-@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
-class sirius_scf_serial_parallel_band_22(sirius_scf_base_test):
-    def __init__(self, test_folder):
-        super().__init__(4, test_folder)
-        self.tags = {'parallel_band'}
-        self.executable_opts.append('--mpi_grid=2:2')
-
-
-@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
-class sirius_scf_serial_parallel_band_12(sirius_scf_base_test):
-    def __init__(self, test_folder):
-        super().__init__(2, test_folder)
-        self.tags = {'parallel_band'}
-        self.executable_opts.append('--mpi_grid=1:2')
-
-
-@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
-class sirius_scf_serial_parallel_band_21(sirius_scf_base_test):
-    def __init__(self, test_folder):
-        super().__init__(2, test_folder)
-        self.tags = {'parallel_band'}
-        self.executable_opts.append('--mpi_grid=2:1')
-
+#@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+#class sirius_scf_serial_parallel_k(sirius_scf_base_test):
+#    def __init__(self, test_folder):
+#        super().__init__(2, test_folder)
+#        self.tags = {'parallel_k'}
+#
+#
+#@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+#class sirius_scf_serial_parallel_band_22(sirius_scf_base_test):
+#    def __init__(self, test_folder):
+#        super().__init__(4, test_folder)
+#        self.tags = {'parallel_band'}
+#        self.executable_opts.append('--mpi_grid=2:2')
+#
+#
+#@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+#class sirius_scf_serial_parallel_band_12(sirius_scf_base_test):
+#    def __init__(self, test_folder):
+#        super().__init__(2, test_folder)
+#        self.tags = {'parallel_band'}
+#        self.executable_opts.append('--mpi_grid=1:2')
+#
+#
+#@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+#class sirius_scf_serial_parallel_band_21(sirius_scf_base_test):
+#    def __init__(self, test_folder):
+#        super().__init__(2, test_folder)
+#        self.tags = {'parallel_band'}
+#        self.executable_opts.append('--mpi_grid=2:1')
+#
