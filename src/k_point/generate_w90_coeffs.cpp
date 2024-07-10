@@ -340,8 +340,7 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
                 atoms, [&](int iat) { return &kset_fbz.ctx().unit_cell().atom_type(iat).indexb_wfs(); },
                 *kset_fbz.ctx().ri().ps_atomic_wf_, kset_fbz.get<double>(ik)->atomic_wave_functions());
 
-        /*
-         *  Pick up only needed atomic functions, with their proper linear combinations
+         /*  Pick up only needed atomic functions, with their proper linear combinations
         //define index in atomic_wave_functions for atom iat
         std::vector<int> offset(kset_fbz.ctx().unit_cell().num_atoms());
         offset[0]=0;
@@ -376,8 +375,7 @@ calculate_Amn(K_point_set& kset_fbz, int const& num_bands, int const& num_wann, 
             atoms_info[iw][1] = proj_l(iw);
             atoms_info[iw][2] = proj_m(iw);
         }//end definition of atoms_info
-        */
-
+*/
         // TODO: what is going on here?
         // it this code is taken from generate_hubbard_orbitals() then it should be reused
         // no code repetition is allowed
