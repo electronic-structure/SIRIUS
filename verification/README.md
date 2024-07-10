@@ -23,7 +23,7 @@ salloc -N4 -C gpu --time=60:00 -A csstaff
 | test06 | Fe      | \[2, 2, 2\] | USPP           | LDA (PZ)  | FM collinear  | - ground state <br> - forces <br> - stress |
 | test07 | Ni      | \[4, 4, 4\] | USPP           | GGA (BPE) | FM collinear  | - ground state <br> - forces <br> - stress |
 | test08 | Si      | \[1, 1, 1\] | USPP           | LDA (PZ)  | non-magnetic  | - Gamma point treatment is off <br> - complex wave-functions <br> - forces <br> - stress |
-| test09 | Ni      | \[2, 2, 2\] | USPP           | LDA(PZ)   | non-collinear | - ground state <br> - forces <br> - stress |
+| test09 | Ni      | \[4, 4, 4\] | USPP           | GGA (PBE)   | non-collinear | - ground state <br> - forces <br> - stress |
 | test10 | Au      | \[2, 2, 2\] | NC <br> with SO correction   | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
 | test11 | Au      | \[2, 2, 2\] | USPP <br> with SO correction | LDA (PZ) | non-collinear | - test of SO correction <br> - no symmetry |
 | test12 | C       | \[2, 2, 2\] | full-potential | LDA (PZ)  | non-magnetic  | |
