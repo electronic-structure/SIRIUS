@@ -1111,7 +1111,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
             /* symmetrize density matrix (used in standard uspp case) */
             if (unit_cell_.max_mt_basis_size() != 0) {
-                sirius::symmetrize_density_matrix(unit_cell_, *density_matrix_, ctx_.num_mag_comp());
+                sirius::symmetrize_density_matrix(unit_cell_, ctx_.rotm(), *density_matrix_, ctx_.num_mag_comp());
             }
 
             if (occupation_matrix_) {

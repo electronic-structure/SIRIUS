@@ -244,7 +244,8 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *
  */
 inline void
-symmetrize_density_matrix(Unit_cell const& uc__, density_matrix_t& dm__, int num_mag_comp__)
+symmetrize_density_matrix(Unit_cell const& uc__, std::vector<std::vector<mdarray<double, 2>>> const& rotm__,
+                          density_matrix_t& dm__, int num_mag_comp__)
 {
     PROFILE("sirius::symmetrize_density_matrix");
 
@@ -257,18 +258,13 @@ symmetrize_density_matrix(Unit_cell const& uc__, density_matrix_t& dm__, int num
 
     density_matrix_t dm_sym(uc__, num_mag_comp__);
 
-    int lmax = uc__.lmax();
-
     for (int i = 0; i < sym.size(); i++) {
-        int pr             = sym[i].spg_op.proper;
-        auto eang          = sym[i].spg_op.euler_angles;
-        auto rotm          = sht::rotation_matrix<double>(lmax, eang, pr);
         auto& spin_rot_su2 = sym[i].spin_rotation_su2;
 
         for (int ia = 0; ia < uc__.num_atoms(); ia++) {
             int ja = sym[i].spg_op.sym_atom[ia];
 
-            sirius::apply_symmetry_to_density_matrix(dm__[ia], uc__.atom(ia).type().indexb(), num_mag_comp__, rotm,
+            sirius::apply_symmetry_to_density_matrix(dm__[ia], uc__.atom(ia).type().indexb(), num_mag_comp__, rotm__[i],
                                                      spin_rot_su2, dm_sym[ja]);
         }
     }

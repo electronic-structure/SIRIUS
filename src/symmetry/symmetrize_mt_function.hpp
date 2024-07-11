@@ -22,7 +22,7 @@ namespace sirius {
 /// Symmetrize spherical expansion coefficients of the scalar and vector function for atoms of the same symmetry class.
 template <typename Index_t>
 inline void
-symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double, 2>> const& rotm__,
+symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<std::vector<mdarray<double, 2>>> const& rotm__,
                        Atom_symmetry_class const& atom_class__, mpi::Grid const& mpi_grid__, int num_mag_dims__,
                        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
@@ -74,10 +74,13 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
                 int ja = sym__[i].spg_op.inv_sym_atom[ia];
                 /* apply {R|t} part of symmetry operation to all components */
                 for (int j = 0; j < num_mag_dims__ + 1; j++) {
-                    la::wrap(la::lib_t::blas)
-                            .gemm('N', 'N', lmmax, nr_loc, lmmax, &alpha, rotm__[i].at(memory_t::host), rotm__[i].ld(),
-                                  (*frlm__[j])[ja].at(memory_t::host, 0, i0_loc), (*frlm__[j])[ja].ld(),
-                                  &la::constant<double>::zero(), ftmp.at(memory_t::host, 0, 0, j), ftmp.ld());
+                    for (int l = 0; l <= lmax; l++) {
+                        la::wrap(la::lib_t::blas)
+                                .gemm('N', 'N', 2 * l + 1, nr_loc, 2 * l + 1, &alpha, rotm__[i][l].at(memory_t::host),
+                                      rotm__[i][l].ld(), (*frlm__[j])[ja].at(memory_t::host, l * l, i0_loc),
+                                      (*frlm__[j])[ja].ld(), &la::constant<double>::zero(),
+                                      ftmp.at(memory_t::host, l * l, 0, j), ftmp.ld());
+                    }
                 }
                 /* always symmetrize the scalar component */
                 for (int ir = 0; ir < nr_loc; ir++) {
@@ -140,7 +143,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<mdarray<double
 
 template <typename Index_t>
 inline void
-symmetrize_mt_function(Unit_cell const& uc__, std::vector<mdarray<double, 2>> const& rotm__,
+symmetrize_mt_function(Unit_cell const& uc__, std::vector<std::vector<mdarray<double, 2>>> const& rotm__,
                        std::vector<std::unique_ptr<mpi::Grid>> const& mpi_grid__, int num_mag_dims__,
                        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
