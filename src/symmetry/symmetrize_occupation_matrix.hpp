@@ -14,6 +14,7 @@
 #ifndef __SYMMETRIZE_OCCUPATION_MATRIX_HPP__
 #define __SYMMETRIZE_OCCUPATION_MATRIX_HPP__
 
+#include "core/memory.hpp"
 #include "density/occupation_matrix.hpp"
 
 namespace sirius {
@@ -21,6 +22,7 @@ namespace sirius {
 inline void
 symmetrize_occupation_matrix(Occupation_matrix& om__)
 {
+    PROFILE("sirius::symmetrize_occupation_matrix");
     auto& ctx = om__.ctx();
     auto& uc  = ctx.unit_cell();
 
@@ -46,9 +48,11 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
         }
     }
 
+    auto const& rotms = ctx.rotm();
+
     for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        const int ia     = om__.atomic_orbitals(at_lvl).first;
-        const auto& atom = uc.atom(ia);
+        int const ia     = om__.atomic_orbitals(at_lvl).first;
+        auto const& atom = uc.atom(ia);
         om__.local(at_lvl).zero();
         /* We can skip the symmetrization for this atomic level since it does not contribute
          * to the Hubbard correction (or U = 0) */
@@ -58,9 +62,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             // local_[at_lvl].zero();
             mdarray<std::complex<double>, 3> dm_ia({lmmax_at, lmmax_at, 4});
             for (int isym = 0; isym < sym.size(); isym++) {
-                int pr            = sym[isym].spg_op.proper;
-                auto eang         = sym[isym].spg_op.euler_angles;
-                auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
+                auto const& rotm  = rotms[isym];
                 auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
                 int iap = sym[isym].spg_op.inv_sym_atom[ia];
@@ -168,9 +170,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
         auto T  = nl.T();
         om__.nonlocal(i).zero();
         for (int isym = 0; isym < sym.size(); isym++) {
-            int pr            = sym[isym].spg_op.proper;
-            auto eang         = sym[isym].spg_op.euler_angles;
-            auto rotm         = sht::rotation_matrix<double>(4, eang, pr);
+            auto& rotm        = rotms[isym];
             auto spin_rot_su2 = rotation_matrix_su2(sym[isym].spin_rotation);
 
             int iap = sym[isym].spg_op.inv_sym_atom[ia];
