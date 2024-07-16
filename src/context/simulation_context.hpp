@@ -290,7 +290,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
 
     /// Rotation matrices for real spherical harmonics.
-    std::vector<mdarray<double, 2>> rotm_;
+    std::vector<std::vector<mdarray<double, 2>>> rotm_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};

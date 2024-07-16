@@ -41,10 +41,6 @@ mdarray<T, 2>
 rotation_matrix_l(int l, r3::vector<double> euler_angles, int proper_rotation);
 
 template <typename T>
-void
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm);
-
-template <typename T>
 std::vector<mdarray<T, 2>>
 rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
