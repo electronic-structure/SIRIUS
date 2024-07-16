@@ -211,31 +211,24 @@ run_tasks(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--input=", "{string} input file name");
-    args.register_key("--output=", "{string} output file name");
-    args.register_key("--task=", "{int} task id");
-    args.register_key("--aiida_output", "write output for AiiDA");
-    args.register_key("--test_against=", "{string} json file with reference values");
-    args.register_key("--control.processing_unit=", "");
-    args.register_key("--control.verbosity=", "");
-    args.register_key("--control.verification=", "");
-    args.register_key("--control.mpi_grid_dims=", "");
-    args.register_key("--control.std_evp_solver_name=", "");
-    args.register_key("--control.gen_evp_solver_name=", "");
-    args.register_key("--control.fft_mode=", "");
-    args.register_key("--control.memory_usage=", "");
-    args.register_key("--parameters.ngridk=", "");
-    args.register_key("--parameters.gamma_point=", "");
-    args.register_key("--parameters.pw_cutoff=", "");
-    args.register_key("--iterative_solver.orthogonalize=", "");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        std::printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv,
+                  {{"input=", "{string} input file name"},
+                   {"output=", "{string} output file name"},
+                   {"task=", "{int} task id"},
+                   {"aiida_output", "write output for AiiDA"},
+                   {"test_against=", "{string} json file with reference values"},
+                   {"control.processing_unit=", ""},
+                   {"control.verbosity=", ""},
+                   {"control.verification=", ""},
+                   {"control.mpi_grid_dims=", ""},
+                   {"control.std_evp_solver_name=", ""},
+                   {"control.gen_evp_solver_name=", ""},
+                   {"control.fft_mode=", ""},
+                   {"control.memory_usage=", ""},
+                   {"parameters.ngridk=", ""},
+                   {"parameters.gamma_point=", ""},
+                   {"parameters.pw_cutoff=", ""},
+                   {"iterative_solver.orthogonalize=", ""}});
 
     sirius::initialize(1);
 
