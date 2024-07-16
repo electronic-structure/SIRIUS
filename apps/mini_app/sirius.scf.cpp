@@ -318,11 +318,11 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             ctx.comm().abort(1);
         }
         if (result.count("magnetisation") && dict_ref["ground_state"].count("magnetisation")) {
-            double diff{0};
+            double max_diff{0};
             auto t1 = result["magnetisation"]["total"].get<std::vector<double>>();
             auto t2 = dict_ref["ground_state"]["magnetisation"]["total"].get<std::vector<double>>();
             for (int x : {0, 1, 2}) {
-                diff += std::abs(t1[x] - t2[x]);
+                max_diff = std::max(max_diff, std::abs(t1[x] - t2[x]));
             }
             auto v1 = result["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
             auto v2 = dict_ref["ground_state"]["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
@@ -332,10 +332,10 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             }
             for (size_t i = 0; i < v1.size(); i++) {
                 for (int x : {0, 1, 2}) {
-                    diff += std::abs(v1[i][x] - v2[i][x]);
+                    max_diff = std::max(max_diff, std::abs(v1[i][x] - v2[i][x]));
                 }
             }
-            if (diff > 1e-5) {
+            if (max_diff > 1e-5) {
                 std::cout << "magnetisations is different!" << std::endl;
                 ctx.comm().abort(5);
             }
