@@ -232,7 +232,7 @@ Density::initial_density_pseudo()
                 double f = gw(g) * oi;
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     auto ff = std::conj(ctx_.gvec_phase_factor(ig, ia)) * f;
-                    auto v = unit_cell_.atom(ia).vector_field();
+                    auto v  = unit_cell_.atom(ia).vector_field();
                     mag(0).rg().f_pw_local(igloc) += v[2] * ff;
                     if (ctx_.num_mag_dims() == 3) {
                         mag(1).rg().f_pw_local(igloc) += v[0] * ff;
