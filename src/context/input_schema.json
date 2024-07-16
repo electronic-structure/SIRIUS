@@ -125,6 +125,11 @@
                     "type": "boolean",
                     "default": false,
                     "title": "When true, use Laplacian in the expression for GGA; otherwise use divergence of gradient."
+                },
+                "smooth_initial_mag": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Use more expensive but more accurate way to compute initial magnetisation in PP-PW case."
                 }
             }
         },

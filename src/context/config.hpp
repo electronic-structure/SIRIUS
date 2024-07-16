@@ -272,6 +272,18 @@ class config_t
             }
             dict_["/settings/xc_use_lapl"_json_pointer] = xc_use_lapl__;
         }
+        /// Use more expensive but more accurate way to compute initial magnetisation in PP-PW case.
+        inline auto smooth_initial_mag() const
+        {
+            return dict_.at("/settings/smooth_initial_mag"_json_pointer).get<bool>();
+        }
+        inline void smooth_initial_mag(bool smooth_initial_mag__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/smooth_initial_mag"_json_pointer] = smooth_initial_mag__;
+        }
       private:
         nlohmann::json& dict_;
     };
