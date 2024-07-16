@@ -212,28 +212,61 @@ Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        auto Rmt = unit_cell_.find_mt_radii(1, true);
+        if (ctx_.cfg().settings().smooth_initial_mag()) {
+            /* weight function in the form exp(-alpha * r^2) for each atom;
+             * Fourier components are computed here */
+            auto gw = [&](double g) {
+                const double alpha{4.0};
+                if (g < 1e-10) {
+                    return 1.0;
+                } else {
+                    return std::exp(-std::pow(g, 2) / 4.0 / alpha);
+                }
+            };
 
-        /* auxiliary weight function; the volume integral of this function is equal to 1 */
-        auto w = [](double R, double x) {
-            double norm = 3.1886583903476735 * std::pow(R, 3);
+            double oi = 1.0 / unit_cell_.omega();
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                int ig   = ctx_.gvec().offset() + igloc;
+                double g = ctx_.gvec().gvec_len(gvec_index_t::local(igloc));
+                double f = gw(g) * oi;
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    auto ff = std::conj(ctx_.gvec_phase_factor(ig, ia)) * f;
+                    auto v  = unit_cell_.atom(ia).vector_field();
+                    mag(0).rg().f_pw_local(igloc) += v[2] * ff;
+                    if (ctx_.num_mag_dims() == 3) {
+                        mag(1).rg().f_pw_local(igloc) += v[0] * ff;
+                        mag(2).rg().f_pw_local(igloc) += v[1] * ff;
+                    }
+                }
+            }
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                mag(j).rg().fft_transform(1);
+            }
+        } else {
+            auto Rmt = unit_cell_.find_mt_radii(1, true);
 
-            return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
-        };
+            /* auxiliary weight function; the volume integral of this function is equal to 1 */
+            auto w = [](double R, double x) {
+                double norm = 3.1886583903476735 * std::pow(R, 3);
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
+                return (1 - std::pow(x / R, 2)) * std::exp(x / R) / norm;
+            };
 
-            auto v = unit_cell_.atom(ia).vector_field();
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
 
-            for (auto coord : atom_to_grid_map) {
-                int ir   = coord.first;
-                double r = coord.second;
-                double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
-                mag(0).rg().value(ir) += v[2] * f;
-                if (ctx_.num_mag_dims() == 3) {
-                    mag(1).rg().value(ir) += v[0] * f;
-                    mag(2).rg().value(ir) += v[1] * f;
+                auto v = unit_cell_.atom(ia).vector_field();
+
+                for (auto coord : atom_to_grid_map) {
+                    int ir   = coord.first;
+                    double r = coord.second;
+                    double f = w(Rmt[unit_cell_.atom(ia).type_id()], r);
+                    mag(0).rg().value(ir) += v[2] * f;
+                    if (ctx_.num_mag_dims() == 3) {
+                        mag(1).rg().value(ir) += v[0] * f;
+                        mag(2).rg().value(ir) += v[1] * f;
+                    }
                 }
             }
         }

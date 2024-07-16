@@ -1,8 +1,11 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "verbosity" : 1,
+        "verbosity" : 2,
         "rmt_max": 2.0
+    },
+    "settings" : {
+      "smooth_initial_mag" : true
     },
     "parameters" : {
         "electronic_structure_method" : "pseudopotential",

@@ -796,7 +796,11 @@ Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
 
     local_potential(vec_from_str<double>(upf.child("PP_LOCAL").child_value(), 0.5));
 
-    ps_core_charge_density(vec_from_str<double>(upf.child("PP_NLCC").child_value()));
+    if (header.attribute("core_correction").as_bool()) {
+        ps_core_charge_density(vec_from_str<double>(upf.child("PP_NLCC").child_value()));
+    } else {
+        ps_core_charge_density(std::vector<double>(rgrid.size(), 0.0));
+    }
 
     ps_total_charge_density(vec_from_str<double>(upf.child("PP_RHOATOM").child_value()));
 
