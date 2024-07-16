@@ -42,6 +42,9 @@
         "converge_by_energy" : 1
     },
 
+    "settings" : {
+       "pseudo_grid_cutoff": 8.0
+    },
 
     "unit_cell" : {
 
