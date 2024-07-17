@@ -233,6 +233,18 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
             }
         }
     }
+    if (ctx.cfg().settings().real_occupation_matrix()) {
+        for (auto i = 0; i < om__.local().size(); i++) {
+            for (auto j = 0; j < om__.local(i).size(); j++) {
+                om__.local(i)[j] = std::real(om__.local(i)[j]);
+            }
+        }
+        for (auto i = 0; i < om__.nonlocal().size(); i++) {
+            for (auto j = 0; j < om__.nonlocal(i).size(); j++) {
+                om__.nonlocal(i)[j] = std::real(om__.nonlocal(i)[j]);
+            }
+        }
+    }
 }
 
 } // namespace sirius

@@ -321,6 +321,7 @@ class Simulation_context : public Simulation_parameters
 
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
 
+        /* read from external config file provided by SIRIUS_CONFIG environment variable */
         this->import(env::config_file());
     }
 
