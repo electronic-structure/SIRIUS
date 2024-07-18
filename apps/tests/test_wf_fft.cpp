@@ -7,12 +7,13 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 #include "core/wf/wave_functions.hpp"
 #include "core/mpi/mpi_grid.hpp"
 
 using namespace sirius;
 
-void
+int
 test_wf_fft()
 {
     mpi::Grid mpi_grid({2, 2}, mpi::Communicator::world());
@@ -84,16 +85,19 @@ test_wf_fft()
                 if (std::abs(wf.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) -
                              wf_ref.pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i))) > 1e-10) {
                     std::cout << "Error!" << std::endl;
+                    return 1;
                 }
             }
         }
     }
+    return 0;
 }
 
 int
 main(int argn, char** argv)
 {
     sirius::initialize(1);
-    test_wf_fft();
+    int result = call_test("test_wf_fft", test_wf_fft);
     sirius::finalize();
+    return result;
 }

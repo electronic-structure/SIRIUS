@@ -15,7 +15,7 @@
 using namespace sirius;
 
 int
-test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int use_gpu__, int bs__)
+test_wf_ortho_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int use_gpu__, int bs__)
 {
     auto pu = use_gpu__ ? device_t::GPU : device_t::CPU;
     spla::Context spla_ctx(pu == device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
@@ -62,7 +62,7 @@ test_wf_ortho(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__
 }
 
 int
-run_test(cmd_args const& args)
+test_wf_ortho(cmd_args const& args)
 {
     auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff        = args.value<double>("cutoff", 8.0);
@@ -71,7 +71,7 @@ run_test(cmd_args const& args)
     auto result{0};
     for (int bs = 1; bs < 16; bs++) {
         for (int i = 30; i < 60; i++) {
-            result += test_wf_ortho(mpi_grid_dims, cutoff, i, use_gpu, bs);
+            result += test_wf_ortho_impl(mpi_grid_dims, cutoff, i, use_gpu, bs);
         }
     }
     return result;
@@ -80,19 +80,13 @@ run_test(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--cutoff=", "{double} wave-functions cutoff");
-    args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"}});
 
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     sirius::initialize(1);
-    int result = sirius::call_test(argv[0], run_test, args);
+    int result = sirius::call_test(argv[0], test_wf_ortho, args);
     sirius::finalize();
     return result;
 }

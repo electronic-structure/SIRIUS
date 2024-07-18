@@ -10,6 +10,7 @@
 #include "mixer/anderson_stable_mixer.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "core/cmd_args.hpp"
+#include "testing.hpp"
 
 using namespace sirius;
 
@@ -56,7 +57,7 @@ error_norm(std::vector<double> const& a, std::vector<double> const& b)
 }
 
 int
-main(int argn, char** argv)
+test_mixer(cmd_args const& args)
 {
     // Suppose f(x) = g(x) - x where g(x) = Ax - b
     // then f(x) = 0 <=> g(x) = x <=> (A - I)x = b
@@ -66,14 +67,6 @@ main(int argn, char** argv)
     // it computes a residual, which is f(x) = g(x) - x.
     // TODO: refactor the mixer to just solve for a generic f(x) = 0
     // instead of solving fixed-point problems g(x) = x.
-
-    cmd_args args;
-    args.register_key("--max_history=", "{int} maximum number of vecs to store");
-    args.register_key("--beta=", "{double} first jacobian approximation as diagonal matrix");
-    args.register_key("--dim=", "{size_t} problem dimension");
-    args.register_key("--max_iter=", "{int} maximum number of iterations");
-    args.register_key("--tol=", "{double} tolerance");
-    args.parse_args(argn, argv);
 
     const auto max_iter    = args.value<size_t>("max_iter", 100);
     const auto max_history = args.value<int>("max_history", 8);
@@ -164,4 +157,18 @@ main(int argn, char** argv)
                 break;
         }
     }
+    return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    cmd_args args(argn, argv,
+                  {{"max_history=", "{int} maximum number of vecs to store"},
+                   {"beta=", "{double} first jacobian approximation as diagonal matrix"},
+                   {"dim=", "{size_t} problem dimension"},
+                   {"max_iter=", "{int} maximum number of iterations"},
+                   {"tol=", "{double} tolerance"}});
+
+    return call_test("test_mixer", test_mixer, args);
 }

@@ -261,7 +261,7 @@ Radial_integrals_vloc<jl_deriv>::generate()
         /* This is a hack implemented in QE. For many pseudopotentials the tail doesn't decay as -z/r
          * but rather diverges. Instead of issuing an error, the code trunkates the integraition at ~10 a.u. */
         if (true) {
-            int np1 = atom_type.radial_grid().index_of(10);
+            int np1 = atom_type.radial_grid().index_of(unit_cell_.parameters().cfg().settings().pseudo_grid_cutoff());
             if (np1 != -1) {
                 np = np1;
             }

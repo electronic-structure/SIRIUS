@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 /* test FFT: tranfrom random function to real space, transform back and compare with the original function */
 
@@ -15,14 +16,11 @@ using namespace mpi;
 
 template <typename T>
 int
-test_fft_complex(cmd_args& args, device_t fft_pu__)
+test_fft_complex_impl(cmd_args const& args, device_t fft_pu__)
 {
     double cutoff = args.value<double>("cutoff", 40);
 
-    double eps = 1e-12;
-    if (typeid(T) == typeid(float)) {
-        eps = 1e-6;
-    }
+    double eps = (typeid(T) == typeid(float)) ? 1e-6 : 1e-12;
 
     r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
@@ -68,11 +66,11 @@ test_fft_complex(cmd_args& args, device_t fft_pu__)
 
 template <typename T>
 int
-run_test(cmd_args& args)
+test_fft(cmd_args const& args)
 {
-    int result = test_fft_complex<T>(args, device_t::CPU);
+    int result = test_fft_complex_impl<T>(args, device_t::CPU);
 #ifdef SIRIUS_GPU
-    result += test_fft_complex<T>(args, device_t::GPU);
+    result += test_fft_complex_impl<T>(args, device_t::GPU);
 #endif
     return result;
 }
@@ -80,39 +78,18 @@ run_test(cmd_args& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--cutoff=", "{double} cutoff radius in G-space");
-    args.register_key("--fp32", "run in FP32 arithmetics");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv, {{"cutoff=", "{double} cutoff radius in G-space"}, {"fp32", "run in FP32 arithmetics"}});
 
     sirius::initialize(true);
-    printf("running %-30s : ", argv[0]);
     int result{0};
     if (args.exist("fp32")) {
 #if defined(SIRIUS_USE_FP32)
-        result = run_test<float>(args);
+        result = call_test(argv[0], test_fft<float>, args);
 #else
         RTE_THROW("not compiled with FP32 support");
 #endif
     } else {
-        result = run_test<double>(args);
-    }
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
+        result = call_test(argv[0], test_fft<double>, args);
     }
     sirius::finalize();
 

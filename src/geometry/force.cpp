@@ -281,8 +281,7 @@ Force::calc_forces_hubbard()
 
         for (auto it : kset_.spl_num_kpoints()) {
 
-            auto kp = kset_.get<double>(it.i);
-            // kp->beta_projectors().prepare();
+            auto kp  = kset_.get<double>(it.i);
             auto mg1 = kp->spinor_wave_functions().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
             auto mg2 =
                     kp->hubbard_wave_functions_S().memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);

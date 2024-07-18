@@ -13,7 +13,6 @@
 
 #include "occupation_matrix.hpp"
 #include "symmetry/crystal_symmetry.hpp"
-#include "symmetry/symmetrize_occupation_matrix.hpp"
 
 namespace sirius {
 
@@ -391,6 +390,64 @@ Occupation_matrix::print_occupancies(int verbosity__) const
         }
         if (ctx_.verbosity() >= verbosity__) {
             ctx_.message(1, "occ.mtrx", s);
+        }
+    }
+}
+
+void
+Occupation_matrix::reduce()
+{
+    if (!ctx_.hubbard_correction()) {
+        return;
+    }
+
+    /* global reduction over k points */
+    for (int at_lvl = 0; at_lvl < (int)this->local_.size(); at_lvl++) {
+        const int ia     = atomic_orbitals_[at_lvl].first;
+        auto const& atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+            ctx_.comm_k().allreduce(this->local(at_lvl).at(memory_t::host),
+                                    static_cast<int>(this->local(at_lvl).size()));
+        }
+    }
+
+    /* reduce occ_mtrx_T_ (not nonlocal - it is computed during symmetrization from occ_mtrx_T_) */
+    for (auto& e : this->occ_mtrx_T_) {
+        ctx_.comm_k().allreduce(e.second.at(memory_t::host), static_cast<int>(e.second.size()));
+    }
+}
+
+void
+Occupation_matrix::update_nonlocal()
+{
+    if (ctx_.num_mag_dims() == 3) {
+        RTE_THROW("only collinear case is supported");
+    }
+    for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
+        auto nl = ctx_.cfg().hubbard().nonlocal(i);
+        int ia  = nl.atom_pair()[0];
+        int ja  = nl.atom_pair()[1];
+        int il  = nl.l()[0];
+        int jl  = nl.l()[1];
+        int n1  = nl.n()[0];
+        int n2  = nl.n()[1];
+        int ib  = 2 * il + 1;
+        int jb  = 2 * jl + 1;
+        auto T  = nl.T();
+        this->nonlocal(i).zero();
+
+        /* NOTE : the atom order is important here. */
+        int at1_lvl          = this->find_orbital_index(ia, n1, il);
+        int at2_lvl          = this->find_orbital_index(ja, n2, jl);
+        auto const& occ_mtrx = occ_mtrx_T_.at(T);
+
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            for (int m1 = 0; m1 < ib; m1++) {
+                for (int m2 = 0; m2 < jb; m2++) {
+                    auto z = occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
+                    this->nonlocal(i)(m1, m2, ispn) = ctx_.cfg().settings().real_occupation_matrix() ? std::real(z) : z;
+                }
+            }
         }
     }
 }

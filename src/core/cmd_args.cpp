@@ -29,6 +29,7 @@ cmd_args::check_for_key(std::string const key__) const
 cmd_args::cmd_args()
 {
     register_key("--help", "print this help and exit");
+    parse_args(0, nullptr);
 }
 
 cmd_args::cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<std::string, std::string>> keys__)

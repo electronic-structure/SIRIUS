@@ -13,7 +13,7 @@ using namespace sirius;
 
 template <typename T>
 void
-test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
+test_hloc_impl(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
 {
     auto gvec     = ctx__.gvec_coarse_sptr();
     auto gvec_fft = ctx__.gvec_coarse_fft_sptr();
@@ -86,25 +86,8 @@ test_hloc(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__)
 }
 
 int
-main(int argn, char** argv)
+test_hloc(cmd_args const& args)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--cutoff=", "{double} wave-functions cutoff");
-    args.register_key("--reduce_gvec=", "{int} 0: use full set of G-vectors, 1: use reduced set of G-vectors");
-    args.register_key("--num_bands=", "{int} number of bands");
-    args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
-    args.register_key("--gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU");
-    args.register_key("--repeat=", "{int} number of repetitions");
-    args.register_key("--t_file=", "{string} name of timing output file");
-    args.register_key("--fp32", "use FP32 arithmetics");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff        = args.value<double>("cutoff", 10.0);
     auto reduce_gvec   = args.value<int>("reduce_gvec", 0);
@@ -114,40 +97,50 @@ main(int argn, char** argv)
     auto t_file        = args.value<std::string>("t_file", std::string(""));
     auto fp32          = args.exist("fp32");
 
-    sirius::initialize(1);
-    int my_rank = mpi::Communicator::world().rank();
+    auto json_conf                          = R"({
+      "parameters" : {
+        "electronic_structure_method" : "pseudopotential",
+        "use_symmetry" : false
+      }
+    })"_json;
+    json_conf["control"]["processing_unit"] = use_gpu ? "GPU" : "CPU";
+    json_conf["control"]["mpi_grid_dims"]   = mpi_grid_dims;
+    json_conf["parameters"]["pw_cutoff"]    = cutoff + 1;
+    json_conf["parameters"]["gk_cutoff"]    = cutoff / 2.0;
+    json_conf["parameters"]["gamma_point"]  = reduce_gvec;
 
-    {
-        auto json_conf                          = R"({
-          "parameters" : {
-            "electronic_structure_method" : "pseudopotential",
-            "use_symmetry" : false
-          }
-        })"_json;
-        json_conf["control"]["processing_unit"] = use_gpu ? "GPU" : "CPU";
-        json_conf["control"]["mpi_grid_dims"]   = mpi_grid_dims;
-        json_conf["parameters"]["pw_cutoff"]    = cutoff + 1;
-        json_conf["parameters"]["gk_cutoff"]    = cutoff / 2.0;
-        json_conf["parameters"]["gamma_point"]  = reduce_gvec;
-
-        auto ctx = sirius::create_simulation_context(json_conf, {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}}, 0,
-                                                     std::vector<r3::vector<double>>(), false, false);
-        for (int i = 0; i < repeat; i++) {
-            if (fp32) {
+    auto ctx = sirius::create_simulation_context(json_conf, {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}}, 0,
+                                                 std::vector<r3::vector<double>>(), false, false);
+    for (int i = 0; i < repeat; i++) {
+        if (fp32) {
 #if defined(SIRIUS_USE_FP32)
-                test_hloc<float>(*ctx, num_bands, use_gpu);
+            test_hloc_impl<float>(*ctx, num_bands, use_gpu);
 #else
-                RTE_THROW("Not compiled with FP32 support");
+            RTE_THROW("Not compiled with FP32 support");
 #endif
-            } else {
-                test_hloc<double>(*ctx, num_bands, use_gpu);
-            }
+        } else {
+            test_hloc_impl<double>(*ctx, num_bands, use_gpu);
         }
     }
-    sirius::finalize(1);
+    return 0;
+}
 
-    if (my_rank == 0) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-    }
+int
+main(int argn, char** argv)
+{
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"reduce_gvec=", "{int} 0: use full set of G-vectors, 1: use reduced set of G-vectors"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU"},
+                   {"gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU"},
+                   {"repeat=", "{int} number of repetitions"},
+                   {"t_file=", "{string} name of timing output file"},
+                   {"fp32", "use FP32 arithmetics"}});
+
+    sirius::initialize(1);
+    int result = call_test("test_hloc", test_hloc, args);
+    sirius::finalize(1);
+    return result;
 }

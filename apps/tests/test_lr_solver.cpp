@@ -248,7 +248,7 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
                            &num_spin_comp, &alpha_pv, &spin, &num_bands, tol);
 }
 
-void
+int
 test_lr_solver(cmd_args const& args__)
 {
     auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
@@ -322,6 +322,8 @@ test_lr_solver(cmd_args const& args__)
 
         solve_lr<double, double>(ctx, vk, pot, tol);
     }
+
+    return 0;
 }
 
 int
@@ -338,13 +340,8 @@ main(int argn, char** argv)
                    {"only_kin", "use kinetic-operator only"},
                    {"repeat=", "{int} number of repetitions"}});
 
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
     sirius::initialize(1);
-    test_lr_solver(args);
+    int result = call_test("test_lr_solver", test_lr_solver, args);
     sirius::finalize();
+    return result;
 }

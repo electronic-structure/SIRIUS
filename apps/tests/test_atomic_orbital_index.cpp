@@ -7,19 +7,18 @@
  */
 
 #include <sirius.hpp>
-
-/* template for unit tests */
+#include "testing.hpp"
 
 using namespace sirius;
 
 int
-run_test(cmd_args& args)
+test_atomic_orbital_index(cmd_args const& args)
 {
     angular_momentum aqn1(1);
-    std::cout << aqn1.l() << " " << aqn1.s() << " " << aqn1.j() << std::endl;
+    std::cout << "l : " << aqn1.l() << ", s : " << aqn1.s() << ", j : " << aqn1.j() << std::endl;
 
     angular_momentum aqn2(2, -1);
-    std::cout << aqn2.l() << " " << aqn2.s() << " " << aqn2.j() << std::endl;
+    std::cout << "l : " << aqn2.l() << ", s : " << aqn2.s() << ", j : " << aqn2.j() << std::endl;
 
     radial_functions_index ri;
 
@@ -28,14 +27,14 @@ run_test(cmd_args& args)
     ri.add(angular_momentum(2, -1), angular_momentum(2, 1));
     ri.add(angular_momentum(0));
 
-    std::cout << ri.size() << std::endl;
-    std::cout << ri.full_j(0, 0) << std::endl;
-    std::cout << ri.full_j(0, 1) << std::endl;
+    std::cout << "radial index size : " << ri.size() << std::endl;
+    std::cout << "is full_j(l=0, order=0) : " << ri.full_j(0, 0) << std::endl;
+    std::cout << "is full_j(l=0, order=1) : " << ri.full_j(0, 1) << std::endl;
 
     std::cout << "----" << std::endl;
 
     for (int l = 0; l < 3; l++) {
-        std::cout << ri.max_order(l) << std::endl;
+        std::cout << "l : " << l << ", max.order : " << ri.max_order(l) << std::endl;
     }
     std::cout << "---" << std::endl;
 
@@ -43,7 +42,8 @@ run_test(cmd_args& args)
         for (int o = 0; o < ri.max_order(l); o++) {
             for (auto j : ri.subshell(l, o)) {
                 auto idx = ri.index_of(j, o);
-                std::cout << idx << " " << ri.am(idx).l() << " " << ri.am(idx).s() << std::endl;
+                std::cout << "l : " << ri.am(idx).l() << ", o : " << o << ", s : " << ri.am(idx).s()
+                          << ", idx : " << idx << std::endl;
             }
         }
     }
@@ -55,17 +55,5 @@ int
 main(int argn, char** argv)
 {
     cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    sirius::initialize(true);
-    int result = run_test(args);
-    sirius::finalize();
-
-    return result;
+    return call_test("test_atomic_orbital_index", test_atomic_orbital_index, args);
 }

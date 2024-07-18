@@ -13,6 +13,7 @@ namespace sirius {
 
 namespace sht { // TODO: move most of this to special functions
 
+/// Generate Wigner-D matrix.
 mdarray<double, 2>
 wigner_d_matrix(int l, double beta)
 {
@@ -41,6 +42,7 @@ wigner_d_matrix(int l, double beta)
     return d_mtrx;
 }
 
+/// Rotation of a set of complex spherical harmonics with l orbital quantum number.
 template <>
 mdarray<std::complex<double>, 2>
 rotation_matrix_l<std::complex<double>>(int l, r3::vector<double> euler_angles, int proper_rotation)
@@ -59,6 +61,7 @@ rotation_matrix_l<std::complex<double>>(int l, r3::vector<double> euler_angles, 
     return rot_mtrx;
 }
 
+/// Rotation of a set of real spherical harmonics with l orbital quantum number.
 template <>
 mdarray<double, 2>
 rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rotation)
@@ -85,31 +88,7 @@ rotation_matrix_l<double>(int l, r3::vector<double> euler_angles, int proper_rot
     return rot_mtrx;
 }
 
-// TODO: this is used in rotatin rlm spherical functions, but this is wrong.
-// the rotation must happen inside l-shells
-template <typename T>
-void
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm)
-{
-    rotm.zero();
-
-    for (int l = 0; l <= lmax; l++) {
-        auto rl = rotation_matrix_l<T>(l, euler_angles, proper_rotation);
-        for (int m = 0; m < 2 * l + 1; m++) {
-            for (int mp = 0; mp < 2 * l + 1; mp++) {
-                rotm(l * l + m, l * l + mp) = rl(m, mp);
-            }
-        }
-    }
-}
-
-template void
-rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<double, 2>& rotm);
-
-template void
-rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation,
-                                      mdarray<std::complex<double>, 2>& rotm);
-
+/// Return vector of rotation matrices for each of the l-shells.
 template <typename T>
 std::vector<mdarray<T, 2>>
 rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
@@ -122,9 +101,11 @@ rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation)
     return result;
 }
 
+/// Instantiation for real spherical harmonics.
 template std::vector<mdarray<double, 2>>
 rotation_matrix<double>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
+/// Instantiation for complex spherical harmonics.
 template std::vector<mdarray<std::complex<double>, 2>>
 rotation_matrix<std::complex<double>>(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 

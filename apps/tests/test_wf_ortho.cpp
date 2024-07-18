@@ -7,14 +7,15 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 using namespace la;
 
 template <typename T, typename F>
-void
-test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-              memory_t mem__)
+int
+test_wf_ortho_aux(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
+                  memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
@@ -75,24 +76,17 @@ test_wf_ortho(BLACS_grid const& blacs_grid__, double cutoff__, int num_bands__, 
     auto max_diff = check_identity(ovlp, 2 * num_bands__);
     if (mpi::Communicator::world().rank() == 0) {
         printf("maximum difference: %18.12e\n", max_diff);
-        if (max_diff > 1e-12) {
-            printf("\x1b[31m"
-                   "Fail\n"
-                   "\x1b[0m"
-                   "\n");
-        } else {
-            printf("\x1b[32m"
-                   "OK\n"
-                   "\x1b[0m"
-                   "\n");
-        }
     }
+    if (max_diff > 1e-12) {
+        return 1;
+    }
+    return 0;
 }
 
 template <typename T>
-void
-call_test(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
-          memory_t mem__, int repeat__)
+int
+test_wf_ortho_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, int num_mag_dims__,
+                   memory_t mem__, int repeat__)
 {
     std::unique_ptr<BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -101,38 +95,26 @@ call_test(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, in
         blacs_grid = std::unique_ptr<BLACS_grid>(
                 new BLACS_grid(mpi::Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     }
+    int ierr{0};
     for (int i = 0; i < repeat__; i++) {
         if (mpi::Communicator::world().rank() == 0) {
             std::cout << "calling test_wf_ortho<T, std::complex<T>>()" << std::endl;
         }
-        test_wf_ortho<T, std::complex<T>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);
+        ierr += test_wf_ortho_aux<T, std::complex<T>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);
         if (!std::is_same<T, double>::value) {
             if (mpi::Communicator::world().rank() == 0) {
                 std::cout << "calling test_wf_ortho<T, std::complex<double>>()" << std::endl;
             }
-            test_wf_ortho<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__);
+            ierr += test_wf_ortho_aux<T, std::complex<double>>(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__,
+                                                               mem__);
         }
     }
+    return ierr;
 }
 
 int
-main(int argn, char** argv)
+test_wf_ortho(cmd_args const& args)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--cutoff=", "{double} wave-functions cutoff");
-    args.register_key("--bs=", "{int} block size");
-    args.register_key("--num_bands=", "{int} number of bands");
-    args.register_key("--num_mag_dims=", "{int} number of magnetic dimensions");
-    args.register_key("--memory_t=", "{string} type of memory");
-    args.register_key("--fp32", "use FP32 arithmetics");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff        = args.value<double>("cutoff", 8.0);
     auto bs            = args.value<int>("bs", 32);
@@ -140,25 +122,32 @@ main(int argn, char** argv)
     auto num_mag_dims  = args.value<int>("num_mag_dims", 0);
     auto mem           = get_memory_t(args.value<std::string>("memory_t", "host"));
 
-    sirius::initialize(1);
     if (args.exist("fp32")) {
 #if defined(SIRIUS_USE_FP32)
-        call_test<float>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
+        return test_wf_ortho_impl<float>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
 #else
         RTE_THROW("Not compiled with FP32 support");
 #endif
     } else {
-        call_test<double>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
+        return test_wf_ortho_impl<double>(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, 1);
     }
+    return 0;
+}
 
-    int my_rank = mpi::Communicator::world().rank();
+int
+main(int argn, char** argv)
+{
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"bs=", "{int} block size"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"num_mag_dims=", "{int} number of magnetic dimensions"},
+                   {"memory_t=", "{string} type of memory"},
+                   {"fp32", "use FP32 arithmetics"}});
 
+    sirius::initialize(1);
+    int result = call_test("test_wf_ortho", test_wf_ortho, args);
     sirius::finalize(1);
-
-    if (my_rank == 0) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-        // std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        // ofs << timing_result.json();
-    }
+    return result;
 }

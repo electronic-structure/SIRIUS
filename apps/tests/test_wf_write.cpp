@@ -6,99 +6,102 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.h>
+#include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
-void
-test_wf_write(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int single_file__)
+int
+test_wf_write_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int single_file__)
 {
     // MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
 
-    std::vector<int> wf_mpi_grid = {1, mpi_comm_world().size()};
+    std::vector<int> wf_mpi_grid = {1, mpi::Communicator::world().size()};
 
-    MPI_grid mpi_grid(wf_mpi_grid, mpi_comm_world());
+    mpi::Grid mpi_grid(wf_mpi_grid, mpi::Communicator::world());
 
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+    auto gvec = fft::gkvec_factory(cutoff__, mpi::Communicator::world());
+    printf("num_gvec: %i\n", gvec->num_gvec());
 
-    FFT3D_grid fft_grid(cutoff__, M);
-
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_grid.communicator(1 << 0),
-              mpi_grid.dimension_size(1), false, false);
-
-    printf("num_gvec: %i\n", gvec.num_gvec());
-
-    Wave_functions<false> wf(num_bands__, num_bands__, gvec, mpi_grid, CPU);
+    wf::Wave_functions<double> wf(gvec, wf::num_mag_dims(0), wf::num_bands(num_bands__), memory_t::host);
     for (int i = 0; i < num_bands__; i++) {
-        for (int ig = 0; ig < gvec.num_gvec(mpi_comm_world().rank()); ig++)
-            wf(ig, i) = type_wrapper<double_complex>::random();
+        for (auto it : *gvec) {
+            wf.pw_coeffs(it.igloc, wf::spin_index(0), wf::band_index(i)) = random<std::complex<double>>();
+        }
+    }
+    auto gvec_full = std::make_shared<fft::Gvec_fft>(*gvec, mpi::Communicator::self(), mpi::Communicator::world());
+    if (gvec_full->count() != gvec->num_gvec()) {
+        RTE_THROW("wrong number of G-vectors");
     }
 
-    wf.swap_forward(0, num_bands__);
+    auto wf_full = wf::Wave_functions_fft<double>(gvec_full, wf, wf::spin_index(0), wf::band_range(0, num_bands__),
+                                                  wf::shuffle_to::fft_layout);
 
-    runtime::Timer t("wf_write");
+    auto const& comm = mpi::Communicator::world();
+
+    auto t0 = time_now();
+
     if (single_file__) {
-        if (mpi_comm_world().rank() == 0) {
-            sirius::HDF5_tree f("wf.h5", true);
+        if (comm.rank() == 0) {
+            sirius::HDF5_tree f("wf.h5", hdf5_access_t::truncate);
             f.create_node("wf");
         }
 
-        for (int r = 0; r < mpi_comm_world().size(); r++) {
-            if (r == mpi_comm_world().rank()) {
-                sirius::HDF5_tree f("wf.h5", false);
-                std::vector<double_complex> single_wf(gvec.num_gvec());
-                for (int i = 0; i < wf.spl_num_swapped().local_size(); i++) {
-                    int idx = wf.spl_num_swapped().global_index(i, r);
-                    std::memcpy(&single_wf[0], wf[i], gvec.num_gvec() * sizeof(double_complex));
-                    f["wf"].write(idx, single_wf);
+        for (int r = 0; r < comm.size(); r++) {
+            if (r == comm.rank()) {
+                sirius::HDF5_tree f("wf.h5", hdf5_access_t::read_write);
+                mdarray<std::complex<double>, 1> single_wf({gvec->num_gvec()});
+                for (auto it : wf_full.spl_num_wf()) {
+                    auto ptr = &wf_full.pw_coeffs(0, wf::band_index(it.li));
+                    std::copy(ptr, ptr + gvec_full->count(), &single_wf[0]);
+                    f["wf"].write(it.i, single_wf);
                 }
             }
-            mpi_comm_world().barrier();
+            comm.barrier();
         }
     } else {
         std::stringstream fname;
-        fname << "wf" << mpi_comm_world().rank() << ".h5";
-        sirius::HDF5_tree f(fname.str(), true);
+        fname << "wf" << comm.rank() << ".h5";
+        sirius::HDF5_tree f(fname.str(), hdf5_access_t::truncate);
         f.create_node("wf");
 
-        std::vector<double_complex> single_wf(gvec.num_gvec());
-        for (int i = 0; i < wf.spl_num_swapped().local_size(); i++) {
-            int idx = wf.spl_num_swapped().global_index(i, mpi_comm_world().rank());
-            std::memcpy(&single_wf[0], wf[i], gvec.num_gvec() * sizeof(double_complex));
-            f["wf"].write(idx, single_wf);
+        mdarray<std::complex<double>, 1> single_wf({gvec->num_gvec()});
+        for (auto it : wf_full.spl_num_wf()) {
+            auto ptr = &wf_full.pw_coeffs(0, wf::band_index(it.li));
+            std::copy(ptr, ptr + gvec_full->count(), &single_wf[0]);
+            f["wf"].write(it.i, single_wf);
         }
     }
-    double tval = t.stop();
-    if (mpi_comm_world().rank() == 0) {
-        printf("io time  : %f (sec.)\n", tval);
+    double t = time_interval(t0);
+    if (comm.rank() == 0) {
+        printf("io time  : %f (sec.)\n", t);
         printf("io speed : %f (Gb/sec.)\n",
-               (gvec.num_gvec() * num_bands__ * sizeof(double_complex)) / double(1 << 30) / tval);
+               (gvec->num_gvec() * num_bands__ * sizeof(std::complex<double>)) / double(1 << 30) / t);
     }
+    return 0;
+}
+
+int
+test_wf_write(cmd_args const& args)
+{
+    double cutoff   = args.value<double>("cutoff", 10);
+    int num_bands   = args.value<int>("num_bands", 50);
+    int single_file = args.value<int>("single_file", 1);
+    auto mpi_grid   = args.value("mpi_grid", std::vector<int>({1, 1}));
+    return test_wf_write_impl(mpi_grid, cutoff, num_bands, single_file);
 }
 
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--cutoff=", "{double} cutoff radius in G-space");
-    args.register_key("--num_bands=", "{int} number of bands");
-    args.register_key("--mpi_grid=", "{vector2d<int>} MPI grid");
-    args.register_key("--single_file=", "{int} write to a single file");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    double cutoff             = args.value<double>("cutoff", 10);
-    int num_bands             = args.value<int>("num_bands", 50);
-    int single_file           = args.value<int>("single_file", 1);
-    std::vector<int> mpi_grid = args.value<std::vector<int>>("mpi_grid", {1, 1});
+    cmd_args args(argn, argv,
+                  {{"cutoff=", "{double} cutoff radius in G-space"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"mpi_grid=", "{vector2d<int>} MPI grid"},
+                   {"single_file=", "{int} write to a single file"}});
 
     sirius::initialize(1);
-    test_wf_write(mpi_grid, cutoff, num_bands, single_file);
+    int result = call_test("test_wf_write", test_wf_write, args);
     sirius::finalize();
+    return result;
 }

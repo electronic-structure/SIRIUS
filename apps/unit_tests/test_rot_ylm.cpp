@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 #include "symmetry/crystal_symmetry.hpp"
 
 /* test rotation of spherical harmonics */
@@ -15,7 +16,7 @@ using namespace sirius;
 
 template <typename T>
 int
-run_test_impl(cmd_args& args)
+test_rot_ylm_impl(cmd_args const& args)
 {
     r3::matrix<double> lattice;
     lattice(0, 0) = 7;
@@ -67,16 +68,17 @@ run_test_impl(cmd_args& args)
             sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
 
             /* generate rotation matrices; they are block-diagonal in l- index */
-            mdarray<T, 2> ylm_rot_mtrx({sf::lmmax(lmax), sf::lmmax(lmax)});
-            sht::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
+            auto ylm_rot_mtrx = sht::rotation_matrix<T>(lmax, ang, proper_rotation);
 
             mdarray<T, 1> ylm1({sf::lmmax(lmax)});
             ylm1.zero();
 
             /* rotate original sperical harmonics with P^{-1} */
-            for (int i = 0; i < sf::lmmax(lmax); i++) {
-                for (int j = 0; j < sf::lmmax(lmax); j++) {
-                    ylm1(i) += conj(ylm_rot_mtrx(i, j)) * ylm(j);
+            for (int l = 0; l <= lmax; l++) {
+                for (int i = 0; i < 2 * l + 1; i++) {
+                    for (int j = 0; j < 2 * l + 1; j++) {
+                        ylm1(l * l + i) += conj(ylm_rot_mtrx[l](i, j)) * ylm(l * l + j);
+                    }
                 }
             }
 
@@ -100,10 +102,10 @@ run_test_impl(cmd_args& args)
 }
 
 int
-run_test(cmd_args& args)
+test_rot_ylm(cmd_args const& args)
 {
-    int result = run_test_impl<double>(args);
-    result += run_test_impl<std::complex<double>>(args);
+    int result = test_rot_ylm_impl<double>(args);
+    result += test_rot_ylm_impl<std::complex<double>>(args);
     return result;
 }
 
@@ -111,29 +113,5 @@ int
 main(int argn, char** argv)
 {
     cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    sirius::initialize(true);
-    printf("running %-30s : ", argv[0]);
-    int result = run_test(args);
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
-    sirius::finalize();
-
-    return result;
+    return call_test(argv[0], test_rot_ylm, args);
 }

@@ -7,13 +7,16 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
-void
-test_grid(std::vector<int> grid__)
+int
+test_mpi_grid(cmd_args const& args)
 {
-    mpi::Grid mpi_grid(grid__, mpi::Communicator::world());
+    std::vector<int> mpi_grid_dims = args.value("mpi_grid", std::vector<int>({1, 1, 1}));
+
+    mpi::Grid mpi_grid(mpi_grid_dims, mpi::Communicator::world());
 
     mpi::pstdout pout(mpi::Communicator::world());
 
@@ -26,23 +29,16 @@ test_grid(std::vector<int> grid__)
          << ", coordinate: " << mpi_grid.communicator(1 << 0).rank() << " " << mpi_grid.communicator(1 << 1).rank()
          << " " << mpi_grid.communicator(1 << 2).rank() << ", hostname: " << hostname() << std::endl;
     std::cout << pout.flush(0) << std::endl;
+    return 0;
 }
 
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid=", "{vector3d<int>} MPI grid");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        exit(0);
-    }
-    std::vector<int> mpi_grid_dims = args.value("mpi_grid", std::vector<int>({1, 1, 1}));
+    cmd_args args(argn, argv, {{"mpi_grid=", "{vector3d<int>} MPI grid"}});
 
     sirius::initialize(1);
-    test_grid(mpi_grid_dims);
+    int result = call_test("test_mpi_grid", test_mpi_grid, args);
     sirius::finalize();
+    return result;
 }

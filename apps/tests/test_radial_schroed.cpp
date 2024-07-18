@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include "radial/radial_solver.hpp"
+#include "testing.hpp"
 
 using namespace sirius;
 
@@ -28,7 +29,7 @@ get_nmax(int zn)
 }
 
 int
-main(int argn, char** argv)
+test_radial_schroed()
 {
     int N{10000};
 
@@ -62,4 +63,10 @@ main(int argn, char** argv)
     }
 
     return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    return call_test("test_radial_schroed", test_radial_schroed);
 }

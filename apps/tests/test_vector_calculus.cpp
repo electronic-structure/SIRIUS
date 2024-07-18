@@ -280,8 +280,7 @@ main(int argn, char** argv)
                   });
 
     sirius::initialize(1);
-
-    call_test("test_vector_calculus", test_vector_calculus, args);
-
+    int result = call_test("test_vector_calculus", test_vector_calculus, args);
     sirius::finalize(1);
+    return result;
 }

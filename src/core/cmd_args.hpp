@@ -71,6 +71,15 @@ class cmd_args
     }
 
     void
+    register_key(std::string const key__, std::string const description__);
+
+    void
+    parse_args(int argn__, char** argv__);
+
+    void
+    print_help();
+
+    void
     check_for_key(std::string const key__) const;
 
   public:
@@ -89,15 +98,6 @@ class cmd_args
      */
     cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<std::string, std::string>> keys__);
 
-    void
-    register_key(std::string const key__, std::string const description__);
-
-    void
-    parse_args(int argn__, char** argv__);
-
-    void
-    print_help();
-
     inline bool
     exist(const std::string key__) const
     {
@@ -114,21 +114,6 @@ class cmd_args
         std::istringstream(keys_.at(key__)) >> v;
         return v;
     }
-
-    ///// Get a vector of values or terminate if key is not found.
-    // template <typename T>
-    // inline std::vector<T> value(std::string const key__) const
-    //{
-    //     check_for_key(key__);
-    //     return get_vector<T>(key__);
-    // }
-
-    // template <typename T, std::size_t N>
-    // inline std::array<T, N> value(std::string const key__) const
-    //{
-    //     check_for_key(key__);
-    //     return get_array<T, N>(key__);
-    // }
 
     /// Get a value if key exists or return a default value.
     template <typename T>

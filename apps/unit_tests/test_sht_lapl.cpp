@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
@@ -50,12 +51,9 @@ test()
 }
 
 int
-main(int argn, char** argv)
+test_sht_lapl()
 {
-    sirius::initialize(true);
-
     double diff;
-
     if ((diff = test<std::complex<double>>()) > 1e-12) {
         printf("error in Ylm expansion: %18.12f\n", diff);
         return 1;
@@ -65,8 +63,11 @@ main(int argn, char** argv)
         printf("error in Rlm expansion: %18.12f\n", diff);
         return 2;
     }
-
-    sirius::finalize();
-
     return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    return call_test(argv[0], test_sht_lapl);
 }

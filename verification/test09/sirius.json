@@ -4,7 +4,7 @@
       "processing_unit" : "cpu",
       "std_evp_solver_name" : "lapack",
       "gen_evp_solver_name" : "lapack",
-      "verbosity" : 1,
+      "verbosity" : 2,
       "print_forces" : true,
       "print_stress" : true
   },
@@ -13,9 +13,9 @@
 
     "electronic_structure_method" : "pseudopotential",
 
-    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+    "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
-    "smearing_width" : 0.04,
+    "smearing_width" : 0.01,
 
     "use_symmetry" : true,
 
@@ -24,19 +24,17 @@
     "gk_cutoff" : 7.0,
     "pw_cutoff" : 20.00,
 
-    "energy_tol" : 1e-7,
-    "density_tol" : 1e-5,
+    "energy_tol" : 1e-8,
+    "density_tol" : 1e-6,
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [2,2,2]
+    "ngridk" : [4,4,4]
   },
 
   "iterative_solver" : {
-      "!energy_tolerance" : 1e-13,
-      "!residual_tolerance" : 1e-6,
       "num_steps" : 20,
-      "subspace_size" : 4,
+      "subspace_size" : 2,
       "type" : "davidson",
       "converge_by_energy" : 1
   },
@@ -48,7 +46,7 @@
         "atom_types": ["Ni"],
         "atoms": {
             "Ni": [
-                [0.0,0.0,0.0,  1,1,1]
+                [0.0,0.0,0.0,  0,0,1]
             ]
         },
         "lattice_vectors": [
@@ -58,8 +56,8 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.5,
-        "type" : "anderson",
-        "!beta_scaling_factor" : 0.9
+        "beta" : 0.15,
+        "use_hartree" : true,
+        "type" : "broyden2"
     }
 }

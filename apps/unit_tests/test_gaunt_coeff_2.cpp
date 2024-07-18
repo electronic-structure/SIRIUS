@@ -12,7 +12,7 @@
 using namespace sirius;
 
 int
-test1()
+test_gaunt_yyy_numerical()
 {
     int lmax{20};
 
@@ -24,6 +24,8 @@ test1()
     }
 
     double d{0};
+
+    /* test numerical integration of a product of three spherical harmonics */
 
     for (int l1 = 0; l1 <= 8; l1++) {
         for (int m1 = -l1; m1 <= l1; m1++) {
@@ -54,7 +56,5 @@ test1()
 int
 main(int argn, char** argv)
 {
-    int err{0};
-    err += call_test("<Ylm|Ylm|Ylm> numerical", test1);
-    return std::min(err, 1);
+    return call_test(argv[0], test_gaunt_yyy_numerical);
 }

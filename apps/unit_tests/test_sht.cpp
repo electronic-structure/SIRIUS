@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
@@ -69,20 +70,19 @@ test1_angular_radial_complex(int lmax__)
 }
 
 int
-main(int argn, char** argv)
+test_sht()
 {
-    sirius::initialize(true);
-
-    double diff;
-
-    if ((diff = test1_angular_radial_double(10)) > 1e-10) {
+    if (test1_angular_radial_double(10) > 1e-10) {
         return 1;
     }
-    if ((diff = test1_angular_radial_complex(10)) > 1e-10) {
+    if (test1_angular_radial_complex(10) > 1e-10) {
         return 2;
     }
-
-    sirius::finalize();
-
     return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    return call_test(argv[0], test_sht);
 }

@@ -848,27 +848,25 @@ int
 main(int argn, char** argv)
 {
     /* handle command line arguments */
-    cmd_args args;
-    args.register_key("--symbol=", "{string} symbol of a chemical element");
-    args.register_key("--type=", "{lo1, lo2, lo3, LO1, LO2} type of local orbital basis");
-    args.register_key("--core=", "{double} cutoff for core states: energy (in Ha, if <0), radius (in a.u. if >0)");
-    args.register_key("--order=", "{int} order of augmentation; 1: APW, 2: LAPW");
-    args.register_key("--apw_enu=", "{double} default value for APW linearization energies");
-    args.register_key("--auto_enu=", "{int} search algorithm type for linearization energies");
-    args.register_key("--rel", "use scalar-relativistic solver");
-    args.register_key("--num_points=", "{int} number of radial grid points");
-    args.register_key("--rmax=", "{double} maximum value of radial grid");
-    args.register_key("--rmt=", "{double} set specific MT radius");
-    args.register_key("--nrmt=", "{int} number of radial grid points");
-    args.register_key("--lo_tol=", "{double} tolerance on linear dependency of local orbitals");
-    args.parse_args(argn, argv);
+    cmd_args args(argn, argv,
+                  {{"symbol=", "{string} symbol of a chemical element"},
+                   {"type=", "{lo1, lo2, lo3, LO1, LO2} type of local orbital basis"},
+                   {"core=", "{double} cutoff for core states: energy (in Ha, if <0), radius (in a.u. if >0)"},
+                   {"order=", "{int} order of augmentation; 1: APW, 2: LAPW"},
+                   {"apw_enu=", "{double} default value for APW linearization energies"},
+                   {"auto_enu=", "{int} search algorithm type for linearization energies"},
+                   {"rel", "use scalar-relativistic solver"},
+                   {"num_points=", "{int} number of radial grid points"},
+                   {"rmax=", "{double} maximum value of radial grid"},
+                   {"rmt=", "{double} set specific MT radius"},
+                   {"nrmt=", "{int} number of radial grid points"},
+                   {"lo_tol=", "{double} tolerance on linear dependency of local orbitals"}});
 
     if (argn == 1 || args.exist("help")) {
         std::cout << std::endl;
         std::cout << "Atom (L)APW+lo basis generation." << std::endl;
         std::cout << std::endl;
         std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
-        args.print_help();
         std::cout << std::endl;
         std::cout << "Definition of the local orbital types:" << std::endl;
         std::cout << "  lo1  : 2nd order valence local orbitals composed of {u_l(r, E_l), \\dot u_l(e, E_l)}"

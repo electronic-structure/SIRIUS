@@ -8,22 +8,31 @@
 
 #include "core/fft/gvec.hpp"
 #include "sirius.hpp"
+#include "testing.hpp"
 
 using namespace sirius;
 
 int
-main(int argn, char** argv)
+test_iter_gvec()
 {
-    sirius::initialize();
-
     r3::matrix<double> M({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     fft::Gvec gv(M, 10, mpi::Communicator::world(), false);
+
+    /* iterate over G-vectors; print global and local index */
 
     #pragma omp parallel for
     for (auto it : gv) {
         std::cout << it.ig << " " << it.igloc << std::endl;
     }
 
-    sirius::finalize();
     return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    sirius::initialize();
+    int result = call_test("test_iter_gvec", test_iter_gvec);
+    sirius::finalize();
+    return result;
 }

@@ -56,6 +56,12 @@ time_interval(std::chrono::high_resolution_clock::time_point t0)
     return std::chrono::duration_cast<std::chrono::duration<double>>(time_now() - t0).count();
 }
 
+inline double
+time_interval(std::chrono::high_resolution_clock::time_point t0, std::chrono::high_resolution_clock::time_point t1)
+{
+    return std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0).count();
+}
+
 } // namespace sirius
 
 #endif

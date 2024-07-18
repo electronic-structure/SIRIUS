@@ -6,17 +6,16 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <random>
 #include <core/cmd_args.hpp>
 #include <core/memory.hpp>
-#include <complex>
-#include <sys/time.h>
-#include <random>
+#include <testing.hpp>
 
 using double_complex = std::complex<double>;
 using namespace sirius;
 
 void
-test2()
+test1()
 {
     memory_pool& mp = get_memory_pool(memory_t::host);
     auto ptr        = mp.allocate<double_complex>(1024);
@@ -24,7 +23,7 @@ test2()
 }
 
 void
-test2a()
+test2()
 {
     memory_pool& mp = get_memory_pool(memory_t::host);
     auto ptr        = mp.allocate<double_complex>(1024);
@@ -46,7 +45,7 @@ test3()
 }
 
 void
-test5()
+test4()
 {
     memory_pool& mp = get_memory_pool(memory_t::host);
 
@@ -65,57 +64,48 @@ test5()
     }
 }
 
-/// Wall-clock time in seconds.
-inline double
-wtime()
-{
-    timeval t;
-    gettimeofday(&t, NULL);
-    return double(t.tv_sec) + double(t.tv_usec) / 1e6;
-}
-
 double
 test_alloc(size_t n)
 {
-    double t0 = wtime();
+    auto t0 = time_now();
     /* time to allocate + fill */
     char* ptr = (char*)std::malloc(n);
     std::fill(ptr, ptr + n, 0);
-    double t1 = wtime();
+    auto t1 = time_now();
     /* time fo fill */
     std::fill(ptr, ptr + n, 0);
-    double t2 = wtime();
-    /* harmless: add zero to t0 to prevent full optimization of the code with GCC */
-    t0 += ptr[0];
+    auto t2 = time_now();
+    /* harmless: prevent full optimization of the code with GCC */
+    double dt = ptr[0];
     std::free(ptr);
-    double t3 = wtime();
+    auto t3 = time_now();
 
-    // return (t1 - t0) - (t2 - t1);
-    return (t3 - t0) - 2 * (t2 - t1);
+    dt += time_interval(t0, t3) - 2 * time_interval(t1, t2);
+    return dt;
 }
 
 double
 test_alloc(size_t n, memory_pool& mp)
 {
-    double t0 = wtime();
+    auto t0 = time_now();
     /* time to allocate + fill */
     char* ptr = mp.allocate<char>(n);
     std::fill(ptr, ptr + n, 0);
-    double t1 = wtime();
+    auto t1 = time_now();
     /* time fo fill */
     std::fill(ptr, ptr + n, 0);
-    double t2 = wtime();
-    /* harmless: add zero to t0 to prevent full optimization of the code with GCC */
-    t0 += ptr[0];
+    auto t2 = time_now();
+    /* harmless: prevent full optimization of the code with GCC */
+    double dt = ptr[0];
     mp.free(ptr);
-    double t3 = wtime();
+    auto t3 = time_now();
 
-    // return (t1 - t0) - (t2 - t1);
-    return (t3 - t0) - 2 * (t2 - t1);
+    dt += time_interval(t0, t3) - 2 * time_interval(t1, t2);
+    return dt;
 }
 
 void
-test6()
+test5()
 {
     double t0{0};
     for (int k = 0; k < 8; k++) {
@@ -136,7 +126,7 @@ test6()
 }
 
 void
-test6a()
+test6()
 {
     double t0{0};
     for (int k = 0; k < 500; k++) {
@@ -177,75 +167,51 @@ test7()
         if (mp.free_size() != mp.total_size()) {
             throw std::runtime_error("wrong free size");
         }
-        // if (mp.num_blocks() != 1) {
-        //     throw std::runtime_error("wrong number of blocks");
-        // }
     }
 }
-
-// void test8()
-//{
-//     memory_pool mp(memory_t::host);
-//     mdarray<double_complex, 2> aa(mp, 100, 100);
-//     aa.deallocate(memory_t::host);
-//     //memory_pool::unique_ptr<double> up;
-//     //up = mp.get_unique_ptr<double>(100);
-//     //up.reset(nullptr);
-//
-//     if (mp.free_size() != mp.total_size()) {
-//         throw std::runtime_error("wrong free size");
-//     }
-//     if (mp.num_blocks() != 1) {
-//         throw std::runtime_error("wrong number of blocks");
-//     }
-//     if (mp.num_stored_ptr() != 0) {
-//         throw std::runtime_error("wrong number of stored pointers");
-//     }
-//
-// }
 
 double
 test_alloc_array(size_t n)
 {
-    double t0 = wtime();
+    auto t0 = time_now();
     /* time to allocate + fill */
     mdarray<char, 1> p({n});
     p.zero();
-    double t1 = wtime();
+    auto t1 = time_now();
     /* time fo fill */
     p.zero();
-    double t2 = wtime();
-    /* harmless: add zero to t0 to prevent full optimization of the code with GCC */
-    t0 += p[0];
+    auto t2 = time_now();
+    /* harmless: prevent full optimization of the code with GCC */
+    double dt = p[0];
     p.deallocate(memory_t::host);
-    double t3 = wtime();
+    auto t3 = time_now();
 
-    // return (t1 - t0) - (t2 - t1);
-    return (t3 - t0) - 2 * (t2 - t1);
+    dt += time_interval(t0, t3) - 2 * time_interval(t1, t2);
+    return dt;
 }
 
 double
 test_alloc_array(size_t n, memory_pool& mp)
 {
-    double t0 = wtime();
+    auto t0 = time_now();
     /* time to allocate + fill */
     mdarray<char, 1> p({n}, mp);
     p.zero();
-    double t1 = wtime();
+    auto t1 = time_now();
     /* time fo fill */
     p.zero();
-    double t2 = wtime();
-    /* harmless: add zero to t0 to prevent full optimization of the code with GCC */
-    t0 += p[0];
+    auto t2 = time_now();
+    /* harmless: prevent full optimization of the code with GCC */
+    double dt = p[0];
     p.deallocate(memory_t::host);
-    double t3 = wtime();
+    auto t3 = time_now();
 
-    // return (t1 - t0) - (t2 - t1);
-    return (t3 - t0) - 2 * (t2 - t1);
+    dt += time_interval(t0, t3) - 2 * time_interval(t1, t2);
+    return dt;
 }
 
 void
-test9()
+test8()
 {
     double t0{0};
     for (int k = 0; k < 500; k++) {
@@ -254,7 +220,7 @@ test9()
             t0 += test_alloc_array(sz);
         }
     }
-    memory_pool mp(memory_t::host);
+    memory_pool& mp = get_memory_pool(memory_t::host);
     double t1{0};
     for (int k = 0; k < 500; k++) {
         for (int i = 2; i < 1024; i++) {
@@ -266,45 +232,21 @@ test9()
 }
 
 int
-run_test()
+test_mempool()
 {
+    test1();
     test2();
-    test2a();
     test3();
+    test4();
     test5();
-    // test6();
-    // test6a();
+    test6();
     test7();
-    // test8();
-    // test9();
+    test8();
     return 0;
 }
 
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    printf("%-30s", "testing memory pool: ");
-    int result = run_test();
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
-
-    return 0;
+    return call_test(argv[0], test_mempool);
 }

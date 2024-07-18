@@ -1411,7 +1411,7 @@ class XC_functional_base
         auto ns = (num_spins__ == 1) ? XC_UNPOLARIZED : XC_POLARIZED;
 
         if (libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
-            handler_ = std::unique_ptr<xc_func_type>(new xc_func_type);
+            handler_ = std::make_unique<xc_func_type>();
 
             /* init xc functional handler */
             if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
@@ -1671,7 +1671,7 @@ class XC_functional_base
                 vsigma_dd[i] = vsigma[3 * i + 2];
             }
         } else {
-            auto h1 = std::unique_ptr<xc_func_type>(new xc_func_type);
+            auto h1 = std::make_unique<xc_func_type>();
 
             /* init xc functional handler */
             if (xc_func_init(h1.get(), XC_LDA_C_PZ, 2) != 0) {

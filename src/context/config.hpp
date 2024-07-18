@@ -197,6 +197,21 @@ class config_t
             }
             dict_["/settings/fft_grid_size"_json_pointer] = fft_grid_size__;
         }
+        /// Hard cutoff of the pseudopotential radial grids (a.u.)
+        /**
+            Integration grid for the local part of the pseudopotential is truncated at this value. This is because many pseudopotentials do not have properly decaying tails. The default is 10 a.u., and it comes from QE.
+        */
+        inline auto pseudo_grid_cutoff() const
+        {
+            return dict_.at("/settings/pseudo_grid_cutoff"_json_pointer).get<double>();
+        }
+        inline void pseudo_grid_cutoff(double pseudo_grid_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/pseudo_grid_cutoff"_json_pointer] = pseudo_grid_cutoff__;
+        }
         /// If true, coarse FFT grid is used to apply Hamiltonian and compute charge density from wave-functions.
         inline auto use_coarse_fft_grid() const
         {
@@ -271,6 +286,30 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/settings/xc_use_lapl"_json_pointer] = xc_use_lapl__;
+        }
+        /// Use more expensive but more accurate way to compute initial magnetisation in PP-PW case.
+        inline auto smooth_initial_mag() const
+        {
+            return dict_.at("/settings/smooth_initial_mag"_json_pointer).get<bool>();
+        }
+        inline void smooth_initial_mag(bool smooth_initial_mag__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/smooth_initial_mag"_json_pointer] = smooth_initial_mag__;
+        }
+        /// Force occupation matrix of DFT+U+V method to be strictly real.
+        inline auto real_occupation_matrix() const
+        {
+            return dict_.at("/settings/real_occupation_matrix"_json_pointer).get<bool>();
+        }
+        inline void real_occupation_matrix(bool real_occupation_matrix__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/real_occupation_matrix"_json_pointer] = real_occupation_matrix__;
         }
       private:
         nlohmann::json& dict_;
