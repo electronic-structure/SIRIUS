@@ -45,7 +45,8 @@ class Occupation_matrix : public Hubbard_matrix
     reduce();
 
     /// Copy non-local block corresponding to a pair of atoms from occ_mtrx_T_ to this->nonlocal.
-    /** The copy is done after symmetrisation. */
+    /** If symmetrization is not performed, the non-local blocks of occupation matrix must be copied from
+     *  occ_mtrx_T to this->nonlocal. */
     void
     update_nonlocal();
 
