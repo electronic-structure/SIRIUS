@@ -216,6 +216,10 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
                                               rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median,
                                               rt_graph::Stat::Min, rt_graph::Stat::Max});
         }
+        if (pt & 4) {
+            std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+            ofs << timing_result.json();
+        }
     }
 }
 

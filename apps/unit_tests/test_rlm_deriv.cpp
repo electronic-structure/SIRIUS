@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
@@ -920,31 +921,13 @@ test3()
 }
 
 int
+test_rlm_deriv()
+{
+    return test1() + test2() + test3();
+}
+
+int
 main(int argn, char** argv)
 {
-    cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    sirius::initialize(1);
-    int result = test1() + test2() + test3();
-
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
-    sirius::finalize();
-    return 0;
+    return call_test(argv[0], test_rlm_deriv);
 }

@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 #include "symmetry/crystal_symmetry.hpp"
 
 /* test rotation of spherical harmonics */
@@ -15,7 +16,7 @@ using namespace sirius;
 
 template <typename T>
 int
-run_test_impl(cmd_args& args)
+test_rot_ylm_impl(cmd_args const& args)
 {
     r3::matrix<double> lattice;
     lattice(0, 0) = 7;
@@ -101,10 +102,10 @@ run_test_impl(cmd_args& args)
 }
 
 int
-run_test(cmd_args& args)
+test_rot_ylm(cmd_args const& args)
 {
-    int result = run_test_impl<double>(args);
-    result += run_test_impl<std::complex<double>>(args);
+    int result = test_rot_ylm_impl<double>(args);
+    result += test_rot_ylm_impl<std::complex<double>>(args);
     return result;
 }
 
@@ -112,29 +113,5 @@ int
 main(int argn, char** argv)
 {
     cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    sirius::initialize(true);
-    printf("running %-30s : ", argv[0]);
-    int result = run_test(args);
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
-    sirius::finalize();
-
-    return result;
+    return call_test(argv[0], test_rot_ylm, args);
 }

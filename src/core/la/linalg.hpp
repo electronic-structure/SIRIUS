@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 #include "core/memory.hpp"
+#include "core/rte/rte.hpp"
 #include "core/acc/acc.hpp"
 #if defined(SIRIUS_GPU)
 #include "core/acc/acc_blas.hpp"
@@ -170,14 +171,16 @@ class wrap
         std::vector<int> ipiv(n);
         int info = this->getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
-            std::printf("getrf returned %i\n", info);
-            exit(-1);
+            std::stringstream s;
+            s << "getrf returned with non-zero info : " << info;
+            RTE_THROW(s);
         }
 
         info = this->getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
-            std::printf("getri returned %i\n", info);
-            exit(-1);
+            std::stringstream s;
+            s << "getri returned with non-zero info : " << info;
+            RTE_THROW(s);
         }
     }
 
@@ -188,14 +191,16 @@ class wrap
         std::vector<int> ipiv(n);
         int info = this->sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
-            std::printf("sytrf returned %i\n", info);
-            exit(-1);
+            std::stringstream s;
+            s << "sytrf returned with non-zero info : " << info;
+            RTE_THROW(s);
         }
 
         info = this->sytri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
         if (info) {
-            std::printf("sytri returned %i\n", info);
-            exit(-1);
+            std::stringstream s;
+            s << "sytri returned with non-zero info : " << info;
+            RTE_THROW(s);
         }
     }
 
@@ -205,8 +210,9 @@ class wrap
     {
         std::vector<int> ipiv(n);
         int info = this->sytrf(n, A.at(memory_t::host), A.ld(), ipiv.data());
-        if (info)
+        if (info) {
             return false;
+        }
 
         info = this->sytrs(n, 1, A.at(memory_t::host), A.ld(), ipiv.data(), b.at(memory_t::host), b.ld());
 
@@ -1986,6 +1992,7 @@ wrap::lartg(ftn_double f, ftn_double g) const
     switch (la_) {
         case lib_t::lapack: {
             FORTRAN(dlartg)(&f, &g, &cs, &sn, &r);
+            return std::make_tuple(cs, sn, r);
         }
         default: {
             RTE_THROW(linalg_msg_wrong_type);

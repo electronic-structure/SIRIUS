@@ -7,11 +7,12 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
-void
-test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, memory_t mem__)
+int
+test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
 
@@ -80,78 +81,36 @@ test_wf_inner(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__
         }
     }
     mpi::Communicator::world().reduce<double, mpi::op_t::max>(&max_diff, 1, 0);
-    if (mpi::Communicator::world().rank() == 0) {
-        printf("maximum difference: %18.12f\n", max_diff);
-        if (max_diff > 1e-10) {
-            printf("\x1b[31m"
-                   "Fail\n"
-                   "\x1b[0m"
-                   "\n");
-        } else {
-            printf("\x1b[32m"
-                   "OK\n"
-                   "\x1b[0m"
-                   "\n");
-        }
+    if (max_diff > 1e-10) {
+        return 1;
     }
-
-    // for (auto s = sr.begin(); s != sr.end(); s++) {
-    //     for (int i = 0; i < num_bands__; i++) {
-    //         for (int igloc = 0; igloc < gvec->count(); igloc++) {
-    //             phi1.pw_coeffs(memory_t::host, igloc, s, wf::band_index(i)) = utils::random<std::complex<double>>();
-    //         }
-    //     }
-    // }
-    // orthogonalize(spla_ctx, memory_t::host, sr, wf::band_range(0, 0),
-    //         wf::band_range(0, num_bands__), phi1, phi1, ovlp, {&phi1}, phi2, true);
-    // wf::inner(spla_ctx, memory_t::host, sr, phi1, wf::band_range(0, num_bands__), phi1, wf::band_range(0,
-    // num_bands__), ovlp, 0, 0); max_diff = sddk::check_identity(ovlp, num_bands__); if
-    // (mpi::Communicator::world().rank() == 0) {
-    //     printf("checking identity\n");
-    //     printf("maximum difference: %18.12f\n", max_diff);
-    //     if (max_diff > 1e-10) {
-    //         printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
-    //     } else {
-    //         printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
-    //     }
-    // }
+    return 0;
 }
 
 int
-main(int argn, char** argv)
+test_wf_inner(cmd_args const& args)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--cutoff=", "{double} wave-functions cutoff");
-    args.register_key("--bs=", "{int} block size");
-    args.register_key("--num_bands=", "{int} number of bands");
-    args.register_key("--memory_t=", "{string} type of the memory");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     auto mpi_grid_dims       = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff              = args.value<double>("cutoff", 8.0);
     auto bs                  = args.value<int>("bs", 32);
     auto num_bands           = args.value<int>("num_bands", 100);
     std::string memory_t_str = args.value<std::string>("memory_t", "host");
 
+    return test_wf_inner_impl(mpi_grid_dims, cutoff, num_bands, bs, get_memory_t(memory_t_str));
+}
+
+int
+main(int argn, char** argv)
+{
+    cmd_args args(argn, argv,
+                  {{"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+                   {"cutoff=", "{double} wave-functions cutoff"},
+                   {"bs=", "{int} block size"},
+                   {"num_bands=", "{int} number of bands"},
+                   {"memory_t=", "{string} type of the memory"}});
+
     sirius::initialize(1);
-
-    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, get_memory_t(memory_t_str));
-
-    mpi::Communicator::world().barrier();
-    int my_rank = mpi::Communicator::world().rank();
-
+    int result = call_test("test_wf_inner", test_wf_inner, args);
     sirius::finalize(1);
-
-    if (my_rank == 0) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-        // std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        // ofs << timing_result.json();
-    }
+    return result;
 }

@@ -6,52 +6,47 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.h>
+#include <sirius.hpp>
+#include "testing.hpp"
 
 using namespace sirius;
 
-void
-test_gvec_send_recv(double cutoff__)
+int
+test_gvec_send_recv(cmd_args const& args)
 {
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    auto cutoff = args.value<double>("cutoff", 3.0);
 
-    MPI_grid mpi_grid({2, 2}, mpi_comm_world());
+    r3::matrix<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+    mpi::Grid mpi_grid({2, 2}, mpi::Communicator::world());
     // MPI_grid mpi_grid({1, 1}, mpi_comm_world());
 
-    Gvec gvec(mpi_grid.communicator(1 << 0));
+    fft::Gvec gvec(mpi_grid.communicator(1 << 0));
 
     auto& comm_k = mpi_grid.communicator(1 << 1);
 
     if (comm_k.rank() == 0) {
-        gvec = Gvec(M, cutoff__, mpi_grid.communicator(1 << 0), false);
+        gvec = fft::Gvec(M, cutoff, mpi_grid.communicator(1 << 0), false);
     }
 
-    gvec.send_recv(comm_k, 0, 1, gvec);
+    fft::send_recv(comm_k, gvec, 0, 1);
 
     std::cout << "num_gvec = " << gvec.num_gvec() << "\n";
 
-    Gvec gvec1(mpi_grid.communicator(1 << 0));
+    fft::Gvec gvec1(mpi_grid.communicator(1 << 0));
 
-    gvec.send_recv(comm_k, 0, 0, gvec1);
+    send_recv(comm_k, gvec1, 0, 0);
+
+    return 0;
 }
 
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-
-    args.register_key("--cutoff=", "{double} wave-functions cutoff");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    auto cutoff = args.value<double>("cutoff", 3.0);
+    cmd_args args(argn, argv, {{"cutoff=", "{double} wave-functions cutoff"}});
 
     sirius::initialize(1);
-    test_gvec_send_recv(cutoff);
+    int result = call_test("test_gvec_send_recv", test_gvec_send_recv, args);
     sirius::finalize();
+    return result;
 }

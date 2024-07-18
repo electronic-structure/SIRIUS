@@ -7,11 +7,12 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
-void
-test1()
+int
+test_phase()
 {
     int N = 30000000;
     std::vector<r3::vector<double>> a(N);
@@ -41,12 +42,11 @@ test1()
     }
     printf("(default schedule) speed: %f million phase-factors / sec.\n", N * 10 / t1 / 1000000);
     printf("(static schedule) speed: %f million phase-factors / sec.\n", N * 10 / t2 / 1000000);
+    return 0;
 }
 
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{}});
-
-    test1();
+    return call_test("test_phase", test_phase);
 }

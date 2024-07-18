@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
@@ -19,17 +20,8 @@ memcpy_simple_1(char* dest__, char* src__, size_t n__)
 }
 
 int
-main(int argn, char** argv)
+test_memop()
 {
-    cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        exit(0);
-    }
-
     int n = 20000000;
     std::vector<double> v1(n, 1.0);
     std::vector<double> v2(n, 2.0);
@@ -58,4 +50,12 @@ main(int argn, char** argv)
     std::fill(v1.begin(), v1.end(), 0.0);
     t += omp_get_wtime();
     printf("std::fill bandwidth     : %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
+
+    return 0;
+}
+
+int
+main(int argn, char** argv)
+{
+    return call_test("test_memop", test_memop);
 }

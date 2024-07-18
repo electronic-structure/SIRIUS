@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
@@ -33,19 +34,6 @@ f2()
         std::cout << "a2(" << i << ")=" << a2(i) << std::endl;
     }
     mdarray<int, 1> a3(std::move(a2));
-    //==
-    //== //    a1.deallocate();
-    //== //
-    //== //    std::cout << "Deallocate a1" << std::endl;
-    //== //
-    //== //    for (int i = 0; i < 4; i++)
-    //== //    {
-    //== //        std::cout << "a2(" << i << ")=" << a2(i) << std::endl;
-    //== //    }
-    //== //
-    //== //
-    //== //    mdarray<int, 1> a3 = a2;
-    //== //
     for (int i = 0; i < 4; i++) {
         std::cout << "a3(" << i << ")=" << a3(i) << std::endl;
     }
@@ -77,8 +65,6 @@ f4()
     buf = mdarray<int, 1>({100}, memory_t::host, "buf");
 
     buf = mdarray<int, 1>({200}, memory_t::host, "buf");
-
-    // buf = mdarray<int, 1>(300, memory_t::host | memory_t::device, "buf");
 }
 
 void
@@ -105,10 +91,8 @@ f6(mdarray<T, N>& a)
 }
 
 int
-main(int argn, char** argv)
+test_mdarray()
 {
-    sirius::initialize(1);
-
     f2();
 
     f3();
@@ -119,6 +103,14 @@ main(int argn, char** argv)
 
     mdarray<double, 2> a;
     f6(a);
+    return 0;
+}
 
+int
+main(int argn, char** argv)
+{
+    sirius::initialize(1);
+    int result = call_test("test_mdarray", test_mdarray);
     sirius::finalize();
+    return result;
 }

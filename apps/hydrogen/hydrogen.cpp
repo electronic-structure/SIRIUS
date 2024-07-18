@@ -27,17 +27,11 @@ struct level_conf
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--grid_type=", "{int} type of the radial grid");
-    args.register_key("--num_points=", "{int} number of grid points");
-    args.register_key("--rmin=", "{double} first grid point");
-    args.register_key("--p=", "{double} additional grid parameter");
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv,
+                  {{"grid_type=", "{int} type of the radial grid"},
+                   {"num_points=", "{int} number of grid points"},
+                   {"rmin=", "{double} first grid point"},
+                   {"p=", "{double} additional grid parameter"}});
 
     printf("\n");
     printf("Test of radial solver for bare nuclear potential V(r) = -z / r \n");

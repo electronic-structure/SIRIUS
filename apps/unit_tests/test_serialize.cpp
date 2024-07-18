@@ -7,11 +7,12 @@
  */
 
 #include <sirius.hpp>
+#include <testing.hpp>
 
 using namespace sirius;
 
 int
-test1()
+test_serialize()
 {
     int a1{100};
     double b1{200.88};
@@ -107,29 +108,8 @@ int
 main(int argn, char** argv)
 {
     cmd_args args;
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
     sirius::initialize(1);
-    printf("%-30s", "testing serialization: ");
-    int result = test1();
-    if (result) {
-        printf("\x1b[31m"
-               "Failed"
-               "\x1b[0m"
-               "\n");
-    } else {
-        printf("\x1b[32m"
-               "OK"
-               "\x1b[0m"
-               "\n");
-    }
+    int result = call_test(argv[0], test_serialize);
     sirius::finalize();
-
     return result;
 }

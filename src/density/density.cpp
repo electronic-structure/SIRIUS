@@ -1038,7 +1038,6 @@ add_k_point_contribution_dm_pwpp(Simulation_context& ctx__, K_point<T>& kp__, de
     auto bp_coeffs = bp_gen.prepare();
 
     for (int ichunk = 0; ichunk < kp__.beta_projectors().num_chunks(); ichunk++) {
-        // kp__.beta_projectors().generate(ctx__.processing_unit_memory_t(), ichunk);
         bp_gen.generate(bp_coeffs, ichunk);
 
         if (ctx__.num_mag_dims() != 3) {

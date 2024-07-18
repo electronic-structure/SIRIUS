@@ -1,6 +1,5 @@
 {
   "control" : {
-      "cyclic_block_size" : 2,
       "processing_unit" : "cpu",
       "std_evp_solver_name" : "lapack",
       "gen_evp_solver_name" : "lapack",
@@ -11,8 +10,6 @@
 
   "parameters" : {
       "electronic_structure_method" : "pseudopotential",
-
-      "!num_fv_states" : 40,
 
       "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
@@ -26,7 +23,7 @@
       "pw_cutoff" : 20.00,
 
       "energy_tol" : 1e-8,
-      "density_tol" : 1e-5,
+      "density_tol" : 1e-6,
 
       "num_dft_iter" : 100,
 
@@ -43,9 +40,10 @@
     },
 
     "mixer" : {
-        "beta" : 0.75,
+        "beta" : 0.25,
         "type" : "anderson",
-        "max_history" : 8
+        "max_history" : 8,
+        "use_hartree" : true
     },
 
     "unit_cell" : {
@@ -61,8 +59,8 @@
 
         "atom_files" : {"Ni" : "ni_lda_v1.4.uspp.F.UPF.json", "O" : "o_lda_v1.2.uspp.F.UPF.json"},
 
-        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  4], 
-                             [0.5, 0.5, 0.5,    0,  0, -4] 
+        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  2], 
+                             [0.5, 0.5, 0.5,    0,  0, -2] 
                            ],
 
                     "O" :  [ [0.25, 0.25, 0.25],

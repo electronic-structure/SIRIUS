@@ -133,18 +133,8 @@ test_diag(la::BLACS_grid const& blacs_grid__, int N__, int n__, int nev__, int b
     if (blacs_grid__.comm().rank() == 0) {
         printf("maximum difference: %22.18f\n", diff);
     }
-    if (blacs_grid__.comm().rank() == 0) {
-        if (diff > 1e-10) {
-            printf("\x1b[31m"
-                   "Wrong residual\n"
-                   "\x1b[0m"
-                   "\n");
-        } else {
-            printf("\x1b[32m"
-                   "OK\n"
-                   "\x1b[0m"
-                   "\n");
-        }
+    if (diff > 1e-10) {
+        RTE_THROW("wrong residual");
     }
     return t;
 }
@@ -224,6 +214,25 @@ call_test(std::vector<int> mpi_grid__, int N__, int n__, int nev__, int bs__, bo
 }
 
 int
+test_eigen(cmd_args const& args__)
+{
+    auto mpi_grid_dims = args__.value("mpi_grid_dims", std::vector<int>({1, 1}));
+    auto N             = args__.value<int>("N", 200);
+    auto n             = args__.value<int>("n", 100);
+    auto nev           = args__.value<int>("nev", 50);
+    auto bs            = args__.value<int>("bs", 32);
+    auto repeat        = args__.value<int>("repeat", 2);
+    auto type          = args__.value<int>("type", 0);
+    auto test_gen      = args__.exist("gen");
+    auto name          = args__.value<std::string>("name", "lapack");
+    auto fname         = args__.value<std::string>("file", "");
+
+    call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);
+
+    return 0;
+}
+
+int
 main(int argn, char** argv)
 {
     cmd_args args(argn, argv,
@@ -238,18 +247,8 @@ main(int argn, char** argv)
                    {"file=", "{string} input file name"},
                    {"type=", "{int} data type: 0-real, 1-complex"}});
 
-    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
-    auto N             = args.value<int>("N", 200);
-    auto n             = args.value<int>("n", 100);
-    auto nev           = args.value<int>("nev", 50);
-    auto bs            = args.value<int>("bs", 32);
-    auto repeat        = args.value<int>("repeat", 2);
-    auto type          = args.value<int>("type", 0);
-    auto test_gen      = args.exist("gen");
-    auto name          = args.value<std::string>("name", "lapack");
-    auto fname         = args.value<std::string>("file", "");
-
     sirius::initialize(1);
-    call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);
+    int result = call_test("test_eigen", test_eigen, args);
     sirius::finalize();
+    return result;
 }

@@ -103,7 +103,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
     }
 }
 
-void
+int
 test_davidson(cmd_args const& args__)
 {
     auto pw_cutoff     = args__.value<double>("pw_cutoff", 30);
@@ -197,6 +197,7 @@ test_davidson(cmd_args const& args__)
                                                       estimate_eval, extra_ortho);
         }
     }
+    return 0;
 }
 
 int
@@ -219,18 +220,8 @@ main(int argn, char** argv)
                    {"precision_hs=", "{string} precision of the Hamiltonian subspace"},
                    {"only_kin", "use kinetic-operator only"}});
 
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
     sirius::initialize(1);
-    test_davidson(args);
-    int rank = mpi::Communicator::world().rank();
+    int result = call_test("test_davidson", test_davidson, args);
     sirius::finalize();
-    if (rank == 0) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-    }
+    return result;
 }

@@ -7,10 +7,11 @@
  */
 
 #include <sirius.hpp>
+#include "testing.hpp"
 
 using namespace sirius;
 
-void
+int
 test_lapw_xc(cmd_args const& args__)
 {
     auto pw_cutoff = args__.value<double>("pw_cutoff", 12);
@@ -82,6 +83,8 @@ test_lapw_xc(cmd_args const& args__)
 
     Potential pot(ctx);
     pot.xc(rho);
+
+    return 0;
 }
 
 int
@@ -92,18 +95,8 @@ main(int argn, char** argv)
                    {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
                    {"N=", "(int) cell multiplicity"}});
 
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
     sirius::initialize(1);
-    test_lapw_xc(args);
-    int rank = mpi::Communicator::world().rank();
+    int result = call_test("test_lapw_xc", test_lapw_xc, args);
     sirius::finalize();
-    if (!rank) {
-        const auto timing_result = global_rtgraph_timer.process();
-        std::cout << timing_result.print();
-    }
+    return result;
 }

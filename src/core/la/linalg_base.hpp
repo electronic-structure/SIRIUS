@@ -295,9 +295,11 @@ class linalg_base
         FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld1, &info);
 
         if (info) {
-            std::printf("error in descinit()\n");
-            std::printf("m=%i n=%i mb=%i nb=%i irsrc=%i icsrc=%i lld=%i\n", m, n, mb, nb, irsrc, icsrc, lld);
-            exit(-1);
+            std::stringstream s;
+            s << "error in descinit()" << std::endl
+              << "m=" << m << " n=" << n << " mb=" << mb << " nb=" << nb << " irsrc=" << irsrc << " icsrc=" << icsrc
+              << " lld=" << lld;
+            RTE_THROW(s);
         }
     }
 

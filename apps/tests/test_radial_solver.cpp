@@ -67,7 +67,5 @@ main(int argn, char** argv)
                    {"enu=", "(double) energy of the equation"},
                    {"dme=", "(int) energy derivative"}});
 
-    sirius::initialize(1);
-    call_test("test_radial_solver", test_radial_solver, args);
-    sirius::finalize();
+    return call_test("test_radial_solver", test_radial_solver, args);
 }
