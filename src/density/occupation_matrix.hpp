@@ -26,8 +26,10 @@ class Occupation_matrix : public Hubbard_matrix
     std::map<r3::vector<int>, mdarray<std::complex<double>, 3>> occ_mtrx_T_;
 
   public:
+    /// Constructor.
     Occupation_matrix(Simulation_context& ctx__);
 
+    /// Add contribution from k-point.
     template <typename T>
     void
     add_k_point_contribution(K_point<T>& kp__);
@@ -38,64 +40,23 @@ class Occupation_matrix : public Hubbard_matrix
     void
     init();
 
+    /// Sum over k-points.
     void
-    reduce()
-    {
-        if (!ctx_.hubbard_correction()) {
-            return;
-        }
+    reduce();
 
-        /* global reduction over k points */
-        for (int at_lvl = 0; at_lvl < (int)this->local_.size(); at_lvl++) {
-            const int ia     = atomic_orbitals_[at_lvl].first;
-            auto const& atom = ctx_.unit_cell().atom(ia);
-            if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
-                ctx_.comm_k().allreduce(this->local(at_lvl).at(memory_t::host),
-                                        static_cast<int>(this->local(at_lvl).size()));
-            }
-        }
-
-        /* reduce occ_mtrx_T_ (not nonlocal - it is computed during symmetrization from occ_mtrx_T_) */
-        for (auto& e : this->occ_mtrx_T_) {
-            ctx_.comm_k().allreduce(e.second.at(memory_t::host), static_cast<int>(e.second.size()));
-        }
-    }
+    /// Copy non-local block corresponding to a pair of atoms from occ_mtrx_T_ to this->nonlocal.
+    /** If symmetrization is not performed, the non-local blocks of occupation matrix must be copied from
+     *  occ_mtrx_T to this->nonlocal. */
+    void
+    update_nonlocal();
 
     void
-    update_nonlocal()
-    {
-        if (ctx_.num_mag_dims() == 3) {
-            RTE_THROW("only collinear case is supported");
-        }
-        for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
-            auto nl = ctx_.cfg().hubbard().nonlocal(i);
-            int ia  = nl.atom_pair()[0];
-            int ja  = nl.atom_pair()[1];
-            int il  = nl.l()[0];
-            int jl  = nl.l()[1];
-            int n1  = nl.n()[0];
-            int n2  = nl.n()[1];
-            int ib  = 2 * il + 1;
-            int jb  = 2 * jl + 1;
-            auto T  = nl.T();
-            this->nonlocal(i).zero();
+    calculate_constraints_and_error();
 
-            /* NOTE : the atom order is important here. */
-            int at1_lvl          = this->find_orbital_index(ia, n1, il);
-            int at2_lvl          = this->find_orbital_index(ja, n2, jl);
-            auto const& occ_mtrx = occ_mtrx_T_.at(T);
+    void
+    print_occupancies(int verbosity__) const;
 
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                for (int m1 = 0; m1 < ib; m1++) {
-                    for (int m2 = 0; m2 < jb; m2++) {
-                        this->nonlocal(i)(m1, m2, ispn) =
-                                occ_mtrx(this->offset(at1_lvl) + m1, this->offset(at2_lvl) + m2, ispn);
-                    }
-                }
-            }
-        }
-    }
-
+    /// Zero occupation matrix.
     void
     zero()
     {
@@ -104,11 +65,6 @@ class Occupation_matrix : public Hubbard_matrix
             e.second.zero();
         }
     }
-
-    void
-    calculate_constraints_and_error();
-    void
-    print_occupancies(int verbosity__) const;
 
     inline auto const&
     occ_mtrx_T(r3::vector<int> T__) const

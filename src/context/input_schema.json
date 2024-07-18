@@ -136,6 +136,11 @@
                     "type": "boolean",
                     "default": false,
                     "title": "Use more expensive but more accurate way to compute initial magnetisation in PP-PW case."
+                },
+                "real_occupation_matrix" : {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Force occupation matrix of DFT+U+V method to be strictly real."
                 }
             }
         },
