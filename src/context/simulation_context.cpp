@@ -970,7 +970,7 @@ Simulation_context::update()
         }
     }
 
-    if (unit_cell().num_atoms()) {
+    if (unit_cell().num_atoms() && this->num_mag_dims()) {
         init_atoms_to_grid_idx(cfg().control().rmt_max());
     }
 
