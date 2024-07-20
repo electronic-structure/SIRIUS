@@ -344,6 +344,14 @@ class Density : public Field4D
     /// Constructor
     Density(Simulation_context& ctx__);
 
+    /// Destructor
+    ~Density()
+    {
+        if (env::print_occupation_matrix() && occupation_matrix_) {
+            occupation_matrix_->print_occupancies(0);
+        }
+    }
+
     /// Update internal parameters after a change of lattice vectors or atomic coordinates.
     void
     update();

@@ -365,6 +365,7 @@ Occupation_matrix::print_occupancies(int verbosity__) const
                 auto const& atom = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl].first);
                 int il           = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
                 if (atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).use_for_calculation()) {
+                    /* print local part */
                     Hubbard_matrix::print_local(at_lvl, s);
                     double occ[2] = {0, 0};
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -385,12 +386,11 @@ Occupation_matrix::print_occupancies(int verbosity__) const
         if (ctx_.cfg().hubbard().nonlocal().size() && (ctx_.verbosity() >= verbosity__ + 1)) {
             s << std::endl;
             for (int i = 0; i < static_cast<int>(ctx_.cfg().hubbard().nonlocal().size()); i++) {
+                /* print non-local part */
                 Hubbard_matrix::print_nonlocal(i, s);
             }
         }
-        if (ctx_.verbosity() >= verbosity__) {
-            ctx_.message(1, "occ.mtrx", s);
-        }
+        ctx_.message(verbosity__, "occ.mtrx", s);
     }
 }
 

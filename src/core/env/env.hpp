@@ -91,6 +91,17 @@ print_timing()
     }
 }
 
+inline int
+print_occupation_matrix()
+{
+    auto val = get_value_ptr<int>("SIRIUS_PRINT_OCCUPATION_MATRIX");
+    if (val) {
+        return *val;
+    } else {
+        return 0;
+    }
+}
+
 inline std::string
 save_config()
 {
