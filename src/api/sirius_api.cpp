@@ -5835,7 +5835,7 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
                         s << "index : " << idx << ", atoms : " << v.atom_pair()[0] << " " << v.atom_pair()[1]
                           << ", T : " << v.T()[0] << " " << v.T()[1] << " " << v.T()[2]
                           << ", n : " << v.n()[0] << " " << v.n()[1]
-                          << ", l : " << v.l()[0] << " " << v.l()[1] << std::endl; 
+                          << ", l : " << v.l()[0] << " " << v.l()[1] << std::endl;
                     }
                     RTE_THROW(s);
                 }
