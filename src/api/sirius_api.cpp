@@ -5810,9 +5810,9 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
                     /* search if the pair is already present */
                     if ((at_pr[0] == atom_pair[0]) && (at_pr[1] == atom_pair[1])) {
                         auto tr = v.T();
-                        if ((tr[0] = translation[0]) && (tr[1] = translation[1]) && (tr[2] = translation[2])) {
+                        if ((tr[0] == translation[0]) && (tr[1] == translation[1]) && (tr[2] == translation[2])) {
                             auto lvl = v.n();
-                            if ((lvl[0] == n[0]) && (lvl[0] == n[1])) {
+                            if ((lvl[0] == n[0]) && (lvl[1] == n[1])) {
                                 auto li = v.l();
                                 if ((li[0] == l[0]) && (li[1] == l[1])) {
                                     test = true;
@@ -5826,7 +5826,17 @@ sirius_add_hubbard_atom_pair(void* const* handler__, int* const atom_pair__, int
                 if (!test) {
                     conf_dict.nonlocal().append(elem);
                 } else {
-                    RTE_THROW("Atom pair for hubbard correction is already present");
+                    std::stringstream s;
+                    s << "Atom pair for hubbard correction is already present" << std::endl
+                      << "  atom pair to add : " << elem << std::endl
+                      << "  existing pairs : " << std::endl;
+                    for (int idx = 0; idx < conf_dict.nonlocal().size(); idx++) {
+                        auto v = conf_dict.nonlocal(idx);
+                        s << "index : " << idx << ", atoms : " << v.atom_pair()[0] << " " << v.atom_pair()[1]
+                          << ", T : " << v.T()[0] << " " << v.T()[1] << " " << v.T()[2] << ", n : " << v.n()[0] << " "
+                          << v.n()[1] << ", l : " << v.l()[0] << " " << v.l()[1] << std::endl;
+                    }
+                    RTE_THROW(s);
                 }
             },
             error_code__);
