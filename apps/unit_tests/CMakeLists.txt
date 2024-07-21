@@ -5,7 +5,7 @@ test_sht_lapl;test_sht;test_spheric_function;test_splindex;test_gaunt_coeff_1;te
 test_init_ctx;test_cmd_args;test_geom3d;test_any_ptr")
 
 foreach(name ${unit_tests})
-  add_executable(${name} "${name}.cpp")
+  add_executable(${name} "${name}.cpp" ylmr2.f90)
   target_link_libraries(${name} PRIVATE sirius_cxx)
   install(TARGETS ${name} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
   add_test(NAME ${name} COMMAND ${name})

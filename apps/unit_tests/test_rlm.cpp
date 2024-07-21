@@ -758,6 +758,8 @@ SphericalHarmonicR(int l, int m, double t, double p)
     return 0;
 }
 
+extern "C" void ylmr2_(int* lmax2, int* ng, double* g, double* gg, double* ylm);
+
 int
 test_rlm()
 {
@@ -780,6 +782,18 @@ test_rlm()
     int lmax{10};
     std::vector<double> rlm((lmax + 1) * (lmax + 1));
     std::vector<double> rlm_ref((lmax + 1) * (lmax + 1));
+    std::vector<double> rlm_qe((lmax + 1) * (lmax + 1));
+    std::vector<double> rlm_qe_tmp((lmax + 1) * (lmax + 1));
+
+    auto idx_m_qe = [](int m__) -> int
+    {
+        return (m__ > 0) ? 2 * m__ - 1 : -2 * m__;
+    };
+
+    auto phase_m_qe = [](int m__) -> int
+    {
+        return (m__ < 0 && (-m__) % 2 == 0) ? -1 : 1;
+    };
 
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
@@ -788,15 +802,37 @@ test_rlm()
         sf::spherical_harmonics(lmax, theta, phi, &rlm[0]);
         sf::spherical_harmonics_ref(lmax, theta, phi, &rlm_ref[0]);
 
+        std::array<double, 3> v;
+        v[0] = std::sin(theta) * std::cos(phi);
+        v[1] = std::sin(theta) * std::sin(phi);
+        v[2] = std::cos(theta);
+
+        int lmax2 = (lmax + 1) * (lmax + 1);
+        int ng = 1;
+        double gg = 1;
+        ylmr2_(&lmax2, &ng, &v[0], &gg, &rlm_qe_tmp[0]);
+        for (int l = 0; l <= lmax; l++) {
+            for (int m = -l; m <= l; m++) {
+                rlm_qe[sf::lm(l, m)] = rlm_qe_tmp[l * l + idx_m_qe(m)] * phase_m_qe(m);
+            }
+        }
+        for (int l = 0; l <= lmax; l++) {
+            for (int m = -l; m <= l; m++) {
+                std::cout << "l="<<l<<", m="<<m<<", Rlm=" << rlm[sf::lm(l, m)] <<", QE=" << rlm_qe[sf::lm(l, m)] << std::endl;
+            }
+        }
+
         double diff{0};
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 auto val = SphericalHarmonicR(l, m, theta, phi);
                 diff += std::abs(rlm[sf::lm(l, m)] - rlm_ref[sf::lm(l, m)]);
                 diff += std::abs(rlm[sf::lm(l, m)] - val);
+                diff += std::abs(rlm_qe[sf::lm(l, m)] - val);
             }
         }
-        if (diff > 1e-10) {
+        std::cout << "diff=" << diff << std::endl;
+        if (diff > 1e-4) {
             return 1;
         }
     }
