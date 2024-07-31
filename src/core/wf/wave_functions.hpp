@@ -954,17 +954,13 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto& row_distr = gkvec_fft_->gvec_slab();
 
             /* send and receive dimensions */
-            PROFILE_START("get_sd_rd_counts");
             mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
             for (int j = 0; j < comm_col.size(); j++) {
                 sd.counts[j] = spl_num_wf_.local_size(block_id(j)) * row_distr.counts[comm_col.rank()];
                 rd.counts[j] = spl_num_wf_.local_size(block_id(comm_col.rank())) * row_distr.counts[j];
             }
-            PROFILE_STOP("get_sd_rd_counts");
-            PROFILE_START("calc_offsets");
             sd.calc_offsets();
             rd.calc_offsets();
-            PROFILE_STOP("calc_offsets");
 
             PROFILE_START("comm_alltoall");
             comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), recv_buf.at(memory_t::host),
@@ -1039,17 +1035,13 @@ class Wave_functions_fft : public Wave_functions_base<T>
             }
             PROFILE_STOP("reorder_sending_blocks");
             /* send and receive dimensions */
-            PROFILE_START("get_sd_rd_counts");
             mpi::block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
             for (int j = 0; j < comm_col.size(); j++) {
                 sd.counts[j] = spl_num_wf_.local_size(block_id(comm_col.rank())) * row_distr.counts[j];
                 rd.counts[j] = spl_num_wf_.local_size(block_id(j)) * row_distr.counts[comm_col.rank()];
             }
-            PROFILE_STOP("get_sd_rd_counts");
-            PROFILE_START("calc_offsets");
             sd.calc_offsets();
             rd.calc_offsets();
-            PROFILE_STOP("calc_offsets");
 
 #if !defined(NDEBUG)
             for (int i = 0; i < n_loc; i++) {
@@ -1082,14 +1074,12 @@ class Wave_functions_fft : public Wave_functions_base<T>
                               rd.counts.data(), rd.offsets.data());
             PROFILE_STOP("comm_alltoall");
 
-            PROFILE_START("copy");
             if (wf_->ld() != wf_->num_pw_) {
                 for (int i = 0; i < b__.size(); i++) {
                     auto out_ptr = wf_->data_[sp.get()].at(memory_t::host, 0, b__.begin() + i);
                     std::copy(wf_tmp.at(memory_t::host, 0, i), wf_tmp.at(memory_t::host, 0, i) + wf_->num_pw_, out_ptr);
                 }
             }
-            PROFILE_STOP("copy");
         }
         if (pp && wf_->gkvec().comm().rank() == 0) {
             auto t = ::sirius::time_interval(t0);
