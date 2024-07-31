@@ -256,13 +256,13 @@ mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
                         break;
                     }
                     case SPFFT_TRANS_C2C: {
-                        PROFILE_START("mul_by_veff_14_GPU_C2C");
+//                      PROFILE_START("mul_by_veff_14_GPU_C2C");
                         auto in  = reinterpret_cast<std::complex<T> const*>(in__);
                         auto out = reinterpret_cast<std::complex<T>*>(out__);
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
                         mul_by_veff_complex_real_gpu(nr, in, veff_vec__[idx_veff__]->values().at(memory_t::device),
                                                      out);
-                        PROFILE_STOP("mul_by_veff_14_GPU_C2C");
+//                      PROFILE_STOP("mul_by_veff_14_GPU_C2C");
                         break;
                     }
                 }
