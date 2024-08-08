@@ -394,6 +394,13 @@ class Atom
         return vector_field_;
     }
 
+    /// Set vector field.
+    inline void
+    set_vector_field(r3::vector<double> vector_field__)
+    {
+        vector_field_ = vector_field__;
+    }
+
     /// Return id of the symmetry class.
     inline int
     symmetry_class_id() const
