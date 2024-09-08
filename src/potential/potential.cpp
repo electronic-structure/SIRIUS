@@ -41,6 +41,7 @@ Potential::Potential(Simulation_context& ctx__)
     } else {
         lmax = 2 * ctx_.unit_cell().lmax();
     }
+    lmax = std::max(lmax, ctx_.cfg().settings().sht_lmax());
 
     if (lmax >= 0) {
         sht_ = std::make_unique<SHT>(ctx_.processing_unit(), lmax, ctx_.cfg().settings().sht_coverage());

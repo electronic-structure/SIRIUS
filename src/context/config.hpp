@@ -263,6 +263,21 @@ class config_t
             }
             dict_["/settings/sht_coverage"_json_pointer] = sht_coverage__;
         }
+        /// Maximum orbital quantum number for which spherical coverage need to be generated.
+        /**
+            This option can be used to increase shpherical coverage in muffin-tins. Impacts generation of XC potential.
+        */
+        inline auto sht_lmax() const
+        {
+            return dict_.at("/settings/sht_lmax"_json_pointer).get<int>();
+        }
+        inline void sht_lmax(int sht_lmax__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/sht_lmax"_json_pointer] = sht_lmax__;
+        }
         /// Density RMS tolerance to switch to FP64 implementation. If zero, estimation of iterative solver tolerance is used.
         inline auto fp32_to_fp64_rms() const
         {
