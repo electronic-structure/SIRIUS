@@ -59,24 +59,6 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
         out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
     }
     out__ << std::endl;
-
-    std::vector<std::string> labels = {"host"};
-    std::vector<memory_pool*> mp    = {&get_memory_pool(memory_t::host)};
-
-    int np{1};
-    if (acc::num_devices() > 0) {
-        labels.push_back("host pinned");
-        labels.push_back("device");
-        mp.push_back(&get_memory_pool(memory_t::host_pinned));
-        mp.push_back(&get_memory_pool(memory_t::device));
-        np = 3;
-    }
-
-    for (int i = 0; i < np; i++) {
-        out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
-              << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
-              << "num.blocks: " << mp[i]->num_blocks() << std::endl;
-    }
 }
 
 /// Store all callback functions in one place.

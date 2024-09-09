@@ -122,6 +122,12 @@
                     "title": "Coverage of sphere in case of spherical harmonics transformation",
                     "description": "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
                 },
+                "sht_lmax" : {
+                    "type": "integer",
+                    "default": -1,
+                    "title": "Maximum orbital quantum number for which spherical coverage need to be generated.",
+                    "description": "This option can be used to increase spherical coverage in muffin-tins. Impacts generation of XC potential."
+                },
                 "fp32_to_fp64_rms": {
                     "type": "number",
                     "default": 0,
