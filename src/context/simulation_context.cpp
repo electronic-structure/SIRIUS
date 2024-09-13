@@ -498,7 +498,7 @@ Simulation_context::initialize()
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << hbar(136, '-') << std::endl;
-            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col"
+            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col |     UUID"
                  << std::endl;
         }
         pout << std::setw(12) << hostname() << " | " << std::setw(6) << comm().rank() << std::setw(6)
@@ -507,7 +507,8 @@ Simulation_context::initialize()
              << std::setw(6) << mpi_grid_->communicator(3).rank() << std::setw(6)
              << mpi_grid_->communicator(1 << 0).rank() << std::setw(6) << mpi_grid_->communicator(1 << 1).rank()
              << "   | " << std::setw(6) << blacs_grid().comm().rank() << std::setw(6) << blacs_grid().comm_row().rank()
-             << std::setw(6) << blacs_grid().comm_col().rank() << std::endl;
+             << std::setw(6) << blacs_grid().comm_col().rank() << "  |  " << acc::get_uuid(acc::get_device_id())
+             << std::endl;
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
 

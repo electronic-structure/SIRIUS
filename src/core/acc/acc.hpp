@@ -37,6 +37,7 @@
 
 #include <complex>
 #include <vector>
+#include <iomanip>
 #include <stdio.h>
 
 namespace sirius {
@@ -315,13 +316,30 @@ print_device_info(int device_id__, std::ostream& out__)
           << "  ECCEnabled                       : " << devprop.ECCEnabled << std::endl
           << "  memPitch                         : " << devprop.memPitch << std::endl;
 #endif
-    // this is cuda10
-    // printf("  uuid                             : ");
-    // for (int s = 0; s < 16; s++) {
-    //     std::printf("%#2x ", (unsigned char)devprop.uuid.bytes[s]);
-    // }
-    // printf("\n");
 #endif
+}
+
+inline std::string
+get_uuid(int device_id__)
+{
+#if defined(SIRIUS_CUDA)
+    cudaDeviceProp devprop;
+#elif defined(SIRIUS_ROCM)
+    hipDeviceProp_t devprop;
+#endif
+
+    CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
+
+    std::stringstream s;
+#if defined(SIRIUS_CUDA)
+    for (int i = 0; i < 16; i++) {
+        if (i == 4 || i == 6 || i == 8 || i == 10) {
+            s << '-';
+        }
+        s << std::hex << std::setw(2) << std::setfill('0') << (int)devprop.uuid.bytes[i];
+    }
+#endif
+    return s.str();
 }
 
 /// Copy memory inside a device.
