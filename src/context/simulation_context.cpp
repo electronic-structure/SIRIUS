@@ -498,7 +498,8 @@ Simulation_context::initialize()
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << hbar(136, '-') << std::endl;
-            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col |     UUID"
+            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, "
+                    "col |     UUID"
                  << std::endl;
         }
         pout << std::setw(12) << hostname() << " | " << std::setw(6) << comm().rank() << std::setw(6)
