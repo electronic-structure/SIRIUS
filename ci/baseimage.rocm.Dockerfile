@@ -23,7 +23,7 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
     tar zxvf cmake.tar.gz --strip-components=1 -C /usr
 
 # get latest version of spack
-RUN git clone -b v0.21.2 https://github.com/spack/spack.git
+RUN git clone -b v0.22.2 https://github.com/spack/spack.git
 
 # add local repo to spack
 COPY ./spack /opt/spack
