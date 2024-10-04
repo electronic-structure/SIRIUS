@@ -391,7 +391,7 @@ Simulation_context::initialize()
     for (int i : {0, 1}) {
         if (evsn[i] == "auto") {
             /* conditions for sequential diagonalization */
-            if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
+            if (comm_band().size() == 1 || npc == 1 || npr == 1 || !(is_scalapack || is_elpa || is_dlaf)) {
                 if (full_potential()) {
                     if (is_magma) {
                         evsn[i] = "magma";
