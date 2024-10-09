@@ -643,7 +643,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                     result.eval(j, ispin_step) = eval[j - num_locked];
                 }
 
-                if (last_iteration && ! result.converged && verbosity__ >= 3) {
+                if (last_iteration && !result.converged && verbosity__ >= 3) {
                     RTE_OUT(out__) << "Warning: maximum number of iterations reached, but "
                                    << result.num_unconverged[ispin_step] << " residual(s) did not converge for k-point "
                                    << kp__.vk()[0] << " " << kp__.vk()[1] << " " << kp__.vk()[2] << std::endl;

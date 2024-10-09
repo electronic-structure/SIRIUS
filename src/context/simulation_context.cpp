@@ -622,9 +622,9 @@ Simulation_context::print_info(std::ostream& out__) const
                 os << reln[i] << relm.at(relt[i]) << std::endl;
             }
         } else {
-           os << "total number of beta projectors    : " << unit_cell().mt_aw_basis_size() << std::endl
-              << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
-              << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl;
+            os << "total number of beta projectors    : " << unit_cell().mt_aw_basis_size() << std::endl
+               << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
+               << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl;
         }
         os << "lmax_rf                            : " << unit_cell().lmax() << std::endl
            << "smearing type                      : " << cfg().parameters().smearing().c_str() << std::endl
@@ -740,9 +740,8 @@ Simulation_context::print_info(std::ostream& out__) const
         }
 
         size_t wf_size = ngk * nwf * 16;
-        os << "approximate size of wave-function objects for each k-point: "
-           << static_cast<int>(wf_size >> 20) << " Mb,  "
-           << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
+        os << "approximate size of wave-function objects for each k-point: " << static_cast<int>(wf_size >> 20)
+           << " Mb,  " << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
 
         /* number of simultaneously treated spin components */
         int num_sc = (num_mag_dims() == 3) ? 2 : 1;
