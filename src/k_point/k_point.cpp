@@ -268,8 +268,6 @@ K_point<T>::generate_hubbard_orbitals()
             //    RTE_OUT(std::cout) << "orthogonalization error " << diff << std::endl;
             //}
         }
-
-        // beta_projectors().dismiss();
     }
 
     if (pcs) {
