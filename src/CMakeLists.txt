@@ -118,7 +118,9 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
-  $<$<BOOL:${SIRIUS_USE_NVTX}>:nvToolsExt>
+  $<TARGET_NAME_IF_EXISTS:CUDA::nvToolsExt>
+  $<TARGET_NAME_IF_EXISTS:sirius::roctx>
+  $<TARGET_NAME_IF_EXISTS:sirius::roctracer>
   $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocsolver>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocblas>
@@ -137,7 +139,7 @@ target_compile_definitions(sirius_cxx PUBLIC
   $<$<BOOL:${SIRIUS_USE_ELPA}>:SIRIUS_ELPA>
   $<$<BOOL:${SIRIUS_USE_NLCGLIB}>:SIRIUS_NLCGLIB>
   $<$<BOOL:${SIRIUS_USE_CUDA}>:SIRIUS_GPU SIRIUS_CUDA>
-  $<$<BOOL:${SIRIUS_USE_NVTX}>:SIRIUS_CUDA_NVTX>
+  $<$<BOOL:${SIRIUS_USE_NVTX}>:SIRIUS_TX>
   $<$<BOOL:${SIRIUS_USE_MAGMA}>:SIRIUS_MAGMA>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>
   $<$<BOOL:${SIRIUS_USE_VDWXC}>:SIRIUS_USE_VDWXC>

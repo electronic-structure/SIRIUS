@@ -34,15 +34,15 @@ call_test(std::string label__, F&& f__, Args&&... args__)
 {
     int err{0};
     std::string msg;
-    try {
+    // try {
         err = f__(std::forward<Args>(args__)...);
-    } catch (std::exception const& e) {
-        err = 1;
-        msg = e.what();
-    } catch (...) {
-        err = 2;
-        msg = "unknown exception";
-    }
+    // } catch (std::exception const& e) {
+    //     err = 1;
+    //     msg = e.what();
+    // } catch (...) {
+    //     err = 2;
+    //     msg = "unknown exception";
+    // }
     if (err) {
         std::cout << label__ << " : Failed" << std::endl;
         if (msg.size()) {
