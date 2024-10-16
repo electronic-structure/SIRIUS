@@ -14,7 +14,6 @@
 #include "core/rte/rte.hpp"
 #include "core/wf/wave_functions.hpp"
 #ifdef SIRIUS_NLCGLIB
-#include <stdexcept>
 
 #include "adaptor.hpp"
 #include "apply_hamiltonian.hpp"
@@ -332,6 +331,13 @@ Energy::print_info() const
 
         std::printf("\n");
     }
+}
+
+MPI_Comm
+Energy::comm_world() const
+{
+    auto& ctx = kset_.ctx();
+    return ctx.comm().native();
 }
 
 void

@@ -7,6 +7,7 @@
  */
 
 #include "python_module_includes.hpp"
+#include <memory>
 #include <string>
 #include <iomanip>
 #include <complex>
@@ -25,16 +26,16 @@ using PT = double;
 void
 init_operators(py::module& m)
 {
-    py::class_<Non_local_operator<PT>>(m, "Non_local_operator")
+    py::class_<Non_local_operator<PT>, std::shared_ptr<Non_local_operator<PT>>>(m, "Non_local_operator")
             .def("get_matrix", &Non_local_operator<PT>::get_matrix<std::complex<double>>);
-    py::class_<D_operator<PT>, Non_local_operator<PT>>(m, "D_operator");
-    py::class_<Q_operator<PT>, Non_local_operator<PT>>(m, "Q_operator");
+    py::class_<D_operator<PT>, Non_local_operator<PT>, std::shared_ptr<D_operator<PT>>>(m, "D_operator");
+    py::class_<Q_operator<PT>, Non_local_operator<PT>, std::shared_ptr<Q_operator<PT>>>(m, "Q_operator");
 
     py::class_<Hamiltonian0<PT>>(m, "Hamiltonian0")
             .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>(), "Potential"_a,
                  py::arg("precompute_lapw") = false)
-            .def("Q", &Hamiltonian0<PT>::Q, py::return_value_policy::reference_internal)
-            .def("D", &Hamiltonian0<PT>::D, py::return_value_policy::reference_internal)
+            .def("Q", &Hamiltonian0<PT>::Q_ptr)
+            .def("D", &Hamiltonian0<PT>::D_ptr)
             .def("Hk", &Hamiltonian0<PT>::operator(), py::keep_alive<0, 1>())
             .def("potential", &Hamiltonian0<PT>::potential, py::return_value_policy::reference_internal);
 
@@ -46,8 +47,9 @@ init_operators(py::module& m)
             .def_property_readonly("U", &Hamiltonian_k<PT>::U, py::return_value_policy::reference_internal);
 
     py::class_<S_k<complex_double>>(m, "S_k")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
+            .def(py::init<memory_t, std::shared_ptr<spla::Context>, std::shared_ptr<Q_operator<PT> const>,
+                          std::shared_ptr<Beta_projectors_base<PT> const>, int>(),
+                 py::keep_alive<1, 2>())
             .def_property_readonly("size", &S_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t = S_k<complex_double>;
@@ -71,9 +73,11 @@ init_operators(py::module& m)
                 return sk.apply(array, memory_t::host);
             });
 
+    py::class_<spla::Context, std::shared_ptr<spla::Context>>(m, "splaContext");
+
     py::class_<InverseS_k<complex_double>>(m, "InverseS_k")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
+            .def(py::init<memory_t, std::shared_ptr<spla::Context>, std::shared_ptr<Q_operator<PT> const>,
+                          std::shared_ptr<Beta_projectors_base<PT> const>, int>())
             .def_property_readonly("size", &InverseS_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t       = InverseS_k<complex_double>;
@@ -98,9 +102,9 @@ init_operators(py::module& m)
             });
 
     py::class_<Ultrasoft_preconditioner<complex_double>>(m, "Precond_us")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, int, const Beta_projectors_base<PT>&,
-                          const fft::Gvec&>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 5>(), py::keep_alive<1, 6>())
+            .def(py::init<Simulation_context&, std::shared_ptr<Q_operator<PT> const>, int,
+                          std::shared_ptr<Beta_projectors_base<PT> const>, const fft::Gvec&>(),
+                 py::keep_alive<1, 2>())
             .def_property_readonly("size", &Ultrasoft_preconditioner<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t    = Ultrasoft_preconditioner<complex_double>;
@@ -163,12 +167,13 @@ init_operators(py::module& m)
             .def("generate_j", py::overload_cast<beta_projectors_coeffs_t<PT>&, int, int>(
                                        &Beta_projector_generator<PT>::generate, py::const_));
 
-    py::class_<Beta_projectors_base<PT>>(m, "Beta_projectors_base")
+    py::class_<Beta_projectors_base<PT>, std::shared_ptr<Beta_projectors_base<PT>>>(m, "Beta_projectors_base")
             .def_property_readonly("num_chunks", &Beta_projectors_base<PT>::num_chunks)
             .def("make_generator", py::overload_cast<device_t>(&Beta_projectors_base<PT>::make_generator, py::const_),
                  py::keep_alive<1, 0>());
 
-    py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>>(m, "Beta_projectors");
+    py::class_<Beta_projectors<PT>, Beta_projectors_base<PT>, std::shared_ptr<Beta_projectors<PT>>>(m,
+                                                                                                    "Beta_projectors");
     m.def("apply_U_operator", &apply_U_operator<double>, py::arg("ctx"), py::arg("spin_range"), py::arg("band_range"),
           py::arg("hub_wf"), py::arg("phi"), py::arg("u_op"), py::arg("hphi"));
 

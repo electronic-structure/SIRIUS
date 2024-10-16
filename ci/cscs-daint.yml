@@ -31,6 +31,7 @@ build cuda image mkl:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -41,6 +42,7 @@ build cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     CSCS_REBUILD_POLICY: always
     DOCKERFILE: ci/build.Dockerfile
@@ -52,6 +54,7 @@ build rocm image:
   extends: .container-builder
   needs: ["build base rocm image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -62,6 +65,7 @@ build elpa cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -72,6 +76,7 @@ build sequential eigen-solver cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -82,6 +87,7 @@ build fp32 cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -92,6 +98,7 @@ build vdwxc cuda image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -103,6 +110,7 @@ build nlcg image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -113,6 +121,7 @@ build clang image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
@@ -124,6 +133,7 @@ build openmpi image:
   extends: .container-builder
   needs: ["build base cuda image"]
   stage: build
+  timeout: 4h
   variables:
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard

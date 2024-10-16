@@ -67,7 +67,7 @@ RUN spack install openblas %gcc +fortran
 
 RUN spack install magma %gcc +cuda +fortran ^openblas
 
-RUN spack install nlcglib@master %gcc +cuda
+RUN spack install nlcglib@develop %gcc +cuda
 
 # for the MPI hook
 RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
