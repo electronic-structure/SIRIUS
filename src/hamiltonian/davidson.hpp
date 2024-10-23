@@ -267,7 +267,6 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
             (ctx.full_potential()) ? Hk__.template get_h_o_diag_lapw<3>() : Hk__.template get_h_o_diag_pw<T, 3>();
 
     mdarray<T, 2>* h_diag{nullptr};
-    ;
     mdarray<T, 2>* o_diag{nullptr};
 
     switch (what) {
@@ -612,7 +611,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
             /* exit criteria is easier if we allow non-zero minimum number of unconverged residuals */
             bool converged_by_absolute_tol = (num_locked + num_converged - itso.min_num_res()) >= num_bands__.get();
 
-            bool converged = converged_by_relative_tol && converged_by_absolute_tol;
+            result.converged = converged_by_relative_tol && converged_by_absolute_tol;
 
             /* TODO: num_unconverged might be very small at some point slowing down convergence
                      can we add more? */
@@ -629,7 +628,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
             }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-            if (should_restart || converged || last_iteration) {
+            if (should_restart || result.converged || last_iteration) {
                 PROFILE("sirius::davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
@@ -644,15 +643,14 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                     result.eval(j, ispin_step) = eval[j - num_locked];
                 }
 
-                if (last_iteration && !converged && verbosity__ >= 3) {
+                if (last_iteration && !result.converged && verbosity__ >= 3) {
                     RTE_OUT(out__) << "Warning: maximum number of iterations reached, but "
                                    << result.num_unconverged[ispin_step] << " residual(s) did not converge for k-point "
                                    << kp__.vk()[0] << " " << kp__.vk()[1] << " " << kp__.vk()[2] << std::endl;
-                    result.converged = false;
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-                if (converged || last_iteration) {
+                if (result.converged || last_iteration) {
                     if (verbosity__ >= 3) {
                         RTE_OUT(out__) << "end of iterative diagonalization; num_unconverged: "
                                        << result.num_unconverged[ispin_step] << ", iteration step: " << iter_step

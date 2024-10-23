@@ -595,39 +595,44 @@ Simulation_context::print_info(std::ostream& out__) const
     {
         rte::ostream os(out__, "info");
         os << "total nuclear charge               : " << unit_cell().total_nuclear_charge() << std::endl
-           << "number of core electrons           : " << unit_cell().num_core_electrons() << std::endl
-           << "number of valence electrons        : " << unit_cell().num_valence_electrons() << std::endl
-           << "total number of electrons          : " << unit_cell().num_electrons() << std::endl
-           << "extra charge                       : " << cfg().parameters().extra_charge() << std::endl
-           << "total number of aw basis functions : " << unit_cell().mt_aw_basis_size() << std::endl
-           << "total number of lo basis functions : " << unit_cell().mt_lo_basis_size() << std::endl
-           << "number of first-variational states : " << num_fv_states() << std::endl
+           << "  number of core electrons         : " << unit_cell().num_core_electrons() << std::endl
+           << "  number of valence electrons      : " << unit_cell().num_valence_electrons() << std::endl
+           << "  total number of electrons        : " << unit_cell().num_electrons() << std::endl
+           << "  extra charge                     : " << cfg().parameters().extra_charge() << std::endl
            << "number of bands                    : " << num_bands() << std::endl
            << "number of spins                    : " << num_spins() << std::endl
            << "number of magnetic dimensions      : " << num_mag_dims() << std::endl
            << "number of spinor components        : " << num_spinor_comp() << std::endl
-           << "number of spinors per band index   : " << num_spinors() << std::endl
-           << "lmax_apw                           : " << unit_cell().lmax_apw() << std::endl
-           << "lmax_rho                           : " << lmax_rho() << std::endl
-           << "lmax_pot                           : " << lmax_pot() << std::endl
-           << "lmax_rf                            : " << unit_cell().lmax() << std::endl
+           << "number of spinors per band index   : " << num_spinors() << std::endl;
+        if (this->full_potential()) {
+            os << "total number of aw basis functions : " << unit_cell().mt_aw_basis_size() << std::endl
+               << "total number of lo basis functions : " << unit_cell().mt_lo_basis_size() << std::endl
+               << "number of first-variational states : " << num_fv_states() << std::endl
+               << "lmax_apw                           : " << unit_cell().lmax_apw() << std::endl
+               << "lmax_rho                           : " << lmax_rho() << std::endl
+               << "lmax_pot                           : " << lmax_pot() << std::endl;
+            std::string reln[]  = {"valence relativity                 : ", "core relativity                    : "};
+            relativity_t relt[] = {valence_relativity_, core_relativity_};
+            std::map<relativity_t, std::string> const relm = {{relativity_t::none, "none"},
+                                                              {relativity_t::koelling_harmon, "Koelling-Harmon"},
+                                                              {relativity_t::zora, "zora"},
+                                                              {relativity_t::iora, "iora"},
+                                                              {relativity_t::dirac, "Dirac"}};
+            for (int i = 0; i < 2; i++) {
+                os << reln[i] << relm.at(relt[i]) << std::endl;
+            }
+        } else {
+            os << "total number of beta projectors    : " << unit_cell().mt_aw_basis_size() << std::endl
+               << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
+               << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl;
+        }
+        os << "lmax_rf                            : " << unit_cell().lmax() << std::endl
            << "smearing type                      : " << cfg().parameters().smearing().c_str() << std::endl
            << "smearing width                     : " << smearing_width() << std::endl
            << "cyclic block size                  : " << cyclic_block_size() << std::endl
            << "|G+k| cutoff                       : " << gk_cutoff() << std::endl
-           << "symmetry                           : " << std::boolalpha << use_symmetry() << std::endl
+           << "use_symmetry                       : " << std::boolalpha << use_symmetry() << std::endl
            << "so_correction                      : " << std::boolalpha << so_correction() << std::endl;
-
-        std::string reln[]  = {"valence relativity                 : ", "core relativity                    : "};
-        relativity_t relt[] = {valence_relativity_, core_relativity_};
-        std::map<relativity_t, std::string> const relm = {{relativity_t::none, "none"},
-                                                          {relativity_t::koelling_harmon, "Koelling-Harmon"},
-                                                          {relativity_t::zora, "zora"},
-                                                          {relativity_t::iora, "iora"},
-                                                          {relativity_t::dirac, "Dirac"}};
-        for (int i = 0; i < 2; i++) {
-            os << reln[i] << relm.at(relt[i]) << std::endl;
-        }
 
         std::string evsn[]     = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
         la::ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
@@ -638,6 +643,18 @@ Simulation_context::print_info(std::ostream& out__) const
                 {la::ev_solver_t::cusolver, "cuSOLVER"}};
         for (int i = 0; i < 2; i++) {
             os << evsn[i] << evsm.at(evst[i]) << std::endl;
+        }
+        os << "diagonalization method             : " << cfg().iterative_solver().type() << std::endl;
+        if (cfg().iterative_solver().type() != "exact") {
+            os << "  number of steps                  : " << cfg().iterative_solver().num_steps() << std::endl
+               << "  subspace size                    : " << cfg().iterative_solver().subspace_size() << std::endl
+               << "  early restart ratio              : " << cfg().iterative_solver().early_restart() << std::endl;
+        }
+        os << "mixer                              : " << cfg().mixer().type() << std::endl
+           << "  mixing beta                      : " << cfg().mixer().beta() << std::endl
+           << "  max_history                      : " << cfg().mixer().max_history() << std::endl;
+        if (!this->full_potential()) {
+            os << "  use_hartree                      : " << std::boolalpha << cfg().mixer().use_hartree() << std::endl;
         }
         os << "processing unit                    : ";
         switch (processing_unit()) {
@@ -653,17 +670,6 @@ Simulation_context::print_info(std::ostream& out__) const
             }
         }
         os << std::endl
-           << "iterative solver                   : " << cfg().iterative_solver().type() << std::endl
-           << "number of steps                    : " << cfg().iterative_solver().num_steps() << std::endl
-           << "subspace size                      : " << cfg().iterative_solver().subspace_size() << std::endl
-           << "early restart ratio                : " << cfg().iterative_solver().early_restart() << std::endl
-           << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
-           << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl
-           << "mixer                              : " << cfg().mixer().type() << std::endl
-           << "mixing beta                        : " << cfg().mixer().beta() << std::endl
-           << "max_history                        : " << cfg().mixer().max_history() << std::endl
-           << "use_hartree                        : " << std::boolalpha << cfg().mixer().use_hartree() << std::endl
-           << std::endl
            << "spglib version: " << spg_get_major_version() << "." << spg_get_minor_version() << "."
            << spg_get_micro_version() << std::endl;
     }
@@ -725,9 +731,17 @@ Simulation_context::print_info(std::ostream& out__) const
         os << "approximate number of G+k vectors        : " << ngk << std::endl
            << "approximate number of G vectors          : " << ng << std::endl
            << "approximate number of coarse G vectors   : " << ngc << std::endl;
-        size_t wf_size = ngk * num_bands() * num_spins() * 16;
-        os << "approximate size of wave-functions for each k-point: " << static_cast<int>(wf_size >> 20) << " Mb,  "
-           << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
+
+        /* wave-functions + beta projectors */
+        size_t nwf = num_bands() * num_spins() + unit_cell().mt_aw_basis_size();
+        /* for Hubbard correction */
+        if (this->hubbard_correction()) {
+            nwf += 2 * (this->unit_cell().num_hubbard_wf().first + this->unit_cell().num_ps_atomic_wf().first);
+        }
+
+        size_t wf_size = ngk * nwf * 16;
+        os << "approximate size of wave-function objects for each k-point: " << static_cast<int>(wf_size >> 20)
+           << " Mb,  " << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
 
         /* number of simultaneously treated spin components */
         int num_sc = (num_mag_dims() == 3) ? 2 : 1;
