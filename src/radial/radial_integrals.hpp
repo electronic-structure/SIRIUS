@@ -294,7 +294,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
         }
     }
 
-    /// Compute all values of the raial integrals.
+    /// Compute all values of the radial integrals.
     inline auto
     values(std::vector<double>& q__, mpi::Communicator const& comm__) const
     {
