@@ -18,6 +18,7 @@
 #include "k_point.hpp"
 #include "dft/smearing.hpp"
 #include "unit_cell/unit_cell.hpp"
+#include "core/expected.hpp"
 
 namespace sirius {
 

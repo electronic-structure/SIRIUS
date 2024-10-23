@@ -6,12 +6,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <exception>
 #include <limits>
 #include "dft/smearing.hpp"
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
 #include "symmetry/get_irreducible_reciprocal_mesh.hpp"
 #include <iomanip>
+#include "core/expected.hpp"
 
 namespace sirius {
 
@@ -167,7 +169,7 @@ K_point_set::initialize(std::vector<int> const& counts)
 }
 
 template <class F>
-double
+util::expected<double, std::string>
 bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
 {
     double x  = (a + b) / 2;
@@ -187,9 +189,7 @@ bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
         fi = f(x);
 
         if (step > maxstep) {
-            std::stringstream s;
-            s << "search of band occupancies failed after 10000 steps";
-            RTE_THROW(s);
+            return util::unexpected("search of band occupancies failed after 10000 steps");
         }
         step++;
     }
