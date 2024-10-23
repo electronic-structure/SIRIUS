@@ -14,6 +14,7 @@
 #ifndef __K_POINT_HPP__
 #define __K_POINT_HPP__
 
+#include "context/simulation_context.hpp"
 #include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
@@ -155,7 +156,7 @@ class K_point
     int num_ranks_row_;
 
     /// Beta projectors for a local set of G+k vectors.
-    std::unique_ptr<Beta_projectors<T>> beta_projectors_{nullptr};
+    std::shared_ptr<Beta_projectors<T>> beta_projectors_{nullptr};
 
     /// Beta projectors for row G+k vectors.
     /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
@@ -758,6 +759,12 @@ class K_point
     }
 
     auto
+    beta_projectors_ptr() const -> std::shared_ptr<Beta_projectors<T> const>
+    {
+        return beta_projectors_;
+    }
+
+    auto
     beta_projectors() const -> const Beta_projectors<T>&
     {
         RTE_ASSERT(beta_projectors_ != nullptr);
@@ -778,8 +785,8 @@ class K_point
         return *beta_projectors_col_;
     }
 
-    auto const&
-    ctx() const
+    auto
+    ctx() const -> Simulation_context const&
     {
         return ctx_;
     }

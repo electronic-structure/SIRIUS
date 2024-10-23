@@ -83,17 +83,15 @@ class LineEvaluator:
         X_new = self.X + t * self.G_X
         eta_new = self.eta + t * self.G_eta
         ek, Ul = eta_new.eigh()
-        X = loewdin(X_new, self.overlap) @ Ul
+        X_new = loewdin(X_new, self.overlap) @ Ul
         fn, mu = self.M.smearing.fn(ek)
 
-        # check fn
-
-        FE, Hx = self.M(X, fn=fn, mu=mu, ek=ek)
+        FE, Hx = self.M(X_new, fn=fn, mu=mu, ek=ek)
         return SimpleNamespace(
             **{
                 "free_energy": FE,
                 "Hx": Hx,
-                "X": X,
+                "X": X_new,
                 "fn": fn,
                 "mu": mu,
                 "ek": ek,

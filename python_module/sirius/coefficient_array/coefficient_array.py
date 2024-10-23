@@ -231,7 +231,9 @@ class CoefficientArray(CoefficientArrayBase):
         """ """
         loc_sum = np.array(sum([np.sum(v, **kwargs) for _, v in self.items()]))
         reduced = MPI.COMM_WORLD.allreduce(loc_sum, op=MPI.SUM)
-        return np.ndarray.item(reduced)
+        if isinstance(reduced, np.ndarray):
+            return np.ndarray.item(reduced)
+        return reduced
 
     def log(self, **kwargs):
         out = type(self)()

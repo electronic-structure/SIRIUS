@@ -44,7 +44,6 @@ def validate_config(dd):
     cg = {
         Required("method"): Any(marzari, neugebauer),
         Optional("restart"): Any(restart),
-        Optional("type", default="FR"): Any("FR", "PR", "SD"),
         Optional("tol", default=1e-9): float,
         Optional("maxiter", default=300): int,
         Optional("restart", default=20): int,
@@ -196,7 +195,6 @@ def run_neugebauer(config, sirius_config, callback, final_callback, error_callba
         maxiter=cg_config["maxiter"],
         kappa=cg_config["method"]["kappa"],
         restart=cg_config["restart"],
-        cgtype=cg_config["type"],
         tau=cg_config["tau"],
         callback=callback(kset, E=E),
         error_callback=error_callback(kset, E=E),

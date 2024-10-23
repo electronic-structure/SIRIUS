@@ -30,12 +30,18 @@
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 #include "dft/dft_ground_state.hpp"
+#include "dft/md_extrapolation.hpp"
 #include "sirius.hpp"
 
 using namespace sirius;
 
 Simulation_context&
 get_sim_ctx(void* const* h);
+
+struct sirius_md_extrapolation_t
+{
+    void* MDExtrapolation_ptr_{nullptr};
+};
 
 enum class option_type_t : int
 {
@@ -234,6 +240,16 @@ template <typename F>
 static void
 call_sirius(F&& f__, int* error_code__)
 {
+    auto val      = env::get_value_ptr<int>("SIRIUS_COREDUMP");
+    bool coredump = false;
+    if (val != nullptr) {
+        coredump = (*val == 1);
+    }
+    if (coredump) {
+        f__();
+        return;
+    }
+
     try {
         f__();
         if (error_code__) {
@@ -308,6 +324,15 @@ get_H0(void* const* h)
         RTE_THROW("Non-existing Hamiltonian handler");
     }
     return static_cast<any_ptr*>(*h)->get<Hamiltonian0<double>>();
+}
+
+md::MDExtrapolation&
+get_md_extrapolation(void* const* h)
+{
+    if (h == nullptr || *h == nullptr) {
+        RTE_THROW("Non-existing MDExtrapolation handler");
+    }
+    return static_cast<any_ptr*>(*h)->get<md::MDExtrapolation>();
 }
 
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
@@ -1703,6 +1728,100 @@ sirius_create_ground_state(void* const* ks_handler__, void** gs_handler__, int* 
                 auto& ks = get_ks(ks_handler__);
 
                 *gs_handler__ = new any_ptr(new DFT_ground_state(ks));
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_create_md_extrapolation:
+  doc: Create a MD extrapolation object.
+  arguments:
+    md_handler:
+      type: md_handler
+      attr: in, required
+      doc: MDExtrapolation handler
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT_ground_state handler
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_create_md_extrapolation(void** md_handler__, void* const* gs_handler__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs      = get_gs(gs_handler__);
+                *md_handler__ = new any_ptr(new md::LinearWfcExtrapolation(gs.k_point_set().ctx().spla_context_ptr()));
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_md_store:
+  doc: Store current time-step in MD object
+  arguments:
+    md_handler:
+      type: md_handler
+      attr: in, required
+      doc: MDExtrapolation handler
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT_ground_state handler
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_md_store(void** md_handler__, void* const* gs_handler__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs       = get_gs(gs_handler__);
+                auto& kset     = gs.k_point_set();
+                auto& md_extra = get_md_extrapolation(md_handler__);
+                md_extra.push_back_history(kset, gs.density(), gs.potential());
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_md_extrapolate:
+  doc: Apply MD extrapolation
+  arguments:
+    md_handler:
+      type: md_handler
+      attr: in, required
+      doc: MDExtrapolation handler
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: DFT_ground_state handler
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_md_extrapolate(void** md_handler__, void** gs_handler__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs       = get_gs(gs_handler__);
+                auto& kset     = gs.k_point_set();
+                auto& md_extra = get_md_extrapolation(md_handler__);
+                md_extra.extrapolate(kset, gs.density(), gs.potential());
             },
             error_code__);
 }
@@ -5728,8 +5847,8 @@ sirius_nlcg_params(void* const* gs_handler__, void* const* ks_handler__, double 
 
                 sirius::Hamiltonian0<double> H0(potential, false);
 
-                sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
-                sirius::Overlap_operators<sirius::S_k<std::complex<double>>> S(kset, ctx, H0.Q());
+                sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q_ptr());
+                sirius::Overlap_operators<sirius::S_k<std::complex<double>>> S(kset, ctx, H0.Q_ptr());
 
                 // ultrasoft pp
                 nlcglib::nlcg_info info;
@@ -6161,13 +6280,13 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 mdarray<std::complex<double>, 3> dvpsi({*ld__, *num_spin_comp__, nbnd_occ_k}, dvpsi__);
 
                 auto dpsi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
-                                                                     wf::num_mag_dims(0), false);
+                                                                      wf::num_mag_dims(0), false);
                 auto psi_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_kq),
-                                                                    wf::num_mag_dims(0), false);
+                                                                      wf::num_mag_dims(0), false);
                 auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                       wf::num_mag_dims(0), false);
                 auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
-                                                                    wf::num_mag_dims(0), false);
+                                                                      wf::num_mag_dims(0), false);
 
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                     for (int i = 0; i < nbnd_occ_kq; i++) {
