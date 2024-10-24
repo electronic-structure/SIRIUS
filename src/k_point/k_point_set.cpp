@@ -189,7 +189,7 @@ bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
         fi = f(x);
 
         if (step > maxstep) {
-            return util::unexpected("search of band occupancies failed after 10000 steps");
+            return util::unexpected("search of band occupancies failed after TODO steps");
         }
         step++;
     }
@@ -221,6 +221,7 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
     {
         double mu;              // chemical potential
         int iter{0};            // newton information
+        double ne_diff;
         std::vector<double> ys; // newton history
     } res;
 
@@ -256,8 +257,10 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
             RTE_THROW(s);
         }
 
-        if (std::abs(step) < tol || std::abs(Nf - ne) < tol) {
-            if (std::abs(Nf - ne) > tol_ne) {
+        double ne_diff = std::abs(Nf - ne);
+        if (std::abs(step) < tol || ne_diff < tol)
+        {
+            if (ne_diff > tol_ne) {
                 std::stringstream s;
                 s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search."
                   << "\n";
@@ -266,6 +269,7 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 
             res.iter = iter;
             res.mu   = mu;
+            res.ne_diff = ne_diff;
             return res;
         }
 
@@ -375,7 +379,12 @@ K_point_set::find_band_occupancies()
 
     try {
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-        energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
+        // energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
+        auto res_bisection = bisection_search(F, emin, emax, 1e-11);
+        if (!res_bisection) {
+          RTE_THROW(res_bisection.error());
+        }
+        this->energy_fermi_ = res_bisection.value();
 
         /* for cold and Methfessel Paxton smearing start newton minimization  */
         if (ctx_.smearing() == smearing::smearing_t::cold ||
@@ -390,6 +399,7 @@ K_point_set::find_band_occupancies()
             energy_fermi_   = res_newton.mu;
             if (ctx_.verbosity() >= 2) {
                 RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
+                RTE_OUT(ctx_.out()) << "newton iteration ne_diff " << res_newton.ne_diff << " steps\n";
             }
         }
     } catch (std::exception const& e) {
@@ -398,7 +408,11 @@ K_point_set::find_band_occupancies()
         }
         f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
         auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-        energy_fermi_ = bisection_search(F, emin, emax, tol);
+        auto res_bisection = bisection_search(F, emin, emax, tol);
+        if(!res_bisection) {
+          RTE_THROW(res_bisection.error());
+        }
+        this->energy_fermi_ = res_bisection.value();
     }
 
     for (auto it : spl_num_kpoints_) {
