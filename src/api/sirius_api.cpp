@@ -796,7 +796,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                     sim_ctx.num_bands(*num_bands__);
                 }
                 if (num_mag_dims__ != nullptr) {
-                    sim_ctx.set_num_mag_dims(*num_mag_dims__);
+                    sim_ctx.num_mag_dims(*num_mag_dims__);
                 }
                 if (pw_cutoff__ != nullptr) {
                     sim_ctx.pw_cutoff(*pw_cutoff__);
@@ -832,7 +832,7 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                     sim_ctx.verbosity(*verbosity__);
                 }
                 if (hubbard_correction__ != nullptr) {
-                    sim_ctx.set_hubbard_correction(*hubbard_correction__);
+                    sim_ctx.hubbard_correction(*hubbard_correction__);
                 }
                 if (hubbard_correction_kind__ != nullptr) {
                     if (*hubbard_correction_kind__ == 0) {
@@ -1369,7 +1369,7 @@ sirius_set_periodic_function_ptr(void* const* handler__, char const* label__, do
                 spheric_function_set_ptr_t<double> mt_ptr(f_mt__, lmmax, nrmtmax, num_atoms);
                 smooth_periodic_function_ptr_t<double> rg_ptr(f_rg__, size_x, size_y, size_z, offset_z);
 
-                sim_ctx.set_periodic_function_ptr(label, periodic_function_ptr_t<double>(mt_ptr, rg_ptr));
+                sim_ctx.periodic_function_ptr(label, periodic_function_ptr_t<double>(mt_ptr, rg_ptr));
             },
             error_code__);
 }
