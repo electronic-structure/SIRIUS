@@ -13,14 +13,13 @@ build base uenv gh200:
   variables:
     UENV_NAME: sirius-gh200
     UENV_RECIPE: ci/sirius-uenv-recipe/
-    UENV_VERSION: 1
-    UENV_TAG: 0
+    UENV_VERSION: v1
 
 build sirius cuda:
   extends: .uenv-runner-daint-gh200
   stage: build
   needs: ["build base uenv gh200"]
-  image: sirius-gh200/1:0
+  image: sirius-gh200/v1:$CI_PIPELINE_ID
   artifacts:
     paths:
       - builddir
@@ -38,7 +37,7 @@ build sirius cuda:
 run tests:
   stage: test
   needs: ["build sirius cuda"]
-  image: sirius-gh200/1:0
+  image: sirius-gh200/v1:$CI_PIPELINE_ID
   script:
     - |
       ls -alhrt
