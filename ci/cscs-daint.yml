@@ -35,6 +35,7 @@ build sirius cuda:
       ./ci/build-cuda.sh
 
 run tests:
+  extends: .uenv-runner-daint-gh200
   stage: test
   needs: ["build sirius cuda"]
   image: sirius-gh200/v1:$CI_PIPELINE_ID
