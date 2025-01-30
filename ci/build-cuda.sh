@@ -27,4 +27,5 @@ spack -e ./spack-env install
 
 builddir=$(spack -e ./spack-env location -b sirius)
 # create a symlink to spack build directory (keep in artifacts)
-tar --dereference -cf - $builddir | tar --strip-components=1 -C builddir xf -
+mkdir builddir
+tar --dereference -cf - $builddir | tar --strip-components=1 - -C builddir xf
