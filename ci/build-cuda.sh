@@ -14,7 +14,7 @@ spack -e ./spack-env repo add ./ci/sirius-uenv-recipe/repo
 
 spack -e ./spack-env config add "packages:all:variants:[cuda_arch=${CUDA_ARCH},+cuda]"
 
-spack -e ./spack-env add sirius +cuda +python +tests +apps
+spack -e ./spack-env add $SPEC
 
 # build sirius from source
 spack -e ./spack-env develop -p $PWD sirius@develop
