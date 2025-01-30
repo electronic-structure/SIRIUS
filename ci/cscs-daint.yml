@@ -12,7 +12,6 @@ build base uenv gh200:
   timeout: 2h
   variables:
     UENV_NAME: sirius-gh200
-    WATCH_FILECHANGES: ci/sirius-uenv-recipe/
     UENV_RECIPE: ci/sirius-uenv-recipe/
     UENV_VERSION: 1
     UENV_TAG: 0
@@ -35,3 +34,11 @@ build sirius cuda:
       git -C spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
       source ./spack-clone/share/spack/setup-env.sh
       ./ci/build-cuda.sh
+
+run tests:
+  stage: test
+  needs: ["build sirius cuda"]
+  image: sirius-gh200/1:0
+  script:
+    - |
+      ls -alhrt
