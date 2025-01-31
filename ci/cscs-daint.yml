@@ -41,6 +41,7 @@ build sirius cuda:
   needs: ["build sirius cuda"]
   script:
     - cd ./builddir
+    - ls -alhrt
     - |
       if [ "$SLURM_PROCID" == "0" ]; then
         $TEST_COMMAND -V
