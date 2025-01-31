@@ -47,8 +47,8 @@ build sirius cuda:
     - |
       # wait for tar unpack
       sleep 5
-      bdir=$(find /dev/shm/spack-stage/spack-stage-sirius-* -type d -name 'spack-build-*')
-      cd $bdir
+      stagedir=$(find /dev/shm -type -name spack-stage-sirius-*)
+      cd $stagedir/spack-build-*
       if [ "$SLURM_PROCID" == "0" ]; then
       $TEST_COMMAND -V
       else
