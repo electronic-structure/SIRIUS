@@ -5,8 +5,7 @@ set -xeuo pipefail
 export SPACK_SYSTEM_CONFIG_PATH=/user-environment/config
 
 # make sure we keep the stage direcorty
-spack config --scope=user add config:build_stage:$PWD
-
+spack config --scope=user add config:build_stage:/dev/shm/spack-stage
 
 spack env create -d ./spack-env
 # add local repository with current sirius recipe
@@ -26,7 +25,6 @@ spack -e ./spack-env concretize
 spack -e ./spack-env install
 
 # the tar pipe below expects a relative path
-builddir=$(realpath --relative-to=$PWD "$(spack -e ./spack-env location -b sirius)")
+builddir=$(spack -e ./spack-env location -b sirius)
 # create a symlink to spack build directory (keep in artifacts)
-mkdir builddir
-tar --dereference -cf - $builddir | tar xf - --strip-components=2 -C builddir
+tar -cf builddir.tar $builddir
