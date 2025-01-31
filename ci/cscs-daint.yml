@@ -34,11 +34,49 @@ build sirius cuda:
       source ./spack-clone/share/spack/setup-env.sh
       ./ci/build-cuda.sh
 
-run tests:
-  extends: .uenv-runner-daint-gh200
+.run_tests_daint:
+  extends: [.uenv-runner-daint-gh200]
+  image: sirius-gh200/v1:$CI_PIPELINE_ID
   stage: test
   needs: ["build sirius cuda"]
-  image: sirius-gh200/v1:$CI_PIPELINE_ID
   script:
+    - cd ./builddir
     - |
-      ls -alhrt
+      if [ "$SLURM_PROCID" == "0" ]; then
+        $TEST_COMMAND -V
+      else
+        $TEST_COMMAND --output-on-failure
+      fi
+
+daint test gpu serial:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_TIMELIMIT: "60:00"
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: socket
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_serial
+
+daint test gpu band parallel:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_TIMELIMIT: "60:00"
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_NTASKS: 4
+    SLURM_CPU_BIND: socket
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
+
+gpu k-point parallel:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_CONSTRAINT: gpu
+    SLURM_NTASKS: 4
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_CPU_BIND: socket
+    TEST_COMMAND: ctest -L gpu_k_point_parallel
+    USE_MPI: 'YES'
