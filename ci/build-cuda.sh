@@ -25,7 +25,8 @@ cat ./spack-env/spack.yaml
 spack -e ./spack-env concretize
 spack -e ./spack-env install
 
+# the tar pipe below expects a relative path
 builddir=$(realpath --relative-to=$PWD "$(spack -e ./spack-env location -b sirius)")
 # create a symlink to spack build directory (keep in artifacts)
 mkdir builddir
-tar --dereference -cf - $builddir | tar xf - --strip-components=1 -C builddir
+tar --dereference -cf - $builddir | tar xf - --strip-components=2 -C builddir
