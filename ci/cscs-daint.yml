@@ -24,7 +24,7 @@ build sirius cuda:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@develop +cuda +apps +tests ~python
+    SPEC: sirius@develop +cuda +apps +tests +scalapack ~python
     CUDA_ARCH: 90
   script:
     - |
