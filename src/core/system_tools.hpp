@@ -129,6 +129,39 @@ get_proc_threads()
     return num_threads;
 }
 
+/// Get amount of free memory in bytes.
+inline auto
+get_available_memory() {
+    std::ifstream meminfo("/proc/meminfo");
+    size_t result{0};
+
+    if (meminfo.is_open()) {
+        std::string key;
+        long value;
+        std::string unit;
+
+        size_t tmp;
+        std::string str;
+        std::string units;
+        while (std::getline(meminfo, str)) {
+            auto p = str.find("MemAvailable:");
+            if (p != std::string::npos) {
+                std::stringstream s(str.substr(p + 14));
+                s >> tmp;
+                s >> units;
+
+                if (units != "kB") {
+                    std::printf("sirius::get_available_memory(): wrong units");
+                } else {
+                    result = tmp * 1024;
+                }
+                break;
+            }
+        }
+    }
+    return result;
+}
+
 } // namespace sirius
 
 #endif
