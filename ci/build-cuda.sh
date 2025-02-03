@@ -9,7 +9,7 @@ spack config --scope=user add config:build_stage:/dev/shm/spack-stage
 
 spack env create -d ./spack-env
 # add local repository with current sirius recipe
-spack -e ./spack-env repo add ./ci/sirius-uenv-recipe/repo
+spack -e ./spack-env repo add $REPO
 
 spack -e ./spack-env config add "packages:all:variants:[cuda_arch=${CUDA_ARCH},+cuda]"
 

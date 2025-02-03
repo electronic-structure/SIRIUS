@@ -35,6 +35,7 @@ build sirius cuda:
   variables:
     SPEC: sirius@develop +cuda +apps +tests +scalapack ~python
     CUDA_ARCH: 90
+    REPO: ./ci/sirius-uenv-recipe-gh200/repo
   script:
     - |
       #
@@ -53,6 +54,7 @@ build sirius eiger:
       - builddir.tar
   variables:
     SPEC: sirius@develop +apps +tests +scalapack ~python
+    REPO: ./ci/sirius-uenv-recipe-cpu/repo
   script:
     - |
       #
