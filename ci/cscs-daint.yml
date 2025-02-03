@@ -12,7 +12,16 @@ build base uenv gh200:
   timeout: 2h
   variables:
     UENV_NAME: sirius-gh200
-    UENV_RECIPE: ci/sirius-uenv-recipe/
+    UENV_RECIPE: ci/sirius-uenv-recipe-gh200/
+    UENV_VERSION: v1
+
+build base uenv zen2:
+  extends: .uenv-builder-eiger-zen2
+  stage: baseimage
+  timeout: 2h
+  variables:
+    UENV_NAME: sirius-zen2
+    UENV_RECIPE: ci/sirius-uenv-recipe-cpu/
     UENV_VERSION: v1
 
 build sirius cuda:
@@ -33,6 +42,24 @@ build sirius cuda:
       git -C spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
       source ./spack-clone/share/spack/setup-env.sh
       ./ci/build-cuda.sh
+
+build sirius eiger:
+  extends: .uenv-runner-eiger-zen2
+  stage: build
+  needs: ["build base uenv zen2"]
+  image: sirius-zen2/v1:$CI_PIPELINE_ID
+  artifacts:
+    paths:
+      - builddir.tar
+  variables:
+    SPEC: sirius@develop +apps +tests +scalapack ~python
+  script:
+    - |
+      #
+      git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) spack-clone
+      git -C spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
+      source ./spack-clone/share/spack/setup-env.sh
+      ./ci/build-cpu.sh
 
 .run_tests_daint:
   extends: [.uenv-runner-daint-gh200]
