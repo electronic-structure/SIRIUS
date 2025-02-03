@@ -95,7 +95,7 @@ Force::add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) 
     mdarray<real_type<F>, 2> f({3, ctx_.unit_cell().num_atoms()});
     f.zero();
 
-    add_k_point_contribution_nonlocal<T, F>(ctx_, bp_grad, kp__, f);
+    add_k_point_contribution_nonlocal<T, F>(potential_, bp_grad, kp__, f);
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         for (int x : {0, 1, 2}) {
@@ -275,7 +275,7 @@ Force::calc_forces_hubbard()
 
     if (ctx_.hubbard_correction()) {
         /* recompute the hubbard potential */
-        ::sirius::generate_potential(density_.occupation_matrix(), potential_.hubbard_potential());
+        //::sirius::generate_potential(density_.occupation_matrix(), potential_.hubbard_potential());
 
         Q_operator<double> q_op(ctx_);
 
@@ -385,9 +385,9 @@ Force::calc_forces_us()
     forces_us_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_us_.zero();
 
-    potential_.fft_transform(-1);
+    //potential_.fft_transform(-1);
 
-    Unit_cell& unit_cell = ctx_.unit_cell();
+    auto const& unit_cell = ctx_.unit_cell();
 
     double reduce_g_fact = ctx_.gvec().reduced() ? 2.0 : 1.0;
 
@@ -484,11 +484,11 @@ Force::calc_forces_scf_corr()
     forces_scf_corr_.zero();
 
     /* get main arrays */
-    auto& dveff = potential_.dveff();
+    auto const& dveff = potential_.dveff();
 
-    Unit_cell& unit_cell = ctx_.unit_cell();
+    auto const& unit_cell = ctx_.unit_cell();
 
-    fft::Gvec const& gvec = ctx_.gvec();
+    auto const& gvec = ctx_.gvec();
 
     int gvec_count  = gvec.count();
     int gvec_offset = gvec.offset();
@@ -499,7 +499,7 @@ Force::calc_forces_scf_corr()
 
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-        Atom& atom = unit_cell.atom(ia);
+        auto const& atom = unit_cell.atom(ia);
 
         int iat = atom.type_id();
 
@@ -545,9 +545,9 @@ Force::calc_forces_core()
     /* transform from real space to reciprocal */
     xc_pot.rg().fft_transform(-1);
 
-    Unit_cell& unit_cell = ctx_.unit_cell();
+    auto const& unit_cell = ctx_.unit_cell();
 
-    fft::Gvec const& gvecs = ctx_.gvec();
+    auto const& gvecs = ctx_.gvec();
 
     int gvec_count  = gvecs.count();
     int gvec_offset = gvecs.offset();
@@ -557,7 +557,7 @@ Force::calc_forces_core()
     /* here the calculations are in lattice vectors space */
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-        Atom& atom = unit_cell.atom(ia);
+        auto const& atom = unit_cell.atom(ia);
         if (atom.type().ps_core_charge_density().empty()) {
             continue;
         }

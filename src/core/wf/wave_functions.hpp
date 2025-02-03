@@ -1208,6 +1208,13 @@ class Wave_functions_fft : public Wave_functions_base<T>
         return reinterpret_cast<T*>(this->data_[0].at(mem__, 0, b__.get()));
     }
 
+    /// Return pointer to the beginning of wave-functions casted to real type as required by the SpFFT library.
+    inline T const*
+    pw_coeffs_spfft(memory_t mem__, band_index b__) const
+    {
+        return reinterpret_cast<T const*>(this->data_[0].at(mem__, 0, b__.get()));
+    }
+
     /// Return true if data is avaliable on the device memory.
     inline auto
     on_device() const

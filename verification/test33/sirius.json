@@ -1,0 +1,52 @@
+{
+    "control" : {
+        "processing_unit" : "cpu",
+        "verbosity" : 2,
+        "rmt_max": 2.0
+    },
+    "settings" : {
+      "smooth_initial_mag" : true
+    },
+    "parameters" : {
+        "electronic_structure_method" : "full_potential_lapwlo",
+        "smearing_width" : 0.001,
+        "xc_functionals": ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+        "num_mag_dims": 3,
+        "pw_cutoff" : 16.00,
+        "gk_cutoff":  4.00,
+        "use_symmetry": true,
+        "ngridk" : [4,4,4],
+        "density_tol" : 1e-5,
+        "energy_tol" : 1e-8,
+        "num_dft_iter" : 100
+    },
+
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [-1, 1, 1],
+                              [1, -1, 1],
+                              [1, 1, -1]
+                            ],
+        "lattice_vectors_scale" : 2.708,
+
+        "atom_types" : ["Fe"],
+
+        "atom_files" : {
+            "Fe" : "Fe.json"
+        },
+
+        "atoms" : {
+            "Fe" : [
+                [0, 0, 0, 1, 1, 1]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.6,
+        "type" : "broyden2",
+        "max_history" : 8
+    }
+
+}

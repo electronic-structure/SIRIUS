@@ -224,7 +224,10 @@ class Atom_type
      *  oribtal occupancies. */
     std::vector<double> paw_wf_occ_;
 
-    /// Core electron contribution to all electron charge density in PAW method.
+    /// Core electron contribution to all-electron charge density in PAW method.
+    /** In PAW, core charge density is defined for each atom type, because it comes from the
+     *  pseudopotential file and is fixed during the calculation. This is different from LAPW
+     *  core charge density, which is recomputed for each atom symmetry class. */
     std::vector<double> paw_ae_core_charge_density_;
 
     /// True if the pseudo potential includes spin orbit coupling.
