@@ -498,7 +498,8 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
             if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
                 rsd->enu = new_enu;
             }
-        } catch (...) {
+        } catch (std::exception const& e) {
+	    std::cout << e.what() << std::endl;
             ierr++;
         }
     }
