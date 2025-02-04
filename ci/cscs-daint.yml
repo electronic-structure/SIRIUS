@@ -63,11 +63,7 @@ build sirius eiger:
       source ./spack-clone/share/spack/setup-env.sh
       ./ci/build-cpu.sh
 
-.run_tests_daint:
-  extends: [.uenv-runner-daint-gh200]
-  image: sirius-gh200/v1:$CI_PIPELINE_ID
-  stage: test
-  needs: ["build sirius cuda"]
+.run_tests:
   script:
     - |
       if [ $SLURM_LOCALID -eq 0 ]; then
@@ -83,6 +79,19 @@ build sirius eiger:
       else
       $TEST_COMMAND --output-on-failure
       fi
+
+.run_tests_daint:
+  extends: [.uenv-runner-daint-gh200, .run_tests]
+  image: sirius-gh200/v1:$CI_PIPELINE_ID
+  stage: test
+  needs: ["build sirius cuda"]
+
+.run_tests_eiger:
+  extends: [.uenv-runner-eiger-zen2, .run_tests]
+  image: sirius-zen2/v1:$CI_PIPELINE_ID
+  stage: test
+  needs: ["build sirius eiger"]
+
 
 daint test gpu serial:
   extends: [.run_tests_daint]
@@ -119,3 +128,26 @@ daint test gpu k-point parallel:
     SLURM_CPU_BIND: 'socket'
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_k_point_parallel
+
+eiger test cpu serial:
+  extends: [.run_tests_eiger]
+  variables:
+    OMP_NUM_THREADS: 8
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_NTASKS: 1
+    SLURM_NTASKS_PER_CORE: 8
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L cpu_serial
+
+
+eiger test cpu band parallel:
+  extends: [.run_tests_eiger]
+  variables:
+    OMP_NUM_THREADS: 8
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_NTASKS: 4
+    SLURM_NTASKS_PER_CORE: 8
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L cpu_band_parallel
