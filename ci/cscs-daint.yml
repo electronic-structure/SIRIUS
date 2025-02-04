@@ -137,7 +137,7 @@ eiger test cpu serial:
     OMP_NUM_THREADS: 8
     SLURM_TIMELIMIT: '60:00'
     SLURM_NTASKS: 1
-    SLURM_NTASKS_PER_CORE: 8
+    SRUN_CPUS_PER_TASK: 8
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L cpu_serial
 
@@ -148,6 +148,6 @@ eiger test cpu band parallel:
     OMP_NUM_THREADS: 8
     SLURM_TIMELIMIT: '60:00'
     SLURM_NTASKS: 4
-    SLURM_NTASKS_PER_CORE: 8
+    SRUN_CPUS_PER_TASK: 8
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L cpu_band_parallel
