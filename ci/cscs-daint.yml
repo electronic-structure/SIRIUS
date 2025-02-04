@@ -91,7 +91,9 @@ build sirius eiger:
   image: sirius-zen2/v1:$CI_PIPELINE_ID
   stage: test
   needs: ["build sirius eiger"]
-
+  variables:
+    SLURM_HINT: nomultithread
+    SLURM_CPU_BIND: verbose
 
 daint test gpu serial:
   extends: [.run_tests_daint]
