@@ -64,6 +64,8 @@ build sirius eiger:
       ./ci/build-cpu.sh
 
 .run_tests:
+  variables:
+    SLURM_LABELIO: 1
   script:
     - |
       if [ $SLURM_LOCALID -eq 0 ]; then
