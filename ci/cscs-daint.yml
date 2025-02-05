@@ -68,6 +68,7 @@ build sirius eiger:
     SLURM_LABELIO: 1
   script:
     - |
+      echo "SLURM_LOCALID: $SLURM_LOCALID"
       if [ $SLURM_LOCALID -eq 0 ]; then
         tar xf ./builddir.tar -C /
       fi
