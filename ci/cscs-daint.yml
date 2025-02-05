@@ -151,7 +151,6 @@ eiger test cpu serial:
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L cpu_serial
 
-
 eiger test cpu band parallel:
   extends: [.run_tests_eiger]
   variables:
