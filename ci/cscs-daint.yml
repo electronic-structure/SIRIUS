@@ -68,11 +68,15 @@ build sirius eiger:
     - |
       if [ $SLURM_LOCALID -eq 0 ]; then
         tar xf ./builddir.tar -C /
+        touch /dev/shm/unpack_done
       fi
     - |
       # wait for tar unpack
-      sleep 5
-      stagedir=$(find /dev/shm -type d -name spack-stage-sirius-*)
+      while [ ! -f /dev/shm/unpack_done ]; do
+        sleep 0.2
+      done
+
+      STAGEDIR=$(find /dev/shm -type d -name spack-stage-sirius-*)
       cd $stagedir/spack-build-*
       if [ "$SLURM_PROCID" == "0" ]; then
       $TEST_COMMAND -V
