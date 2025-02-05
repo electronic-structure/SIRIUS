@@ -68,7 +68,6 @@ build sirius eiger:
     SLURM_LABELIO: 1
   script:
     - |
-      echo "SLURM_LOCALID: $SLURM_LOCALID"
       if [ $SLURM_LOCALID -eq 0 ]; then
         tar xf ./builddir.tar -C /
         touch /dev/shm/unpack_done
@@ -79,8 +78,8 @@ build sirius eiger:
         sleep 0.2
       done
 
-      ls -alhrt /dev/shm/
-      ls -alhrt /dev/shm/antonk/spack-stage*
+      # ls -alhrt /dev/shm/
+      # ls -alhrt /dev/shm//spack-stage/antonk/*
 
       stagedir=$(find /dev/shm -type d -name spack-stage-sirius-*)
       echo "stagedir: $stagedir"
