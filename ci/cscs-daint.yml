@@ -79,7 +79,7 @@ build sirius eiger:
       # ls -alhrt /dev/shm/
       # ls -alhrt /dev/shm//spack-stage/antonk/*
 
-      stagedir=$(find /dev/shm -type d -name spack-stage-sirius-*)
+      stagedir=$(find /dev/shm/spack-stage -type d -name spack-stage-sirius-*)
       echo "stagedir: $stagedir"
       cd $stagedir/spack-build-*
       if [ "$SLURM_PROCID" == "0" ]; then
