@@ -76,7 +76,11 @@ build sirius eiger:
         sleep 0.2
       done
 
+      ls -alhrt /dev/shm/
+      ls -alhrt /dev/shm/antonk/spack-stage*
+
       stagedir=$(find /dev/shm -type d -name spack-stage-sirius-*)
+      echo "stagedir: $stagedir"
       cd $stagedir/spack-build-*
       if [ "$SLURM_PROCID" == "0" ]; then
       $TEST_COMMAND -V
