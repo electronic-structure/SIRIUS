@@ -71,8 +71,8 @@ build sirius eiger:
       echo "SLURM_LOCALID: $SLURM_LOCALID"
       if [ $SLURM_LOCALID -eq 0 ]; then
         tar xf ./builddir.tar -C /
+        touch /dev/shm/unpack_done
       fi
-    - touch /dev/shm/unpack_done
     - |
       # wait for tar unpack
       while [ ! -f /dev/shm/unpack_done ]; do
