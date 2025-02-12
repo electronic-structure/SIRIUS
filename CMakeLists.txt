@@ -5,13 +5,15 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.6.1
+  VERSION 7.6.2
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
 if(POLICY CMP0104)
   cmake_policy(SET CMP0104 NEW)
 endif()
+
+cmake_policy(SET CMP0144 NEW)
 
 # user variables
 option(SIRIUS_CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
