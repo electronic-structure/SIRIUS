@@ -15,6 +15,7 @@ int
 test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
+    /* we have plenty of gpu memory, allow a larger tile size */
     spla_ctx.set_tile_size_gpu(2096);
 
     std::unique_ptr<la::BLACS_grid> blacs_grid;
