@@ -15,6 +15,7 @@ int
 test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
+    spla_ctx.set_tile_size_gpu(2096);
 
     std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -38,12 +39,14 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
 
     auto sr = wf::spin_range(0, 2);
 
+    double pref = 1.0 / std::sqrt(gvec->num_gvec());
+
     for (auto s = sr.begin(); s != sr.end(); s++) {
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
                 int ig                                      = igloc + gvec->offset();
-                phi1.pw_coeffs(igloc, s, wf::band_index(i)) = static_cast<double>(i + 1) / (ig + 1);
-                phi2.pw_coeffs(igloc, s, wf::band_index(i)) = static_cast<double>(ig + 1) / (i + 1) / gvec->num_gvec();
+                phi1.pw_coeffs(igloc, s, wf::band_index(i)) = pref * (i + 1) / (ig + 1);
+                phi2.pw_coeffs(igloc, s, wf::band_index(i)) = pref * (ig + 1) / (i + 1);
             }
         }
     }
@@ -58,33 +61,48 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
               0);
     mpi::Communicator::world().barrier();
 
-    double t = -wtime();
-    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0,
-              0);
-    mpi::Communicator::world().barrier();
-    t += wtime();
+    Measurement stat;
 
-    double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / t;
-    if (mpi::Communicator::world().rank() == 0) {
-        printf("execution time (sec) : %12.6f\n", t);
-        printf("performance (GFlops) : %12.6f\n", perf);
-    }
-
-    double max_diff{0};
-    for (int j = 0; j < ovlp.num_cols_local(); j++) {
-        auto jcol = ovlp.icol(j);
-        for (int i = 0; i < ovlp.num_rows_local(); i++) {
-            auto irow = ovlp.irow(i);
-            /* 2 is accumulated from two spins */
-            std::complex<double> z = ovlp(i, j) - 2 * static_cast<double>(irow + 1) / (jcol + 1);
-            max_diff               = std::max(max_diff, std::abs(z));
+    int ierr{0};
+    for (int k = 0; k < 4; k++) {
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "step " << k << std::endl;
+        }
+        double t = -wtime();
+        wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp,
+                  0, 0);
+        mpi::Communicator::world().barrier();
+        t += wtime();
+        double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / t;
+        stat.push_back(perf);
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "execution time : " << t << " sec." << std::endl;
+            std::cout << "performance : " << perf << " GFlops" << ", " << perf / mpi::Communicator::world().size()
+                      << " GFlops/rank" << std::endl;
+        }
+        double max_diff{0};
+        for (int j = 0; j < ovlp.num_cols_local(); j++) {
+            auto jcol = ovlp.icol(j);
+            for (int i = 0; i < ovlp.num_rows_local(); i++) {
+                auto irow = ovlp.irow(i);
+                /* factor 1 or 2 is accumulated from spin components */
+                auto z   = ovlp(i, j) - sr.size() * static_cast<double>(irow + 1) / (jcol + 1);
+                max_diff = std::max(max_diff, std::abs(z));
+            }
+        }
+        mpi::Communicator::world().allreduce<double, mpi::op_t::max>(&max_diff, 1);
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "max diff : " << max_diff << std::endl;
+        }
+        if (max_diff > 1e-8) {
+            ierr++;
         }
     }
-    mpi::Communicator::world().reduce<double, mpi::op_t::max>(&max_diff, 1, 0);
-    if (max_diff > 1e-10) {
-        return 1;
+    if (mpi::Communicator::world().rank() == 0) {
+        std::cout << "average performance (GFlops) : " << stat.average() << ", sigma : " << stat.sigma() << std::endl;
     }
-    return 0;
+
+    return ierr;
 }
 
 int
