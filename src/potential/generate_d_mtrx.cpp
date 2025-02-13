@@ -65,7 +65,7 @@ Potential::generate_d_mtrx()
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
-                    int ia = atom_type.atom_id(i);
+                    int const ia = atom_type.atom_id(i);
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             d_mtrx_[ia](xi1, xi2, iv) = 0;
