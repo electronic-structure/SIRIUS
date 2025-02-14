@@ -1018,7 +1018,11 @@
                                 "type": "number",
                                 "default": 0
                             },
-                            "BE2": {
+                            "B": {
+                                "type": "number",
+                                "default": 0
+                            },
+                            "E2": {
                                 "type": "number",
                                 "default": 0
                             },

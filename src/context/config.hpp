@@ -265,7 +265,7 @@ class config_t
         }
         /// Maximum orbital quantum number for which spherical coverage need to be generated.
         /**
-            This option can be used to increase shpherical coverage in muffin-tins. Impacts generation of XC potential.
+            This option can be used to increase spherical coverage in muffin-tins. Impacts generation of XC potential.
         */
         inline auto sht_lmax() const
         {
@@ -1882,9 +1882,13 @@ class config_t
             {
                 return dict_.at("J").get<double>();
             }
-            auto BE2() const
+            auto B() const
             {
-                return dict_.at("BE2").get<double>();
+                return dict_.at("B").get<double>();
+            }
+            auto E2() const
+            {
+                return dict_.at("E2").get<double>();
             }
             auto E3() const
             {
