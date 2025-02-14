@@ -110,9 +110,9 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
         // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = wf::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         if constexpr (gamma_point) {
-            H.apply_h_s<double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+            H.apply_h_s<double>(ctx.processing_unit_memory_t(), spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
         } else {
-            H.apply_h_s<complex_double>(spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
+            H.apply_h_s<complex_double>(ctx.processing_unit_memory_t(), spin_range, wf::band_range(N, N + n), wf, &wf_out, swf.get());
         }
     }
     if (is_device_memory(ctx.processing_unit_memory_t())) {
