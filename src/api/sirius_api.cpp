@@ -3029,7 +3029,6 @@ sirius_get_energy(void* const* gs_handler__, char const* label__, double* energy
 
                 auto& kset      = gs.k_point_set();
                 auto& ctx       = kset.ctx();
-                auto& unit_cell = kset.unit_cell();
                 auto& potential = gs.potential();
                 auto& density   = gs.density();
 

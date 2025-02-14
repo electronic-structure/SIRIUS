@@ -398,7 +398,7 @@ class Atom_type
     /// Add radial function of the augmentation charge.
     /** Radial functions of beta projectors must be added already. Their total number will be used to
         deterimine the storage size for the radial functions of the augmented charge. */
-    inline void
+    void
     add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__);
 
     /// Set the radial grid of the given type.
