@@ -244,6 +244,17 @@ class Density : public Field4D
                                  Periodic_function<double>, density_matrix_t, PAW_density<double>, Hubbard_matrix>>
             mixer_;
 
+    /// Core charge density.
+    /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
+        the change of effective potential. */
+    std::vector<std::vector<double>> ae_core_charge_density_;
+
+    /// Core eigen-value sum.
+    std::vector<double> core_eval_sum_;
+
+    /// Core leakage.
+    std::vector<double> core_leakage_;
+
     /// Generate atomic densities in the case of PAW.
     void
     generate_paw_density(paw_atom_index_t::local iapaw__);
@@ -302,39 +313,9 @@ class Density : public Field4D
     void
     generate_valence_mt();
 
-    /// Generate charge density of core states
+    /// Generate pseudo core charge density needed for non-linear core correction.
     void
-    generate_core_charge_density()
-    {
-        PROFILE("sirius::Density::generate_core_charge_density");
-
-        auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
-
-        for (auto it : spl_idx) {
-            unit_cell_.atom_symmetry_class(it.i).generate_core_charge_density(ctx_.core_relativity());
-        }
-
-        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
-            auto rank = spl_idx.location(ic).ib;
-            unit_cell_.atom_symmetry_class(ic).sync_core_charge_density(ctx_.comm(), rank);
-        }
-    }
-
-    void
-    generate_pseudo_core_charge_density()
-    {
-        PROFILE("sirius::Density::generate_pseudo_core_charge_density");
-
-        /* get lenghts of all G shells */
-        auto q = ctx_.gvec().shells_len();
-        /* get form-factors for all G shells */
-        auto const ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
-        /* make rho_core(G) */
-        auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
-
-        std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
-        rho_pseudo_core_->fft_transform(1);
-    }
+    generate_pseudo_core_charge_density();
 
   public:
     /// Constructor
@@ -347,6 +328,10 @@ class Density : public Field4D
     /// Find the total leakage of the core states out of the muffin-tins
     double
     core_leakage() const;
+
+    /// Find total sum of core eigen-values.
+    double
+    core_eval_sum() const;
 
     /// Generate initial charge density and magnetization
     void
@@ -364,6 +349,10 @@ class Density : public Field4D
     /// Check total density for the correct number of electrons.
     bool
     check_num_electrons() const;
+
+    /// Generate charge density of core states
+    void
+    generate_core_charge_density(std::vector<std::vector<double>> const& vs__);
 
     /// Generate full charge density (valence + core) and magnetization from the wave functions.
     /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
@@ -414,10 +403,16 @@ class Density : public Field4D
     generate_rho_aug() const;
 
     /// Return core leakage for a specific atom symmetry class
-    inline double
+    inline auto
     core_leakage(int ic) const
     {
-        return unit_cell_.atom_symmetry_class(ic).core_leakage();
+        return core_leakage_[ic];
+    }
+
+    inline auto
+    core_eval_sum(int ic) const
+    {
+        return core_eval_sum_[ic];
     }
 
     /// Return const reference to charge density (scalar functions).

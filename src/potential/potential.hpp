@@ -169,25 +169,8 @@ class Potential : public Field4D
                              mdarray<double, 3> const& d_mtrx_paw__) const;
 
     /// Compute MT part of the potential and MT multipole moments
-    inline auto
-    poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__)
-    {
-        PROFILE("sirius::Potential::poisson_vmt");
-
-        mdarray<std::complex<double>, 2> qmt({ctx_.lmmax_rho(), unit_cell_.num_atoms()});
-        qmt.zero();
-
-        for (auto it : unit_cell_.spl_num_atoms()) {
-            auto ia = it.i;
-
-            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rhomt__[ia], hartree_potential_->mt()[ia]);
-
-            SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
-        }
-
-        ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
-        return qmt;
-    }
+    mdarray<std::complex<double>, 2>
+    poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__) const;
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
     void
@@ -657,6 +640,9 @@ class Potential : public Field4D
 
     void
     check_potential_continuity_at_mt();
+
+    std::vector<std::vector<double>>
+    get_spherical_potential() const;
 
     void
     generate_PAW_effective_potential(Density const& density);

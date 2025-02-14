@@ -129,8 +129,8 @@ double
 energy_vloc(Density const& density, Potential const& potential);
 
 /// Return eigen-value sum of core states.
-double
-core_eval_sum(Unit_cell const& unit_cell);
+//double
+//core_eval_sum(Unit_cell const& unit_cell);
 
 /// TODO doc
 double
@@ -138,7 +138,7 @@ valence_eval_sum(K_point_set const& kset);
 
 /// TODO doc
 double
-eval_sum(Unit_cell const& unit_cell, K_point_set const& kset);
+eval_sum(Density const& density, K_point_set const& kset);
 
 /// TODO doc
 double
@@ -291,7 +291,7 @@ energy_dict(Simulation_context const& ctx__, K_point_set const& kset__, Density 
     dict["energy"]["exc"]            = energy_exc(density__, potential__);
     dict["energy"]["bxc"]            = energy_bxc(density__, potential__);
     dict["energy"]["veff"]           = energy_veff(density__, potential__);
-    dict["energy"]["eval_sum"]       = eval_sum(ctx__.unit_cell(), kset__);
+    dict["energy"]["eval_sum"]       = eval_sum(density__, kset__);
     dict["energy"]["kin"]            = energy_kin(ctx__, kset__, density__, potential__);
     dict["energy"]["ewald"]          = potential__.ewald_energy();
     dict["energy"]["scf_correction"] = scf_correction__;
@@ -299,7 +299,7 @@ energy_dict(Simulation_context const& ctx__, K_point_set const& kset__, Density 
     dict["efermi"]                   = kset__.energy_fermi();
     dict["band_gap"]                 = kset__.band_gap();
     if (ctx__.full_potential()) {
-        dict["energy"]["core_eval_sum"] = core_eval_sum(ctx__.unit_cell());
+        dict["energy"]["core_eval_sum"] = density__.core_eval_sum();
         dict["energy"]["enuc"]          = energy_enuc(ctx__, potential__);
         dict["core_leakage"]            = density__.core_leakage();
     } else {
