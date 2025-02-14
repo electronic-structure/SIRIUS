@@ -514,7 +514,7 @@ class Hamiltonian_k
 
     template <typename F>
     std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
-    apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
+    apply_h_s(memory_t mem__, wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
               wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         RTE_THROW("implement this");
