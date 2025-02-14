@@ -64,16 +64,6 @@ class Atom
     /// Orbital quantum number for UJ correction.
     int uj_correction_l_{-1};
 
-    /// Auxiliary form of the D_{ij} operator matrix of the pseudo-potential method.
-    /** The matrix is calculated for the scalar and vector effective fields (thus, it is real and symmetric).
-     *  \f[
-     *      D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}
-     *  \f]
-     *
-     *  The ionic part of the D-operator matrix is added in the D_operator class, when it is initialized.
-     */
-    mdarray<double, 3> d_mtrx_;
-
   public:
     /// Constructor.
     Atom(Atom_type const& type__, r3::vector<double> position__, r3::vector<double> vector_field__)
@@ -104,13 +94,6 @@ class Atom
             occupation_matrix_ = mdarray<std::complex<double>, 4>({16, 16, 2, 2});
 
             uj_correction_matrix_ = mdarray<std::complex<double>, 4>({16, 16, 2, 2});
-        }
-
-        if (!type().parameters().full_potential()) {
-            int nbf = type().mt_basis_size();
-            d_mtrx_ = mdarray<double, 3>({nbf, nbf, type().parameters().num_mag_dims() + 1},
-                                         mdarray_label("Atom::d_mtrx_"));
-            d_mtrx_.zero();
         }
     }
 
@@ -610,30 +593,6 @@ class Atom
     uj_correction_matrix(int lm1, int lm2, int ispn1, int ispn2)
     {
         return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
-    }
-
-    inline double&
-    d_mtrx(int xi1, int xi2, int iv)
-    {
-        return d_mtrx_(xi1, xi2, iv);
-    }
-
-    inline double const&
-    d_mtrx(int xi1, int xi2, int iv) const
-    {
-        return d_mtrx_(xi1, xi2, iv);
-    }
-
-    inline auto const&
-    d_mtrx() const
-    {
-        return d_mtrx_;
-    }
-
-    inline auto&
-    d_mtrx()
-    {
-        return d_mtrx_;
     }
 };
 

@@ -29,16 +29,17 @@ template <typename T>
 class Beta_projectors;
 template <typename T>
 class Beta_projectors_base;
+class Potential;
 
 template <typename T>
 class D_operator : public Non_local_operator<T>
 {
   private:
     void
-    initialize();
+    initialize(Potential& potential__);
 
   public:
-    D_operator(Simulation_context const& ctx_);
+    D_operator(Potential& potential__);
 };
 
 template <typename T>
@@ -57,7 +58,6 @@ class U_operator
 {
   private:
     Simulation_context const& ctx_;
-    // sddk::mdarray<std::complex<T>, 3> um_;
     std::array<la::dmatrix<std::complex<T>>, 4> um_;
     std::vector<int> offset_;
     std::vector<std::pair<int, int>> atomic_orbitals_;

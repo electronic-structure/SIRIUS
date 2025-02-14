@@ -63,21 +63,10 @@ class Atom_symmetry_class
     /// Spin-orbit interaction integrals.
     mdarray<double, 3> so_radial_integrals_;
 
-    /// Core charge density.
-    /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
-        the change of effective potential. */
-    std::vector<double> ae_core_charge_density_;
-
-    /// Core eigen-value sum.
-    double core_eval_sum_{0};
-
-    /// Core leakage.
-    double core_leakage_{0};
-
-    /// list of radial descriptor sets used to construct augmented waves
+    /// List of radial descriptor sets used to construct augmented waves.
     mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
 
-    /// list of radial descriptor sets used to construct local orbitals
+    /// List of radial descriptor sets used to construct local orbitals.
     mutable std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Generate radial functions for augmented waves
@@ -111,9 +100,6 @@ class Atom_symmetry_class
     void
     sync_radial_integrals(mpi::Communicator const& comm__, int const rank__);
 
-    void
-    sync_core_charge_density(mpi::Communicator const& comm__, int const rank__);
-
     /// Check if local orbitals are linearly independent
     std::vector<int>
     check_lo_linear_independence(double etol__) const;
@@ -121,10 +107,6 @@ class Atom_symmetry_class
     /// Dump local orbitals to the file for debug purposes
     void
     dump_lo();
-
-    /// Find core states and generate core density.
-    void
-    generate_core_charge_density(relativity_t core_rel__);
 
     /// Find linearization energy.
     void
@@ -252,30 +234,10 @@ class Atom_symmetry_class
         return so_radial_integrals_(l, order1, order2);
     }
 
-    inline double
-    ae_core_charge_density(int ir) const
-    {
-        RTE_ASSERT(ir >= 0 && ir < (int)ae_core_charge_density_.size());
-
-        return ae_core_charge_density_[ir];
-    }
-
     inline Atom_type const&
     atom_type() const
     {
         return atom_type_;
-    }
-
-    inline double
-    core_eval_sum() const
-    {
-        return core_eval_sum_;
-    }
-
-    inline double
-    core_leakage() const
-    {
-        return core_leakage_;
     }
 
     inline int

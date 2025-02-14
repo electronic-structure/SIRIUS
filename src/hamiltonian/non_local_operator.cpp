@@ -14,6 +14,7 @@
 #include "non_local_operator.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "hubbard/hubbard_matrix.hpp"
+#include "potential/potential.hpp"
 
 namespace sirius {
 
@@ -93,21 +94,21 @@ Non_local_operator<T>::get_matrix(int ispn, memory_t mem) const
 }
 
 template <typename T>
-D_operator<T>::D_operator(Simulation_context const& ctx_)
-    : Non_local_operator<T>(ctx_)
+D_operator<T>::D_operator(Potential& potential__)
+    : Non_local_operator<T>(potential__.ctx())
 {
-    if (ctx_.gamma_point()) {
-        this->op_ = mdarray<T, 3>({1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1});
+    if (potential__.ctx().gamma_point()) {
+        this->op_ = mdarray<T, 3>({1, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1});
     } else {
-        this->op_ = mdarray<T, 3>({2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1});
+        this->op_ = mdarray<T, 3>({2, this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1});
     }
     this->op_.zero();
-    initialize();
+    initialize(potential__);
 }
 
 template <typename T>
 void
-D_operator<T>::initialize()
+D_operator<T>::initialize(Potential& potential__)
 {
     PROFILE("sirius::D_operator::initialize");
 
@@ -147,7 +148,7 @@ D_operator<T>::initialize()
                                             for (int alpha = 0; alpha < 4; alpha++) {
                                                 for (int sigma1 = 0; sigma1 < 2; sigma1++) {
                                                     for (int sigma2 = 0; sigma2 < 2; sigma2++) {
-                                                        result += atom.d_mtrx(xi1p, xi2p, alpha) *
+                                                        result += potential__.d_mtrx(ia)(xi1p, xi2p, alpha) *
                                                                   pauli_matrix[alpha][sigma1][sigma2] *
                                                                   atom.type().f_coefficients(xi1, xi1p, sigma, sigma1) *
                                                                   atom.type().f_coefficients(xi2p, xi2, sigma2, sigmap);
@@ -215,8 +216,8 @@ D_operator<T>::initialize()
                     int idx = xi2 * nbf + xi1;
                     switch (this->ctx_.num_mag_dims()) {
                         case 3: {
-                            T bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
-                            T by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
+                            T bx = potential__.d_mtrx(ia)(xi1, xi2, 2);
+                            T by = potential__.d_mtrx(ia)(xi1, xi2, 3);
 
                             this->op_(0, this->packed_mtrx_offset_(ia) + idx, 2) = bx;
                             this->op_(1, this->packed_mtrx_offset_(ia) + idx, 2) = -by;
@@ -225,8 +226,8 @@ D_operator<T>::initialize()
                             this->op_(1, this->packed_mtrx_offset_(ia) + idx, 3) = by;
                         }
                         case 1: {
-                            T v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                            T bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+                            T v  = potential__.d_mtrx(ia)(xi1, xi2, 0);
+                            T bz = potential__.d_mtrx(ia)(xi1, xi2, 1);
 
                             /* add ionic part */
                             if (lm1 == lm2) {
@@ -238,7 +239,7 @@ D_operator<T>::initialize()
                             break;
                         }
                         case 0: {
-                            this->op_(0, this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                            this->op_(0, this->packed_mtrx_offset_(ia) + idx, 0) = potential__.d_mtrx(ia)(xi1, xi2, 0);
                             /* add ionic part */
                             if (lm1 == lm2) {
                                 this->op_(0, this->packed_mtrx_offset_(ia) + idx, 0) += dion(idxrf1, idxrf2);

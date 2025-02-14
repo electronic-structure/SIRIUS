@@ -17,6 +17,7 @@
 #include "function3d/periodic_function.hpp"
 #include "k_point/k_point.hpp"
 #include "density/augmentation_operator.hpp"
+#include "potential/potential.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 
 namespace sirius {
@@ -24,12 +25,14 @@ namespace sirius {
 /** \tparam T  Precision type of the wave-functions */
 template <typename T, typename F>
 void
-add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_base<T>& bp_base__, K_point<T>& kp__,
+add_k_point_contribution_nonlocal(Potential& potential__, Beta_projectors_base<T>& bp_base__, K_point<T>& kp__,
                                   mdarray<real_type<F>, 2>& collect_res__)
 {
     PROFILE("sirius::add_k_point_contribution_nonlocal");
 
-    auto& uc = ctx__.unit_cell();
+    auto& ctx = potential__.ctx();
+
+    auto& uc = ctx.unit_cell();
 
     if (uc.max_mt_basis_size() == 0) {
         return;
@@ -39,7 +42,7 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
 
     double main_two_factor{-2};
 
-    auto mt          = ctx__.processing_unit_memory_t();
+    auto mt          = ctx.processing_unit_memory_t();
     auto bp_gen      = bp.make_generator(mt);
     auto beta_coeffs = bp_gen.prepare();
 
@@ -54,25 +57,25 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
         /* store <beta|psi> for spin up and down */
         matrix<F> beta_phi_chunks[2];
 
-        for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
-            int nbnd              = kp__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx__.spla_context(), mt, ctx__.host_memory_t(),
-                                                       is_device_memory(mt), beta_coeffs, kp__.spinor_wave_functions(),
-                                                       wf::spin_index(ispn), wf::band_range(0, nbnd));
+        for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
+            int nbnd = kp__.num_occupied_bands(ispn);
+            beta_phi_chunks[ispn] =
+                    inner_prod_beta<F>(ctx.spla_context(), mt, ctx.host_memory_t(), is_device_memory(mt), beta_coeffs,
+                                       kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 
         for (int x = 0; x < bp_base__.num_comp(); x++) {
             /* generate chunk for inner product of beta gradient */
             bp_base_gen.generate(beta_coeffs_base, icnk, x);
 
-            for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
+            for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
                 int spin_factor = (ispn == 0 ? 1 : -1);
 
                 int nbnd = kp__.num_occupied_bands(ispn);
 
                 /* inner product of beta gradient and WF */
                 auto bp_base_phi_chunk = inner_prod_beta<F>(
-                        ctx__.spla_context(), mt, ctx__.host_memory_t(), is_device_memory(mt), beta_coeffs_base,
+                        ctx.spla_context(), mt, ctx.host_memory_t(), is_device_memory(mt), beta_coeffs_base,
                         kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
 
                 splindex_block<> spl_nbnd(nbnd, n_blocks(kp__.comm().size()), block_id(kp__.comm().rank()));
@@ -85,6 +88,8 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
                     int offs = beta_coeffs_base.beta_chunk_->desc_(beta_desc_idx::offset, ia_chunk);
                     int nbf  = beta_coeffs_base.beta_chunk_->desc_(beta_desc_idx::nbf, ia_chunk);
                     int iat  = uc.atom(ia).type_id();
+
+                    auto& d_mtrx = potential__.d_mtrx(ia);
 
                     if (uc.atom(ia).type().spin_orbit_coupling()) {
                         RTE_THROW("stress and forces with SO coupling are not upported");
@@ -120,14 +125,14 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
                             /* Qij exists only in the case of ultrasoft/PAW */
                             real_type<F> qij{0};
                             if (uc.atom(ia).type().augment()) {
-                                qij = ctx__.augmentation_op(iat).q_mtrx(ibf, jbf);
+                                qij = ctx.augmentation_op(iat).q_mtrx(ibf, jbf);
                             }
                             std::complex<real_type<F>> dij{0};
 
                             /* get non-magnetic or collinear spin parts of dij*/
-                            switch (ctx__.num_spins()) {
+                            switch (ctx.num_spins()) {
                                 case 1: {
-                                    dij = uc.atom(ia).d_mtrx(ibf, jbf, 0);
+                                    dij = d_mtrx(ibf, jbf, 0);
                                     if (lm1 == lm2) {
                                         dij += uc.atom(ia).type().d_mtrx_ion()(idxrf1, idxrf2);
                                     }
@@ -136,8 +141,7 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
 
                                 case 2: {
                                     /* Dij(00) = dij + dij_Z ;  Dij(11) = dij - dij_Z*/
-                                    dij = (uc.atom(ia).d_mtrx(ibf, jbf, 0) +
-                                           spin_factor * uc.atom(ia).d_mtrx(ibf, jbf, 1));
+                                    dij = (d_mtrx(ibf, jbf, 0) + spin_factor * d_mtrx(ibf, jbf, 1));
                                     if (lm1 == lm2) {
                                         dij += uc.atom(ia).type().d_mtrx_ion()(idxrf1, idxrf2);
                                     }
@@ -154,10 +158,10 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
                             for_bnd(ibf, jbf, dij, qij, beta_phi_chunks[ispn]);
 
                             /* for non-collinear case*/
-                            if (ctx__.num_mag_dims() == 3) {
+                            if (ctx.num_mag_dims() == 3) {
                                 /* Dij(10) = dij_X + i dij_Y ; Dij(01) = dij_X - i dij_Y */
-                                dij = std::complex<real_type<F>>(uc.atom(ia).d_mtrx(ibf, jbf, 2),
-                                                                 spin_factor * uc.atom(ia).d_mtrx(ibf, jbf, 3));
+                                dij = std::complex<real_type<F>>(d_mtrx(ibf, jbf, 2),
+                                                                 spin_factor * d_mtrx(ibf, jbf, 3));
                                 /* add non-diagonal spin components*/
                                 for_bnd(ibf, jbf, dij, 0.0, beta_phi_chunks[ispn + spin_factor]);
                             }
@@ -167,8 +171,6 @@ add_k_point_contribution_nonlocal(Simulation_context& ctx__, Beta_projectors_bas
             } // ispn
         } // x
     }
-
-    // bp_base__.dismiss();
 }
 
 } // namespace sirius

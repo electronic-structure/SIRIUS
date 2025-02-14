@@ -146,8 +146,6 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
             }
         } // i (atoms in chunk)
     }
-    // kp.beta_projectors_row().dismiss();
-    // kp.beta_projectors_col().dismiss();
 
     if (ctx.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(ovlp, kp__.num_gkvec());
