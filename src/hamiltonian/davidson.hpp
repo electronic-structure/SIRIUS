@@ -392,7 +392,8 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                                  *sphi_extra, s, wf::band_range(0, num_extra_phi));
                     }
                 } else {
-                    Hk__.template apply_h_s<F>(mem, sr, wf::band_range(0, num_bands__.get()), *phi, hphi.get(), sphi.get());
+                    Hk__.template apply_h_s<F>(mem, sr, wf::band_range(0, num_bands__.get()), *phi, hphi.get(),
+                                               sphi.get());
                 }
                 break;
             }
@@ -400,7 +401,8 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                 if (ctx.full_potential()) {
                     Hk__.apply_fv_h_o(true, false, wf::band_range(0, num_bands__.get()), *phi, nullptr, sphi.get());
                 } else {
-                    Hk__.template apply_h_s<F>(mem, sr, wf::band_range(0, num_bands__.get()), *phi, nullptr, sphi.get());
+                    Hk__.template apply_h_s<F>(mem, sr, wf::band_range(0, num_bands__.get()), *phi, nullptr,
+                                               sphi.get());
                 }
                 break;
             }
@@ -786,7 +788,8 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
                     if (ctx.full_potential()) {
                         Hk__.apply_fv_h_o(true, false, wf::band_range(N, N + expand_with), *phi, nullptr, sphi.get());
                     } else {
-                        Hk__.template apply_h_s<F>(mem, sr, wf::band_range(N, N + expand_with), *phi, nullptr, sphi.get());
+                        Hk__.template apply_h_s<F>(mem, sr, wf::band_range(N, N + expand_with), *phi, nullptr,
+                                                   sphi.get());
                     }
                     for (int j = 0; j < num_ortho_steps; j++) {
                         wf::orthogonalize(ctx.spla_context(), mem, sr, wf::band_range(0, N),
