@@ -237,7 +237,7 @@ dmatrix<T>::get_diag(int n__)
             }
         }
     }
-    blacs_grid_->comm().allreduce(d.template at(memory_t::host), n__);
+    blacs_grid_->comm().allreduce(d.at(memory_t::host), n__);
     return d;
 }
 
@@ -255,7 +255,7 @@ dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
             }
         }
     }
-    this->comm().allreduce(full_mtrx.template at(memory_t::host), static_cast<int>(full_mtrx.size()));
+    this->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
 
     if (this->blacs_grid().comm().rank() == 0) {
         sirius::HDF5_tree h5(name__, sirius::hdf5_access_t::truncate);

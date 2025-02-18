@@ -387,7 +387,7 @@ class HDF5_tree
         }
 
         // Get the number of dimensions (rank) of the dataset
-        int ndims = H5Sget_simple_extent_ndims(dataspace_id);
+        const int ndims = H5Sget_simple_extent_ndims(dataspace_id);
         if (ndims < 0) {
             RTE_THROW("Error getting number of dimensions");
         }
