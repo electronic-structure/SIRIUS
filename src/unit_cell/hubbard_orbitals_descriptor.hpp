@@ -40,15 +40,15 @@ class hubbard_orbital_descriptor
     double J_{0.0};
 
     /// Different hubbard coefficients.
-    /*
-	 * To mimic QE
-	 *
-	 * J = hubbard_coefficients_[0]
-         * B = hubbard_coefficients_[1]
-         * E2 = hubbard_coefficients_[1]
-	 * E3 = hubbard_coefficients_[2]
-        */
-    std::vector<double> hubbard_coefficients_;
+    /**
+     * To mimic QE
+     *
+     * J = hubbard_coefficients_[0]
+     * B = hubbard_coefficients_[1]
+     * E2 = hubbard_coefficients_[1]
+     * E3 = hubbard_coefficients_[2]
+     */
+    std::array<double, 3> hubbard_coefficients_;
 
     mdarray<double, 4> hubbard_matrix_;
 
@@ -202,9 +202,9 @@ class hubbard_orbital_descriptor
     }
 
     /// Constructor.
-    hubbard_orbital_descriptor(const int n__, const int l__, const int orbital_index__, const double occ__,
-                               const double J__, const double U__, const std::vector<double>& hub_coef__,
-                               const double alpha__, const double beta__, const double J0__,
+    hubbard_orbital_descriptor(int const n__, int const l__, int const orbital_index__, double const occ__,
+                               double const J__, double const U__, std::array<double, 3> const hub_coef__,
+                               double const alpha__, double const beta__, double const J0__,
                                std::vector<double> initial_occupancy__, Spline<double> f__, bool use_for_calculations__,
                                int idx_wf__)
         : n_(n__)

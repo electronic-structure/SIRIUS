@@ -1143,7 +1143,8 @@ Atom_type::read_hubbard_input()
     for (int i = 0; i < parameters_.cfg().hubbard().local().size(); i++) {
         auto ho = parameters_.cfg().hubbard().local(i);
         if (ho.atom_type() == this->label()) {
-            std::vector<double> coeff(3, 0.0);
+            std::array<double, 3> coeff;
+            std::fill(coeff.begin(), coeff.end(), 0);
             double alpha = 0.0;
             double beta  = 0.0;
             if (ho.contains("J")) {
@@ -1187,8 +1188,9 @@ Atom_type::read_hubbard_input()
                 auto& e  = ps_atomic_wfs_[s];
                 int n    = e.n;
                 auto aqn = e.am;
-                std::vector<double> hub_coef__(3, 0.0);
-                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, hub_coef__, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
+                std::array<double, 3> hub_coef;
+                std::fill(hub_coef.begin(), hub_coef.end(), 0);
+                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, hub_coef, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
                                     false);
             }
         } else {
@@ -1197,13 +1199,14 @@ Atom_type::read_hubbard_input()
                 int n    = e.n;
                 auto aqn = e.am;
 
-                // check if the orbital is already listed. In that case skip it
+                /* check if the orbital is already listed. In that case skip it */
                 for (int i = 0; i < parameters_.cfg().hubbard().local().size(); i++) {
                     auto ho = parameters_.cfg().hubbard().local(i);
                     if ((ho.atom_type() == this->label()) && ((ho.n() != n) || (ho.l() != aqn.l()))) {
-                        std::vector<double> hub_coeff__(3, 0.0);
-                        // we add it to the list but we only use it for the orthogonalization procedure
-                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, hub_coeff__, 0, 0, 0.0,
+                        std::array<double, 3> hub_coeff;
+                        std::fill(hub_coeff.begin(), hub_coeff.end(), 0);
+                        /* we add it to the list but we only use it for the orthogonalization procedure */
+                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, hub_coeff, 0, 0, 0.0,
                                             std::vector<double>(2 * aqn.l() + 1, 0), false);
                         break;
                     }
@@ -1214,7 +1217,7 @@ Atom_type::read_hubbard_input()
 }
 
 void
-Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, std::vector<double>& hub_coef__,
+Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, std::array<double, 3> hub_coef__,
                                double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__,
                                const bool use_for_calculations__)
 {

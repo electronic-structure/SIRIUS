@@ -2205,7 +2205,7 @@ sirius_set_atom_type_hubbard:
       doc: Hubbard U parameter.
     J:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Exchange J parameter for the full interaction treatment.
     alpha:
       type: double
@@ -2236,14 +2236,9 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
                 auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
                 type.hubbard_correction(true);
                 if (type.file_name().empty()) {
-                    std::vector<double> hubbard_coeff_(3., 0.0);
-                    if (J__) {
-                        for (auto i = 0u; i < 3; i++) {
-                            hubbard_coeff_[i] = J__[i];
-                        }
-                    }
+                    std::array<double, 3> hubbard_coeff({J__[0], J__[1], J__[2]});
 
-                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[0], hubbard_coeff_, *alpha__, *beta__, *J0__,
+                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, hubbard_coeff[0], hubbard_coeff, *alpha__, *beta__, *J0__,
                                              std::vector<double>(), true);
                 } else {
                     // we use a an external file containing the potential

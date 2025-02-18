@@ -2357,7 +2357,7 @@ integer, target, intent(in) :: l
 integer, target, intent(in) :: n
 real(8), target, intent(in) :: occ
 real(8), target, intent(in) :: U
-real(8), target, intent(in) :: J
+real(8), target, intent(in) :: J(3)
 real(8), target, intent(in) :: alpha
 real(8), target, intent(in) :: beta
 real(8), target, intent(in) :: J0

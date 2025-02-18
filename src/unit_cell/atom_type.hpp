@@ -371,7 +371,7 @@ class Atom_type
         Full treatment of spin is not considered. In case of spinor wave-functions the are averaged between
         l+1/2 and l-1/2 states. */
     void
-    add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, std::vector<double>& hub_coef__,
+    add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, std::array<double, 3> hub_coef__,
                         double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__,
                         const bool use_for_calculations__);
 
