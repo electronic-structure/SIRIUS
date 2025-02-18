@@ -2238,8 +2238,8 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
                 if (type.file_name().empty()) {
                     std::array<double, 3> hubbard_coeff({J__[0], J__[1], J__[2]});
 
-                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, hubbard_coeff[0], hubbard_coeff, *alpha__, *beta__, *J0__,
-                                             std::vector<double>(), true);
+                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, hubbard_coeff[0], hubbard_coeff, *alpha__,
+                                             *beta__, *J0__, std::vector<double>(), true);
                 } else {
                     // we use a an external file containing the potential
                     // information which means that we do not have all information
