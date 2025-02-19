@@ -34,9 +34,9 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
     , blacs_grid_(&blacs_grid__)
     , spl_row_(num_rows_, n_blocks(blacs_grid__.num_ranks_row()), block_id(blacs_grid__.rank_row()), bs_row_)
     , spl_col_(num_cols_, n_blocks(blacs_grid__.num_ranks_col()), block_id(blacs_grid__.rank_col()), bs_col_)
-    , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
-              blacs_grid__.comm().native(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
-              blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
+    , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic(blacs_grid__.comm().native(), 'R',
+                                                                     blacs_grid__.num_ranks_row(),
+                                                                     blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
 {
     init();
 }
@@ -58,9 +58,9 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& 
     , blacs_grid_(&blacs_grid__)
     , spl_row_(num_rows_, n_blocks(blacs_grid__.num_ranks_row()), block_id(blacs_grid__.rank_row()), bs_row_)
     , spl_col_(num_cols_, n_blocks(blacs_grid__.num_ranks_col()), block_id(blacs_grid__.rank_col()), bs_col_)
-    , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
-              blacs_grid__.comm().native(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
-              blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
+    , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic(blacs_grid__.comm().native(), 'R',
+                                                                     blacs_grid__.num_ranks_row(),
+                                                                     blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
 {
     init();
 }
@@ -119,9 +119,9 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
     , blacs_grid_(&blacs_grid__)
     , spl_row_(num_rows_, n_blocks(blacs_grid__.num_ranks_row()), block_id(blacs_grid__.rank_row()), bs_row_)
     , spl_col_(num_cols_, n_blocks(blacs_grid__.num_ranks_col()), block_id(blacs_grid__.rank_col()), bs_col_)
-    , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
-              blacs_grid__.comm().native(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(),
-              blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
+    , spla_dist_(spla::MatrixDistribution::create_blacs_block_cyclic(blacs_grid__.comm().native(), 'R',
+                                                                     blacs_grid__.num_ranks_row(),
+                                                                     blacs_grid__.num_ranks_col(), bs_row__, bs_col__))
 {
     init();
 }
