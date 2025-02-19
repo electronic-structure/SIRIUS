@@ -138,7 +138,6 @@ get_available_memory()
 
     if (meminfo.is_open()) {
         std::string key;
-        long value;
         std::string unit;
 
         size_t tmp;
