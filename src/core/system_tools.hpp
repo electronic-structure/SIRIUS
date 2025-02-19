@@ -131,7 +131,8 @@ get_proc_threads()
 
 /// Get amount of free memory in bytes.
 inline auto
-get_available_memory() {
+get_available_memory()
+{
     std::ifstream meminfo("/proc/meminfo");
     size_t result{0};
 

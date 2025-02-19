@@ -499,7 +499,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
                 rsd->enu = new_enu;
             }
         } catch (std::exception const& e) {
-	    std::cout << e.what() << std::endl;
+            std::cout << e.what() << std::endl;
             ierr++;
         }
     }
