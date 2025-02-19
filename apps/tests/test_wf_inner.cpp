@@ -15,6 +15,8 @@ int
 test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__, int bs__, memory_t mem__)
 {
     spla::Context spla_ctx(is_host_memory(mem__) ? SPLA_PU_HOST : SPLA_PU_GPU);
+    /* we have plenty of gpu memory, allow a larger tile size */
+    spla_ctx.set_tile_size_gpu(2096);
 
     std::unique_ptr<la::BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -60,36 +62,48 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
               0);
     mpi::Communicator::world().barrier();
 
-    double t = -wtime();
-    wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp, 0,
-              0);
-    mpi::Communicator::world().barrier();
-    t += wtime();
+    Measurement stat;
 
-    double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / t;
-    if (mpi::Communicator::world().rank() == 0) {
-        printf("execution time (sec) : %12.6f\n", t);
-        printf("performance (GFlops) : %12.6f\n", perf);
-    }
-
-    double max_diff{0};
-    for (int j = 0; j < ovlp.num_cols_local(); j++) {
-        auto jcol = ovlp.icol(j);
-        for (int i = 0; i < ovlp.num_rows_local(); i++) {
-            auto irow = ovlp.irow(i);
-            /* 2 is accumulated from two spins */
-            std::complex<double> z = ovlp(i, j) - 2 * static_cast<double>(irow + 1) / (jcol + 1);
-            max_diff               = std::max(max_diff, std::abs(z));
+    int ierr{0};
+    for (int k = 0; k < 4; k++) {
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "step " << k << std::endl;
+        }
+        double t = -wtime();
+        wf::inner(spla_ctx, mem__, sr, phi1, wf::band_range(0, num_bands__), phi2, wf::band_range(0, num_bands__), ovlp,
+                  0, 0);
+        mpi::Communicator::world().barrier();
+        t += wtime();
+        double perf = sr.size() * 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / t;
+        stat.push_back(perf);
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "execution time : " << t << " sec." << std::endl;
+            std::cout << "performance : " << perf << " GFlops" << ", " << perf / mpi::Communicator::world().size()
+                      << " GFlops/rank" << std::endl;
+        }
+        double max_diff{0};
+        for (int j = 0; j < ovlp.num_cols_local(); j++) {
+            auto jcol = ovlp.icol(j);
+            for (int i = 0; i < ovlp.num_rows_local(); i++) {
+                auto irow = ovlp.irow(i);
+                /* factor 1 or 2 is accumulated from spin components */
+                auto z   = ovlp(i, j) - sr.size() * static_cast<double>(irow + 1) / (jcol + 1);
+                max_diff = std::max(max_diff, std::abs(z));
+            }
+        }
+        mpi::Communicator::world().allreduce<double, mpi::op_t::max>(&max_diff, 1);
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "max diff : " << max_diff << std::endl;
+        }
+        if (max_diff > 1e-8) {
+            ierr++;
         }
     }
-    mpi::Communicator::world().reduce<double, mpi::op_t::max>(&max_diff, 1, 0);
     if (mpi::Communicator::world().rank() == 0) {
-        printf("max diff : %18.12f\n", max_diff);
+        std::cout << "average performance (GFlops) : " << stat.average() << ", sigma : " << stat.sigma() << std::endl;
     }
-    if (max_diff > 1e-8) {
-        return 1;
-    }
-    return 0;
+
+    return ierr;
 }
 
 int
