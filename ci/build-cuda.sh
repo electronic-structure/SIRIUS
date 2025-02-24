@@ -7,7 +7,6 @@ export SPACK_SYSTEM_CONFIG_PATH=/user-environment/config
 spack --version
 
 # make sure we keep the stage direcorty
-spack config --scope=user update config
 spack config --scope=user add config:build_stage:/dev/shm/spack-stage
 
 spack env create -d ./spack-env
