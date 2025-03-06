@@ -42,7 +42,7 @@ build sirius cuda:
       git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
       git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
       source /dev/shm/spack-clone/share/spack/setup-env.sh
-      ./ci/build-cuda.sh
+      bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cuda.sh
 
 build sirius eiger:
   extends: .uenv-runner-eiger-zen2
@@ -61,7 +61,7 @@ build sirius eiger:
       git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
       git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
       source /dev/shm//spack-clone/share/spack/setup-env.sh
-      ./ci/build-cpu.sh
+      bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cpu.sh
 
 .run_tests:
   script:
