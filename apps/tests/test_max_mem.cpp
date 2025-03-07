@@ -15,7 +15,7 @@ int
 test_max_mem(cmd_args const& args)
 {
     std::cout << "Free avaialble memory : " << (get_available_memory() >> 30) << " Gb" << std::endl;
-    auto M = get_memory_t(args.value<std::string>("memory_t", "host"));
+    auto M      = get_memory_t(args.value<std::string>("memory_t", "host"));
     size_t size = args.value<int>("size", 1);
 
     //std::cout << "attempting to allocate " << size << " Gb" << std::endl;
@@ -39,8 +39,7 @@ test_max_mem(cmd_args const& args)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv,
-                  {{"memory_t=", "{string} type of the memory"}, {"size=", "{int} size of array in Gb"}});
+    cmd_args args(argn, argv, {{"memory_t=", "{string} type of the memory"}, {"size=", "{int} size of array in Gb"}});
 
     sirius::initialize(1);
     int result = call_test("test_max_mem", test_max_mem, args);
