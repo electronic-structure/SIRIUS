@@ -57,8 +57,9 @@ generate_potential_collinear_nonlocal(Simulation_context const& ctx__, const int
 }
 
 static void
-generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__, const int idx_hub_wf,
-                                   mdarray<std::complex<double>, 3> const& om__, mdarray<std::complex<double>, 3>& um__)
+generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type const& atom_type__,
+                                   const int idx_hub_wf__, mdarray<std::complex<double>, 3> const& om__,
+                                   mdarray<std::complex<double>, 3>& um__)
 {
     /* quick exit */
     if (!atom_type__.hubbard_correction()) {
@@ -68,7 +69,9 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
     um__.zero();
 
     /* single orbital implementation */
-    auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf);
+    auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf__);
+
+    hub_wf.print_info(RTE_OUT(ctx__.out()));
 
     if (!hub_wf.use_for_calculation()) {
         return;
@@ -592,6 +595,12 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
         if (ctx.num_mag_dims() != 3) {
             ::sirius::generate_potential_collinear_nonlocal(ctx, i, om__.nonlocal(i), um__.nonlocal(i));
         }
+    }
+    if (env::print_checksum()) {
+        print_checksum("om_local", om__.local_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("om_nonlocal", om__.nonlocal_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("um_local", um__.local_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("um_nonlocal", um__.nonlocal_checksum(), RTE_OUT(ctx.out()));
     }
 }
 

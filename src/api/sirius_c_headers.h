@@ -1123,7 +1123,7 @@ sirius_set_atom_type_hubbard:
       doc: Hubbard U parameter.
     J:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Exchange J parameter for the full interaction treatment.
     alpha:
       type: double
@@ -3262,8 +3262,8 @@ sirius_access_density_matrix:
       doc: Error code.
 */
 void
-sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__, double complex* dm__, int const* ld__,
-                          int* error_code__);
+sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__,
+                             double complex* dm__, int const* ld__, int* error_code__);
 
 /*
 sirius_access_local_occupation_matrix:
@@ -3307,8 +3307,9 @@ sirius_access_local_occupation_matrix:
       doc: Error code.
 */
 void
-sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__, int const* l__, int const* spin__,
-                                   double complex* occ_mtrx__, int const* ld__, int* error_code__);
+sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__,
+                                      int const* l__, int const* spin__, double complex* occ_mtrx__,
+                                      int const* ld__, int* error_code__);
 
 /*
 sirius_access_nonlocal_occupation_matrix:
@@ -3360,9 +3361,10 @@ sirius_access_nonlocal_occupation_matrix:
       doc: Error code.
 */
 void
-sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_type__, int const* atom_pair__, int const* n__, int const* l__,
-                                      int const* spin__, int const* T__, double complex* occ_mtrx__,
-                                      int const* ld1__, int const* ld2__, int* error_code__);
+sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_type__, int const* atom_pair__,
+                                         int const* n__, int const* l__, int const* spin__, int const* T__,
+                                         double complex* occ_mtrx__, int const* ld1__, int const* ld2__,
+                                         int* error_code__);
 
 /*
 sirius_get_major_version:

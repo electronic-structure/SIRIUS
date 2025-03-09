@@ -58,14 +58,16 @@ class U_operator
 {
   private:
     Simulation_context const& ctx_;
-    std::array<la::dmatrix<std::complex<T>>, 4> um_;
+    /// Potential correction matrix for a given k-point.
+    /** Constructed from local and non-local parts of Hubbard U matrix. */
+    std::array<mdarray<std::complex<T>, 2>, 4> um_;
     std::vector<int> offset_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
     r3::vector<double> vk_;
 
   public:
-    U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__);
+    U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, r3::vector<double> vk__);
     ~U_operator() = default;
 
     inline auto
@@ -98,9 +100,9 @@ class U_operator
     }
 
     std::complex<T> const*
-    at(memory_t mem__, const int idx1, const int idx2, const int idx3) const
+    at(memory_t mem__, const int m1, const int m2, const int j) const
     {
-        return um_[idx3].at(mem__, idx1, idx2);
+        return um_[j].at(mem__, m1, m2);
     }
 
     matrix<std::complex<T>> const&

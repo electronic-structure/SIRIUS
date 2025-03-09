@@ -23,13 +23,12 @@ class Hubbard_matrix
 {
   protected:
     Simulation_context const& ctx_;
-    /// Local part of Hubbard matrix
     int num_steps_{0};
     double constraint_error_{1.0};
-    /// table indicating if we should apply constraints on the hubbard occupation
+    /// Table indicating if we should apply constraints on the hubbard occupation
     /// to given atomic orbital group
     std::vector<bool> apply_constraints_;
-    /// occupancy matrix for each atomic level (n,l)
+    /// Local part of Hubbard matrix
     std::vector<mdarray<std::complex<double>, 3>> local_;
     /// Non-local part of Hubbard matrix.
     std::vector<mdarray<std::complex<double>, 3>> nonlocal_;
@@ -268,6 +267,26 @@ class Hubbard_matrix
         RTE_THROW(s);
 
         return -1;
+    }
+
+    inline auto
+    local_checksum() const
+    {
+        std::complex<double> sum(0, 0);
+        for (auto& e : local_) {
+            sum += e.checksum();
+        }
+        return sum;
+    }
+
+    inline auto
+    nonlocal_checksum() const
+    {
+        std::complex<double> sum(0, 0);
+        for (auto& e : nonlocal_) {
+            sum += e.checksum();
+        }
+        return sum;
     }
 };
 

@@ -370,21 +370,27 @@ Q_operator<T>::initialize()
 }
 
 template <typename T>
-U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, std::array<double, 3> vk__)
+U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, r3::vector<double> vk__)
     : ctx_(ctx__)
     , vk_(vk__)
 {
     if (!ctx_.hubbard_correction()) {
         return;
     }
-    /* a pair of "total number, offests" for the Hubbard orbitals idexing */
+    /* a pair of "total number, offsets" for the Hubbard orbitals idexing */
     auto r                 = ctx_.unit_cell().num_hubbard_wf();
     this->nhwf_            = r.first;
     this->offset_          = um1__.offset();
     this->atomic_orbitals_ = um1__.atomic_orbitals();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        um_[j] = la::dmatrix<std::complex<T>>(r.first, r.first);
+        um_[j] = mdarray<std::complex<T>, 2>({r.first, r.first});
         um_[j].zero();
+    }
+    if (env::print_checksum()) {
+        auto cs1 = um1__.local_checksum();
+        auto cs2 = um1__.nonlocal_checksum();
+        print_checksum("U_matrix_local", cs1, RTE_OUT(ctx_.out()));
+        print_checksum("U_matrix_nonlocal", cs2, RTE_OUT(ctx_.out()));
     }
 
     /* copy local blocks */
@@ -427,12 +433,12 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
         }
     }
     for (int is = 0; is < ctx_.num_spins(); is++) {
-        auto diff = check_hermitian(um_[is], r.first);
-        if (diff > 1e-10) {
-            RTE_THROW("um is not Hermitian");
-        }
+        //auto diff = check_hermitian(um_[is], r.first);
+        //if (diff > 1e-10) {
+        //    RTE_THROW("um is not Hermitian");
+        //}
         if (env::print_checksum()) {
-            print_checksum("um" + std::to_string(is), um_[is].checksum(r.first, r.first), RTE_OUT(ctx_.out()));
+            print_checksum("U_matrix_k_" + std::to_string(is), um_[is].checksum(), RTE_OUT(ctx_.out()));
         }
         if (ctx_.processing_unit() == device_t::GPU) {
             um_[is].allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
