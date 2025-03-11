@@ -829,13 +829,16 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     auto inc   = a1.check_lo_linear_independence(args.value<double>("lo_tol", 0.0001));
     dict["lo"] = json::array();
 
+    idxlo = 0;
     for (int l = 0; l < 10; l++) {
         for (int j = 0; j < a1.num_lo_descriptors(); j++) {
             if (a1.lo_descriptor(j).am.l() == l) {
                 auto s = lo_to_str(a1.lo_descriptor(j));
                 if (inc[j]) {
                     dict["lo"].push_back({{"l", a1.lo_descriptor(j).am.l()}, {"basis", json::parse(s)}});
-                    std::cout << "l: " << a1.lo_descriptor(j).am.l() << ", basis: " << s << std::endl;
+                    std::cout << "idxlo : " << idxlo << ", l: " << a1.lo_descriptor(j).am.l() << ", basis: " << s
+                              << std::endl;
+                    idxlo++;
                 }
             }
         }

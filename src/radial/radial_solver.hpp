@@ -23,6 +23,7 @@
 #include "core/typedefs.hpp"
 #include "core/rte/rte.hpp"
 #include "core/math_tools.hpp"
+#include "core/json.hpp"
 
 namespace sirius {
 
@@ -736,7 +737,9 @@ class Radial_solver
         }
         std::stringstream s;
         s << "integrate_forward_until(): condition is not achieved in 1000 iterations" << std::endl
-          << "  curent value of enu: " << enu__;
+          << "  curent value of enu: " << enu__ << std::endl
+          << "  l, k : " << l__ << " " << k__ << std::endl
+          << "  zn : " << zn_;
         RTE_THROW(s);
         return 0.0;
     }
@@ -1012,10 +1015,12 @@ class Bound_state : public Radial_solver
                                        [&s, &sp, &denu, alpha0__, alpha1__, this](int iter, int nn, double& enu) {
                                            sp = s;
                                            s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
-                                           if (s != sp && iter > 1) {
+                                           if (s != sp && iter > 3) {
                                                return true;
                                            }
                                            denu = (s != sp) ? denu * alpha0__ : denu * alpha1__;
+                                           /* do not allow big step in energy */
+                                           denu = std::min(denu, 10.0);
                                            enu += s * denu;
                                            return false;
                                        });
@@ -1023,10 +1028,18 @@ class Bound_state : public Radial_solver
         double e1 = enu_;
         double e2 = enu_ - sp * denu;
 
+        std::stringstream sout;
+
         /* e1 is bottom, e2 is top energy */
         if (e1 > e2) {
             std::swap(e1, e2);
         }
+
+        int nn1 = integrate_forward_gsl<relativity_t::dirac>(e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
+        int nn2 = integrate_forward_gsl<relativity_t::dirac>(e2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
+
+        sout << "firt pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
+        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl;
 
         /* 2nd pass: refine by bisection */
         enu_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
@@ -1040,9 +1053,16 @@ class Bound_state : public Radial_solver
                                            return std::abs(e1 - e2) < enu_tolerance_;
                                        });
 
+        nn1 = integrate_forward_gsl<relativity_t::dirac>(e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
+        nn2 = integrate_forward_gsl<relativity_t::dirac>(e2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
+        sout << "second pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
+        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl;
+
         /* final choice for enu: bottom enery of the refined interval */
         enu_ = integrate_forward_until(rel__, e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
                                        [](int iter, int nn, double& enu) { return true; });
+
+        sout << "final value for enu = " << enu_ << std::endl;
 
         /* compute r * u'(r) */
         for (int i = 0; i < num_points(); i++) {
@@ -1074,26 +1094,34 @@ class Bound_state : public Radial_solver
 
         /* count number of nodes of the function */
         int nn{0};
+        std::vector<double> xn;
         for (int i = 0; i < np - 1; i++) {
             if (p_(i) * p_(i + 1) < 0.0) {
                 nn++;
+                xn.push_back(radial_grid(i));
             }
         }
 
         if (nn != (n_ - l_ - 1)) {
-            FILE* fout = fopen("p.dat", "w");
-            for (int ir = 0; ir < np; ir++) {
-                double x = radial_grid(ir);
-                fprintf(fout, "%12.6f %16.8f\n", x, p_(ir));
-            }
-            fclose(fout);
+            nlohmann::json dict;
+            dict["x"]  = radial_grid().values();
+            dict["p"]  = p_.values();
+            dict["ve"] = this->ve_.values();
+            dict["z"]  = this->zn_;
+            write_json_to_file(dict, "radial_solver_zn" + std::to_string(this->zn_) + "_n" + std::to_string(this->n_) +
+                                             "_l" + std::to_string(this->l_) + "_k" + std::to_string(this->k_) +
+                                             ".json");
 
-            std::stringstream s;
-            s << "n = " << n_ << std::endl
-              << "l = " << l_ << std::endl
-              << "enu = " << enu_ << std::endl
-              << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1);
-            RTE_THROW(s);
+            sout << "n = " << n_ << std::endl
+                 << "l = " << l_ << std::endl
+                 << "k = " << k_ << std::endl
+                 << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1) << std::endl;
+            sout << "node location : ";
+            for (auto e : xn) {
+                sout << e << " ";
+            }
+            sout << std::endl << "last value of ve : " << this->ve_(np - 1);
+            RTE_THROW(sout);
         }
 
         for (int i = 0; i < np - 1; i++) {
@@ -1106,7 +1134,7 @@ class Bound_state : public Radial_solver
 
   public:
     Bound_state(relativity_t rel__, int zn__, int n__, int l__, int k__, Radial_grid<double> const& radial_grid__,
-                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.5, double alpha1__ = 10.0,
+                std::vector<double> const& v__, double enu_start__, double alpha0__ = 0.33, double alpha1__ = 4.5,
                 double epsabs__ = 1e-3, double epsrel__ = 1e-3)
         : Radial_solver(zn__, v__, radial_grid__, epsabs__, epsrel__)
         , n_(n__)
@@ -1119,7 +1147,14 @@ class Bound_state : public Radial_solver
         , rdudr_(radial_grid__)
         , rho_(radial_grid__)
     {
-        solve(rel__, enu_start__, alpha0__, alpha1__);
+        try {
+            solve(rel__, enu_start__, alpha0__, alpha1__);
+        } catch (std::exception const& e) {
+            std::stringstream s;
+            s << e.what() << std::endl;
+            s << "zn = " << zn__ << ", enu_start = " << enu_start__;
+            RTE_THROW(s);
+        }
     }
 
     inline double

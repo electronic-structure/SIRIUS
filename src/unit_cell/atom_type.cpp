@@ -14,6 +14,7 @@
 #include "atom_type.hpp"
 #include "core/ostream_tools.hpp"
 #include "core/traits.hpp"
+#include "potential/xc_functional_base.hpp"
 #include <algorithm>
 #include <vector>
 
@@ -217,6 +218,39 @@ Atom_type::init()
             auto x                = free_atom_radial_grid_.x(i);
             free_atom_density_[i] = std::exp(-x) * zn_ / 8 / pi;
         }
+    }
+    /* restrore free atom potential from spherical density */
+    if (parameters_.full_potential()) {
+        init_free_atom_density(false);
+        free_atom_potential_spline_ = Spline<double>(free_atom_radial_grid_);
+        XC_functional_base Ex("XC_LDA_X", 1);
+        XC_functional_base Ec("XC_LDA_C_VWN", 1);
+        std::vector<double> g1, g2;
+        /* compute Hartree potential */
+        free_atom_density_spline_.integrate(g2, 2);
+        double t1 = free_atom_density_spline_.integrate(g1, 1);
+
+        auto np = free_atom_radial_grid_.num_points();
+
+        std::vector<double> vh(np);
+        /* electrostatic potential of electrons */
+        for (int i = 0; i < np; i++) {
+            vh[i] = fourpi * (g2[i] / free_atom_radial_grid_.x(i) + t1 - g1[i]);
+        }
+
+        std::vector<double> vx(np);
+        std::vector<double> vc(np);
+        std::vector<double> ex(np);
+        std::vector<double> ec(np);
+
+        /* compute XC potential and energy */
+        Ex.get_lda(np, &free_atom_density_[0], &vx[0], &ex[0]);
+        Ec.get_lda(np, &free_atom_density_[0], &vc[0], &ec[0]);
+
+        for (int i = 0; i < np; i++) {
+            free_atom_potential_spline_(i) = vh[i] - this->zn() * free_atom_radial_grid_.x_inv(i) + vc[i] + vx[i];
+        }
+        free_atom_potential_spline_.interpolate();
     }
 
     if (parameters_.full_potential()) {

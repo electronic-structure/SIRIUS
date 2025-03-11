@@ -350,7 +350,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__) const
 
     stdevp->solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
-    if (std::abs(loprod_eval[0]) < tol__) {
+    if (loprod_eval[0] < tol__) {
         std::printf("\n");
         std::printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
         std::printf("local orbitals overlap matrix:\n");
@@ -456,7 +456,7 @@ Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
     // fclose(fout);
 }
 
-void
+int
 Atom_symmetry_class::find_enu(relativity_t rel__)
 {
     PROFILE("sirius::Atom_symmetry_class::find_enu");
@@ -486,17 +486,24 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
         }
     }
 
-    #pragma omp parallel for
+    int ierr{0};
+    #pragma omp parallel for reduction(+:ierr)
     for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
-        auto rsd       = rs_with_auto_enu[i];
-        double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
-                                    spherical_potential_, rsd->enu, rsd->auto_enu)
-                                 .enu();
-        /* update linearization energy only if its change is above a threshold */
-        if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
-            rsd->enu = new_enu;
+        auto rsd = rs_with_auto_enu[i];
+        try {
+            double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
+                                        spherical_potential_, rsd->enu, rsd->auto_enu)
+                                     .enu();
+            /* update linearization energy only if its change is above a threshold */
+            if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
+                rsd->enu = new_enu;
+            }
+        } catch (std::exception const& e) {
+            std::cout << e.what() << std::endl;
+            ierr++;
         }
     }
+    return ierr;
 }
 
 void
@@ -509,7 +516,12 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     sd.zero();
     rf.zero();
 
-    find_enu(rel__);
+    auto ierr2 = find_enu(rel__);
+    if (ierr2) {
+        std::stringstream s;
+        s << "find_enu() failed for atom class " << id_;
+        RTE_WARNING(s);
+    }
 
     auto ierr = generate_aw_radial_functions(rel__, rf, sd);
     if (ierr) {
@@ -525,7 +537,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
         RTE_WARNING(s);
     }
 
-    ierr += ierr1;
+    ierr += (ierr1 + ierr2);
 
     if (!ierr) {
         copy(rf, radial_functions_);

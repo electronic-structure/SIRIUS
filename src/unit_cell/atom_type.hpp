@@ -314,6 +314,9 @@ class Atom_type
     /// Density of a free atom.
     Spline<double> free_atom_density_spline_;
 
+    /// Reconstructed free atom potential.
+    Spline<double> free_atom_potential_spline_;
+
     /// Density of a free atom as read from the input file.
     /** Does not contain 4 Pi and r^2 prefactors. */
     std::vector<double> free_atom_density_;
@@ -670,14 +673,14 @@ class Atom_type
         return radial_grid_.num_points();
     }
 
-    inline Radial_grid<double> const&
+    inline auto const&
     radial_grid() const
     {
         RTE_ASSERT(radial_grid_.num_points() > 0);
         return radial_grid_;
     }
 
-    inline Radial_grid<double> const&
+    inline auto const&
     free_atom_radial_grid() const
     {
         return free_atom_radial_grid_;
@@ -714,14 +717,14 @@ class Atom_type
     }
 
     /// Get free atom density at i-th point of radial grid.
-    inline double
+    inline auto
     free_atom_density(const int idx) const
     {
         return free_atom_density_spline_(idx);
     }
 
     /// Get free atom density at point x.
-    inline double
+    inline auto
     free_atom_density(double x) const
     {
         return free_atom_density_spline_.at_point(x);
@@ -732,6 +735,13 @@ class Atom_type
     free_atom_density(std::vector<double> rho__)
     {
         free_atom_density_ = rho__;
+    }
+
+    /// Get value of free atom potential at point x.
+    inline auto
+    free_atom_potential(double x) const
+    {
+        return free_atom_potential_spline_.at_point(x);
     }
 
     inline void

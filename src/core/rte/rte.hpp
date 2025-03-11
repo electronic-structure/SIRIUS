@@ -93,6 +93,20 @@ class ostream : public std::ostringstream
 
 #define FILE_LINE std::string(__FILE__) + ":" + std::to_string(__LINE__)
 
+/** Example: use RTE_THROW combination with try..catch
+ *  \code{.cpp}
+ *  try {
+ *      if (foo) {
+ *          RTE_THROW("message");
+ *      }
+ *  } catch (std::exception const& e) {
+ *      std::stringstream s;
+ *      s << e.what() << std::endl;
+ *      s << "another message";
+ *      RTE_THROW(s);
+ *  }
+ *  \endcode
+ */
 #define RTE_THROW(...)                                                                                                 \
     {                                                                                                                  \
         ::sirius::rte::message_impl(true, __func__, __FILE__, __LINE__, __VA_ARGS__);                                  \

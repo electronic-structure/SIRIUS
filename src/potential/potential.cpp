@@ -368,6 +368,16 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
         }
     }
 
+    if (ctx_.full_potential()) {
+        if (ctx_.verbosity() >= 3) {
+            auto vs = this->get_spherical_potential();
+            rte::ostream out(ctx_.out(), "potential");
+            for (int ic = 0; ic < ctx_.unit_cell().num_atom_symmetry_classes(); ic++) {
+                out << "ic : " << ic << ", v_spherical(Rmt) : " << vs[ic].back() << std::endl;
+            }
+        }
+    }
+
     if (ctx_.hubbard_correction()) {
         ::sirius::generate_potential(density__.occupation_matrix(), this->hubbard_potential());
     }

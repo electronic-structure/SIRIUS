@@ -428,8 +428,11 @@ run_tasks(cmd_args const& args)
         ground_state(*ctx, task_id, args, write_output);
     }
     if (task_id == task_t::eos) {
-        auto s0 = std::pow(args.value<double>("volume_scale0"), 1.0 / 3);
-        auto s1 = std::pow(args.value<double>("volume_scale1"), 1.0 / 3);
+        auto vs0            = args.value<double>("volume_scale0", 0.94);
+        auto vs1            = args.value<double>("volume_scale1", 1.06);
+        auto s0             = std::pow(vs0, 1.0 / 3);
+        auto s1             = std::pow(vs1, 1.0 / 3);
+        auto num_eos_points = args.value<int>("num_eos_points", 7);
 
         int write_output{0};
 
@@ -439,17 +442,20 @@ run_tasks(cmd_args const& args)
         dict["result"] = {};
 
         int rank{0};
-        int num_steps{7};
         std::vector<double> volume;
         std::vector<double> energy;
-        for (int i = 0; i < num_steps; i++) {
-            double s = s0 + i * (s1 - s0) / (num_steps - 1);
-            auto ctx = create_sim_ctx(fname, args);
-            rank     = ctx->comm().rank();
+        for (int i = 0; i < num_eos_points; i++) {
+            double vs = vs0 + i * (vs1 - vs0) / (num_eos_points - 1);
+            double s  = std::pow(vs, 1.0 / 3);
+            auto ctx  = create_sim_ctx(fname, args);
+            rank      = ctx->comm().rank();
             /* scale lattice vectors */
             auto lv = ctx->unit_cell().lattice_vectors() * s;
             ctx->unit_cell().set_lattice_vectors(lv);
             ctx->initialize();
+            ctx->out() << "EOS step : " << i << ", lattice scale : " << s << std::endl
+                       << "lattice scale range : " << s0 << " " << s1 << std::endl
+                       << "volume scale range  : " << vs0 << " " << vs1 << std::endl;
             auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
             dict["result"] += e;
             volume.push_back(ctx->unit_cell().omega());
@@ -457,7 +463,7 @@ run_tasks(cmd_args const& args)
         }
         if (rank == 0) {
             std::cout << "final result:" << std::endl;
-            for (int i = 0; i < num_steps; i++) {
+            for (int i = 0; i < num_eos_points; i++) {
                 std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
             }
             dict["volume"] = volume;
@@ -602,7 +608,8 @@ main(int argn, char** argv)
                    {"mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)"},
                    {"mixer.beta=", "{double} mixing parameter"},
                    {"volume_scale0=", "{double} starting volume scale for EOS calculation"},
-                   {"volume_scale1=", "{double} final volume scale for EOS calculation"}});
+                   {"volume_scale1=", "{double} final volume scale for EOS calculation"},
+                   {"num_eos_points=", "{int} number of EOS points"}});
 
 #if defined(_GNU_SOURCE)
     if (args.exist("fpe")) {
