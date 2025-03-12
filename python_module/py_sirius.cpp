@@ -6,7 +6,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "k_point/k_point_set.hpp"
+#include "context/simulation_context.hpp"
+#include "k_point/k_point.hpp"
 #include "python_module_includes.hpp"
 #include <mpi.h>
 
@@ -216,6 +217,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("update", &Simulation_context::update)
             .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
             .def("processing_unit_memory_t", &Simulation_context::processing_unit_memory_t)
+            .def("spla_context", &Simulation_context::spla_context_ptr)
             .def(
                     "comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
                     py::return_value_policy::reference_internal)
@@ -401,8 +403,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("fv_states", &K_point<double>::fv_states, py::return_value_policy::reference_internal)
             .def("ctx", &K_point<double>::ctx, py::return_value_policy::reference_internal)
             .def("weight", &K_point<double>::weight)
-            .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors, py::const_),
-                 py::return_value_policy::reference_internal)
+            .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors_ptr, py::const_))
             .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
                  py::return_value_policy::reference_internal);
 
@@ -413,7 +414,8 @@ PYBIND11_MODULE(py_sirius, m)
             .def(py::init<Simulation_context&, r3::vector<int>, r3::vector<int>, bool>(), py::keep_alive<1, 2>())
             .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
             .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
-            .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
+            .def("ctx", static_cast<Simulation_context const& (K_point_set::*)() const>(&K_point_set::ctx),
+                 py::return_value_policy::reference_internal)
             .def("unit_cell", &K_point_set::unit_cell, py::return_value_policy::reference_internal)
             .def("_num_kpoints", &K_point_set::num_kpoints)
             .def("size", [](K_point_set& ks) -> int { return ks.spl_num_kpoints().local_size(); })
