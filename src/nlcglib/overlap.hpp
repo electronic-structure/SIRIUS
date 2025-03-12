@@ -17,7 +17,6 @@
 
 #include "hamiltonian/non_local_operator.hpp"
 #include "adaptor.hpp"
-#include <stdexcept>
 #include <memory>
 #include <complex>
 
@@ -33,7 +32,7 @@ class Overlap_operators : public nlcglib::OverlapBase
     using key_t = std::pair<int, int>;
 
   public:
-    Overlap_operators(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op);
+    Overlap_operators(const K_point_set& kset, Simulation_context& ctx, std::shared_ptr<Q_operator<double> const> q_op);
     // virtual void apply(nlcglib::MatrixBaseZ& out, const nlcglib::MatrixBaseZ& in) const override;
     /// return a functor for nlcglib at given key
     virtual void
@@ -47,13 +46,14 @@ class Overlap_operators : public nlcglib::OverlapBase
 
 template <class op_t>
 Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_context& ctx,
-                                           const Q_operator<double>& q_op)
+                                           std::shared_ptr<Q_operator<double> const> q_op)
 {
     for (auto it : kset.spl_num_kpoints()) {
         auto& kp = *kset.get<double>(it.i);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
             key_t key{it.i.get(), ispn};
-            data_[key] = std::make_shared<op_t>(ctx, q_op, kp.beta_projectors(), ispn);
+            data_[key] = std::make_shared<op_t>(ctx.processing_unit_memory_t(), ctx.spla_context_ptr(), q_op,
+                                                kp.beta_projectors_ptr(), ispn);
         }
     }
 }

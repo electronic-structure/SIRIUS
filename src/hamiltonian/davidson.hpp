@@ -520,7 +520,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
         /* solve eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands__.get(), H, &eval[0], evec)) {
             std::stringstream s;
-            s << "error in diagonalziation";
+            s << "error in diagonalization";
             RTE_THROW(s);
         }
 

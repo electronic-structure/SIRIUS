@@ -6,7 +6,7 @@ http://dx.doi.org/10.1103/PhysRevB.79.241103
 import numpy as np
 from scipy.constants import physical_constants
 
-from ..coefficient_array import diag, inner, l2norm
+from ..coefficient_array import diag, inner, l2norm, identity_like
 from ..operators import US_Precond, Sinv_operator, S_operator
 from ..logger import Logger
 from ..py_sirius import sprint_magnetization
@@ -229,7 +229,6 @@ class CG:
         tol=1e-10,
         kappa=0.3,
         tau=0.5,
-        cgtype="FR",
         K=IdentityPreconditioner(),
         callback=lambda *args, **kwargs: None,
         error_callback=lambda *args, **kwargs: None,
@@ -241,15 +240,6 @@ class CG:
         FE           -- free energy
         is_converged -- bool
         """
-
-        if cgtype == "PR":
-            cg_update = polak_ribiere
-        elif cgtype == "FR":
-            cg_update = fletcher_reeves
-        elif cgtype == "SD":
-            cg_update = steepest_descent
-        else:
-            raise ValueError("wrong type")
 
         if self.is_ultrasoft:
             K = self.K
@@ -265,6 +255,7 @@ class CG:
         X = X @ U
         # set occupation numbers from band energies
         fn, mu = self.M.smearing.fn(ek)
+
         # compute initial free energy
         FE, Hx = M(X, fn=fn, mu=mu, ek=ek)
         logger("initial F: %.13f" % FE)
@@ -278,6 +269,7 @@ class CG:
             SX = self.S @ X
         else:
             SX = X
+
         XhKHX = SX.H @ (K @ HX)
         XhKX = SX.H @ (K @ SX)
         LL = _solve(XhKX, XhKHX)

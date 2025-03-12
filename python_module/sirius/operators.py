@@ -1,4 +1,5 @@
-from .py_sirius import InverseS_k, S_k, Precond_us, Hamiltonian0
+from .py_sirius import InverseS_k, S_k, Precond_us, Hamiltonian0, MemoryEnum
+
 # from .coefficient_array import threaded
 from scipy.sparse.linalg import LinearOperator
 import numpy as np
@@ -24,21 +25,28 @@ class S_operator(KpointOperatorBase):
         for ik, kp in enumerate(kpointset):
             for ispn in range(ctx.num_spins()):
                 self.ops[ik, ispn] = S_k(
-                    ctx, hamiltonian0.Q(), kp.beta_projectors(), ispn
+                    MemoryEnum.host,
+                    ctx.spla_context(),
+                    hamiltonian0.Q(),
+                    kp.beta_projectors(),
+                    ispn,
                 )
 
     def apply(self, cn):
         """"""
         out = type(cn)()
         for key in cn.keys():
-            out[key] = np.array(self.ops[key].apply(np.asfortranarray(cn[key])))
+            out[key] = np.asarray(self.ops[key].apply(np.asfortranarray(cn[key])))
         return out
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            return np.asarray(self.ops[key].apply(np.asfortranarray(X)))
+
         n = self.ops[key].size
-        return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
+        return LinearOperator(
+            dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec
+        )
 
     def __matmul__(self, cn):
         return self.apply(cn)
@@ -53,20 +61,27 @@ class Sinv_operator(KpointOperatorBase):
         for ik, kp in enumerate(kpointset):
             for ispn in range(ctx.num_spins()):
                 self.ops[ik, ispn] = InverseS_k(
-                    ctx, hamiltonian0.Q(), kp.beta_projectors(), ispn
+                    MemoryEnum.host,
+                    ctx.spla_context(),
+                    hamiltonian0.Q(),
+                    kp.beta_projectors(),
+                    ispn,
                 )
 
     def apply(self, cn):
         out = type(cn)()
         for key in cn.keys():
-            out[key] = np.array(self.ops[key].apply(np.asfortranarray(cn[key])))
+            out[key] = np.asarray(self.ops[key].apply(np.asfortranarray(cn[key])))
         return out
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            return np.asarray(self.ops[key].apply(np.asfortranarray(X)))
+
         n = self.ops[key].size
-        return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
+        return LinearOperator(
+            dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec
+        )
 
     def __matmul__(self, cn):
         return self.apply(cn)
@@ -93,14 +108,17 @@ class US_Precond(KpointOperatorBase):
     def apply(self, cn):
         out = type(cn)()
         for key in cn.keys():
-            out[key] = np.array(self.ops[key].apply(np.asfortranarray(cn[key])))
+            out[key] = np.asarray(self.ops[key].apply(np.asfortranarray(cn[key])))
         return out
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            return np.asarray(self.ops[key].apply(np.asfortranarray(X)))
+
         n = self.ops[key].size
-        return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
+        return LinearOperator(
+            dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec
+        )
 
     def __matmul__(self, cn):
         return self.apply(cn)

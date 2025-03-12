@@ -20,6 +20,7 @@
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
 #include "core/la/linalg.hpp"
+#include "core/memory.hpp"
 #include "core/strong_type.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/fft/gvec.hpp"
@@ -728,8 +729,8 @@ class Wave_functions : public Wave_functions_mt<T>
         return this->data_[ispn__.get()](ig__, i__.get());
     }
 
-    inline auto&
-    pw_coeffs(spin_index ispn__)
+    inline auto
+    pw_coeffs(spin_index ispn__) -> mdarray<std::complex<T>, 2>&
     {
         return this->data_[ispn__.get()];
     }
@@ -1517,6 +1518,20 @@ copy(memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::b
     }
 }
 
+/// Duplicate a wave function (host memory only)
+template <typename T>
+std::shared_ptr<Wave_functions<T>>
+copy(Wave_functions<T> const& in__)
+{
+    auto swf = std::make_shared<Wave_functions<T>>(in__.gkvec_sptr(), in__.num_md(), in__.num_wf(), memory_t::host);
+    wf::band_range br(0, in__.num_wf());
+    for (int sc = 0; sc < in__.num_sc(); ++sc) {
+        wf::spin_index s(sc);
+        copy(memory_t::host, in__, s, br, *swf, s, br);
+    }
+    return swf;
+}
+
 /// Apply linear transformation to the wave-functions.
 /**
  * \tparam T Precision type of the wave-functions (float or double).
@@ -1526,7 +1541,7 @@ copy(memory_t mem__, Wave_functions<T> const& in__, wf::spin_index s_in__, wf::b
  * \param [in] mem        Location of the input wave-functions (host or device).
  * \param [in] M          The whole transformation matrix.
  * \param [in] irow0      Location of the 1st row of the transfoormation sub-matrix.
- * \param [in] jcol0      Location of the 1st column of the transfoormation sub-matrix.
+ * \param [in] jcol0      Location of the 1st column of the transformation sub-matrix.
  */
 template <typename T, typename F>
 inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>

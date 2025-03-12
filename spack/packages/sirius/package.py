@@ -84,9 +84,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         deprecated=True,
     )
 
-    depends_on("cxx", type="build")
-    depends_on("c", type="build")
-    depends_on("fortran", type="build")
+    depends_on("cxx", type="build")  # generated
+    depends_on("fortran", type="build")  # generated
 
     variant("shared", default=True, description="Build shared libraries")
     variant("openmp", default=True, description="Build with OpenMP support")
@@ -147,6 +146,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("py-mpi4py", when="+python", type=("build", "run"))
     depends_on("py-voluptuous", when="+python", type=("build", "run"))
     depends_on("py-pybind11", when="+python", type=("build", "run"))
+    depends_on("fmt", when="@7.6.3:")
     extends("python", when="+python")
 
     depends_on("magma", when="+magma")

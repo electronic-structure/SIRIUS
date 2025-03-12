@@ -26,7 +26,7 @@ def ctx():
                 "pw_cutoff": pw_cutoff,
                 "gk_cutoff": gk_cutoff,
             },
-            "control": {"verbosity": 0},
+            "control": {"verbosity": 0, "processing_unit": "cpu"},
         }
         # create simulation context
         ctx = Simulation_context(json.dumps(inp))

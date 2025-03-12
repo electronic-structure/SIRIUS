@@ -149,7 +149,7 @@ def make_kinetic_precond2(kpointset):
         N = gkvec.count()
 
         def ekin(i):
-            return np.sum((np.array(gkvec.gkvec_cart(i))**2))
+            return np.sum((np.asarray(gkvec.gkvec_cart(i))**2))
 
         def Tp(T):
             """Teter preconditioner."""

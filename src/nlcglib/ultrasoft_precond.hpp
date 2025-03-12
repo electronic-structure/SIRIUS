@@ -16,7 +16,6 @@
 #include "hamiltonian/non_local_operator.hpp"
 #include "preconditioner/ultrasoft_precond_k.hpp"
 #include "adaptor.hpp"
-#include <stdexcept>
 #include <memory>
 #include <complex>
 
@@ -35,7 +34,7 @@ class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
     using buffer_t = nlcglib::MatrixBaseZ::buffer_t;
 
   public:
-    UltrasoftPrecond(const K_point_set& kset, Simulation_context& ctx, const Q_operator<double>& q_op);
+    UltrasoftPrecond(const K_point_set& kset, Simulation_context& ctx, std::shared_ptr<Q_operator<double> const> q_op);
 
     virtual void
     apply(const key_t& key, buffer_t& out, buffer_t& in) const override;
@@ -47,13 +46,13 @@ class UltrasoftPrecond : public nlcglib::UltrasoftPrecondBase
 };
 
 inline UltrasoftPrecond::UltrasoftPrecond(K_point_set const& kset, Simulation_context& ctx,
-                                          Q_operator<double> const& q_op)
+                                          std::shared_ptr<Q_operator<double> const> q_op)
 {
     for (auto it : kset.spl_num_kpoints()) {
         auto& kp = *kset.get<double>(it.i);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
             key_t key{it.i.get(), ispn};
-            data_[key] = std::make_shared<op_t>(ctx, q_op, ispn, kp.beta_projectors(), kp.gkvec());
+            data_[key] = std::make_shared<op_t>(ctx, q_op, ispn, kp.beta_projectors_ptr(), kp.gkvec());
         }
     }
 }

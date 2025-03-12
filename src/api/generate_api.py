@@ -42,6 +42,10 @@ type_info = {
         'f_type' : 'type(sirius_kpoint_set_handler)',
         'c_type' : 'type(C_PTR)'
     },
+    'md_handler' : {
+        'f_type' : 'type(sirius_md_extrapolation)',
+        'c_type' : 'type(C_PTR)'
+    },
     'ctx_handler' : {
         'f_type' : 'type(sirius_context_handler)',
         'c_type' : 'type(C_PTR)'
@@ -413,6 +417,13 @@ type sirius_H0_handler
     private
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
+
+!> @brief Opaque wrapper for K-point set handler.
+type sirius_md_extrapolation
+    type(C_PTR) :: handler_ptr_
+end type
+
+
 
 !> @brief Free any of the SIRIUS handlers (context, ground state or k-points).
 interface sirius_free_handler

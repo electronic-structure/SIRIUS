@@ -1509,6 +1509,24 @@ empty_like(const mdarray<T, N>& src, memory_pool& mempool)
     return _empty_like_inner<T>(I, dims, &mempool);
 }
 
+template <typename T, int N>
+auto
+zeros_like(const mdarray<T, N>& src) -> mdarray<T, N>
+{
+    auto res = empty_like(src);
+    res.zero();
+    return res;
+}
+
+template <typename T, int N>
+auto
+zeros_like(const mdarray<T, N>& src, memory_pool& mempool) -> mdarray<T, N>
+{
+    auto res = empty_like(src, mempool);
+    res.zero();
+    return res;
+}
+
 } // namespace sirius
 
 #endif // __MEMORY_HPP__
