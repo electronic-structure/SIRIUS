@@ -27,7 +27,7 @@ struct newton_minimization_result
     double ne_diff;
     std::vector<double> ys; // newton history
 };
-}  // local
+} // namespace local
 /**
  *  Newton minimization to determine the chemical potential.
  *
@@ -82,8 +82,7 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         }
 
         double ne_diff = std::abs(Nf - ne);
-        if (std::abs(step) < tol || ne_diff < tol)
-        {
+        if (std::abs(step) < tol || ne_diff < tol) {
             if (ne_diff > tol_ne) {
                 std::stringstream s;
                 s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search."
@@ -91,8 +90,8 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
                 return util::unexpected(s.str());
             }
 
-            res.iter = iter;
-            res.mu   = mu;
+            res.iter    = iter;
+            res.mu      = mu;
             res.ne_diff = ne_diff;
             return res;
         }
@@ -109,6 +108,4 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
     }
 }
 
-
-
-}  // sirius
+} // namespace sirius

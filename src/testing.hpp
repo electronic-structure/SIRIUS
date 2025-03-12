@@ -35,7 +35,7 @@ call_test(std::string label__, F&& f__, Args&&... args__)
     int err{0};
     std::string msg;
     // try {
-        err = f__(std::forward<Args>(args__)...);
+    err = f__(std::forward<Args>(args__)...);
     // } catch (std::exception const& e) {
     //     err = 1;
     //     msg = e.what();

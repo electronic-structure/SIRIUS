@@ -268,9 +268,9 @@ K_point_set::find_band_occupancies()
         double ne{0};
         for (auto it : spl_num_kpoints_) {
             double tmp{0};
-            #pragma omp parallel reduction(+ : tmp)
+#pragma omp parallel reduction(+ : tmp)
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                #pragma omp for
+#pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
                     tmp += f(ef - this->get<T>(it.i)->band_energy(splb.global_index(j), ispn)) * ctx_.max_occupancy();
                 }
@@ -377,7 +377,6 @@ K_point_set::find_band_occupancies()
     }
     return ne_diff;
 }
-
 
 template double
 K_point_set::find_band_occupancies<double>();
