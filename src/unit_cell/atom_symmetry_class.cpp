@@ -120,6 +120,10 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
                 rf__(ir, idxrf, 0) *= norm;
                 rf__(ir, idxrf, 1) *= norm;
             }
+            /* aw radial function can't be zero at MT boundary */
+            if (std::abs(rf__(nmtp - 1 , idxrf, 0)) < 1e-2) {
+                return false;
+            }
             for (int i : {0, 1, 2}) {
                 sd__(i, idxrf) *= norm;
             }
@@ -135,7 +139,16 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
          * radial functions */
         bool success{false};
         for (int k = 0; k < 100; k++) {
-            if ((success = compute_all_orders(l, k * 0.5))) {
+            if (l <= 3) {
+                /* for low l numbers Enu finder will find the top of the band;
+                 * in this case we need to go down in energy to remove any degeneracy of radial functions */
+                success = compute_all_orders(l, -k * 0.1);
+            } else {
+                /* for high l values, Enu is typically set in the species files and is not searched;
+                 * in case of trouble with them we need to increase linearisation energies */
+                success = compute_all_orders(l, k * 0.25);
+            }
+            if (success) {
                 break;
             }
         }
