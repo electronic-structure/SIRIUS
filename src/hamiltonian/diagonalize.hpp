@@ -81,6 +81,9 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
             }
         }
     }
+    /* wait for all */
+    ctx.comm().barrier();
+
     kset__.comm().allreduce(&num_dav_iter, 1);
     kset__.comm().allreduce<bool, mpi::op_t::land>(&converged, 1);
     ctx.num_itsol_steps(num_dav_iter);
