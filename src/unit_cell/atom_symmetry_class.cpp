@@ -142,7 +142,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             if (l <= 3) {
                 /* for low l numbers Enu finder will find the top of the band;
                  * in this case we need to go down in energy to remove any degeneracy of radial functions */
-                success = compute_all_orders(l, -k * 0.1);
+                success = compute_all_orders(l, -k * 0.05);
             } else {
                 /* for high l values, Enu is typically set in the species files and is not searched;
                  * in case of trouble with them we need to increase linearisation energies */
