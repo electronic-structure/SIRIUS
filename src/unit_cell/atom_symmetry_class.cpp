@@ -121,7 +121,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
                 rf__(ir, idxrf, 1) *= norm;
             }
             /* aw radial function can't be zero at MT boundary */
-            if (std::abs(rf__(nmtp - 1 , idxrf, 0)) < 1e-2) {
+            if (std::abs(rf__(nmtp - 1, idxrf, 0)) < 1e-2) {
                 return false;
             }
             for (int i : {0, 1, 2}) {

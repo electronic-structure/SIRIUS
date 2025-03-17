@@ -34,4 +34,3 @@ local_output()
 }
 
 #endif
-
