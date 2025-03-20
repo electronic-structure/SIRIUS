@@ -23,9 +23,9 @@ mul_veff_with_phase_factors_gpu(int num_atoms__, int num_gvec_loc__, std::comple
 #endif
 
 void
-Potential::generate_D_operator_matrix()
+Potential::generate_d_mtrx()
 {
-    PROFILE("sirius::Potential::generate_D_operator_matrix");
+    PROFILE("sirius::Potential::generate_d_mtrx");
 
     /* local number of G-vectors */
     int gvec_count   = ctx_.gvec().count();
@@ -65,12 +65,10 @@ Potential::generate_D_operator_matrix()
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
-                    int ia     = atom_type.atom_id(i);
-                    auto& atom = unit_cell_.atom(ia);
-
+                    int const ia = atom_type.atom_id(i);
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
-                            atom.d_mtrx(xi1, xi2, iv) = 0;
+                            d_mtrx_[ia](xi1, xi2, iv) = 0;
                         }
                     }
                 }
@@ -200,14 +198,13 @@ Potential::generate_D_operator_matrix()
 
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia     = atom_type.atom_id(i);
-                auto& atom = unit_cell_.atom(ia);
+                int ia = atom_type.atom_id(i);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
                         /* D-matix is symmetric */
-                        atom.d_mtrx(xi1, xi2, iv) = atom.d_mtrx(xi2, xi1, iv) =
+                        d_mtrx_[ia](xi1, xi2, iv) = d_mtrx_[ia](xi2, xi1, iv) =
                                 d_tmp(idx12, i, iv) * unit_cell_.omega();
                     }
                 }

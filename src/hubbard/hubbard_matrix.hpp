@@ -22,7 +22,7 @@ namespace sirius {
 class Hubbard_matrix
 {
   protected:
-    Simulation_context& ctx_;
+    Simulation_context const& ctx_;
     /// Local part of Hubbard matrix
     int num_steps_{0};
     double constraint_error_{1.0};

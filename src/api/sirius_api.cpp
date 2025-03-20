@@ -3029,7 +3029,6 @@ sirius_get_energy(void* const* gs_handler__, char const* label__, double* energy
 
                 auto& kset      = gs.k_point_set();
                 auto& ctx       = kset.ctx();
-                auto& unit_cell = kset.unit_cell();
                 auto& potential = gs.potential();
                 auto& density   = gs.density();
 
@@ -3037,7 +3036,7 @@ sirius_get_energy(void* const* gs_handler__, char const* label__, double* energy
 
                 std::map<std::string, std::function<double()>> func = {
                         {"total", [&]() { return sirius::total_energy(ctx, kset, density, potential); }},
-                        {"evalsum", [&]() { return sirius::eval_sum(unit_cell, kset); }},
+                        {"evalsum", [&]() { return sirius::eval_sum(density, kset); }},
                         {"exc", [&]() { return sirius::energy_exc(density, potential); }},
                         {"vxc", [&]() { return sirius::energy_vxc(density, potential); }},
                         {"bxc", [&]() { return sirius::energy_bxc(density, potential); }},
@@ -6421,7 +6420,7 @@ sirius_generate_d_operator_matrix(void* const* gs_handler__, int* error_code__)
     call_sirius(
             [&]() {
                 auto& gs = get_gs(gs_handler__);
-                gs.potential().generate_D_operator_matrix();
+                gs.potential().generate_d_mtrx();
             },
             error_code__);
 }

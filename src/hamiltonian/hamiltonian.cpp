@@ -32,7 +32,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
             new Local_operator<T>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_fft_sptr(), &potential__));
 
     if (!ctx_.full_potential()) {
-        d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(ctx_));
+        d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(potential__));
         q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
     }
     if (ctx_.full_potential()) {

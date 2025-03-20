@@ -146,8 +146,6 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
             }
         } // i (atoms in chunk)
     }
-    // kp.beta_projectors_row().dismiss();
-    // kp.beta_projectors_col().dismiss();
 
     if (ctx.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(ovlp, kp__.num_gkvec());
@@ -209,9 +207,15 @@ diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 {
     PROFILE("sirius::diag_S_davidson");
 
-    RTE_THROW("implement this");
-
     auto& ctx = Hk__.H0().ctx();
+
+    if (ctx.num_mag_dims() == 3) {
+        std::cout << "diag_S_davidson must be implemented for non-collinear case" << std::endl;
+
+        mdarray<real_type<F>, 1> eval({1});
+        eval(0) = 1;
+        return eval;
+    }
 
     auto& itso = ctx.cfg().iterative_solver();
 

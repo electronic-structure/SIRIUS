@@ -35,12 +35,12 @@ Potential::init_PAW()
             [this](int ia) { return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax()); });
 
     /* initialize dij matrix */
-    paw_dij_.resize(unit_cell_.num_paw_atoms());
+    d_mtrx_paw_.resize(unit_cell_.num_paw_atoms());
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia      = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
-        paw_dij_[i] = mdarray<double, 3>(
-                {unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(), ctx_.num_mag_dims() + 1});
-        paw_dij_[i].zero();
+        int ia         = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
+        int nbf        = unit_cell_.atom(ia).mt_basis_size();
+        d_mtrx_paw_[i] = mdarray<double, 3>({nbf, nbf, ctx_.num_mag_dims() + 1});
+        d_mtrx_paw_[i].zero();
     }
 }
 
@@ -91,11 +91,11 @@ Potential::generate_PAW_effective_potential(Density const& density)
     #pragma omp parallel for
     for (auto it : unit_cell_.spl_num_paw_atoms()) {
         auto ia = unit_cell_.paw_atom_index(it.i);
-        calc_PAW_local_Dij(ia, paw_dij_[it.i]);
+        calc_PAW_local_Dij(ia, d_mtrx_paw_[it.i]);
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));
-        comm_.bcast(paw_dij_[i].at(memory_t::host), paw_dij_[i].size(), location.ib);
+        comm_.bcast(d_mtrx_paw_[i].at(memory_t::host), d_mtrx_paw_[i].size(), location.ib);
     }
 
     /* add paw Dij to uspp Dij */
@@ -107,7 +107,7 @@ Potential::generate_PAW_effective_potential(Density const& density)
         for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
             for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                 for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                    atom.d_mtrx(ib1, ib2, imagn) += paw_dij_[i](ib1, ib2, imagn);
+                    d_mtrx_[ia](ib1, ib2, imagn) += d_mtrx_paw_[i](ib1, ib2, imagn);
                 }
             }
         }
@@ -317,6 +317,53 @@ Potential::calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const
         }
     }
     return energy;
+}
+
+double
+Potential::PAW_xc_total_energy(Density const& density__) const
+{
+    if (!unit_cell_.num_paw_atoms()) {
+        return 0;
+    }
+    /* compute contribution from the core */
+    double ecore{0};
+    #pragma omp parallel for reduction(+:ecore)
+    for (auto it : unit_cell_.spl_num_paw_atoms()) {
+        auto ia = unit_cell_.paw_atom_index(it.i);
+
+        auto& atom = unit_cell_.atom(ia);
+
+        auto& atom_type = atom.type();
+
+        auto& ps_core = atom_type.ps_core_charge_density();
+        auto& ae_core = atom_type.paw_ae_core_charge_density();
+
+        Spline<double> s(atom_type.radial_grid());
+        auto y00inv = 1.0 / y00;
+        for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
+            s(ir) = y00inv * ((*paw_ae_exc_)[ia](0, ir) * ae_core[ir] - (*paw_ps_exc_)[ia](0, ir) * ps_core[ir]) *
+                    std::pow(atom_type.radial_grid(ir), 2);
+        }
+        ecore += s.interpolate().integrate(0);
+    }
+    comm_.allreduce(&ecore, 1);
+
+    return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
+           inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
+}
+
+double
+Potential::PAW_one_elec_energy(Density const& density__) const
+{
+    double e{0};
+    #pragma omp parallel for reduction(+:e)
+    for (auto it : unit_cell_.spl_num_paw_atoms()) {
+        auto ia = unit_cell_.paw_atom_index(it.i);
+        auto dm = density__.density_matrix_aux(atom_index_t::global(ia));
+        e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), dm, d_mtrx_paw_[it.i]);
+    }
+    comm_.allreduce(&e, 1);
+    return e;
 }
 
 } // namespace sirius

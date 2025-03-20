@@ -507,8 +507,6 @@ Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std::sha
         }
     }
 
-    // auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
-
     auto spl_num_wf = phi_fft.spl_num_wf();
 
     /* number of real-space points in the local part of FFT buffer */

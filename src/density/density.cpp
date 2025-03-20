@@ -26,6 +26,128 @@
 
 namespace sirius {
 
+/// Generate all-electron core charge densiy.
+/** Solve “free” atom radial equation for core states and find total core charge density. For that, radial grid 
+ *  of the muffin-tin is extended to effective infinity and spherical potential outside muffin-tin is approximated
+ *  with alpha/r + beta tail. Bound states are found and accumulated in the core charge density. */
+static auto
+generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel__, std::vector<double> const& vs__,
+                             std::vector<double>& rho_core__)
+{
+    std::fill(rho_core__.begin(), rho_core__.end(), 0.0);
+
+    /* nothing to do */
+    if (atom_type__.num_core_electrons() == 0.0) {
+        return std::make_pair(0.0, 0.0);
+    }
+
+    int nmtp = atom_type__.num_mt_points();
+
+    std::vector<double> free_atom_grid(nmtp);
+    for (int i = 0; i < nmtp; i++) {
+        free_atom_grid[i] = atom_type__.radial_grid(i);
+    }
+
+    int zn = atom_type__.zn();
+
+    /* extend radial grid */
+    double x  = atom_type__.radial_grid(nmtp - 1);
+    double dx = atom_type__.radial_grid().dx(nmtp - 2);
+    while (x < 10.0 + zn / 10.0) {
+        x += dx;
+        free_atom_grid.push_back(x);
+        dx *= 1.025;
+    }
+    Radial_grid_ext<double> rgrid(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
+
+    /* interpolate spherical potential inside muffin-tin */
+    Spline<double> svmt(atom_type__.radial_grid());
+    /* remove nucleus contribution from Vmt */
+    for (int ir = 0; ir < nmtp; ir++) {
+        svmt(ir) = vs__[ir] + zn * atom_type__.radial_grid().x_inv(ir);
+    }
+    svmt.interpolate();
+    /* fit tail to alpha/r + beta */
+    double alpha = -(std::pow(atom_type__.mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + zn);
+    double beta  = svmt(nmtp - 1) - (zn + alpha) / atom_type__.mt_radius();
+
+    /* cook an effective potential from muffin-tin part and a tail */
+    std::vector<double> veff(rgrid.num_points());
+    for (int ir = 0; ir < nmtp; ir++) {
+        veff[ir] = vs__[ir];
+    }
+    /* simple tail alpha/r + beta */
+    for (int ir = nmtp; ir < rgrid.num_points(); ir++) {
+        veff[ir] = alpha * rgrid.x_inv(ir) + beta;
+    }
+
+    //== /* write spherical potential */
+    //== std::stringstream sstr;
+    //== sstr << "spheric_potential_" << id_ << ".dat";
+    //== FILE* fout = fopen(sstr.str().c_str(), "w");
+
+    //== for (int ir = 0; ir < rgrid.num_points(); ir++)
+    //== {
+    //==     fprintf(fout, "%18.10f %18.10f\n", rgrid[ir], veff[ir]);
+    //== }
+    //== fclose(fout);
+
+    /* atomic level energies */
+    std::vector<double> level_energy(atom_type__.num_atomic_levels());
+
+    for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+        level_energy[ist] = -1.0 * zn / 2 / std::pow(double(atom_type__.atomic_level(ist).n), 2);
+    }
+
+    mdarray<double, 2> rho_t({rgrid.num_points(), atom_type__.num_atomic_levels()});
+    rho_t.zero();
+    #pragma omp parallel for
+    for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+        if (atom_type__.atomic_level(ist).core) {
+            /* serch for the bound state */
+            Bound_state bs(core_rel__, zn, atom_type__.atomic_level(ist).n, atom_type__.atomic_level(ist).l,
+                           atom_type__.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
+
+            auto& rho = bs.rho();
+            for (int i = 0; i < rgrid.num_points(); i++) {
+                rho_t(i, ist) = atom_type__.atomic_level(ist).occupancy * rho(i) / fourpi;
+            }
+
+            level_energy[ist] = bs.enu();
+        }
+    }
+
+    /* charge density */
+    Spline<double> rho(rgrid);
+
+    for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+        if (atom_type__.atomic_level(ist).core) {
+            for (int i = 0; i < rgrid.num_points(); i++) {
+                rho(i) += rho_t(i, ist);
+            }
+        }
+    }
+
+    for (int ir = 0; ir < atom_type__.num_mt_points(); ir++) {
+        rho_core__[ir] = rho(ir);
+    }
+
+    /* interpolate muffin-tin part of core density */
+    Spline<double> rho_mt(atom_type__.radial_grid(), rho_core__);
+
+    /* compute core leakage */
+    auto core_leakage = fourpi * (rho.interpolate().integrate(2) - rho_mt.integrate(2));
+
+    /* compute eigen-value sum of core states */
+    double core_eval_sum{0};
+    for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+        if (atom_type__.atomic_level(ist).core) {
+            core_eval_sum += level_energy[ist] * atom_type__.atomic_level(ist).occupancy;
+        }
+    }
+    return std::make_pair(core_leakage, core_eval_sum);
+}
+
 #if defined(SIRIUS_GPU)
 void
 update_density_rg_1_real_gpu(int size__, float const* psi_rg__, float wt__, float* density_rg__)
@@ -88,6 +210,14 @@ Density::Density(Simulation_context& ctx__)
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
         rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+    } else {
+        ae_core_charge_density_.resize(unit_cell_.num_atom_symmetry_classes());
+        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+            ae_core_charge_density_[ic] =
+                    std::vector<double>(unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points());
+        }
+        core_eval_sum_.resize(unit_cell_.num_atom_symmetry_classes());
+        core_leakage_.resize(unit_cell_.num_atom_symmetry_classes());
     }
 
     l_by_lm_ = sf::l_by_lm(ctx_.lmax_rho());
@@ -127,8 +257,22 @@ double
 Density::core_leakage() const
 {
     double sum{0};
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-        sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+    if (ctx_.full_potential()) {
+        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+            sum += this->core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+        }
+    }
+    return sum;
+}
+
+double
+Density::core_eval_sum() const
+{
+    double sum{0};
+    if (ctx_.full_potential()) {
+        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+            sum += this->core_eval_sum(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+        }
     }
     return sum;
 }
@@ -1063,12 +1207,11 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
     if (ctx_.full_potential()) {
         if (add_core__) {
-            /* find the core states */
-            generate_core_charge_density();
             /* add core contribution */
             for (auto it : unit_cell_.spl_num_atoms()) {
                 for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
-                    rho().mt()[it.i](0, ir) += unit_cell_.atom(it.i).symmetry_class().ae_core_charge_density(ir) / y00;
+                    int ic = unit_cell_.atom(it.i).symmetry_class().id();
+                    rho().mt()[it.i](0, ir) += ae_core_charge_density_[ic][ir] / y00;
                 }
             }
         }
@@ -1921,7 +2064,7 @@ Density::print_info(std::ostream& out__) const
 
     out__ << "Charges and magnetic moments" << std::endl << hbar(80, '-') << std::endl;
     if (ctx_.full_potential()) {
-        double total_core_leakage{0.0};
+        double total_core_leakage = this->core_leakage();
         out__ << "atom      charge    core leakage";
         if (ctx_.num_mag_dims()) {
             out__ << "                 moment                |moment|";
@@ -1929,8 +2072,7 @@ Density::print_info(std::ostream& out__) const
         out__ << std::endl << hbar(80, '-') << std::endl;
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
-            total_core_leakage += core_leakage;
+            double core_leakage = this->core_leakage(unit_cell_.atom(ia).symmetry_class().id());
             out__ << std::setw(4) << ia << std::setw(12) << std::setprecision(6) << std::fixed << mt_charge[ia]
                   << std::setw(16) << std::setprecision(6) << std::scientific << core_leakage;
             if (ctx_.num_mag_dims()) {
@@ -2053,6 +2195,49 @@ Density::load(std::string name__)
             fin["occupation_matrix"]["nonlocal"][i].read("data", this->occupation_matrix().nonlocal(i));
         }
     }
+}
+
+void
+Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs__)
+{
+    if (!ctx_.full_potential()) {
+        return;
+    }
+    PROFILE("sirius::Density::generate_core_charge_density");
+
+    auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
+
+    for (auto it : spl_idx) {
+        auto result          = ::sirius::generate_core_charge_density(unit_cell_.atom_symmetry_class(it.i).atom_type(),
+                                                                      ctx_.core_relativity(), vs__[it.i],
+                                                                      ae_core_charge_density_[it.i]);
+        core_leakage_[it.i]  = result.first;
+        core_eval_sum_[it.i] = result.second;
+    }
+
+    for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+        auto rank = spl_idx.location(ic).ib;
+        ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
+                          unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+        ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
+        ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
+    }
+}
+
+void
+Density::generate_pseudo_core_charge_density()
+{
+    PROFILE("sirius::Density::generate_pseudo_core_charge_density");
+
+    /* get lenghts of all G shells */
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto const ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
+    /* make rho_core(G) */
+    auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
+
+    std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
+    rho_pseudo_core_->fft_transform(1);
 }
 
 } // namespace sirius

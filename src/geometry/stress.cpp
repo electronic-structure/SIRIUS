@@ -45,7 +45,7 @@ Stress::calc_stress_nonloc_aux()
         auto mg  = kp->spinor_wave_functions().memory_guard(mem, wf::copy_to::device);
         Beta_projectors_strain_deriv<T> bp_strain_deriv(ctx_, kp->gkvec());
 
-        add_k_point_contribution_nonlocal<T, F>(ctx_, bp_strain_deriv, *kp, collect_result);
+        add_k_point_contribution_nonlocal<T, F>(potential_, bp_strain_deriv, *kp, collect_result);
     }
 
     #pragma omp parallel

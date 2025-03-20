@@ -456,7 +456,7 @@ class Hamiltonian_k
      */
     template <typename F>
     std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
-    apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
+    apply_h_s(memory_t mem__, wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
               wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         PROFILE("sirius::Hamiltonian_k::apply_h_s");
@@ -469,13 +469,11 @@ class Hamiltonian_k
                                     kp_.gkvec_fft_sptr(), spins__, phi__, *hphi__, br__);
         }
 
-        auto mem = H0().ctx().processing_unit_memory_t();
-
         if (pcs) {
-            auto cs = phi__.checksum(mem, br__);
+            auto cs = phi__.checksum(mem__, br__);
             print_checksum("phi", cs, RTE_OUT(H0().ctx().out()));
             if (hphi__) {
-                auto cs = hphi__->checksum(mem, br__);
+                auto cs = hphi__->checksum(mem__, br__);
                 print_checksum("hloc_phi", cs, RTE_OUT(H0().ctx().out()));
             }
         }
@@ -484,7 +482,7 @@ class Hamiltonian_k
         if (sphi__ != nullptr) {
             for (auto s = spins__.begin(); s != spins__.end(); s++) {
                 auto sp = phi__.actual_spin_index(s);
-                wf::copy(mem, phi__, sp, br__, *sphi__, sp, br__);
+                wf::copy(mem__, phi__, sp, br__, *sphi__, sp, br__);
             }
         }
 
@@ -492,7 +490,7 @@ class Hamiltonian_k
         if (H0().ctx().unit_cell().max_mt_basis_size()) {
             auto bp_generator = kp_.beta_projectors().make_generator();
             auto beta_coeffs  = bp_generator.prepare();
-            apply_non_local_D_Q<T, F>(mem, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__,
+            apply_non_local_D_Q<T, F>(mem__, spins__, br__, bp_generator, beta_coeffs, phi__, &H0().D(), hphi__,
                                       &H0().Q(), sphi__);
         }
 
@@ -504,11 +502,11 @@ class Hamiltonian_k
 
         if (pcs) {
             if (hphi__) {
-                auto cs = hphi__->checksum(mem, br__);
+                auto cs = hphi__->checksum(mem__, br__);
                 print_checksum("hphi", cs, RTE_OUT(H0().ctx().out()));
             }
             if (sphi__) {
-                auto cs = sphi__->checksum(mem, br__);
+                auto cs = sphi__->checksum(mem__, br__);
                 print_checksum("hsphi", cs, RTE_OUT(H0().ctx().out()));
             }
         }
@@ -516,13 +514,13 @@ class Hamiltonian_k
 
     template <typename F>
     std::enable_if_t<!std::is_same<T, real_type<F>>::value, void>
-    apply_h_s(wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
+    apply_h_s(memory_t mem__, wf::spin_range spins__, wf::band_range br__, wf::Wave_functions<T> const& phi__,
               wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* sphi__) const
     {
         RTE_THROW("implement this");
     }
 
-    /// apply S operator
+    /// Apply S operator.
     /** \tparam F    Type of the subspace matrix.
      *  \param [in]  spins Range of spins.
      *  \param [in]  br    Range of bands.

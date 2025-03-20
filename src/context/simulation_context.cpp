@@ -1207,6 +1207,7 @@ Simulation_context::create_storage_file(std::string name__) const
         }
         auto config = this->serialize()["config"];
         config.erase("locked");
+        config["control"].erase("processing_unit");
         config["control"].erase("mpi_grid_dims");
         config["control"].erase("fft_mode");
         config["control"].erase("gen_evp_solver_name");

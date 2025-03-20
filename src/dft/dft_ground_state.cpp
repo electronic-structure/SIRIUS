@@ -239,6 +239,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                                                          ctx_.cfg().iterative_solver().num_steps());
             /* find band occupancies */
             kset_.find_band_occupancies<double>();
+
+            auto vs = potential_.get_spherical_potential();
+            density_.generate_core_charge_density(vs);
             /* generate new density from the occupied wave-functions */
             density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
         }
@@ -432,7 +435,7 @@ void
 DFT_ground_state::print_info(std::ostream& out__) const
 {
     double evalsum1     = kset_.valence_eval_sum();
-    double evalsum2     = core_eval_sum(ctx_.unit_cell());
+    double evalsum2     = density_.core_eval_sum();
     double s_sum        = kset_.entropy_sum();
     double ekin         = energy_kin(ctx_, kset_, density_, potential_);
     double evxc         = energy_vxc(density_, potential_);

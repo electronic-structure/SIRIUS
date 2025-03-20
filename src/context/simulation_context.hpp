@@ -253,7 +253,8 @@ class Simulation_context : public Simulation_parameters
     memory_t host_memory_t_{memory_t::none};
 
     /// SPLA library context.
-    std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
+    /** Context is mutable to allow SPLA library to change it. */
+    mutable std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
     std::ostream* output_stream_{nullptr};
     std::ofstream output_file_stream_;
@@ -706,14 +707,8 @@ class Simulation_context : public Simulation_parameters
         return fft_coarse_grid_;
     }
 
-    auto const&
-    spla_context() const
-    {
-        return *spla_ctx_;
-    }
-
     auto&
-    spla_context()
+    spla_context() const
     {
         return *spla_ctx_;
     }

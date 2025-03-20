@@ -172,7 +172,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        Hk__.template apply_h_s<F>(ctx.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(ispn_step),
+        Hk__.template apply_h_s<F>(mem, ctx.num_mag_dims() == 3 ? wf::spin_range(0, 2) : wf::spin_range(ispn_step),
                                    wf::band_range(0, num_phi_tot), phi, &hphi, &ophi);
 
         /* do some checks */

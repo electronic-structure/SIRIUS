@@ -30,7 +30,7 @@ check_wave_functions(Hamiltonian_k<T> const& Hk__, wf::Wave_functions<T>& psi__,
     la::dmatrix<F> ovlp(br__.size(), br__.size());
 
     /* apply Hamiltonian and S operators to the wave-functions */
-    Hk__.template apply_h_s<F>(sr__, br__, psi__, &hpsi, &spsi);
+    Hk__.template apply_h_s<F>(memory_t::host, sr__, br__, psi__, &hpsi, &spsi);
 
     wf::inner(Hk__.H0().ctx().spla_context(), memory_t::host, sr__, psi__, br__, spsi, br__, ovlp, 0, 0);
 

@@ -103,6 +103,18 @@ class Potential : public Field4D
     /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
     mdarray<std::complex<double>, 1> rm2_inv_pw_;
 
+    /// Auxiliary form of the D_{ij} operator matrix of the pseudo-potential method.
+    /** The matrix is calculated for the scalar and vector effective fields (thus, it is real and symmetric).
+     *  \f[
+     *      D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}
+     *  \f]
+     *
+     *  D-operator represents non-local part of pseudopotential.
+     *
+     *  The ionic part of the D-operator matrix is added in the D_operator class, when it is initialized.
+     */
+    std::vector<mdarray<double, 3>> d_mtrx_;
+
     /// Hartree contribution to total energy from PAW atoms.
     double paw_hartree_total_energy_{0.0};
 
@@ -116,7 +128,7 @@ class Potential : public Field4D
     std::unique_ptr<Spheric_function_set<double, paw_atom_index_t>> paw_ae_exc_;
 
     /// Contribution to D-operator matrix from the PAW atoms.
-    std::vector<mdarray<double, 3>> paw_dij_;
+    std::vector<mdarray<double, 3>> d_mtrx_paw_;
 
     mdarray<double, 2> aux_bf_;
 
@@ -147,35 +159,18 @@ class Potential : public Field4D
                              std::vector<Flm const*> ps_density);
 
     void
-    calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& paw_dij__);
+    calc_PAW_local_Dij(typename atom_index_t::global ia__, mdarray<double, 3>& d_mtrx_paw__);
 
     double
     calc_PAW_hartree_potential(Atom& atom, Flm const& full_density, Flm& full_potential);
 
     double
     calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const& density_matrix__,
-                             mdarray<double, 3> const& paw_dij__) const;
+                             mdarray<double, 3> const& d_mtrx_paw__) const;
 
     /// Compute MT part of the potential and MT multipole moments
-    inline auto
-    poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__)
-    {
-        PROFILE("sirius::Potential::poisson_vmt");
-
-        mdarray<std::complex<double>, 2> qmt({ctx_.lmmax_rho(), unit_cell_.num_atoms()});
-        qmt.zero();
-
-        for (auto it : unit_cell_.spl_num_atoms()) {
-            auto ia = it.i;
-
-            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rhomt__[ia], hartree_potential_->mt()[ia]);
-
-            SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
-        }
-
-        ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
-        return qmt;
-    }
+    mdarray<std::complex<double>, 2>
+    poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__) const;
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
     void
@@ -641,66 +636,28 @@ class Potential : public Field4D
      *  is calculated for all atoms of the same type.
      */
     void
-    generate_D_operator_matrix();
+    generate_d_mtrx();
+
+    void
+    check_potential_continuity_at_mt();
+
+    std::vector<std::vector<double>>
+    get_spherical_potential() const;
 
     void
     generate_PAW_effective_potential(Density const& density);
 
     double
-    PAW_xc_total_energy(Density const& density__) const
-    {
-        if (!unit_cell_.num_paw_atoms()) {
-            return 0;
-        }
-        /* compute contribution from the core */
-        double ecore{0};
-        #pragma omp parallel for reduction(+:ecore)
-        for (auto it : unit_cell_.spl_num_paw_atoms()) {
-            auto ia = unit_cell_.paw_atom_index(it.i);
-
-            auto& atom = unit_cell_.atom(ia);
-
-            auto& atom_type = atom.type();
-
-            auto& ps_core = atom_type.ps_core_charge_density();
-            auto& ae_core = atom_type.paw_ae_core_charge_density();
-
-            Spline<double> s(atom_type.radial_grid());
-            auto y00inv = 1.0 / y00;
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                s(ir) = y00inv * ((*paw_ae_exc_)[ia](0, ir) * ae_core[ir] - (*paw_ps_exc_)[ia](0, ir) * ps_core[ir]) *
-                        std::pow(atom_type.radial_grid(ir), 2);
-            }
-            ecore += s.interpolate().integrate(0);
-        }
-        comm_.allreduce(&ecore, 1);
-
-        return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
-               inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
-    }
+    PAW_xc_total_energy(Density const& density__) const;
 
     double
+    PAW_one_elec_energy(Density const& density__) const;
+
+    inline double
     PAW_total_energy(Density const& density__) const
     {
         return paw_hartree_total_energy_ + PAW_xc_total_energy(density__);
     }
-
-    double
-    PAW_one_elec_energy(Density const& density__) const
-    {
-        double e{0};
-        #pragma omp parallel for reduction(+:e)
-        for (auto it : unit_cell_.spl_num_paw_atoms()) {
-            auto ia = unit_cell_.paw_atom_index(it.i);
-            auto dm = density__.density_matrix_aux(atom_index_t::global(ia));
-            e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), dm, paw_dij_[it.i]);
-        }
-        comm_.allreduce(&e, 1);
-        return e;
-    }
-
-    void
-    check_potential_continuity_at_mt();
 
     auto&
     effective_potential()
@@ -728,6 +685,12 @@ class Potential : public Field4D
 
     auto&
     dveff()
+    {
+        return *dveff_;
+    }
+
+    auto const&
+    dveff() const
     {
         return *dveff_;
     }
@@ -905,6 +868,12 @@ class Potential : public Field4D
     ewald_energy() const
     {
         return ewald_energy_;
+    }
+
+    inline auto const&
+    d_mtrx(int ia) const
+    {
+        return d_mtrx_[ia];
     }
 };
 
