@@ -182,47 +182,43 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         double a[3][3];
         double rderiv[3][3];
 
-        /* number of radial solutions */
-        int num_rs = static_cast<int>(lo_descriptor(idxlo).rsd_set.size());
-        RTE_ASSERT(num_rs <= 3);
+        /* number of radial functions */
+        int num_rf = static_cast<int>(lo_descriptor(idxlo).rsd_set.size());
+        RTE_ASSERT(num_rf <= 3);
 
-        std::vector<std::vector<double>> u(num_rs);
-        std::vector<std::vector<double>> rdudr(num_rs);
+        std::vector<std::vector<double>> u(num_rf);
+        std::vector<std::vector<double>> rdudr(num_rf);
 
-        for (int order = 0; order < num_rs; order++) {
-            auto rsd = lo_descriptor(idxlo).rsd_set[order];
+        for (int irf = 0; irf < num_rf; irf++) {
+            auto rsd = lo_descriptor(idxlo).rsd_set[irf];
 
             auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu);
 
-            u[order]     = result.p;
-            rdudr[order] = result.rdudr;
+            u[irf]     = result.p;
+            rdudr[irf] = result.rdudr;
 
             /* divide by r */
             for (int ir = 0; ir < nmtp; ir++) {
                 /* store u(r) = p(r)/r */
-                u[order][ir] *= atom_type_.radial_grid().x_inv(ir);
+                u[irf][ir] *= atom_type_.radial_grid().x_inv(ir);
             }
 
-            /* matrix of derivatives */
-            a[order][0] = result.uderiv[0];
-            a[order][1] = result.uderiv[1];
-            a[order][2] = result.uderiv[2];
-
-            for (int i : {0, 1, 2}) {
-                rderiv[order][i] = a[order][i];
+            for (int i = 0; i < num_rf; i++) {
+                /* matrix of derivatives */
+                a[irf][i] = rderiv[irf][i] = result.uderiv[i];
             }
         }
 
         double b[]    = {0, 0, 0};
-        b[num_rs - 1] = 1.0;
+        b[num_rf - 1] = 1.0;
 
-        int info = la::wrap(la::lib_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
+        int info = la::wrap(la::lib_t::lapack).gesv(num_rf, 1, &a[0][0], 3, b, 3);
 
         if (info) {
             std::stringstream s;
             s << "a[i][j] = ";
-            for (int i = 0; i < num_rs; i++) {
-                for (int j = 0; j < num_rs; j++) {
+            for (int i = 0; i < num_rf; i++) {
+                for (int j = 0; j < num_rf; j++) {
                     s << rderiv[i][j] << " ";
                 }
             }
@@ -237,7 +233,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         /* index of local orbital radial function */
         auto idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
         /* take linear combination of radial solutions */
-        for (int order = 0; order < num_rs; order++) {
+        for (int order = 0; order < num_rf; order++) {
             for (int ir = 0; ir < nmtp; ir++) {
                 /* u(r) function */
                 rf__(ir, idxrf, 0) += b[order] * u[order][ir];
@@ -265,11 +261,27 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
               << "  value : " << radial_functions_(nmtp - 1, idxrf, 0) << std::endl
               << "  number of MT points: " << nmtp << std::endl
               << "  MT radius: " << atom_type_.radial_grid().last() << std::endl
-              << "  b_coeffs: ";
-            for (int j = 0; j < num_rs; j++) {
+              << "  matrix of derivatives:" << std::endl;
+            for (int i = 0; i < num_rf; i++) {
+                for (int j = 0; j < num_rf; j++) {
+                    s << rderiv[i][j] << " ";
+                }
+                s << std::endl;
+            }
+            s << "  b_coeffs: ";
+            for (int j = 0; j < num_rf; j++) {
                 s << b[j] << " ";
             }
             s << std::endl;
+            s << "  norm: " << norm << std::endl;
+            double d{0};
+            for (int i = 0; i < num_rf; i++) {
+                d += b[i] * rderiv[i][0];
+            }
+            s << "  expected value at MT boundary from the linear equations: " << d << std::endl;
+            for (int i = 0; i < num_rf; i++) {
+                s << " rderiv, u: " << rderiv[i][0] << " " << u[i][nmtp - 1] << std::endl;
+            }
             RTE_WARNING(s);
         }
     }
