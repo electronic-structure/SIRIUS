@@ -475,22 +475,13 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     /* {n,l} -> enu map */
     std::map<std::pair<int, int>, double> nl_enu;
 
-    //std::vector<radial_solution_descriptor*> rs_with_auto_enu;
-
     /* find which aw functions need auto enu */
     for (int l = 0; l < num_aw_descriptors(); l++) {
-        for (auto const& d: aw_descriptor(l)) {
+        for (auto const& d : aw_descriptor(l)) {
             if (d.auto_enu) {
                 nl_enu[{d.n, d.l}] = d.enu;
             }
         }
-        //for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
-        //    auto& rsd = aw_descriptor(l)[order];
-        //    if (rsd.auto_enu) {
-        //        //rs_with_auto_enu.push_back(&rsd);
-        //        nl_enu[{rsd.n, rsd.l}] = rsd.enu;
-        //    }
-        //}
     }
 
     /* find which lo functions need auto enu */
@@ -500,16 +491,6 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
                 nl_enu[{d.n, d.l}] = d.enu;
             }
         }
-        ///* number of radial solutions */
-        //size_t num_rs = lo_descriptor(idxlo).rsd_set.size();
-
-        //for (size_t order = 0; order < num_rs; order++) {
-        //    auto& rsd = lo_descriptor(idxlo).rsd_set[order];
-        //    if (rsd.auto_enu) {
-        //        //rs_with_auto_enu.push_back(&rsd);
-        //        nl_enu[{rsd.n, rsd.l}] = rsd.enu;
-        //    }
-        //}
     }
 
     /* unroll {n,l} -> enu map to enable omp for loop */
@@ -519,23 +500,23 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     #pragma omp parallel for reduction(+:ierr)
     for (size_t i = 0; i < nl_enu_vec.size(); i++) {
         try {
-            int n = nl_enu_vec[i].first.first;
-            int l = nl_enu_vec[i].first.second;
-            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l,
-                    atom_type_.radial_grid(), spherical_potential_, nl_enu_vec[i].second, 1)
-                                     .enu();
+            int n                = nl_enu_vec[i].first.first;
+            int l                = nl_enu_vec[i].first.second;
+            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
+                                              spherical_potential_, nl_enu_vec[i].second, 1)
+                                           .enu();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
         }
     }
     /* update the {n,l} -> enu map */
-    for (auto& e: nl_enu_vec) {
+    for (auto& e : nl_enu_vec) {
         nl_enu[e.first] = e.second;
     }
 
     for (int l = 0; l < num_aw_descriptors(); l++) {
-        for (auto& d: aw_descriptor(l)) {
+        for (auto& d : aw_descriptor(l)) {
             if (d.auto_enu) {
                 d.enu = nl_enu[{d.n, d.l}];
             }
@@ -549,44 +530,6 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
         }
     }
 
-    //for (int l = 0; l < num_aw_descriptors(); l++) {
-    //    for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
-    //        auto& rsd = aw_descriptor(l)[order];
-    //        if (rsd.auto_enu) {
-    //            rsd.enu = nl_enu[{rsd.n, rsd.l}];
-    //        }
-    //    }
-    //}
-
-    /* find which lo functions need auto enu */
-    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-        /* number of radial solutions */
-        size_t num_rs = lo_descriptor(idxlo).rsd_set.size();
-
-        for (size_t order = 0; order < num_rs; order++) {
-            auto& rsd = lo_descriptor(idxlo).rsd_set[order];
-            if (rsd.auto_enu) {
-                rsd.enu = nl_enu[{rsd.n, rsd.l}];
-            }
-        }
-    }
-
-    //#pragma omp parallel for reduction(+:ierr)
-    //for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
-    //    auto rsd = rs_with_auto_enu[i];
-    //    try {
-    //        double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
-    //                                    spherical_potential_, rsd->enu, rsd->auto_enu)
-    //                                 .enu();
-    //        /* update linearization energy only if its change is above a threshold */
-    //        if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
-    //            rsd->enu = new_enu;
-    //        }
-    //    } catch (std::exception const& e) {
-    //        std::cout << e.what() << std::endl;
-    //        ierr++;
-    //    }
-    //}
     return ierr;
 }
 
