@@ -1035,12 +1035,6 @@ class Bound_state : public Radial_solver
             std::swap(e1, e2);
         }
 
-        int nn1 = integrate_forward_gsl<relativity_t::dirac>(e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-        int nn2 = integrate_forward_gsl<relativity_t::dirac>(e2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-
-        sout << "firt pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
-        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl;
-
         /* 2nd pass: refine by bisection */
         enu_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
                                        [&e1, &e2, this](int iter, int nn, double& enu) {
@@ -1053,12 +1047,8 @@ class Bound_state : public Radial_solver
                                            return std::abs(e1 - e2) < enu_tolerance_;
                                        });
 
-        nn1 = integrate_forward_gsl<relativity_t::dirac>(e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-        nn2 = integrate_forward_gsl<relativity_t::dirac>(e2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-        sout << "second pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
-        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl;
-
         /* final choice for enu: bottom enery of the refined interval */
+        /* radial functions are also recomputed for the final time */
         enu_ = integrate_forward_until(rel__, e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
                                        [](int iter, int nn, double& enu) { return true; });
 
@@ -1216,47 +1206,73 @@ class Enu_finder : public Radial_solver
         std::vector<double> dpdr(np);
         std::vector<double> dqdr(np);
 
-        /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
-         * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
-         * of the band. */
-        int s{1};
-        int sp;
-        double denu{1e-6};
-        double e0;
-        /* 1st pass: estimate upper and lower boundaries of the etop*/
-        e0 = integrate_forward_until(rel__, enu_start__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                     [&s, &sp, &denu, this](int iter, int nn, double& enu) {
-                                         sp = s;
-                                         s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
-                                         if (s != sp && iter > 0) {
-                                             return true;
-                                         }
-                                         if (denu <= 1.0) {
-                                             denu *= 4;
-                                         }
-                                         enu += s * denu;
-                                         return false;
-                                     });
+        std::stringstream sinfo;
 
-        double e1 = e0;
-        double e2 = e0 - sp * denu;
+        auto compute_etop = [&]() -> int {
+            /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
+             * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
+             * of the band. */
+            int s{1};
+            int sp;
+            double denu{1e-6};
+            double e1;
+            sinfo << "find_enu(): find top enery" << std::endl
+                  << "  n         : " << n_ << ", l : " << l_ << std::endl
+                  << "  enu_start : " << enu_start__ << std::endl;
+            try {
+                /* 1st pass: estimate upper and lower boundaries of the etop */
+                e1 = integrate_forward_until(rel__, enu_start__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                             [&s, &sp, &denu, this](int iter, int nn, double& enu) {
+                                                 sp = s;
+                                                 s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
+                                                 if (s != sp && iter > 0) {
+                                                     return true;
+                                                 }
+                                                 denu = std::min(0.1, denu * 2);
+                                                 enu += s * denu;
+                                                 return false;
+                                             });
+            } catch (std::exception const& e) {
+                sinfo << e.what() << std::endl << "denu : " << denu;
+                return 1;
+            }
 
-        /* e1 is bottom, e2 is top energy */
-        if (e1 > e2) {
-            std::swap(e1, e2);
+            double e2 = e1 - sp * denu;
+
+            /* e1 is bottom, e2 is top energy */
+            if (e1 > e2) {
+                std::swap(e1, e2);
+            }
+
+            sinfo << "find_enu(): refine top energy" << std::endl
+                  << "  e1 : " << e1 << ", e2 : " << e2 << std::endl
+                  << "  enu_start : " << (e1 + e2) / 2 << std::endl;
+
+            try {
+                /* 2nd pass: refine by bisection */
+                etop_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                                [&e1, &e2, this](int iter, int nn, double& enu) {
+                                                    if (nn > (n_ - l_ - 1)) {
+                                                        e2 = enu;
+                                                    } else {
+                                                        e1 = enu;
+                                                    }
+                                                    enu = (e1 + e2) / 2.0;
+                                                    return std::abs(e1 - e2) < 1e-9;
+                                                });
+            } catch (std::exception const& e) {
+                sinfo << e.what() << std::endl;
+                return 1;
+            }
+            return 0;
+        };
+
+        if (compute_etop() != 0) {
+            sinfo << "find_enu(): top of the linearization energy interval is not found";
+            RTE_THROW(sinfo);
         }
 
-        /* 2nd pass: refine by bisection */
-        etop_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                        [&e1, &e2, this](int iter, int nn, double& enu) {
-                                            if (nn > (n_ - l_ - 1)) {
-                                                e2 = enu;
-                                            } else {
-                                                e1 = enu;
-                                            }
-                                            enu = (e1 + e2) / 2.0;
-                                            return std::abs(e1 - e2) < 1e-9;
-                                        });
+        enu_ = etop_;
 
         auto surface_deriv = [this, &dpdr, &p]() {
             if (true) {
@@ -1268,51 +1284,52 @@ class Enu_finder : public Radial_solver
             }
         };
 
-        double sd = surface_deriv();
-
         /* Now we go down in energy and search for enu such that the wave-function derivative is zero
          * at the muffin-tin boundary. This will be the bottom of the band. Here we look at a sign change
          * of the derivative. */
-        denu = 1e-4;
-        e0   = integrate_forward_until(rel__, etop_, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                       [&denu, sd, &surface_deriv, this](int iter, int nn, double& enu) {
-                                         if (surface_deriv() * sd < 0) {
-                                             return true;
-                                         }
-                                         /* do not allow step in energy to grow too much */
-                                         if (denu <= 1.0) {
-                                             denu *= 1.5;
-                                         }
-                                         enu -= denu;
-                                         return false;
-                                     });
+        double denu{1e-6};
+        try {
+            sinfo << "find_enu(): find bottom energy" << std::endl << "  enu_start : " << etop_ << std::endl;
+            double sd = surface_deriv();
+            double e1 = integrate_forward_until(rel__, etop_, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                                [this, &denu, sd, &surface_deriv, &p](int iter, int nn, double& enu) {
+                                                    if (surface_deriv() * sd < 0) {
+                                                        return true;
+                                                    }
+                                                    /* do not allow step in energy to grow too much */
+                                                    denu = std::min(0.01, denu * 1.1);
+                                                    enu -= denu;
+                                                    return false;
+                                                });
 
-        /* refine bottom energy */
-        e1    = e0;
-        e2    = e0 + denu;
-        ebot_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                        [&e1, &e2, sd, &surface_deriv, this](int iter, int nn, double& enu) {
-                                            if (surface_deriv() * sd > 0) {
-                                                e2 = enu;
-                                            } else {
-                                                e1 = enu;
-                                            }
-                                            enu = (e1 + e2) / 2.0;
-                                            return std::abs(surface_deriv()) < 1e-8;
-                                        });
-
-        switch (auto_enu__) {
-            case 1: {
-                enu_ = (ebot_ + etop_) / 2.0;
-                break;
+            /* refine bottom energy */
+            double e2 = e1 + denu;
+            sinfo << "find_enu(): refine bottom energy" << std::endl << "  enu_start : " << (e1 + e2) / 2 << std::endl;
+            ebot_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                            [this, &e1, &e2, sd, &surface_deriv](int iter, int nn, double& enu) {
+                                                if (surface_deriv() * sd > 0) {
+                                                    e2 = enu;
+                                                } else {
+                                                    e1 = enu;
+                                                }
+                                                enu = (e1 + e2) / 2.0;
+                                                return std::abs(surface_deriv()) < 1e-8;
+                                            });
+            switch (auto_enu__) {
+                case 1: {
+                    enu_ = (ebot_ + etop_) / 2.0;
+                    break;
+                }
+                case 2: {
+                    enu_ = ebot_;
+                    break;
+                }
+                default: {
+                    RTE_THROW("wrong type of auto_enu");
+                }
             }
-            case 2: {
-                enu_ = ebot_;
-                break;
-            }
-            default: {
-                RTE_THROW("wrong type of auto_enu");
-            }
+        } catch (std::exception const& e) {
+            sinfo << e.what() << std::endl << "denu : " << denu << std::endl;
         }
     }
 

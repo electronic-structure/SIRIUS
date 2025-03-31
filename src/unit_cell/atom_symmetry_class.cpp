@@ -109,7 +109,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             }
             auto norm = s.interpolate().integrate(0);
 
-            /* in case of linear dependency continue to increase energy */
+            /* in case of linear dependency return failure */
             if (std::abs(norm) < 1e-8) {
                 return false;
             }
@@ -119,6 +119,10 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             for (int ir = 0; ir < nmtp; ir++) {
                 rf__(ir, idxrf, 0) *= norm;
                 rf__(ir, idxrf, 1) *= norm;
+            }
+            /* aw radial function can't be zero at MT boundary */
+            if (std::abs(rf__(nmtp - 1, idxrf, 0)) < 1e-2) {
+                return false;
             }
             for (int i : {0, 1, 2}) {
                 sd__(i, idxrf) *= norm;
@@ -135,7 +139,16 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
          * radial functions */
         bool success{false};
         for (int k = 0; k < 100; k++) {
-            if ((success = compute_all_orders(l, k * 0.5))) {
+            if (l <= 3) {
+                /* for low l numbers Enu finder will find the top of the band;
+                 * in this case we need to go down in energy to remove any degeneracy of radial functions */
+                success = compute_all_orders(l, -k * 0.05);
+            } else {
+                /* for high l values, Enu is typically set in the species files and is not searched;
+                 * in case of trouble with them we need to increase linearisation energies */
+                success = compute_all_orders(l, k * 0.25);
+            }
+            if (success) {
                 break;
             }
         }
@@ -169,47 +182,43 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         double a[3][3];
         double rderiv[3][3];
 
-        /* number of radial solutions */
-        int num_rs = static_cast<int>(lo_descriptor(idxlo).rsd_set.size());
-        RTE_ASSERT(num_rs <= 3);
+        /* number of radial functions */
+        int num_rf = static_cast<int>(lo_descriptor(idxlo).rsd_set.size());
+        RTE_ASSERT(num_rf <= 3);
 
-        std::vector<std::vector<double>> u(num_rs);
-        std::vector<std::vector<double>> rdudr(num_rs);
+        std::vector<std::vector<double>> u(num_rf);
+        std::vector<std::vector<double>> rdudr(num_rf);
 
-        for (int order = 0; order < num_rs; order++) {
-            auto rsd = lo_descriptor(idxlo).rsd_set[order];
+        for (int irf = 0; irf < num_rf; irf++) {
+            auto rsd = lo_descriptor(idxlo).rsd_set[irf];
 
             auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu);
 
-            u[order]     = result.p;
-            rdudr[order] = result.rdudr;
+            u[irf]     = result.p;
+            rdudr[irf] = result.rdudr;
 
             /* divide by r */
             for (int ir = 0; ir < nmtp; ir++) {
                 /* store u(r) = p(r)/r */
-                u[order][ir] *= atom_type_.radial_grid().x_inv(ir);
+                u[irf][ir] *= atom_type_.radial_grid().x_inv(ir);
             }
 
-            /* matrix of derivatives */
-            a[order][0] = result.uderiv[0];
-            a[order][1] = result.uderiv[1];
-            a[order][2] = result.uderiv[2];
-
-            for (int i : {0, 1, 2}) {
-                rderiv[order][i] = a[order][i];
+            for (int i = 0; i < num_rf; i++) {
+                /* matrix of derivatives */
+                a[irf][i] = rderiv[irf][i] = result.uderiv[i];
             }
         }
 
         double b[]    = {0, 0, 0};
-        b[num_rs - 1] = 1.0;
+        b[num_rf - 1] = 1.0;
 
-        int info = la::wrap(la::lib_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
+        int info = la::wrap(la::lib_t::lapack).gesv(num_rf, 1, &a[0][0], 3, b, 3);
 
         if (info) {
             std::stringstream s;
             s << "a[i][j] = ";
-            for (int i = 0; i < num_rs; i++) {
-                for (int j = 0; j < num_rs; j++) {
+            for (int i = 0; i < num_rf; i++) {
+                for (int j = 0; j < num_rf; j++) {
                     s << rderiv[i][j] << " ";
                 }
             }
@@ -224,7 +233,7 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         /* index of local orbital radial function */
         auto idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
         /* take linear combination of radial solutions */
-        for (int order = 0; order < num_rs; order++) {
+        for (int order = 0; order < num_rf; order++) {
             for (int ir = 0; ir < nmtp; ir++) {
                 /* u(r) function */
                 rf__(ir, idxrf, 0) += b[order] * u[order][ir];
@@ -245,18 +254,34 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
             rf__(ir, idxrf, 1) *= norm;
         }
 
-        if (std::abs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10) {
+        if (std::abs(rf__(nmtp - 1, idxrf, 0)) > 1e-10) {
             std::stringstream s;
             s << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl
               << "  atom symmetry class id : " << id() << " (" << atom_type().symbol() << ")" << std::endl
-              << "  value : " << radial_functions_(nmtp - 1, idxrf, 0) << std::endl
+              << "  value : " << rf__(nmtp - 1, idxrf, 0) << std::endl
               << "  number of MT points: " << nmtp << std::endl
               << "  MT radius: " << atom_type_.radial_grid().last() << std::endl
-              << "  b_coeffs: ";
-            for (int j = 0; j < num_rs; j++) {
+              << "  matrix of derivatives:" << std::endl;
+            for (int i = 0; i < num_rf; i++) {
+                for (int j = 0; j < num_rf; j++) {
+                    s << rderiv[i][j] << " ";
+                }
+                s << std::endl;
+            }
+            s << "  b_coeffs: ";
+            for (int j = 0; j < num_rf; j++) {
                 s << b[j] << " ";
             }
             s << std::endl;
+            s << "  norm: " << norm << std::endl;
+            double d{0};
+            for (int i = 0; i < num_rf; i++) {
+                d += b[i] * rderiv[i][0];
+            }
+            s << "  expected value at MT boundary from the linear equations: " << d << std::endl;
+            for (int i = 0; i < num_rf; i++) {
+                s << " rderiv, u: " << rderiv[i][0] << " " << u[i][nmtp - 1] << std::endl;
+            }
             RTE_WARNING(s);
         }
     }
@@ -440,20 +465,6 @@ Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
     }
 
     spherical_potential_ = vs__;
-
-    // HDF5_tree fout("mt_potential.h5", true);
-    // fout.write("potential", spherical_potential_);
-
-    ///* write spherical potential */
-    // std::stringstream sstr;
-    // sstr << "mt_spheric_potential_" << id_ << ".dat";
-    // FILE* fout = fopen(sstr.str().c_str(), "w");
-
-    // for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-    //     double r = atom_type_.radial_grid(ir);
-    //     fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_.zn() / r);
-    // }
-    // fclose(fout);
 }
 
 int
@@ -461,48 +472,64 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
 {
     PROFILE("sirius::Atom_symmetry_class::find_enu");
 
-    std::vector<radial_solution_descriptor*> rs_with_auto_enu;
+    /* {n,l} -> enu map */
+    std::map<std::pair<int, int>, double> nl_enu;
 
     /* find which aw functions need auto enu */
     for (int l = 0; l < num_aw_descriptors(); l++) {
-        for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
-            auto& rsd = aw_descriptor(l)[order];
-            if (rsd.auto_enu) {
-                rs_with_auto_enu.push_back(&rsd);
+        for (auto const& d : aw_descriptor(l)) {
+            if (d.auto_enu) {
+                nl_enu[{d.n, d.l}] = d.enu;
             }
         }
     }
 
     /* find which lo functions need auto enu */
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-        /* number of radial solutions */
-        size_t num_rs = lo_descriptor(idxlo).rsd_set.size();
-
-        for (size_t order = 0; order < num_rs; order++) {
-            auto& rsd = lo_descriptor(idxlo).rsd_set[order];
-            if (rsd.auto_enu) {
-                rs_with_auto_enu.push_back(&rsd);
+        for (auto const& d : lo_descriptor(idxlo).rsd_set) {
+            if (d.auto_enu) {
+                nl_enu[{d.n, d.l}] = d.enu;
             }
         }
     }
 
+    /* unroll {n,l} -> enu map to enable omp for loop */
+    std::vector<std::pair<std::pair<int, int>, double>> nl_enu_vec(nl_enu.begin(), nl_enu.end());
+
     int ierr{0};
     #pragma omp parallel for reduction(+:ierr)
-    for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
-        auto rsd = rs_with_auto_enu[i];
+    for (size_t i = 0; i < nl_enu_vec.size(); i++) {
         try {
-            double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
-                                        spherical_potential_, rsd->enu, rsd->auto_enu)
-                                     .enu();
-            /* update linearization energy only if its change is above a threshold */
-            if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
-                rsd->enu = new_enu;
-            }
+            int n                = nl_enu_vec[i].first.first;
+            int l                = nl_enu_vec[i].first.second;
+            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
+                                              spherical_potential_, nl_enu_vec[i].second, 1)
+                                           .enu();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
         }
     }
+    /* update the {n,l} -> enu map */
+    for (auto& e : nl_enu_vec) {
+        nl_enu[e.first] = e.second;
+    }
+
+    for (int l = 0; l < num_aw_descriptors(); l++) {
+        for (auto& d : aw_descriptor(l)) {
+            if (d.auto_enu) {
+                d.enu = nl_enu[{d.n, d.l}];
+            }
+        }
+    }
+    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+        for (auto& d : lo_descriptor(idxlo).rsd_set) {
+            if (d.auto_enu) {
+                d.enu = nl_enu[{d.n, d.l}];
+            }
+        }
+    }
+
     return ierr;
 }
 
@@ -516,30 +543,28 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     sd.zero();
     rf.zero();
 
-    auto ierr2 = find_enu(rel__);
-    if (ierr2) {
+    auto ierr_enu = find_enu(rel__);
+    if (ierr_enu) {
         std::stringstream s;
         s << "find_enu() failed for atom class " << id_;
         RTE_WARNING(s);
     }
 
-    auto ierr = generate_aw_radial_functions(rel__, rf, sd);
-    if (ierr) {
+    auto ierr_aw = generate_aw_radial_functions(rel__, rf, sd);
+    if (ierr_aw) {
         std::stringstream s;
         s << "generate_aw_radial_functions() failed for atom class " << id_;
         RTE_WARNING(s);
     }
 
-    auto ierr1 = generate_lo_radial_functions(rel__, rf);
-    if (ierr1) {
+    auto ierr_lo = generate_lo_radial_functions(rel__, rf);
+    if (ierr_lo) {
         std::stringstream s;
         s << "generate_lo_radial_functions() failed for atom class " << id_;
         RTE_WARNING(s);
     }
 
-    ierr += (ierr1 + ierr2);
-
-    if (!ierr) {
+    if (ierr_aw + ierr_lo == 0) {
         copy(rf, radial_functions_);
         copy(sd, surface_derivatives_);
         if (atom_type().parameters().cfg().control().ortho_rf()) {
