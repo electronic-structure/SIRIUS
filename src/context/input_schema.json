@@ -764,6 +764,11 @@
                     "default": 0,
                     "title": "Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons."
                 },
+                "fixed_mag" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title" : "Fixed magnetic moment"
+                },
                 "xc_dens_tre": {
                     "type": "number",
                     "default": -1,
