@@ -13,6 +13,7 @@
 
 #include "potential/potential.hpp"
 #include "local_operator.hpp"
+#include <memory>
 #include "hamiltonian.hpp"
 
 namespace sirius {
@@ -28,8 +29,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
 {
     PROFILE("sirius::Hamiltonian0");
 
-    local_op_ = std::unique_ptr<Local_operator<T>>(
-            new Local_operator<T>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_fft_sptr(), &potential__));
+    local_op_ = std::make_unique<Local_operator<T>>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_fft_sptr(),
+                                                    &potential__);
 
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(potential__));
