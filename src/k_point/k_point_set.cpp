@@ -340,7 +340,7 @@ K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
     double ef[2];
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        auto F = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
+        auto F   = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
         ef[ispn] = bisection_search(F, emin, emax, 1e-11);
     }
 
