@@ -853,7 +853,7 @@ Simulation_context::update()
         if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
             int na = unit_cell().atom_symmetry_class(ic).num_atoms();
             if (mpi_grid_mt_sym_[na] == nullptr) {
-                auto r = make_mpi_grid_mt_sym(na, this->comm().size());
+                auto r               = make_mpi_grid_mt_sym(na, this->comm().size());
                 mpi_grid_mt_sym_[na] = std::make_unique<mpi::Grid>(r, this->comm());
             }
         }
