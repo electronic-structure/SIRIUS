@@ -269,7 +269,7 @@ class Simulation_context : public Simulation_parameters
     radial_integrals_t ri_;
 
     /// MPI grid for muffin-tin symmetrization.
-    /** MPI grid is defined for each atom symmetry class */
+    /** MPI grid is defined for each number of atoms belonging to symmetry classes. */
     std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
 
     /// Rotation matrices for real spherical harmonics.

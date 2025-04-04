@@ -843,13 +843,19 @@ Simulation_context::update()
         return result;
     };
 
-    mpi_grid_mt_sym_.clear();
+    int namax{0};
+    for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
+        namax = std::max(namax, unit_cell().atom_symmetry_class(ic).num_atoms());
+    }
+
+    mpi_grid_mt_sym_ = std::vector<std::unique_ptr<mpi::Grid>>(namax);
     for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
         if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
-            auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
-            mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
-        } else {
-            mpi_grid_mt_sym_.push_back(nullptr);
+            int na = unit_cell().atom_symmetry_class(ic).num_atoms();
+            if (mpi_grid_mt_sym_[na] == nullptr) {
+                auto r = make_mpi_grid_mt_sym(na, this->comm().size());
+                mpi_grid_mt_sym_[na] = std::make_unique<mpi::Grid>(r, this->comm());
+            }
         }
     }
 
