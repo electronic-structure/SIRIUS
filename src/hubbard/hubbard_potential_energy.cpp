@@ -71,8 +71,6 @@ generate_potential_collinear_local(Simulation_context const& ctx__, Atom_type co
     /* single orbital implementation */
     auto& hub_wf = atom_type__.lo_descriptor_hub(idx_hub_wf__);
 
-    hub_wf.print_info(RTE_OUT(ctx__.out()));
-
     if (!hub_wf.use_for_calculation()) {
         return;
     }
