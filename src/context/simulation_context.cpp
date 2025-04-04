@@ -848,7 +848,7 @@ Simulation_context::update()
         namax = std::max(namax, unit_cell().atom_symmetry_class(ic).num_atoms());
     }
 
-    mpi_grid_mt_sym_ = std::vector<std::unique_ptr<mpi::Grid>>(namax);
+    mpi_grid_mt_sym_ = std::vector<std::unique_ptr<mpi::Grid>>(namax + 1);
     for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
         if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
             int na = unit_cell().atom_symmetry_class(ic).num_atoms();
