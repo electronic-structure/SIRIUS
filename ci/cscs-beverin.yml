@@ -6,8 +6,13 @@ stages:
   - build
   - test
 
+.f7t-secrets:
+  variables:
+    F7T_CLIENT_ID: $F7T_TDS_CLIENT_ID
+    F7T_CLIENT_SECRET: $F7T_TDS_CLIENT_SECRET
+
 build base uenv mi300:
-  extends: .uenv-builder-beverin-mi300
+  extends: [.uenv-builder-beverin-mi300, .f7t-secrets]
   stage: baseimage
   timeout: 2h
   variables:
