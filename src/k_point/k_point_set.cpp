@@ -283,68 +283,91 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 
 template <typename T>
 void
-K_point_set::find_band_occupancies()
+K_point_set::find_band_occupancies_without_empty()
 {
-    PROFILE("sirius::K_point_set::find_band_occupancies");
+    /* this is an insulator, skip search for band occupancies */
+    this->band_gap_ = 0;
 
-    double tol{1e-11};
-
-    auto band_occ_callback = ctx_.band_occ_callback();
-    if (band_occ_callback) {
-        band_occ_callback();
-        return;
-    }
-
-    /* target number of electrons */
-    const double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
-
-    /* this is a special case when there are no empty states */
-    if (ctx_.num_mag_dims() != 1 && std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10) {
-        /* this is an insulator, skip search for band occupancies */
-        this->band_gap_ = 0;
-
-        /* determine fermi energy as max occupied band energy. */
-        energy_fermi_ = std::numeric_limits<double>::lowest();
-        for (int ik = 0; ik < num_kpoints(); ik++) {
-            for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    energy_fermi_ = std::max(energy_fermi_, this->get<T>(ik)->band_energy(j, ispn));
-                }
+    /* determine fermi energy as max occupied band energy. */
+    energy_fermi_ = std::numeric_limits<double>::lowest();
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                energy_fermi_ = std::max(energy_fermi_, this->get<T>(ik)->band_energy(j, ispn));
             }
         }
-        for (auto it : spl_num_kpoints_) {
-            for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                #pragma omp parallel for
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    this->get<T>(it.i)->band_occupancy(j, ispn, ctx_.max_occupancy());
-                }
-            }
-        }
-
-        this->sync_band<T, sync_band_t::occupancy>();
-        return;
     }
-
-    if (ctx_.smearing_width() == 0) {
-        RTE_THROW("zero smearing width");
-    }
-
-    /* get minimum and maximum band energies */
-
-    auto emin = std::numeric_limits<double>::max();
-    auto emax = std::numeric_limits<double>::lowest();
-
-    #pragma omp parallel for reduction(min:emin) reduction(max:emax)
     for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            emin = std::min(emin, this->get<T>(it.i)->band_energy(0, ispn));
-            emax = std::max(emax, this->get<T>(it.i)->band_energy(ctx_.num_bands() - 1, ispn));
+            #pragma omp parallel for
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                this->get<T>(it.i)->band_occupancy(j, ispn, ctx_.max_occupancy());
+            }
         }
     }
-    comm().allreduce<double, mpi::op_t::min>(&emin, 1);
-    comm().allreduce<double, mpi::op_t::max>(&emax, 1);
 
+    this->sync_band<T, sync_band_t::occupancy>();
+}
+
+template <typename T>
+void
+K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
+{
+    /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+
+    double const ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
+
+    double const fixed_mag = ctx_.cfg().parameters().fixed_mag();
+
+    auto compute_ne = [&](int ispn, double ef, auto&& f) {
+        double ne{0};
+        for (auto it : spl_num_kpoints_) {
+            double tmp{0};
+            #pragma omp parallel for reduction(+:tmp)
+            for (int j = 0; j < splb.local_size(); j++) {
+                tmp += f(ef - this->get<T>(it.i)->band_energy(splb.global_index(j), ispn)) * ctx_.max_occupancy();
+            }
+            ne += tmp * kpoints_[it.i]->weight();
+        }
+        ctx_.comm().allreduce(&ne, 1);
+        return ne;
+    };
+
+    auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+
+    double occ[2] = {(ne_target + fixed_mag) / 2, (ne_target - fixed_mag) / 2};
+    double ef[2];
+
+    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        auto F   = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
+        ef[ispn] = bisection_search(F, emin, emax, 1e-11);
+    }
+
+    energy_fermi_ = std::max(ef[0], ef[1]);
+
+    /* compute occupations */
+    for (auto it : spl_num_kpoints_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            #pragma omp parallel for
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                auto o = f(ef[ispn] - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
+                this->get<T>(it.i)->band_occupancy(j, ispn, o);
+            }
+        }
+    }
+}
+
+template <typename T>
+void
+K_point_set::find_band_occupancies_generic(double emin, double emax)
+{
+    double const tol{1e-11};
+
+    /* split number of bands between available ranks */
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+
+    double const ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
@@ -409,6 +432,57 @@ K_point_set::find_band_occupancies()
                 this->get<T>(it.i)->band_occupancy(j, ispn, o);
             }
         }
+    }
+}
+
+template <typename T>
+void
+K_point_set::find_band_occupancies()
+{
+    PROFILE("sirius::K_point_set::find_band_occupancies");
+
+    auto band_occ_callback = ctx_.band_occ_callback();
+    if (band_occ_callback) {
+        band_occ_callback();
+        return;
+    }
+
+    /* target number of electrons */
+    const double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
+
+    /* this is a special case when there are no empty states */
+    if (ctx_.num_mag_dims() != 1 && std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10) {
+        this->find_band_occupancies_without_empty<T>();
+        return;
+    }
+
+    if (ctx_.smearing_width() == 0) {
+        RTE_THROW("zero smearing width");
+    }
+
+    /* get minimum and maximum band energies */
+    auto emin = std::numeric_limits<double>::max();
+    auto emax = std::numeric_limits<double>::lowest();
+
+    #pragma omp parallel for reduction(min:emin) reduction(max:emax)
+    for (auto it : spl_num_kpoints_) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            emin = std::min(emin, this->get<T>(it.i)->band_energy(0, ispn));
+            emax = std::max(emax, this->get<T>(it.i)->band_energy(ctx_.num_bands() - 1, ispn));
+        }
+    }
+    this->comm().allreduce<double, mpi::op_t::min>(&emin, 1);
+    this->comm().allreduce<double, mpi::op_t::max>(&emax, 1);
+
+    /* split number of bands between available ranks */
+    splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
+
+    double fixed_mag = ctx_.cfg().parameters().fixed_mag();
+    /* collinear case with fixed magenetisation */
+    if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
+        this->find_band_occupancies_fixed_magn<T>(emin, emax);
+    } else {
+        this->find_band_occupancies_generic<T>(emin, emax);
     }
 
     this->sync_band<T, sync_band_t::occupancy>();

@@ -544,7 +544,8 @@ Simulation_context::print_info(std::ostream& out__) const
            << "number of MPI ranks per node  : " << mpi::num_ranks_per_node() << std::endl
            << "page size (Kb)                : " << (get_page_size() >> 10) << std::endl
            << "number of pages               : " << get_num_pages() << std::endl
-           << "available memory (GB)         : " << (get_total_memory() >> 30) << std::endl;
+           << "total system memory (GB)      : " << (get_total_memory() >> 30) << std::endl
+           << "available memory (GB)         : " << (get_available_memory() >> 30);
         os << std::endl;
     }
     {
