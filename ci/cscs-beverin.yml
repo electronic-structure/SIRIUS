@@ -70,7 +70,7 @@ build sirius mi300:
   extends: [.uenv-runner-beverin-mi300, .run_tests]
   image: sirius-mi300/v1:$CI_PIPELINE_ID
   stage: test
-  needs: ["build sirius rocm"]
+  needs: ["build sirius mi300"]
 
 beverin test gpu serial:
   extends: [.run_tests_beverin]
