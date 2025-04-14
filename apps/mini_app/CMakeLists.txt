@@ -14,6 +14,8 @@ if(SIRIUS_USE_CUDA OR SIRIUS_USE_ROCM)
     set(SIRIUS_SCF_LABELS ${SIRIUS_SCF_LABELS} gpu_serial gpu_band_parallel gpu_k_point_parallel)
 endif()
 set(SIRIUS_SCF_FLAGS_gpu_serial           --control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver)
+# skip compilation of magma
+set(SIRIUS_SCF_FLAGS_gpu_serial_rocm      --control.processing_unit=gpu --control.std_evp_solver_name=lapack --control.gen_evp_solver_name=lapack)
 set(SIRIUS_SCF_FLAGS_gpu_band_parallel    --control.processing_unit=gpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack)
 set(SIRIUS_SCF_FLAGS_gpu_k_point_parallel --control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver)
 set(SIRIUS_SCF_FLAGS_cpu_serial           --control.processing_unit=cpu)

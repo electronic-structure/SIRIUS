@@ -82,7 +82,7 @@ beverin test gpu serial:
     SLURM_NTASKS: 1
     SLURM_CPU_BIND: 'socket'
     USE_MPI: 'YES'
-    TEST_COMMAND: ctest -L gpu_serial
+    TEST_COMMAND: ctest -L gpu_serial_rocm
 
 # daint test gpu band parallel:
 #   extends: [.run_tests_daint]
