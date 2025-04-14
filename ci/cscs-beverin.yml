@@ -21,7 +21,7 @@ build base uenv mi300:
     UENV_VERSION: v1
 
 build sirius mi300:
-  extends: .uenv-runner-beverin-mi300
+  extends: [.uenv-runner-beverin-mi300, .f7t-secrets]
   stage: build
   needs: ["build base uenv mi300"]
   image: sirius-mi300/v1:$CI_PIPELINE_ID
