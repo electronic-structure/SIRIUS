@@ -71,11 +71,14 @@ build sirius mi300:
   image: sirius-mi300/v1:$CI_PIPELINE_ID
   stage: test
   needs: ["build sirius mi300"]
+  variables:
+    SLURM_HINT: nomultithread
+    SLURM_CPUS_PER_TASK: 8
+    OMP_NUM_THREADS: 8
 
 beverin test gpu serial:
   extends: [.run_tests_beverin]
   variables:
-    OMP_NUM_THREADS: 20
     SLURM_TIMELIMIT: '60:00'
     SLURM_GPUS_PER_TASK: 1
     SLURM_GPUS: 1
@@ -84,17 +87,16 @@ beverin test gpu serial:
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_serial_rocm
 
-# daint test gpu band parallel:
-#   extends: [.run_tests_daint]
-#   variables:
-#     OMP_NUM_THREADS: 20
-#     SLURM_TIMELIMIT: '60:00'
-#     SLURM_GPUS_PER_TASK: 1
-#     SLURM_NTASKS: 4
-#     SLURM_GPUS: 4
-#     SLURM_CPU_BIND: 'socket'
-#     USE_MPI: 'YES'
-#     TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
+beverin test gpu band parallel:
+  extends: [.run_tests_beverin]
+  variables:
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_NTASKS: 4
+    SLURM_GPUS: 4
+    SLURM_CPU_BIND: 'socket'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
 
 # daint test gpu k-point parallel:
 #   extends: [.run_tests_daint]
