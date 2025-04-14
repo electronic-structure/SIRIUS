@@ -20,44 +20,25 @@ build base uenv mi300:
     UENV_RECIPE: ci/sirius-uenv-recipe-mi300/
     UENV_VERSION: v1
 
-# build sirius mi300:
-#   extends: .uenv-runner-daint-gh200
-#   stage: build
-#   needs: ["build base uenv mi300"]
-#   image: sirius-mi300/v1:$CI_PIPELINE_ID
-#   artifacts:
-#     paths:
-#       - builddir.tar
-#   variables:
-#     SPEC: sirius@develop +cuda +apps +tests +scalapack ~python
-#     CUDA_ARCH: 90
-#     REPO: ./ci/sirius-uenv-recipe-gh200/repo
-#   script:
-#     - |
-#       #
-#       git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
-#       git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
-#       source /dev/shm/spack-clone/share/spack/setup-env.sh
-#       bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cuda.sh
-
-# build sirius eiger:
-#   extends: .uenv-runner-eiger-zen2
-#   stage: build
-#   needs: ["build base uenv zen2"]
-#   image: sirius-zen2/v1:$CI_PIPELINE_ID
-#   artifacts:
-#     paths:
-#       - builddir.tar
-#   variables:
-#     SPEC: sirius@develop +apps +tests +scalapack ~python
-#     REPO: ./ci/sirius-uenv-recipe-cpu/repo
-#   script:
-#     - |
-#       #
-#       git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
-#       git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
-#       source /dev/shm//spack-clone/share/spack/setup-env.sh
-#       bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cpu.sh
+build sirius mi300:
+  extends: .uenv-runner-beverin-mi300
+  stage: build
+  needs: ["build base uenv mi300"]
+  image: sirius-mi300/v1:$CI_PIPELINE_ID
+  artifacts:
+    paths:
+      - builddir.tar
+  variables:
+    SPEC: sirius@develop +rocm +apps +tests +scalapack ~python
+    ROCM_ARCH: gfx942
+    REPO: ./ci/sirius-uenv-recipe-mi300/repo
+  script:
+    - |
+      #
+      git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
+      git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
+      source /dev/shm/spack-clone/share/spack/setup-env.sh
+      bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cuda.sh
 
 # .run_tests:
 #   script:
