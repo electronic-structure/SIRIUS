@@ -38,6 +38,9 @@ generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec_
 
 namespace sirius {
 
+/// Print memory consumption.
+/** Report virtual memory high-water mark (VmHWM), virtual memory resident set size (VmRSS), and (if present)
+ *  free GPU memory. */
 template <typename OUT>
 void
 print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
@@ -149,15 +152,17 @@ struct radial_integrals_t
 /** The order of initialization of the simulation context is the following: first, the default parameter
     values are set in the constructor, then (optionally) import() method is called and the parameters are
     overwritten with the those from the input file, and finally, the user sets the values with setter metods.
-    Then the unit cell can be populated and the context can be initialized.
- */
+    Then the unit cell can be populated and the context can be initialized. */
 class Simulation_context : public Simulation_parameters
 {
   private:
     /// Communicator for this simulation.
     mpi::Communicator const& comm_;
 
+    /// Communicator that is used to split k-points.
     mpi::Communicator comm_k_;
+
+    /// Communicator that is used for parallelisation of wave-functions and diagonalsiation.
     mpi::Communicator comm_band_;
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
@@ -179,6 +184,7 @@ class Simulation_context : public Simulation_parameters
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
      *  FFT grid. The transformation is parallel. */
     std::unique_ptr<spfft::Transform> spfft_transform_;
+    /// SpFFT grid object.
     std::unique_ptr<spfft::Grid> spfft_grid_;
 #if defined(SIRIUS_USE_FP32)
     std::unique_ptr<spfft::TransformFloat> spfft_transform_float_;
@@ -810,34 +816,21 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    inline rte::ostream
+    /// Wrap output stream of context into rte::ostream.
+    inline auto
     out(int level__, const char* label__) const
     {
-        if (this->verbosity() >= level__) {
-            return rte::ostream(this->out(), label__);
-        } else {
-            return rte::ostream(null_stream(), label__);
-        }
+        return rte::ostream(this->out(level__), label__);
     }
 
-    /// Print message from the stringstream.
+    /// Copy pointer to external periodic function into internal storage.
     inline void
-    message(int level__, char const* label__, std::stringstream const& s) const
-    {
-        if (this->verbosity() >= level__) {
-            auto strings = split(s.str(), '\n');
-            for (auto& e : strings) {
-                this->out() << "[" << label__ << "] " << e << std::endl;
-            }
-        }
-    }
-
-    inline void
-    set_periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
+    periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
     {
         pf_ext_ptr[label__] = ptr__;
     }
 
+    /// Get pointer to external periodic function.
     inline auto
     periodic_function_ptr(std::string label__) const
     {

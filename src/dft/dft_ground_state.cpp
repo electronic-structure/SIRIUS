@@ -200,7 +200,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
       << "iter_solver_tol (initial) : " << iter_solver_tol__ << std::endl
       << "iter_solver_tol (target)  : " << ctx_.cfg().iterative_solver().min_tolerance() << std::endl
       << "num_dft_iter              : " << num_dft_iter__;
-    ctx_.message(1, __func__, s);
+    RTE_OUT(ctx_.out(1)) << s.str();
 
     for (int iter = 0; iter < num_dft_iter__; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
@@ -210,7 +210,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
           << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter__ << '|'
           << std::endl
           << "+------------------------------+" << std::endl;
-        ctx_.message(2, __func__, s);
+        RTE_OUT(ctx_.out(2)) << s.str();
 
         diagonalize_result_t result;
 
@@ -349,7 +349,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged);
         }
 
-        ctx_.message(2, __func__, out);
+        RTE_OUT(ctx_.out(1)) << out.str();
         /* check if the calculation has converged */
         bool converged{true};
         // converged = (std::abs(eold - etot) < energy_tol__) && result.converged && iter_solver_converged;
@@ -363,7 +363,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             std::stringstream out;
             out << std::endl;
             out << "converged after " << iter + 1 << " SCF iterations!" << std::endl;
-            ctx_.message(1, __func__, out);
+            RTE_OUT(ctx_.out(1)) << out.str();
             density_.check_num_electrons();
             num_iter = iter;
             break;
@@ -374,7 +374,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     std::stringstream out;
     out << std::endl;
     print_info(out);
-    ctx_.message(1, __func__, out);
+    RTE_OUT(ctx_.out(1)) << out.str();
 
     if (write_state__) {
         ctx_.create_storage_file(storage_file_name);

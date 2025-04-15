@@ -54,7 +54,7 @@ class DFT_ground_state
     /// Atomic forces.
     Force forces_;
 
-    /// k-point independent part of the Hamiltonian.
+    /// K-point independent part of the Hamiltonian.
     std::shared_ptr<Hamiltonian0<double>> H0_; // hard-code double for now
 
     /// Correction to total energy from the SCF density minimisation.
@@ -78,19 +78,15 @@ class DFT_ground_state
     {
         int n = ctx_.num_loc_op_applied();
         kset_.comm().allreduce(&n, 1);
-        if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << "local op. applied: " << n << std::endl;
-        }
+        RTE_OUT(ctx_.out(2)) << "local op. applied: " << n << std::endl;
+
         double d = ctx_.evp_work_count();
         kset_.comm().allreduce(&d, 1);
-        if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << "evp. work count: " << d << std::endl;
-        }
+        RTE_OUT(ctx_.out(2)) << "evp. work count: " << d << std::endl;
+
         n = ctx_.num_itsol_steps();
         kset_.comm().allreduce(&n, 1);
-        if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << "number of iterative solver steps: " << n << std::endl;
-        }
+        RTE_OUT(ctx_.out(2)) << "number of iterative solver steps: " << n << std::endl;
     }
 
     /// Return reference to a simulation context.
@@ -100,24 +96,28 @@ class DFT_ground_state
         return ctx_;
     }
 
+    /// Return k-independent Hamiltonian.
     inline Hamiltonian0<double>&
     get_H0() const
     {
         return *H0_;
     }
 
+    /// Return reference to Density instance.
     inline Density&
     density()
     {
         return density_;
     }
 
+    /// Return reference to Potential instance.
     inline Potential&
     potential()
     {
         return potential_;
     }
 
+    /// Return reference to k-point set instance.
     inline K_point_set&
     k_point_set()
     {

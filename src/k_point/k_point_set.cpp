@@ -477,7 +477,6 @@ K_point_set::find_band_occupancies()
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
-    double fixed_mag = ctx_.cfg().parameters().fixed_mag();
     /* collinear case with fixed magenetisation */
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
         this->find_band_occupancies_fixed_magn<T>(emin, emax);

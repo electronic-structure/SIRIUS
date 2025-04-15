@@ -388,9 +388,7 @@ Occupation_matrix::print_occupancies(int verbosity__) const
                 Hubbard_matrix::print_nonlocal(i, s);
             }
         }
-        if (ctx_.verbosity() >= verbosity__) {
-            ctx_.message(1, "occ.mtrx", s);
-        }
+        ctx_.out(1, "occ.mtrx") << s.str();
     }
 }
 

@@ -72,16 +72,16 @@ class SQNM
     /**
      * @brief Construct a new SQNM::SQNM object using custom parameters.
      *
-     * @param ndim_ number of dimensions of target function
-     * @param nhistx_ Maximal number of steps that will be stored in the history list. Use a value between 3 and 20.
+     * @param ndim number of dimensions of target function
+     * @param nhistx Maximal number of steps that will be stored in the history list. Use a value between 3 and 20.
      * Must be <= than ndim_.
-     * @param alpha_ initial step size. default is 1.0. For systems with hard bonds (e.g. C-C) use a value between
+     * @param alpha initial step size. default is 1.0. For systems with hard bonds (e.g. C-C) use a value between
      * and 1.0 and 2.5. Should be approximately the inverse of the largest eigenvalue of the Hessian matrix. If alpha is
      * negative, the inial step size is estimated using the mechanism from section 6.4 of the vc-sqnm paper:
      * https://arxiv.org/abs/2206.07339 beta will then be equal to minus alpha. Good choices for beta are 0.1 in hartee
      * / bohr^2 and 0.001 in eV / A^2
-     * @param alpha0_  * @param alpha0 Lower limit on the step size. 1.e-2 is the default.
-     * @param eps_subsp_ Lower limit on linear dependencies of basis vectors in history list. Default 1.e-4.
+     * @param alpha0 Lower limit on the step size. 1.e-2 is the default.
+     * @param eps_subsp Lower limit on linear dependencies of basis vectors in history list. Default 1.e-4.
      */
     SQNM(int ndim_, int nhistx_, double alpha_, double alpha0_, double eps_subsp_)
     {

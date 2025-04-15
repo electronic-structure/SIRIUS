@@ -16,6 +16,7 @@
 
 namespace sirius {
 
+/// Data structure that contains complete information about index of a spheric basis function.
 struct basis_function_index_descriptor
 {
     /// Total angular momemtum.

@@ -302,9 +302,10 @@ class Wave_functions_fft;
 
 /// Base class for the wave-functions.
 /** Wave-functions are represented by a set of plane-wave and muffin-tin coefficients stored consecutively in a 2D
- array.
- *  The leading dimensions of this array is a sum of the number of plane-waves and the number of muffin-tin
- coefficients. \verbatim
+    array. The leading dimensions of this array is a sum of the number of plane-waves and the number of muffin-tin
+    coefficients.
+
+    \verbatim
 
          band index
        +-----------+
@@ -319,8 +320,12 @@ class Wave_functions_fft;
        |           |
        +-----------+
 
-
     \endverbatim
+
+    \image html wf_storage.png "Wave-function storage" width=200
+    \brief Grpahical reprentation of the wave-functions coefficients storage.
+    MPI ranks are marked implicitly with different color codes. Indices of plane-waves and atoms are split
+    between MPI ranks.
   */
 template <typename T>
 class Wave_functions_base

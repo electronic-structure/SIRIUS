@@ -28,21 +28,31 @@ namespace sirius {
 nlohmann::json const&
 get_options_dictionary();
 
+/// Get all possible options of a given input section. It is a json dictionary.
 nlohmann::json const&
 get_section_options(std::string const& section__);
 
+/// Stores configuration dictionary.
+/** config_t is automatically generated from the input_schema.json file and contains all input paramters
+ *  including definition of the unit cell. */
 class Config : public config_t
 {
   public:
+    /// Constructor.
+    /** Default values for parameters are initialized here. */
     Config();
+    /// Import non-default parameters form the json dictionary.
     void
     import(nlohmann::json const& in__);
+    /// Lock parameters.
+    /** After locking parameters can't be modified. */
     void
     lock()
     {
         dict_["locked"] = true;
     }
     void
+    /// Remove the locking switch.
     unlock()
     {
         dict_.erase("locked");
@@ -58,12 +68,13 @@ class Simulation_parameters
     Config cfg_;
 
   public:
+    /// Get reference to the config instance.
     Config&
     cfg()
     {
         return cfg_;
     }
-
+    /// Get const reference to the config instance.
     Config const&
     cfg() const
     {
@@ -90,6 +101,7 @@ class Simulation_parameters
     Simulation_parameters(Simulation_parameters const&) = delete;
 
   public:
+    /// Constructor.
     Simulation_parameters()
     {
     }
@@ -106,37 +118,44 @@ class Simulation_parameters
     void
     import(cmd_args const& args__);
 
+    /// Set lmax for APW basis functions.
     void
     lmax_apw(int lmax_apw__)
     {
         cfg().parameters().lmax_apw(lmax_apw__);
     }
 
+    /// Set lmax for muffin-tin expansion of density in spherical harmonics.
     void
     lmax_rho(int lmax_rho__)
     {
         cfg().parameters().lmax_rho(lmax_rho__);
     }
 
+    /// Set lmax for muffin-tin expansion of potential in spherical harmonics.
     void
     lmax_pot(int lmax_pot__)
     {
         cfg().parameters().lmax_pot(lmax_pot__);
     }
 
-    void
-    set_num_mag_dims(int num_mag_dims__)
+    /// Set number of magnetic dimensions.
+    inline int
+    num_mag_dims(int num_mag_dims__)
     {
         RTE_ASSERT(num_mag_dims__ == 0 || num_mag_dims__ == 1 || num_mag_dims__ == 3);
 
         cfg().parameters().num_mag_dims(num_mag_dims__);
+        return num_mag_dims__;
     }
 
-    void
-    set_hubbard_correction(bool hubbard_correction__)
+    /// Set flag for Hubbard correction.
+    bool
+    hubbard_correction(bool hubbard_correction__)
     {
         cfg().parameters().hubbard_correction(hubbard_correction__);
         cfg().hubbard().simplified(false);
+        return hubbard_correction__;
     }
 
     /// Set flag for Gamma-point calculation.
@@ -155,6 +174,8 @@ class Simulation_parameters
         return mpi_grid_dims__;
     }
 
+    /// Add XC label to the list.
+    /** Typically there should be two labels for exchange and correlation contributions. */
     void
     add_xc_functional(std::string name__)
     {
@@ -163,9 +184,11 @@ class Simulation_parameters
         cfg().parameters().xc_functionals(xcfunc);
     }
 
+    /// Set type of electronic structure method.
     void
     electronic_structure_method(std::string name__);
 
+    /// Get type of electronic structure method.
     auto
     electronic_structure_method() const
     {

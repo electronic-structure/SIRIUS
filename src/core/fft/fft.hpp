@@ -30,12 +30,14 @@ struct SpFFT_Grid
 {
 };
 
+/// Specialization of SpFFT_Grid for double.
 template <>
 struct SpFFT_Grid<double>
 {
     using type = spfft::Grid;
 };
 
+/// Specialization of SpFFT_Grid for complex<double>.
 template <>
 struct SpFFT_Grid<std::complex<double>>
 {
@@ -43,14 +45,15 @@ struct SpFFT_Grid<std::complex<double>>
 };
 
 #ifdef SIRIUS_USE_FP32
+/// Specialization of SpFFT_Grid for float.
 template <>
-struct SpFFT_Grid<std::complex<float>>
+struct SpFFT_Grid<float>
 {
     using type = spfft::GridFloat;
 };
-
 template <>
-struct SpFFT_Grid<float>
+/// Specialization of SpFFT_Grid for complex<float>.
+struct SpFFT_Grid<std::complex<float>>
 {
     using type = spfft::GridFloat;
 };
@@ -65,12 +68,14 @@ struct SpFFT_Transform
 {
 };
 
+/// Specialization of SpFFT_Transform for double.
 template <>
 struct SpFFT_Transform<double>
 {
     using type = spfft::Transform;
 };
 
+/// Specialization of SpFFT_Transform for complex<double>.
 template <>
 struct SpFFT_Transform<std::complex<double>>
 {
@@ -78,12 +83,14 @@ struct SpFFT_Transform<std::complex<double>>
 };
 
 #ifdef SIRIUS_USE_FP32
+/// Specialization of SpFFT_Transform for float.
 template <>
 struct SpFFT_Transform<float>
 {
     using type = spfft::TransformFloat;
 };
 
+/// Specialization of SpFFT_Transform for complex<float>.
 template <>
 struct SpFFT_Transform<std::complex<float>>
 {
@@ -94,6 +101,7 @@ struct SpFFT_Transform<std::complex<float>>
 template <typename T>
 using spfft_transform_type = typename SpFFT_Transform<T>::type;
 
+/// Mapping between SpFFT and Sirius memory types.
 const std::map<SpfftProcessingUnitType, memory_t> spfft_memory_t = {{SPFFT_PU_HOST, memory_t::host},
                                                                     {SPFFT_PU_GPU, memory_t::device}};
 
