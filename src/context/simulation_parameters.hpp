@@ -140,20 +140,22 @@ class Simulation_parameters
     }
 
     /// Set number of magnetic dimensions.
-    void
+    inline int
     num_mag_dims(int num_mag_dims__)
     {
         RTE_ASSERT(num_mag_dims__ == 0 || num_mag_dims__ == 1 || num_mag_dims__ == 3);
 
         cfg().parameters().num_mag_dims(num_mag_dims__);
+        return num_mag_dims__;
     }
 
     /// Set flag for Hubbard correction.
-    void
+    bool
     hubbard_correction(bool hubbard_correction__)
     {
         cfg().parameters().hubbard_correction(hubbard_correction__);
         cfg().hubbard().simplified(false);
+        return hubbard_correction__;
     }
 
     /// Set flag for Gamma-point calculation.
