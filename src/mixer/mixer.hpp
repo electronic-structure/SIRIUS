@@ -386,7 +386,7 @@ class Mixer
     virtual void
     mix_impl() = 0;
 
-    // update residual history for current step
+    // Update residual history for current step.
     void
     update_residual()
     {
@@ -394,7 +394,7 @@ class Mixer
         this->axpy(-1.0, output_history_[idx_hist(step_)], residual_history_[idx_hist(step_)]);
     }
 
-    // update rmse histroy for current step. Residuals must have been updated before.
+    // Update rmse histroy for current step. Residuals must have been updated before.
     void
     update_rms()
     {
@@ -402,6 +402,9 @@ class Mixer
 
         /* compute sum of inner products; each inner product is normalized */
         double rmse = inner_product<true>(residual_history_[idx], residual_history_[idx]);
+        /* for very close vectors inner product of residuals can become negative due to the
+           lapw step function in the interstitial (it has some small negative values sometimes) */
+        rmse = std::max(0.0, rmse);
 
         rmse_history_[idx_hist(step_)] = std::sqrt(rmse);
     }

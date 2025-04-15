@@ -54,7 +54,8 @@ test_gemm_impl(int M, int N, int K, int transa, la::lib_t la__, memory_t memA__,
 
     c.zero(memC__);
     if (!is_host_memory(memC__)) {
-        c.allocate(memory_t::host);
+        c.allocate(memory_t::host_pinned);
+        c.zero();
     }
 
     char TA[] = {'N', 'T', 'C'};

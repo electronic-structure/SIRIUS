@@ -109,7 +109,7 @@ class Atom_symmetry_class
     dump_lo();
 
     /// Find linearization energy.
-    void
+    int
     find_enu(relativity_t rel__);
 
     void

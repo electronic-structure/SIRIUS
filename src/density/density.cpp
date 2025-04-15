@@ -36,61 +36,60 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
 {
     std::fill(rho_core__.begin(), rho_core__.end(), 0.0);
 
+    struct result_t
+    {
+        double core_leakage{0};
+        double core_eval_sum{0};
+        std::vector<double> level_energy;
+    };
+
     /* nothing to do */
     if (atom_type__.num_core_electrons() == 0.0) {
-        return std::make_pair(0.0, 0.0);
+        return result_t();
     }
 
     int nmtp = atom_type__.num_mt_points();
+    int zn   = atom_type__.zn();
 
-    std::vector<double> free_atom_grid(nmtp);
-    for (int i = 0; i < nmtp; i++) {
-        free_atom_grid[i] = atom_type__.radial_grid(i);
-    }
+    auto get_free_atom_grid = [&]() {
+        std::vector<double> free_atom_grid(nmtp);
+        for (int i = 0; i < nmtp; i++) {
+            free_atom_grid[i] = atom_type__.radial_grid(i);
+        }
 
-    int zn = atom_type__.zn();
+        /* extend radial grid */
+        double x  = atom_type__.radial_grid(nmtp - 1);
+        double dx = atom_type__.radial_grid().dx(nmtp - 2);
+        while (x + dx < atom_type__.free_atom_radial_grid().last()) {
+            x += dx;
+            free_atom_grid.push_back(x);
+            dx *= 1.025;
+        }
+        return Radial_grid_ext<double>(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
+    };
 
-    /* extend radial grid */
-    double x  = atom_type__.radial_grid(nmtp - 1);
-    double dx = atom_type__.radial_grid().dx(nmtp - 2);
-    while (x < 10.0 + zn / 10.0) {
-        x += dx;
-        free_atom_grid.push_back(x);
-        dx *= 1.025;
-    }
-    Radial_grid_ext<double> rgrid(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
+    auto rgrid = get_free_atom_grid();
 
-    /* interpolate spherical potential inside muffin-tin */
-    Spline<double> svmt(atom_type__.radial_grid());
-    /* remove nucleus contribution from Vmt */
-    for (int ir = 0; ir < nmtp; ir++) {
-        svmt(ir) = vs__[ir] + zn * atom_type__.radial_grid().x_inv(ir);
-    }
-    svmt.interpolate();
-    /* fit tail to alpha/r + beta */
-    double alpha = -(std::pow(atom_type__.mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + zn);
-    double beta  = svmt(nmtp - 1) - (zn + alpha) / atom_type__.mt_radius();
-
-    /* cook an effective potential from muffin-tin part and a tail */
+    /* cook effective potential from muffin-tin part and tail */
+    double beta = vs__[nmtp - 1] - atom_type__.free_atom_potential(atom_type__.mt_radius());
     std::vector<double> veff(rgrid.num_points());
     for (int ir = 0; ir < nmtp; ir++) {
+        /* muffin-tin part */
         veff[ir] = vs__[ir];
     }
-    /* simple tail alpha/r + beta */
     for (int ir = nmtp; ir < rgrid.num_points(); ir++) {
-        veff[ir] = alpha * rgrid.x_inv(ir) + beta;
+        /* long range tail */
+        veff[ir] = atom_type__.free_atom_potential(rgrid.x(ir)) + beta;
     }
 
-    //== /* write spherical potential */
-    //== std::stringstream sstr;
-    //== sstr << "spheric_potential_" << id_ << ".dat";
-    //== FILE* fout = fopen(sstr.str().c_str(), "w");
-
-    //== for (int ir = 0; ir < rgrid.num_points(); ir++)
-    //== {
-    //==     fprintf(fout, "%18.10f %18.10f\n", rgrid[ir], veff[ir]);
-    //== }
-    //== fclose(fout);
+    /* write spherical potential */
+    if (false) {
+        nlohmann::json dict;
+        dict["x"]    = rgrid.values();
+        dict["veff"] = veff;
+        dict["z"]    = zn;
+        write_json_to_file(dict, "spheric_potential_" + std::to_string(atom_type__.id()) + ".json");
+    }
 
     /* atomic level energies */
     std::vector<double> level_energy(atom_type__.num_atomic_levels());
@@ -145,7 +144,8 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
             core_eval_sum += level_energy[ist] * atom_type__.atomic_level(ist).occupancy;
         }
     }
-    return std::make_pair(core_leakage, core_eval_sum);
+
+    return result_t{core_leakage, core_eval_sum, level_energy};
 }
 
 #if defined(SIRIUS_GPU)
@@ -2207,21 +2207,36 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
 
     auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
 
-    for (auto it : spl_idx) {
-        auto result          = ::sirius::generate_core_charge_density(unit_cell_.atom_symmetry_class(it.i).atom_type(),
-                                                                      ctx_.core_relativity(), vs__[it.i],
-                                                                      ae_core_charge_density_[it.i]);
-        core_leakage_[it.i]  = result.first;
-        core_eval_sum_[it.i] = result.second;
-    }
+    mpi::pstdout pout(ctx_.comm());
+    try {
+        for (auto it : spl_idx) {
+            auto& type           = unit_cell_.atom_symmetry_class(it.i).atom_type();
+            auto result          = ::sirius::generate_core_charge_density(type, ctx_.core_relativity(), vs__[it.i],
+                                                                          ae_core_charge_density_[it.i]);
+            core_leakage_[it.i]  = result.core_leakage;
+            core_eval_sum_[it.i] = result.core_eval_sum;
+            pout << "atom class : " << it.i << std::endl;
+            for (int ist = 0; ist < type.num_atomic_levels(); ist++) {
+                if (type.atomic_level(ist).core) {
+                    pout << "  n,l,k : " << type.atomic_level(ist).n << " " << type.atomic_level(ist).l << " "
+                         << type.atomic_level(ist).k << "  energy : " << ffmt(20, 8) << result.level_energy[ist]
+                         << std::endl;
+                }
+            }
+        }
 
-    for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
-        auto rank = spl_idx.location(ic).ib;
-        ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
-                          unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
-        ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
-        ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
+        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+            auto rank = spl_idx.location(ic).ib;
+            ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
+                              unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+            ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
+            ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
+        }
+    } catch (std::exception const& e) {
+        RTE_OUT(ctx_.out()) << "Warning: generation of core charge density failed" << std::endl
+                            << e.what() << std::endl;
     }
+    RTE_OUT(ctx_.out(2)) << pout.flush(0);
 }
 
 void

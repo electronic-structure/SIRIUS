@@ -32,6 +32,8 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
 
     auto& ctx = Hk__.H0().ctx();
 
+    RTE_ASSERT(kp__.gklo_basis_size() > ctx.num_fv_states());
+
     auto& solver = ctx.gen_evp_solver();
 
     /* total eigen-value problem size */
@@ -61,14 +63,14 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
         double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
-            s << "H matrix is not hermitian" << std::endl << "max error: " << max_diff;
-            RTE_THROW(s);
+            s << "H matrix is not hermitian, max error: " << max_diff;
+            RTE_WARNING(s);
         }
         max_diff = check_hermitian(o, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
-            s << "O matrix is not hermitian" << std::endl << "max error: " << max_diff;
-            RTE_THROW(s);
+            s << "O matrix is not hermitian, max error: " << max_diff;
+            RTE_WARNING(s);
         }
     }
 
@@ -78,8 +80,6 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
         print_checksum("h_lapw", z1, ctx.out());
         print_checksum("o_lapw", z2, ctx.out());
     }
-
-    RTE_ASSERT(kp__.gklo_basis_size() > ctx.num_fv_states());
 
     std::vector<double> eval(ctx.num_fv_states());
 

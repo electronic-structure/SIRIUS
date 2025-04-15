@@ -544,7 +544,8 @@ Simulation_context::print_info(std::ostream& out__) const
            << "number of MPI ranks per node  : " << mpi::num_ranks_per_node() << std::endl
            << "page size (Kb)                : " << (get_page_size() >> 10) << std::endl
            << "number of pages               : " << get_num_pages() << std::endl
-           << "available memory (GB)         : " << (get_total_memory() >> 30) << std::endl;
+           << "total system memory (GB)      : " << (get_total_memory() >> 30) << std::endl
+           << "available memory (GB)         : " << (get_available_memory() >> 30);
         os << std::endl;
     }
     {
@@ -843,13 +844,23 @@ Simulation_context::update()
         return result;
     };
 
-    mpi_grid_mt_sym_.clear();
+    int max_na{0};
+    for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
+        max_na = std::max(max_na, unit_cell().atom_symmetry_class(ic).num_atoms());
+    }
+
+    std::vector<std::shared_ptr<mpi::Grid>> mpi_grid_tmp(max_na + 1);
+
+    mpi_grid_mt_sym_ = std::vector<std::shared_ptr<mpi::Grid>>(unit_cell().num_atom_symmetry_classes());
+
     for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
         if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
-            auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
-            mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
-        } else {
-            mpi_grid_mt_sym_.push_back(nullptr);
+            int na = unit_cell().atom_symmetry_class(ic).num_atoms();
+            if (mpi_grid_tmp[na] == nullptr) {
+                auto r           = make_mpi_grid_mt_sym(na, this->comm().size());
+                mpi_grid_tmp[na] = std::make_shared<mpi::Grid>(r, this->comm());
+            }
+            mpi_grid_mt_sym_[ic] = mpi_grid_tmp[na];
         }
     }
 

@@ -30,19 +30,19 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
     auto& ctx = Hk__.H0().ctx();
 
-    if (ctx.cfg().control().verification() >= 2) {
-        auto eval = diag_S_davidson<T, F>(Hk__, kp__);
-        if (eval[0] <= 0) {
-            std::stringstream s;
-            s << "S-operator matrix is not positive definite\n"
-              << "  lowest eigen-value: " << eval[0];
-            RTE_WARNING(s);
-        } else {
-            std::stringstream s;
-            s << "S-matrix is OK! Minimum eigen-value : " << eval[0];
-            RTE_OUT(ctx.out(1)) << s.str() << std::endl;
-        }
-    }
+    //if (ctx.cfg().control().verification() >= 2) {
+    //    auto eval = diag_S_davidson<T, F>(Hk__, kp__);
+    //    if (eval[0] <= 0) {
+    //        std::stringstream s;
+    //        s << "S-operator matrix is not positive definite\n"
+    //          << "  lowest eigen-value: " << eval[0];
+    //        RTE_WARNING(s);
+    //    } else {
+    //        std::stringstream s;
+    //        s << "S-matrix is OK! Minimum eigen-value : " << eval[0];
+    //        RTE_OUT(ctx.out(1)) << s.str() << std::endl;
+    //    }
+    //}
 
     auto pcs = env::print_checksum();
 

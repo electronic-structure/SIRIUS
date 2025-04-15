@@ -402,6 +402,9 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         }
         dict["magnetisation"]["atoms"] = v;
     }
+    if (ctx_.full_potential()) {
+        dict["core_leakage"] = density_.core_leakage();
+    }
 
     /* check density */
     if (num_iter >= 0) {
