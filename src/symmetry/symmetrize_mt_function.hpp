@@ -144,7 +144,7 @@ symmetrize_mt_function(Crystal_symmetry const& sym__, std::vector<std::vector<md
 template <typename Index_t>
 inline void
 symmetrize_mt_function(Unit_cell const& uc__, std::vector<std::vector<mdarray<double, 2>>> const& rotm__,
-                       std::vector<std::unique_ptr<mpi::Grid>> const& mpi_grid__, int num_mag_dims__,
+                       std::vector<std::shared_ptr<mpi::Grid>> const& mpi_grid__, int num_mag_dims__,
                        std::vector<Spheric_function_set<double, Index_t>*> frlm__)
 {
     for (int ic = 0; ic < uc__.num_atom_symmetry_classes(); ic++) {
