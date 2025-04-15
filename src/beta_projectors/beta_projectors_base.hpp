@@ -131,6 +131,7 @@ beta_projectors_generate_gpu(beta_projectors_coeffs_t<T>& out,
 
 } // namespace local
 
+/// Generates beta-projectors.
 /** Generates beta projector PW coefficients and holds GPU memory phase-factor
  *  independent coefficients of |> functions for atom types.*/
 template <typename T>

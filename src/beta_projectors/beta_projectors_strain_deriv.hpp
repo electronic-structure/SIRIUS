@@ -18,6 +18,64 @@
 
 namespace sirius {
 
+/// Compute derivative of beta-projectors with respect to strain tensor.
+/**
+*  First way to take strain derivative of beta-projectors (here and below \f$ {\bf G+k} = {\bf q} \f$):
+*  \f[
+*  \frac{\partial}{\partial \varepsilon_{\mu \nu}}
+*  \beta_{\xi}^{\alpha}({\bf q}) =
+*    -\frac{4\pi}{2\sqrt{\Omega}} \delta_{\mu \nu} e^{-i{\bf q r_{\alpha}}}(-i)^{\ell}
+*    R_{\ell m}(\theta_q, \phi_q) \int \beta_{\ell}(r) j_{\ell}(q r) r^2 dr + \\
+*    \frac{4\pi}{\sqrt{\Omega}} e^{-i{\bf q r_{\alpha}}}(-i)^{\ell}
+*    \frac{\partial R_{\ell m}(\theta_q, \phi_q)}{\partial \varepsilon_{\mu \nu}}
+*      \int \beta_{\ell}(r) j_{\ell}(q r) r^2 dr + \\
+*    \frac{4\pi}{\sqrt{\Omega}} e^{-i{\bf q r_{\alpha}}}(-i)^{\ell} R_{\ell m}(\theta_q, \phi_q)
+*       \int \beta_{\ell}(r) \frac{\partial j_{\ell}(q r)}{\partial \varepsilon_{\mu \nu}} r^2 dr = \\
+*    \frac{4\pi}{\sqrt{\Omega}} e^{-i{\bf q r_{\alpha}}}(-i)^{\ell}
+*    \Bigg[ \int \beta_{\ell}(r) j_{\ell}(q r) r^2 dr
+*    \Big(\frac{\partial R_{\ell m}(\theta_q, \phi_q)}{\partial \varepsilon_{\mu \nu}} -
+*    \frac{1}{2} R_{\ell m}(\theta_q, \phi_q) \delta_{\mu \nu}\Big) + R_{\ell m}(\theta_q, \phi_q)
+*    \int \beta_{\ell}(r) \frac{\partial j_{\ell}(q r)}{\partial \varepsilon_{\mu \nu}} r^2 dr \Bigg]
+*  \f]
+*
+*  Strain derivative of the real spherical harmonics:
+*  \f[
+*    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \varepsilon_{\mu \nu}} =
+*      \sum_{\tau} \frac{\partial R_{\ell m}(\theta, \phi)}{\partial q_{\tau}} \frac{\partial q_{\tau}}{\partial
+*   \varepsilon_{\mu \nu}} = -q_{\mu} \frac{\partial R_{\ell m}(\theta, \phi)}{\partial q_{\nu}}
+*  \f]
+*  For the derivatives of spherical harmonics over Cartesian components of vector please refer to
+*  the sht::dRlm_dr function.
+*
+*  Strain derivative of spherical Bessel function integral:
+*  \f[
+*    \int \beta_{\ell}(r) \frac{\partial j_{\ell}(qr) }{\partial \varepsilon_{\mu \nu}}  r^2 dr =
+*     \int \beta_{\ell}(r) \frac{\partial j_{\ell}(qr) }{\partial q} \frac{-q_{\mu} q_{\nu}}{q} r^2 dr
+*  \f]
+*  Second way to compute strain derivative of beta-projectors is trough Gaunt coefficients:
+*  \f[
+*   \frac{\partial}{\partial \varepsilon_{\mu \nu}} \beta_{\xi}^{\alpha}({\bf q}) =
+*   -\frac{1}{2\sqrt{\Omega}} \delta_{\mu \nu} \int e^{-i{\bf q r}} \beta_{\xi}^{\alpha}({\bf r}) d{\bf r} +
+*   \frac{1}{\sqrt{\Omega}} \int i r_{\nu} q_{\mu} e^{-i{\bf q r}} \beta_{\xi}^{\alpha}({\bf r}) d{\bf r}
+*  \f]
+*  (second term comes from the strain derivative of \f$ e^{-i{\bf q r}} \f$). Remembering that \f$ {\bf r} \f$ is
+*  proportional to p-like real spherical harmonics, we can rewrite the second part of beta-projector derivative as:
+*  \f[
+*   \frac{1}{\sqrt{\Omega}} \int i r_{\nu} q_{\mu} e^{-i{\bf q r}} \beta_{\xi}^{\alpha}({\bf r}) d{\bf r} =
+*    \frac{1}{\sqrt{\Omega}} i q_{\mu} \int r \bar R_{1 \nu}(\theta, \phi) 4\pi \sum_{\ell_3 m_3} (-i)^{\ell_3}
+*   R_{\ell_3 m_3}(\theta_q, \phi_q) R_{\ell_3 m_3}(\theta, \phi) j_{\ell_3}(q r) \beta_{\ell_2}^{\alpha}(r)
+*   R_{\ell_2 m_2}(\theta, \phi) d{\bf r} = \\
+*   \frac{4 \pi}{\sqrt{\Omega}} i q_{\mu} \sum_{\ell_3 m_3} (-i)^{\ell_3} R_{\ell_3 m_3}(\theta_q, \phi_q)
+*      \langle \bar R_{1\nu} | R_{\ell_3 m_3} | R_{\ell_2 m_2} \rangle
+*      \int j_{\ell_3}(q r) \beta_{\ell_2}^{\alpha}(r) r^3 dr
+*  \f]
+*  where
+*  \f[
+*    \bar R_{1 x}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{11}(\theta, \phi) = \sin(\theta) \cos(\phi) \\
+*    \bar R_{1 y}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{1-1}(\theta,\phi) = \sin(\theta) \sin(\phi) \\
+*    \bar R_{1 z}(\theta, \phi) = 2 \sqrt{\frac{\pi}{3}} R_{10}(\theta, \phi) = \cos(\theta)
+*  \f]
+*/
 template <typename T>
 class Beta_projectors_strain_deriv : public Beta_projectors_base<T>
 {

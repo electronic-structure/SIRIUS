@@ -28,9 +28,13 @@ namespace sirius {
 nlohmann::json const&
 get_options_dictionary();
 
+/// Get all possible options of a given input section. It is a json dictionary.
 nlohmann::json const&
 get_section_options(std::string const& section__);
 
+/// Wrapper class around config_t.
+/** config_t is automatically generated from the input_schema.json and is used to store all
+ *  input parameters for the simulation. */
 class Config : public config_t
 {
   public:

@@ -121,7 +121,7 @@ Config::import(nlohmann::json const& in__)
     compose_json(sirius::input_schema["properties"], in__, this->dict_);
 }
 
-/// Get all possible options for initializing sirius. It is a json dictionary.
+/** Return entire input parameters schema. */
 nlohmann::json const&
 get_options_dictionary()
 {
@@ -131,7 +131,7 @@ get_options_dictionary()
     return input_schema;
 }
 
-/// Get all possible options of a given input section. It is a json dictionary.
+/** Return section of the input parameters schema. */
 nlohmann::json const&
 get_section_options(std::string const& section__)
 {
