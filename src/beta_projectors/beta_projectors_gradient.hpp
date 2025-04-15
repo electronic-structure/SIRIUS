@@ -19,8 +19,9 @@
 
 namespace sirius {
 
-/// Compute gradient of beta-projectors over atomic positions \f$ d \langle {\bf G+k} | \beta \rangle / d \tau_{\alpha}
-/// \f$.
+/// Compute gradient of beta-projectors.
+/** Derivative over atomic positions \f$ d \langle {\bf G+k} | \beta \rangle / d \tau_{\alpha} \f$
+ *  is computed. */
 template <typename T>
 class Beta_projectors_gradient : public Beta_projectors_base<T>
 {

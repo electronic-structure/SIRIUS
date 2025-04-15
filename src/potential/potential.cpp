@@ -132,6 +132,15 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
+    if (!ctx_.full_potential()) {
+        d_mtrx_.resize(unit_cell_.num_atoms());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            int nbf     = unit_cell_.atom(ia).mt_basis_size();
+            d_mtrx_[ia] = mdarray<double, 3>({nbf, nbf, ctx_.num_mag_dims() + 1}, mdarray_label("d_mtrx_"));
+            d_mtrx_[ia].zero();
+        }
+    }
+
     /* in case of PAW */
     init_PAW();
 
@@ -321,7 +330,7 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     }
 
     if (!ctx_.full_potential()) {
-        generate_D_operator_matrix();
+        generate_d_mtrx();
         generate_PAW_effective_potential(density__);
         if (ctx_.verbosity() >= 3) {
             rte::ostream out(ctx_.out(), "potential");
@@ -350,11 +359,21 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
                     for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                         out << "    ";
                         for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                            out << ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
+                            out << ffmt(8, 3) << d_mtrx_[ia](ib1, ib2, imagn);
                         }
                         out << std::endl;
                     }
                 }
+            }
+        }
+    }
+
+    if (ctx_.full_potential()) {
+        if (ctx_.verbosity() >= 3) {
+            auto vs = this->get_spherical_potential();
+            rte::ostream out(ctx_.out(), "potential");
+            for (int ic = 0; ic < ctx_.unit_cell().num_atom_symmetry_classes(); ic++) {
+                out << "ic : " << ic << ", v_spherical(Rmt) : " << vs[ic].back() << std::endl;
             }
         }
     }
@@ -370,6 +389,25 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
             }
         }
     }
+}
+
+std::vector<std::vector<double>>
+Potential::get_spherical_potential() const
+{
+    std::vector<std::vector<double>> vs(unit_cell_.num_atom_symmetry_classes());
+
+    if (ctx_.full_potential()) {
+        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+            int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
+            int nmtp = unit_cell_.atom(ia).num_mt_points();
+            vs[ic]   = std::vector<double>(nmtp);
+
+            for (int ir = 0; ir < nmtp; ir++) {
+                vs[ic][ir] = y00 * effective_potential().mt()[ia](0, ir);
+            }
+        }
+    }
+    return vs;
 }
 
 void
@@ -398,6 +436,26 @@ Potential::update_atomic_potential()
 
         unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
     }
+}
+
+mdarray<std::complex<double>, 2>
+Potential::poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__) const
+{
+    PROFILE("sirius::Potential::poisson_vmt");
+
+    mdarray<std::complex<double>, 2> qmt({ctx_.lmmax_rho(), unit_cell_.num_atoms()});
+    qmt.zero();
+
+    for (auto it : unit_cell_.spl_num_atoms()) {
+        auto ia = it.i;
+
+        auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rhomt__[ia], hartree_potential_->mt()[ia]);
+
+        SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
+    }
+
+    ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
+    return qmt;
 }
 
 } // namespace sirius

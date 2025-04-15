@@ -259,7 +259,8 @@ class Simulation_context : public Simulation_parameters
     memory_t host_memory_t_{memory_t::none};
 
     /// SPLA library context.
-    std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
+    /** Context is mutable to allow SPLA library to change it. */
+    mutable std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
     std::ostream* output_stream_{nullptr};
     std::ofstream output_file_stream_;
@@ -274,8 +275,10 @@ class Simulation_context : public Simulation_parameters
     radial_integrals_t ri_;
 
     /// MPI grid for muffin-tin symmetrization.
-    /** MPI grid is defined for each atom symmetry class */
-    std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
+    /** MPI grid is defined for each atom symmetry class. MT symmetrization function is checking
+     *  this value, and if grid is not null, symmetrization for the given atom symmetry class is
+     *  performed. */
+    std::vector<std::shared_ptr<mpi::Grid>> mpi_grid_mt_sym_;
 
     /// Rotation matrices for real spherical harmonics.
     std::vector<std::vector<mdarray<double, 2>>> rotm_;
@@ -712,14 +715,8 @@ class Simulation_context : public Simulation_parameters
         return fft_coarse_grid_;
     }
 
-    auto const&
-    spla_context() const
-    {
-        return *spla_ctx_;
-    }
-
     auto&
-    spla_context()
+    spla_context() const
     {
         return *spla_ctx_;
     }

@@ -265,7 +265,7 @@ class config_t
         }
         /// Maximum orbital quantum number for which spherical coverage need to be generated.
         /**
-            This option can be used to increase shpherical coverage in muffin-tins. Impacts generation of XC potential.
+            This option can be used to increase spherical coverage in muffin-tins. Impacts generation of XC potential.
         */
         inline auto sht_lmax() const
         {
@@ -1404,6 +1404,18 @@ class config_t
             }
             dict_["/parameters/extra_charge"_json_pointer] = extra_charge__;
         }
+        /// Fixed magnetic moment
+        inline auto fixed_mag() const
+        {
+            return dict_.at("/parameters/fixed_mag"_json_pointer).get<double>();
+        }
+        inline void fixed_mag(double fixed_mag__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/fixed_mag"_json_pointer] = fixed_mag__;
+        }
         /// XC density threshold (debug purposes).
         inline auto xc_dens_tre() const
         {
@@ -1882,9 +1894,13 @@ class config_t
             {
                 return dict_.at("J").get<double>();
             }
-            auto BE2() const
+            auto B() const
             {
-                return dict_.at("BE2").get<double>();
+                return dict_.at("B").get<double>();
+            }
+            auto E2() const
+            {
+                return dict_.at("E2").get<double>();
             }
             auto E3() const
             {

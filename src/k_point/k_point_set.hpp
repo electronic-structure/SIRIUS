@@ -68,6 +68,18 @@ class K_point_set
     double
     entropy_sum() const;
 
+    template <typename T>
+    void
+    find_band_occupancies_without_empty();
+
+    template <typename T>
+    void
+    find_band_occupancies_fixed_magn(double emin, double emax);
+
+    template <typename T>
+    void
+    find_band_occupancies_generic(double emin, double emax);
+
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)

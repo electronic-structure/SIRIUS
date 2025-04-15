@@ -81,6 +81,9 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
             }
         }
     }
+    /* wait for all */
+    ctx.comm().barrier();
+
     kset__.comm().allreduce(&num_dav_iter, 1);
     kset__.comm().allreduce<bool, mpi::op_t::land>(&converged, 1);
     ctx.num_itsol_steps(num_dav_iter);
@@ -97,18 +100,32 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
         std::stringstream s;
         s << "Lowest band energies" << std::endl;
         int nbnd = std::min(ctx.cfg().control().num_bands_to_print(), ctx.num_bands());
+        bool shorten{true};
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-            s << "ik:" << std::setw(5) << ik;
-            for (int j = 0; j < nbnd; j++) {
-                s << ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 0);
-            }
-            if (ctx.num_mag_dims() == 1) {
-                s << std::endl << "        ";
-                for (int j = 0; j < nbnd; j++) {
-                    s << ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 1);
+            bool do_print{true};
+            if (kset__.num_kpoints() > 10) {
+                if (ik >= 5 && ik < kset__.num_kpoints() - 5) {
+                    do_print = false;
                 }
             }
-            s << std::endl;
+            if (do_print) {
+                s << "ik:" << std::setw(5) << ik;
+                for (int j = 0; j < nbnd; j++) {
+                    s << ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 0);
+                }
+                if (ctx.num_mag_dims() == 1) {
+                    s << std::endl << "        ";
+                    for (int j = 0; j < nbnd; j++) {
+                        s << ffmt(12, 6) << kset__.get<T>(ik)->band_energy(j, 1);
+                    }
+                }
+                s << std::endl;
+            } else {
+                if (shorten) {
+                    s << "..." << std::endl;
+                    shorten = false;
+                }
+            }
         }
         RTE_OUT(ctx.out(2)) << s.str();
     }

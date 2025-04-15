@@ -37,7 +37,7 @@ run_test(cmd_args const& args)
     }
 
     try {
-        ctx.cfg().hubbard().local(0).BE2();
+        ctx.cfg().hubbard().local(0).E2();
     } catch (nlohmann::json::exception const& e) {
     } catch (...) {
         return 4;

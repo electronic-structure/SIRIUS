@@ -224,7 +224,10 @@ class Atom_type
      *  oribtal occupancies. */
     std::vector<double> paw_wf_occ_;
 
-    /// Core electron contribution to all electron charge density in PAW method.
+    /// Core electron contribution to all-electron charge density in PAW method.
+    /** In PAW, core charge density is defined for each atom type, because it comes from the
+     *  pseudopotential file and is fixed during the calculation. This is different from LAPW
+     *  core charge density, which is recomputed for each atom symmetry class. */
     std::vector<double> paw_ae_core_charge_density_;
 
     /// True if the pseudo potential includes spin orbit coupling.
@@ -311,6 +314,9 @@ class Atom_type
     /// Density of a free atom.
     Spline<double> free_atom_density_spline_;
 
+    /// Reconstructed free atom potential.
+    Spline<double> free_atom_potential_spline_;
+
     /// Density of a free atom as read from the input file.
     /** Does not contain 4 Pi and r^2 prefactors. */
     std::vector<double> free_atom_density_;
@@ -368,8 +374,8 @@ class Atom_type
         Full treatment of spin is not considered. In case of spinor wave-functions the are averaged between
         l+1/2 and l-1/2 states. */
     void
-    add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double* hub_coef__, double alpha__,
-                        double beta__, double J0__, std::vector<double> initial_occupancy__,
+    add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, std::array<double, 3> hub_coef__,
+                        double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__,
                         const bool use_for_calculations__);
 
     /// Print basic info to standard output.
@@ -395,7 +401,7 @@ class Atom_type
     /// Add radial function of the augmentation charge.
     /** Radial functions of beta projectors must be added already. Their total number will be used to
         deterimine the storage size for the radial functions of the augmented charge. */
-    inline void
+    void
     add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__);
 
     /// Set the radial grid of the given type.
@@ -667,14 +673,14 @@ class Atom_type
         return radial_grid_.num_points();
     }
 
-    inline Radial_grid<double> const&
+    inline auto const&
     radial_grid() const
     {
         RTE_ASSERT(radial_grid_.num_points() > 0);
         return radial_grid_;
     }
 
-    inline Radial_grid<double> const&
+    inline auto const&
     free_atom_radial_grid() const
     {
         return free_atom_radial_grid_;
@@ -711,14 +717,14 @@ class Atom_type
     }
 
     /// Get free atom density at i-th point of radial grid.
-    inline double
+    inline auto
     free_atom_density(const int idx) const
     {
         return free_atom_density_spline_(idx);
     }
 
     /// Get free atom density at point x.
-    inline double
+    inline auto
     free_atom_density(double x) const
     {
         return free_atom_density_spline_.at_point(x);
@@ -729,6 +735,13 @@ class Atom_type
     free_atom_density(std::vector<double> rho__)
     {
         free_atom_density_ = rho__;
+    }
+
+    /// Get value of free atom potential at point x.
+    inline auto
+    free_atom_potential(double x) const
+    {
+        return free_atom_potential_spline_.at_point(x);
     }
 
     inline void

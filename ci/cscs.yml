@@ -1,0 +1,160 @@
+include:
+  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
+
+stages:
+  - baseimage
+  - build
+  - test
+
+build base uenv gh200:
+  extends: .uenv-builder-daint-gh200
+  stage: baseimage
+  timeout: 2h
+  variables:
+    UENV_NAME: sirius-gh200
+    UENV_RECIPE: ci/sirius-uenv-recipe-gh200/
+    UENV_VERSION: v1
+
+build base uenv zen2:
+  extends: .uenv-builder-eiger-zen2
+  stage: baseimage
+  timeout: 2h
+  variables:
+    UENV_NAME: sirius-zen2
+    UENV_RECIPE: ci/sirius-uenv-recipe-cpu/
+    UENV_VERSION: v1
+
+build sirius cuda:
+  extends: .uenv-runner-daint-gh200
+  stage: build
+  needs: ["build base uenv gh200"]
+  image: sirius-gh200/v1:$CI_PIPELINE_ID
+  artifacts:
+    paths:
+      - builddir.tar
+  variables:
+    SPEC: sirius@develop +cuda +apps +tests +scalapack ~python
+    CUDA_ARCH: 90
+    REPO: ./ci/sirius-uenv-recipe-gh200/repo
+  script:
+    - |
+      #
+      git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
+      git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
+      source /dev/shm/spack-clone/share/spack/setup-env.sh
+      bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cuda.sh
+
+build sirius eiger:
+  extends: .uenv-runner-eiger-zen2
+  stage: build
+  needs: ["build base uenv zen2"]
+  image: sirius-zen2/v1:$CI_PIPELINE_ID
+  artifacts:
+    paths:
+      - builddir.tar
+  variables:
+    SPEC: sirius@develop +apps +tests +scalapack ~python
+    REPO: ./ci/sirius-uenv-recipe-cpu/repo
+  script:
+    - |
+      #
+      git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
+      git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
+      source /dev/shm//spack-clone/share/spack/setup-env.sh
+      bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-cpu.sh
+
+.run_tests:
+  script:
+    - |
+      if [ $SLURM_LOCALID -eq 0 ]; then
+        tar xf ./builddir.tar -C /
+        touch /dev/shm/unpack_done_$CI_JOB_ID
+      fi
+    - |
+      # wait for tar unpack
+      while [ ! -f /dev/shm/unpack_done_$CI_JOB_ID ]; do
+        sleep 0.2
+      done
+
+      # ls -alhrt /dev/shm/
+      # ls -alhrt /dev/shm//spack-stage/antonk/*
+
+      stagedir=$(find /dev/shm/spack-stage -type d -name spack-stage-sirius-*)
+      echo "stagedir: $stagedir"
+      cd $stagedir/spack-build-*
+      if [ "$SLURM_PROCID" == "0" ]; then
+      $TEST_COMMAND -V
+      else
+      $TEST_COMMAND --output-on-failure
+      fi
+
+.run_tests_daint:
+  extends: [.uenv-runner-daint-gh200, .run_tests]
+  image: sirius-gh200/v1:$CI_PIPELINE_ID
+  stage: test
+  needs: ["build sirius cuda"]
+
+.run_tests_eiger:
+  extends: [.uenv-runner-eiger-zen2, .run_tests]
+  image: sirius-zen2/v1:$CI_PIPELINE_ID
+  stage: test
+  needs: ["build sirius eiger"]
+  variables:
+    SLURM_HINT: nomultithread
+    SLURM_CPU_BIND: verbose
+
+daint test gpu serial:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_GPUS: 1
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: 'socket'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_serial
+
+daint test gpu band parallel:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_NTASKS: 4
+    SLURM_GPUS: 4
+    SLURM_CPU_BIND: 'socket'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
+
+daint test gpu k-point parallel:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_CONSTRAINT: gpu
+    SLURM_NTASKS: 4
+    SLURM_GPUS: 4
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_CPU_BIND: 'socket'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_k_point_parallel
+
+eiger test cpu serial:
+  extends: [.run_tests_eiger]
+  variables:
+    OMP_NUM_THREADS: 8
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_NTASKS: 1
+    SRUN_CPUS_PER_TASK: 8
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L cpu_serial
+
+eiger test cpu band parallel:
+  extends: [.run_tests_eiger]
+  variables:
+    OMP_NUM_THREADS: 8
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_NTASKS: 4
+    SRUN_CPUS_PER_TASK: 8
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L cpu_band_parallel

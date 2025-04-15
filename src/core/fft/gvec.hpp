@@ -1147,6 +1147,7 @@ print(std::ostream& out__, Gvec const& gvec__)
     // out__ << pout.flush(0);
 }
 
+/// Iterator over G-vectors.
 class gvec_iterator_t
 {
   private:
@@ -1213,6 +1214,7 @@ class gvec_iterator_t
     }
 };
 
+/// Helper class to skip G=0 vector.
 class gvec_skip_g0
 {
   private:
@@ -1229,6 +1231,7 @@ class gvec_skip_g0
     end(gvec_skip_g0 const&);
 };
 
+/// Return a new instance of gvec_skip_g0 class.
 inline auto
 skip_g0(Gvec const& gv__)
 {

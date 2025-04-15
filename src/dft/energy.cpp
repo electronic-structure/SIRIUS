@@ -111,19 +111,9 @@ energy_vloc(Density const& density, Potential const& potential)
 }
 
 double
-core_eval_sum(Unit_cell const& unit_cell)
+eval_sum(Density const& density, K_point_set const& kset)
 {
-    double sum{0};
-    for (int ic = 0; ic < unit_cell.num_atom_symmetry_classes(); ic++) {
-        sum += unit_cell.atom_symmetry_class(ic).core_eval_sum() * unit_cell.atom_symmetry_class(ic).num_atoms();
-    }
-    return sum;
-}
-
-double
-eval_sum(Unit_cell const& unit_cell, K_point_set const& kset)
-{
-    return core_eval_sum(unit_cell) + kset.valence_eval_sum();
+    return density.core_eval_sum() + kset.valence_eval_sum();
 }
 
 double
@@ -135,7 +125,7 @@ energy_veff(Density const& density, Potential const& potential)
 double
 energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return eval_sum(ctx.unit_cell(), kset) - energy_veff(density, potential) - energy_bxc(density, potential);
+    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential);
 }
 
 double

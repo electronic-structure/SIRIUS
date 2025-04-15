@@ -2205,7 +2205,7 @@ sirius_set_atom_type_hubbard:
       doc: Hubbard U parameter.
     J:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Exchange J parameter for the full interaction treatment.
     alpha:
       type: double
@@ -2236,8 +2236,10 @@ sirius_set_atom_type_hubbard(void* const* handler__, char const* label__, int co
                 auto& type    = sim_ctx.unit_cell().atom_type(std::string(label__));
                 type.hubbard_correction(true);
                 if (type.file_name().empty()) {
-                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__,
-                                             std::vector<double>(), true);
+                    std::array<double, 3> hubbard_coeff({J__[0], J__[1], J__[2]});
+
+                    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, hubbard_coeff[0], hubbard_coeff, *alpha__,
+                                             *beta__, *J0__, std::vector<double>(), true);
                 } else {
                     // we use a an external file containing the potential
                     // information which means that we do not have all information
@@ -3029,7 +3031,6 @@ sirius_get_energy(void* const* gs_handler__, char const* label__, double* energy
 
                 auto& kset      = gs.k_point_set();
                 auto& ctx       = kset.ctx();
-                auto& unit_cell = kset.unit_cell();
                 auto& potential = gs.potential();
                 auto& density   = gs.density();
 
@@ -3037,7 +3038,7 @@ sirius_get_energy(void* const* gs_handler__, char const* label__, double* energy
 
                 std::map<std::string, std::function<double()>> func = {
                         {"total", [&]() { return sirius::total_energy(ctx, kset, density, potential); }},
-                        {"evalsum", [&]() { return sirius::eval_sum(unit_cell, kset); }},
+                        {"evalsum", [&]() { return sirius::eval_sum(density, kset); }},
                         {"exc", [&]() { return sirius::energy_exc(density, potential); }},
                         {"vxc", [&]() { return sirius::energy_vxc(density, potential); }},
                         {"bxc", [&]() { return sirius::energy_bxc(density, potential); }},
@@ -6421,7 +6422,7 @@ sirius_generate_d_operator_matrix(void* const* gs_handler__, int* error_code__)
     call_sirius(
             [&]() {
                 auto& gs = get_gs(gs_handler__);
-                gs.potential().generate_D_operator_matrix();
+                gs.potential().generate_d_mtrx();
             },
             error_code__);
 }
