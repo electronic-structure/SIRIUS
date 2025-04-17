@@ -22,7 +22,7 @@ spack -e ./spack-env develop -p $PWD sirius@develop
 cat ./spack-env/spack.yaml
 
 spack -e ./spack-env concretize
-spack -e ./spack-env install
+spack -e ./spack-env install -v
 
 # the tar pipe below expects a relative path
 builddir=$(spack -e ./spack-env location -b sirius)
