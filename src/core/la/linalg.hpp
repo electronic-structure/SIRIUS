@@ -2216,16 +2216,12 @@ unitary_similarity_transform(int kind__, dmatrix<T>& A__, dmatrix<T> const& U__,
  *    A <= U A U^{H} (kind = 0)
  *    A <= U^{H} A U (kind = 1)
  *
- *    where A is a diagonal
+ *    where A is a diagonal matrix
  */
 template <typename T>
 auto
 unitary_similarity_transform(int kind__, mdarray<T, 1> const& a__, matrix<T> const& U__)
 {
-
-    if (!(kind__ == 0 || kind__ == 1)) {
-        RTE_THROW("wrong 'kind' parameter");
-    }
 
     auto out = zeros_like(U__, get_memory_pool(memory_t::host));
     auto tmp = zeros_like(U__, get_memory_pool(memory_t::host));
@@ -2239,16 +2235,24 @@ unitary_similarity_transform(int kind__, mdarray<T, 1> const& a__, matrix<T> con
             .dgmm(lr, num_wf, num_wf, U__.at(memory_t::host), U__.ld(), a__.at(memory_t::host), 1,
                   tmp.at(memory_t::host), tmp.ld());
 
-    if (kind__ == 0) {
-        // return tmp * U^H  = (U * diag(a)) U^H
-        la::wrap(lib_t::blas)
-                .gemm('N', 'C', num_wf, num_wf, num_wf, &constant<T>::one(), tmp.at(memory_t::host), tmp.ld(),
-                      U__.at(memory_t::host), U__.ld(), &constant<T>::zero(), out.at(memory_t::host), out.ld());
-    } else {
-        // return U^H * tmp =  U^H * (diag(a) * U)
-        la::wrap(lib_t::blas)
-                .gemm('C', 'N', num_wf, num_wf, num_wf, &constant<T>::one(), U__.at(memory_t::host), U__.ld(),
-                      tmp.at(memory_t::host), tmp.ld(), &constant<T>::zero(), out.at(memory_t::host), out.ld());
+    switch (kind__) {
+        case 0: {
+            // return tmp * U^H  = (U * diag(a)) U^H
+            la::wrap(lib_t::blas)
+                    .gemm('N', 'C', num_wf, num_wf, num_wf, &constant<T>::one(), tmp.at(memory_t::host), tmp.ld(),
+                          U__.at(memory_t::host), U__.ld(), &constant<T>::zero(), out.at(memory_t::host), out.ld());
+            break;
+        }
+        case 1: {
+            // return U^H * tmp =  U^H * (diag(a) * U)
+            la::wrap(lib_t::blas)
+                    .gemm('C', 'N', num_wf, num_wf, num_wf, &constant<T>::one(), U__.at(memory_t::host), U__.ld(),
+                          tmp.at(memory_t::host), tmp.ld(), &constant<T>::zero(), out.at(memory_t::host), out.ld());
+            break;
+        }
+        default:
+            RTE_THROW("wrong 'kind' parameter");
+            break;
     }
     return out;
 }
