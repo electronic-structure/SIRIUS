@@ -8,6 +8,7 @@ gcc-env:
   specs:
   - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack
   - sirius@develop +elpa
+  - nlcglib@1.2.0
   variants:
   - +mpi
   views:
