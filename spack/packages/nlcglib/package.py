@@ -113,7 +113,7 @@ class Nlcglib(CMakePackage, CudaPackage, ROCmPackage):
             print(self.spec["kokkos"])
             options += [
                 self.define(
-                    "CMAKE_CXX_COMPILER", "{0}".format(self["kokkos-nvcc-wrapper"].kokkos_cxx)
+                    "CMAKE_CXX_COMPILER", "{0}".format(self.spec["kokkos-nvcc-wrapper"].kokkos_cxx)
                 )
             ]
 
