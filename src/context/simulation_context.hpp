@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <spla/context.hpp>
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
@@ -719,6 +720,12 @@ class Simulation_context : public Simulation_parameters
     spla_context() const
     {
         return *spla_ctx_;
+    }
+
+    auto
+    spla_context_ptr() -> std::shared_ptr<spla::Context>
+    {
+        return spla_ctx_;
     }
 
     inline double

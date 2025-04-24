@@ -413,14 +413,13 @@ inner_prod_beta(spla::Context& spla_ctx, memory_t mem__, memory_t host_mem__, bo
 /// computes <beta|beta> and returns result on ctx.processing_unit_memory_t
 template <class T>
 matrix<std::complex<T>>
-inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
+inner_beta(memory_t mem_t, const Beta_projectors_base<T>& beta)
 {
     using complex_t     = std::complex<T>;
     auto generator      = beta.make_generator();
     int num_beta_chunks = beta.num_chunks();
     auto bcoeffs_row    = generator.prepare();
     auto bcoeffs_col    = generator.prepare();
-    auto mem_t          = ctx.processing_unit_memory_t();
 
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(mem_t)) {
@@ -453,8 +452,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
     }
 
     if (beta.comm().size() > 1) {
-        RTE_THROW("this needs to be fixed first");
-        beta.comm().allreduce(out.at(memory_t::host), static_cast<int>(out.size()));
+        beta.comm().allreduce(out.at(mem_t), static_cast<int>(out.size()));
     }
 
     return out;
@@ -463,14 +461,13 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx)
 /// inner product <beta|Op|beta>, return resulting dmatrix<complex> in ctx.processing_unit_memory_t
 template <class T, class Op>
 matrix<std::complex<T>>
-inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, Op&& op)
+inner_beta(memory_t mem_t, const Beta_projectors_base<T>& beta, Op&& op)
 {
     using complex_t     = std::complex<double>;
     auto generator      = beta.make_generator();
     int num_beta_chunks = beta.num_chunks();
     auto bcoeffs_row    = generator.prepare();
     auto bcoeffs_col    = generator.prepare();
-    auto mem_t          = ctx.processing_unit_memory_t();
 
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(mem_t)) {
@@ -506,7 +503,7 @@ inner_beta(const Beta_projectors_base<T>& beta, const Simulation_context& ctx, O
         }
     }
     if (beta.comm().size() > 1) {
-        beta.comm().allreduce(out.at(memory_t::host), static_cast<int>(out.size()));
+        beta.comm().allreduce(out.at(mem_t), static_cast<int>(out.size()));
     }
 
     return out;
