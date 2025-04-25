@@ -9,7 +9,7 @@ gcc-env:
   specs:
   - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack +nlcglib
   - sirius@develop +elpa
-  - nlcglib@1.1.0 +cuda
+  - nlcglib@1.0b +cuda
   variants:
   - +mpi
   - +cuda
