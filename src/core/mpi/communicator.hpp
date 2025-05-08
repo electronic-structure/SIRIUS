@@ -18,8 +18,7 @@
 #include <cassert>
 #include <vector>
 #include <complex>
-#include <cstdarg>
-#include <functional>
+#include <cstdint>
 #include <memory>
 #include <algorithm>
 #include <cstring>

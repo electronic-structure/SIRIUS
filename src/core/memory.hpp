@@ -154,7 +154,7 @@ get_device_t(std::string name__)
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */
 template <typename T>
-static inline T*
+inline T*
 allocate(size_t n__, memory_t M__)
 {
     switch (M__) {
@@ -185,7 +185,7 @@ allocate(size_t n__, memory_t M__)
 }
 
 /// Deallocate pointer of a given memory type.
-static inline void
+inline void
 deallocate(void* ptr__, memory_t M__)
 {
     switch (M__) {
@@ -256,7 +256,7 @@ copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, s
 
 /// Allocate n elements and return a unique pointer.
 template <typename T>
-static inline auto
+inline auto
 get_unique_ptr(size_t n__, memory_t M__)
 {
     return std::unique_ptr<T, std::function<void(void*)>>(allocate<T>(n__, M__),
