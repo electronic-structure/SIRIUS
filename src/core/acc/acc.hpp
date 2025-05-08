@@ -20,8 +20,8 @@
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cublasXt.h>
+#include <nvtx3/nvToolsExt.h>
 #include <cuda_profiler_api.h>
-#include <nvToolsExt.h>
 #include <cuComplex.h>
 #endif
 

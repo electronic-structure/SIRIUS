@@ -11,8 +11,9 @@
 
 #if defined(SIRIUS_CUDA_NVTX)
 
+#include <string>
 #include <unordered_map>
-#include "nvToolsExt.h"
+#include <nvtx3/nvToolsExt.h>
 
 namespace sirius {
 
