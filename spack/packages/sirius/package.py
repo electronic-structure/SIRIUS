@@ -59,7 +59,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
-    variant("nvtx", default=False, description="Use NVTX profiler")
+    with when("+cuda"):
+        variant("nvtx", default=False, description="Use NVTX profiler")
 
     with when("@7.6:"):
         variant(
