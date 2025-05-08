@@ -15,7 +15,6 @@
 #define __PROFILER_HPP__
 
 #include <mpi.h>
-#include <string>
 #if defined(__APEX)
 #include <apex_api.hpp>
 #endif
