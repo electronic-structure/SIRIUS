@@ -215,10 +215,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("num_mag_dims", py::overload_cast<>(&Simulation_context::num_mag_dims, py::const_))
             .def("num_mag_dims", py::overload_cast<int>(&Simulation_context::num_mag_dims))
             .def_property(
-                    "gamma_point",
-                    [](const Simulation_context& ctx) {
-                        return ctx.gamma_point();
-                    },
+                    "gamma_point", [](const Simulation_context& ctx) { return ctx.gamma_point(); },
                     [](Simulation_context& ctx, bool isGammaPoint) { ctx.gamma_point((isGammaPoint)); })
             .def("update", &Simulation_context::update)
             .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
