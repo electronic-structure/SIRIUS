@@ -75,6 +75,7 @@ build sirius mi300:
     SLURM_HINT: nomultithread
     SLURM_CPUS_PER_TASK: 8
     OMP_NUM_THREADS: 8
+    HSA_ENABLE: 0
 
 beverin test gpu serial:
   extends: [.run_tests_beverin]
