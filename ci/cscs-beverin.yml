@@ -96,6 +96,7 @@ beverin test gpu band parallel:
     SLURM_NTASKS: 4
     SLURM_GPUS: 4
     SLURM_CPU_BIND: 'socket'
+    HSA_ENABLE: 0
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
 
