@@ -56,6 +56,11 @@
             "title": "Parameters of the 'settings' section influence numerical implementation.",
             "description": "Changing of setting parameters will have a small impact on the final result.",
             "properties": {
+                "tol_ne": {
+                    "type": "number",
+                    "default": 1E-2,
+                    "title": "tol_ne in Newton protocol"
+                },
                 "nprii_vloc": {
                     "type": "integer",
                     "default": 200,
