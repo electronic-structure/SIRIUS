@@ -214,8 +214,9 @@ PYBIND11_MODULE(py_sirius, m)
             .def("num_spinors", &Simulation_context::num_spinors)
             .def("num_mag_dims", py::overload_cast<>(&Simulation_context::num_mag_dims, py::const_))
             .def("num_mag_dims", py::overload_cast<int>(&Simulation_context::num_mag_dims))
-            .def_property_readonly("gamma_point", py::overload_cast<>(&Simulation_context::gamma_point, py::const_))
-            .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
+            .def_property(
+                    "gamma_point", [](const Simulation_context& ctx) { return ctx.gamma_point(); },
+                    [](Simulation_context& ctx, bool isGammaPoint) { ctx.gamma_point((isGammaPoint)); })
             .def("update", &Simulation_context::update)
             .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
             .def("processing_unit_memory_t", &Simulation_context::processing_unit_memory_t)
