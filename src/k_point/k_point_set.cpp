@@ -26,7 +26,7 @@ K_point_set::sync_band()
     data.zero();
 
     int nb = ctx_.num_bands() * ctx_.num_spinors();
-#pragma omp parallel
+    #pragma omp parallel
     for (auto it : spl_num_kpoints_) {
         auto kp = this->get<T>(it.i);
         switch (what) {
@@ -43,7 +43,7 @@ K_point_set::sync_band()
 
     comm().allreduce(data.at(memory_t::host), static_cast<int>(data.size()));
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
         auto kp = this->get<T>(ik);
         switch (what) {
@@ -299,7 +299,7 @@ K_point_set::find_band_occupancies_without_empty()
     }
     for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 this->get<T>(it.i)->band_occupancy(j, ispn, ctx_.max_occupancy());
             }
@@ -324,7 +324,7 @@ K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
         double ne{0};
         for (auto it : spl_num_kpoints_) {
             double tmp{0};
-#pragma omp parallel for reduction(+ : tmp)
+            #pragma omp parallel for reduction(+ : tmp)
             for (int j = 0; j < splb.local_size(); j++) {
                 tmp += f(ef - this->get<T>(it.i)->band_energy(splb.global_index(j), ispn)) * ctx_.max_occupancy();
             }
@@ -349,7 +349,7 @@ K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
     /* compute occupations */
     for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 auto o = f(ef[ispn] - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
                 this->get<T>(it.i)->band_occupancy(j, ispn, o);
@@ -374,9 +374,9 @@ K_point_set::find_band_occupancies_generic(double emin, double emax)
         double ne{0};
         for (auto it : spl_num_kpoints_) {
             double tmp{0};
-#pragma omp parallel reduction(+ : tmp)
+            #pragma omp parallel reduction(+ : tmp)
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#pragma omp for
+                #pragma omp for
                 for (int j = 0; j < splb.local_size(); j++) {
                     tmp += f(ef - this->get<T>(it.i)->band_energy(splb.global_index(j), ispn)) * ctx_.max_occupancy();
                 }
@@ -426,7 +426,7 @@ K_point_set::find_band_occupancies_generic(double emin, double emax)
 
     for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 auto o = f(energy_fermi_ - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
                 this->get<T>(it.i)->band_occupancy(j, ispn, o);
@@ -464,7 +464,7 @@ K_point_set::find_band_occupancies()
     auto emin = std::numeric_limits<double>::max();
     auto emax = std::numeric_limits<double>::lowest();
 
-#pragma omp parallel for reduction(min : emin) reduction(max : emax)
+    #pragma omp parallel for reduction(min : emin) reduction(max : emax)
     for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             emin = std::min(emin, this->get<T>(it.i)->band_energy(0, ispn));
@@ -494,7 +494,7 @@ K_point_set::find_band_occupancies()
         std::vector<std::pair<double, double>> eband(ctx_.num_bands() * ctx_.num_spinors());
 
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-#pragma omp for
+            #pragma omp for
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 std::pair<double, double> eminmax;
                 eminmax.first  = std::numeric_limits<double>::max();
@@ -540,7 +540,7 @@ K_point_set::valence_eval_sum() const
     for (auto it : spl_num_kpoints_) {
         auto const& kp = this->get<T>(it.i);
         double tmp{0};
-#pragma omp parallel for reduction(+ : tmp)
+        #pragma omp parallel for reduction(+ : tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 tmp += kp->band_energy(splb.global_index(j), ispn) * kp->band_occupancy(splb.global_index(j), ispn);
@@ -589,7 +589,7 @@ K_point_set::entropy_sum() const
     for (auto it : spl_num_kpoints_) {
         auto const& kp = this->get<T>(it.i);
         double tmp{0};
-#pragma omp parallel for reduction(+ : tmp)
+        #pragma omp parallel for reduction(+ : tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb.global_index(j), ispn));
