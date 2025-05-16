@@ -53,7 +53,7 @@ build sirius eiger:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@develop +apps +tests +scalapack ~python
+    SPEC: sirius@develop +apps +tests +scalapack +python
     REPO: ./ci/sirius-uenv-recipe-cpu/repo
   script:
     - |

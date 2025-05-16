@@ -53,7 +53,8 @@ Overlap_operators<op_t>::Overlap_operators(const K_point_set& kset, Simulation_c
         auto& kp = *kset.get<double>(it.i);
         for (int ispn = 0; ispn < ctx.num_spins(); ++ispn) {
             key_t key{it.i.get(), ispn};
-            data_[key] = std::make_shared<op_t>(ctx, q_op, kp.beta_projectors(), ispn);
+            data_[key] = std::make_shared<op_t>(ctx.processing_unit_memory_t(), ctx.spla_context_ptr(), q_op,
+                                                kp.beta_projectors(), ispn);
         }
     }
 }

@@ -35,17 +35,18 @@ namespace local {
 class Overlap_operator
 {
   public:
-    Overlap_operator(Simulation_context& simulation_context, int n)
-        : ctx_(simulation_context)
+    Overlap_operator(memory_t pm, std::shared_ptr<spla::Context> spla_context, int n)
+        : pm_(pm)
+        , spla_context_(spla_context)
         , n_(n)
     {
     }
 
-    const Simulation_context&
-    ctx() const
-    {
-        return ctx_;
-    }
+    // const Simulation_context&
+    // ctx() const
+    // {
+    //     return ctx_;
+    // }
 
     /// global dimension of the operator
     int
@@ -55,7 +56,8 @@ class Overlap_operator
     }
 
   protected:
-    Simulation_context& ctx_;
+    memory_t pm_;
+    std::shared_ptr<spla::Context> spla_context_;
     int n_;
 };
 
@@ -94,9 +96,9 @@ template <class numeric_t>
 class InverseS_k : public local::Overlap_operator
 {
   public:
-    InverseS_k(Simulation_context& simulation_context, const Q_operator<double>& q_op,
+    InverseS_k(memory_t pm, std::shared_ptr<spla::Context> spla_context, const Q_operator<double>& q_op,
                const Beta_projectors_base<double>& bp, int ispn)
-        : Overlap_operator(simulation_context, bp.nrows())
+        : Overlap_operator(pm, spla_context, bp.nrows())
         , q_op_(q_op)
         , bp_(bp)
         , ispn_(ispn)
@@ -127,8 +129,9 @@ template <class numeric_t>
 class S_k : public local::Overlap_operator
 {
   public:
-    S_k(Simulation_context& ctx, const Q_operator<double>& q_op, const Beta_projectors_base<double>& bp, int ispn)
-        : Overlap_operator(ctx, bp.nrows())
+    S_k(memory_t pm, std::shared_ptr<spla::Context> spla_context, const Q_operator<double>& q_op,
+        const Beta_projectors_base<double>& bp, int ispn)
+        : Overlap_operator(pm, spla_context, bp.nrows())
         , q_op_(q_op)
         , bp_(bp)
         , ispn_(ispn)
@@ -153,16 +156,15 @@ void
 InverseS_k<numeric_t>::initialize(Beta_projectors_base<double> const& beta_projectors)
 {
     using complex_t = std::complex<double>;
-    auto mem_t      = ctx_.processing_unit_memory_t();
 
-    auto B = inner_beta(beta_projectors, ctx_); // on preferred memory
+    auto B = inner_beta(this->pm_, beta_projectors); // on preferred memory
 
-    matrix<numeric_t> BQ({B.size(0), q_op_.size(1)}, mem_t);
+    matrix<numeric_t> BQ({B.size(0), q_op_.size(1)}, this->pm_);
     // mat * Q
-    q_op_.lmatmul(BQ, B, this->ispn_, mem_t);
+    q_op_.lmatmul(BQ, B, this->ispn_, this->pm_);
     int n = BQ.size(0);
 
-    if (is_device_memory(mem_t)) {
+    if (is_device_memory(this->pm_)) {
         BQ.allocate(memory_t::host);
         BQ.copy_to(memory_t::host);
         BQ.deallocate(memory_t::device);
@@ -188,7 +190,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
 {
     int nbnd = X.size(1);
     assert(static_cast<int>(X.size(0)) == this->size());
-    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? this->pm_ : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -205,7 +207,7 @@ InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> con
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
 
-        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+        local::inner(pm, *this->spla_context_, beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
                      beta_coeffs.beta_chunk_->offset_, 0);
     }
 
@@ -249,7 +251,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 InverseS_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? this->pm_ : pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -260,7 +262,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
 {
     assert(static_cast<int>(X.size(0)) == this->size());
 
-    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? this->pm_ : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
     la::lib_t la{la::lib_t::blas};
     if (is_device_memory(pm)) {
@@ -276,7 +278,7 @@ S_k<numeric_t>::apply(mdarray<numeric_t, 2>& Y, mdarray<numeric_t, 2> const& X, 
     // compute inner Beta^H X -> goes to host memory
     for (int ichunk = 0; ichunk < bp_.num_chunks(); ++ichunk) {
         bp_gen.generate(beta_coeffs, ichunk);
-        local::inner(pm, ctx_.spla_context(), beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
+        local::inner(pm, *this->spla_context_, beta_coeffs.pw_coeffs_a_, X, bphi, beta_coeffs.comm_,
                      beta_coeffs.beta_chunk_->offset_, 0);
     }
 
@@ -309,7 +311,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 S_k<numeric_t>::apply(mdarray<numeric_t, 2> const& X, memory_t pm)
 {
-    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? this->pm_ : pm));
     this->apply(Y, X, pm);
     return Y;
 }

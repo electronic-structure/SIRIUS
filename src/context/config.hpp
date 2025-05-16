@@ -125,6 +125,18 @@ class config_t
             : dict_(dict__)
         {
         }
+        /// tol_ne in Newton protocol
+        inline auto tol_ne() const
+        {
+            return dict_.at("/settings/tol_ne"_json_pointer).get<double>();
+        }
+        inline void tol_ne(double tol_ne__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/settings/tol_ne"_json_pointer] = tol_ne__;
+        }
         /// Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential
         inline auto nprii_vloc() const
         {

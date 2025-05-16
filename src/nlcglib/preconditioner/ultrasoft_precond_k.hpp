@@ -150,15 +150,15 @@ class Ultrasoft_preconditioner : public local::OperatorBase
     void
     apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm = memory_t::none);
 
-    const Simulation_context&
-    ctx() const
-    {
-        return ctx_;
-    }
+    // const Simulation_context&
+    // ctx() const
+    // {
+    //     return ctx_;
+    // }
 
   private:
     // cannot be const, because memory pool is used
-    Simulation_context& ctx_;
+    memory_t pm_;
     Teter<numeric_t> P;
     const Q_operator<double>& q_op;
     int ispn_;
@@ -173,7 +173,7 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
                                                               const Beta_projectors_base<double>& bp,
                                                               const fft::Gvec& gkvec)
     : local::OperatorBase(gkvec.count())
-    , ctx_(simulation_context)
+    , pm_(simulation_context.processing_unit_memory_t())
     , P(simulation_context, gkvec)
     , q_op(q_op)
     , ispn_(ispn)
@@ -181,12 +181,10 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
 {
     using complex_t = std::complex<double>;
     /* compute C <- <ϐ|P|ϐ> */
-    auto C = inner_beta(bp, simulation_context, [&simulation_context = this->ctx_, &P = this->P](auto& Y) {
-        return P.apply(Y, simulation_context.processing_unit_memory_t());
-    });
+    auto C = inner_beta(this->pm_, bp, [pm = this->pm_, &P = this->P](auto& Y) { return P.apply(Y, pm); });
 
     matrix<numeric_t> CQ({C.size(0), q_op.size(1)}, memory_t::host);
-    if (is_device_memory(ctx_.processing_unit_memory_t())) {
+    if (is_device_memory(this->pm_)) {
         C.allocate(memory_t::host);
         C.copy_to(memory_t::host);
     }
@@ -206,13 +204,12 @@ Ultrasoft_preconditioner<numeric_t>::Ultrasoft_preconditioner(Simulation_context
     la::wrap(la::lib_t::lapack)
             .getrf(n, n, this->LU_.at(memory_t::host), this->LU_.ld(), this->ipiv_.at(memory_t::host));
     // copy LU factorization to device if needed
-    auto mem = ctx_.processing_unit_memory_t();
-    if (is_device_memory(mem)) {
-        ipiv_.allocate(mem);
-        ipiv_.copy_to(mem);
+    if (is_device_memory(this->pm_)) {
+        ipiv_.allocate(this->pm_);
+        ipiv_.copy_to(this->pm_);
 
-        LU_.allocate(mem);
-        LU_.copy_to(mem);
+        LU_.allocate(this->pm_);
+        LU_.copy_to(this->pm_);
     }
 }
 
@@ -220,7 +217,7 @@ template <class numeric_t>
 mdarray<numeric_t, 2>
 Ultrasoft_preconditioner<numeric_t>::apply(const mdarray<numeric_t, 2>& X, memory_t pm)
 {
-    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? ctx_.processing_unit_memory_t() : pm));
+    auto Y = empty_like(X, get_memory_pool(pm == memory_t::none ? this->pm_ : pm));
     this->apply(Y, X, pm);
     return Y;
 }
@@ -232,7 +229,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
     int num_beta = bp_.num_beta();
     int nbnd     = X.size(1);
 
-    pm          = (pm == memory_t::none) ? ctx_.processing_unit_memory_t() : pm;
+    pm          = (pm == memory_t::none) ? this->pm_ : pm;
     device_t pu = is_host_memory(pm) ? device_t::CPU : device_t::GPU;
 
     la::lib_t la{la::lib_t::blas};
@@ -253,6 +250,9 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
 
         la::wrap(la).gemm('C', 'N', G.size(1), nbnd, G.size(0), &la::constant<numeric_t>::one(), G.at(pm), G.ld(),
                           X.at(pm), X.ld(), &la::constant<numeric_t>::zero(), bphi.at(pm, row_offset, 0), bphi.ld());
+    }
+    if (bp_.comm().size() > 1) {
+        bp_.comm().allreduce(bphi.at(pm), bphi.size());
     }
     assert(num_beta == static_cast<int>(bphi.size(0)) && nbnd == static_cast<int>(bphi.size(1)));
 

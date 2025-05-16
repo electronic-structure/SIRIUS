@@ -46,8 +46,9 @@ init_operators(py::module& m)
             .def_property_readonly("U", &Hamiltonian_k<PT>::U, py::return_value_policy::reference_internal);
 
     py::class_<S_k<complex_double>>(m, "S_k")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
+            .def(py::init<memory_t, std::shared_ptr<spla::Context>, const Q_operator<PT>&,
+                          const Beta_projectors_base<PT>&, int>(),
+                 py::keep_alive<1, 4>(), py::keep_alive<1, 5>())
             .def_property_readonly("size", &S_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t = S_k<complex_double>;
@@ -72,8 +73,9 @@ init_operators(py::module& m)
             });
 
     py::class_<InverseS_k<complex_double>>(m, "InverseS_k")
-            .def(py::init<Simulation_context&, const Q_operator<PT>&, const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
+            .def(py::init<memory_t, std::shared_ptr<spla::Context>, const Q_operator<PT>&,
+                          const Beta_projectors_base<PT>&, int>(),
+                 py::keep_alive<1, 4>(), py::keep_alive<1, 5>())
             .def_property_readonly("size", &InverseS_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t       = InverseS_k<complex_double>;

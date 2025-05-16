@@ -6,8 +6,9 @@ gcc-env:
       spec: cray-mpich@8.1.30
   unify: when_possible
   specs:
-  - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack
+  - sirius@develop +python +vdwxc +apps +tests +scalapack +nlcglib
   - sirius@develop +elpa
+  - nlcglib@1.0b
   variants:
   - +mpi
   views:

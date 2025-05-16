@@ -7,8 +7,9 @@ gcc-env:
       gpu: cuda
   unify: when_possible
   specs:
-  - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack
+  - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack +nlcglib
   - sirius@develop +elpa
+  - nlcglib@1.0b +cuda
   variants:
   - +mpi
   - +cuda
