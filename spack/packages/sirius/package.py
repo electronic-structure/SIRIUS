@@ -87,6 +87,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("spglib")
     depends_on("hdf5+hl")
     depends_on("pkgconfig", type="build")
+    depends_on("fmt", when="@develop")
 
     # Python module
     depends_on("python", when="+python", type=("build", "run"))
