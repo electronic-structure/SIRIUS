@@ -223,9 +223,9 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
 
     if (double ne_diff = std::abs(N(mu) - ne) < tol) {
         return local::efermi_search_t{
-                .mu = mu,
+                .mu      = mu,
                 .ne_diff = ne_diff,
-                .iter = iter,
+                .iter    = iter,
         };
     }
 
@@ -252,9 +252,9 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
                 return util::unexpected("Newton minimization (Fermi energy) got stuck in a local minimum");
             }
             return local::efermi_search_t{
-                .mu = mu,
-                .ne_diff = std::abs(Nf-ne),
-                .iter = iter,
+                    .mu      = mu,
+                    .ne_diff = std::abs(Nf - ne),
+                    .iter    = iter,
             };
         }
 
@@ -474,8 +474,8 @@ K_point_set::find_band_occupancies()
     } else {
         // generic case
         auto res_efermi = find_efermi_generic<T>(emin, emax);
-        energy_fermi_ = res_efermi.mu;
-        ne_diff = res_efermi.ne_diff;
+        energy_fermi_   = res_efermi.mu;
+        ne_diff         = res_efermi.ne_diff;
     }
     /* set band occupancies */
     auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
