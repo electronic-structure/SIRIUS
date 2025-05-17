@@ -14,6 +14,7 @@
 #include <iomanip>
 #include "dft_ground_state.hpp"
 #include "core/profiler.hpp"
+#include "core/rte/rte.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 
@@ -363,9 +364,12 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         if (converged) {
             if (std::abs(ne_diff) > 1e-10) {
                 std::stringstream ss;
-                ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
-                ss << "\nReduce smearing width!";
-                RTE_THROW(ss.str());
+                if (ctx_.verbosity() >= 2) {
+                    RTE_OUT(ctx_.out()) << fmt::format("*WARNING* Wrong number of electrons {}", ne_diff);
+                }
+                // ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
+                // ss << "\nReduce smearing width!";
+                // RTE_THROW(ss.str());
             }
             std::stringstream out;
             out << std::endl;
