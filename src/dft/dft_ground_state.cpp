@@ -214,6 +214,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         diagonalize_result_t result;
 
+        double ne_diff = 0;
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
@@ -226,7 +227,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                                                             ctx_.cfg().iterative_solver().num_steps());
             }
             /* find band occupancies */
-            kset_.find_band_occupancies<float>();
+            ne_diff = kset_.find_band_occupancies<float>();
             /* generate new density from the occupied wave-functions */
             density_.generate<float>(kset_, ctx_.use_symmetry(), true, true);
 #else
@@ -238,7 +239,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__,
                                                          ctx_.cfg().iterative_solver().num_steps());
             /* find band occupancies */
-            kset_.find_band_occupancies<double>();
+            ne_diff = kset_.find_band_occupancies<double>();
 
             auto vs = potential_.get_spherical_potential();
             density_.generate_core_charge_density(vs);
@@ -360,6 +361,12 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             converged = converged && (rms < density_tol__);
         }
         if (converged) {
+            if (std::abs(ne_diff) > 1e-10) {
+                std::stringstream ss;
+                ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
+                ss << "\nReduce smearing width!";
+                RTE_THROW(ss.str());
+            }
             std::stringstream out;
             out << std::endl;
             out << "converged after " << iter + 1 << " SCF iterations!" << std::endl;

@@ -170,7 +170,7 @@ K_point_set::initialize(std::vector<int> const& counts)
 }
 
 template <class F>
-util::expected<double, std::string>
+util::expected<local::efermi_search_t, std::string>
 bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
 {
     double x  = (a + b) / 2;
@@ -195,17 +195,9 @@ bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
         step++;
     }
 
-    return x;
+    return local::efermi_search_t{.mu = x, .ne_diff = std::abs(fi), .iter = step};
 }
 
-namespace local {
-struct newton_res
-{
-    double mu; // chemical potential
-    double ne_diff;
-    int iter{0}; // newton information
-};
-} // namespace local
 /**
  *  Newton minimization to determine the chemical potential.
  *
@@ -218,23 +210,23 @@ struct newton_res
  *  \param  maxstep max number of Newton iterations
  */
 template <class Nt, class DNt, class D2Nt>
-util::expected<local::newton_res, std::string>
+util::expected<local::efermi_search_t, std::string>
 newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol, double tol_ne,
                                        int maxstep = 1000)
 {
     // Newton finds the minimum, not necessarily N(mu) == ne, tolerate up to `tol_ne` difference in number of electrons
     // if |N(mu_0) -ne| > tol_ne an error is thrown.
     // const double tol_ne = 1e-10;
-    local::newton_res res;
-
     double mu = mu0;
     double alpha{1.0}; // Newton damping
     int iter{0};
 
-    if (std::abs(N(mu) - ne) < tol) {
-        res.mu   = mu;
-        res.iter = iter;
-        return res;
+    if (double ne_diff = std::abs(N(mu) - ne) < tol) {
+        return local::efermi_search_t{
+                .mu = mu,
+                .ne_diff = ne_diff,
+                .iter = iter,
+        };
     }
 
     while (true) {
@@ -249,8 +241,6 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         double step = alpha * dF / std::abs(ddF);
         mu          = mu - step;
 
-        // res.ys.push_back(mu);
-
         if (std::abs(ddF) < 1e-30) {
             std::stringstream s;
             return util::unexpected(
@@ -261,9 +251,11 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
             if (std::abs(Nf - ne) > tol_ne) {
                 return util::unexpected("Newton minimization (Fermi energy) got stuck in a local minimum");
             }
-            res.iter = iter;
-            res.mu   = mu;
-            return res;
+            return local::efermi_search_t{
+                .mu = mu,
+                .ne_diff = std::abs(Nf-ne),
+                .iter = iter,
+            };
         }
 
         iter++;
@@ -305,17 +297,25 @@ K_point_set::find_band_occupancies_without_empty()
     this->sync_band<T, sync_band_t::occupancy>();
 }
 
+/**
+ * Find Fermi energy for fixed magnetization.
+ * \param emin   min band energy
+ * \param emax   max band energy
+ * \return A tuple containing
+           - efermi
+           - Fermi energy corrections for spin up [0] and down [1]
+ */
 template <typename T>
-void
-K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
+std::tuple<double, std::array<double, 2>>
+K_point_set::find_efermi_fixed_magn(double emin, double emax) const
 {
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
-
     double const ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
-
     double const fixed_mag = ctx_.cfg().parameters().fixed_mag();
+    auto f                 = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
 
+    double occ[2]   = {(ne_target + fixed_mag) / 2, (ne_target - fixed_mag) / 2};
     auto compute_ne = [&](int ispn, double ef, auto&& f) {
         double ne{0};
         for (auto it : spl_num_kpoints_) {
@@ -330,10 +330,7 @@ K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
         return ne;
     };
 
-    auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-
-    double occ[2] = {(ne_target + fixed_mag) / 2, (ne_target - fixed_mag) / 2};
-    double ef[2];
+    std::array<double, 2> ef;
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         auto F      = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
@@ -341,34 +338,25 @@ K_point_set::find_band_occupancies_fixed_magn(double emin, double emax)
         if (!result) {
             RTE_THROW(result.error());
         }
-        ef[ispn] = result.value();
+        ef[ispn] = result.value().mu;
     }
 
-    energy_fermi_ = std::max(ef[0], ef[1]);
+    double energy_fermi = std::max(ef[0], ef[1]);
 
-    /* compute occupations */
-    for (auto it : spl_num_kpoints_) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            #pragma omp parallel for
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(ef[ispn] - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
-                this->get<T>(it.i)->band_occupancy(j, ispn, o);
-            }
-        }
-    }
+    std::array<double, 2> ef_corr = {ef[0] - energy_fermi, ef[1] - energy_fermi};
+
+    return std::make_tuple(energy_fermi, ef_corr);
 }
 
 template <typename T>
-void
-K_point_set::find_band_occupancies_generic(double emin, double emax)
+local::efermi_search_t
+K_point_set::find_efermi_generic(double emin, double emax) const
 {
     double const tol{1e-11};
 
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
-
     double const ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
-
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
         double ne{0};
@@ -388,74 +376,65 @@ K_point_set::find_band_occupancies_generic(double emin, double emax)
     };
 
     /* smearing function */
-    double ne_diff = std::numeric_limits<double>::max();
-    std::function<double(double)> f;
-    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
-        // obtain initial guess for non-monotous smearing with Gaussian
-        f = [&](double x) { return smearing::gaussian::occupancy(x, ctx_.smearing_width()); };
-    } else {
-        f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-    }
-    auto F      = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-    auto result = bisection_search(F, emin, emax, 1e-11);
-    if (!result) {
-        RTE_THROW(result.error());
-    }
-    double efermi_guess = result.value();
+    switch (ctx_.smearing()) {
+        // non-monotic smearing types
+        case smearing::smearing_t::cold:
+        case smearing::smearing_t::methfessel_paxton: {
+            auto fgauss = [&](double x) { return smearing::gaussian::occupancy(x, ctx_.smearing_width()); };
+            auto F      = [&compute_ne, ne_target, &fgauss](double x) { return compute_ne(x, fgauss) - ne_target; };
+            auto bgauss_init = bisection_search(F, emin, emax, 1e-11);
+            if (!bgauss_init) {
+                RTE_THROW(bgauss_init.error());
+            }
+            double efermi_guess             = bgauss_init.value().mu;
+            std::function<double(double)> f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+            auto df                         = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
+            auto ddf                        = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
+            auto N                          = [&](double mu) { return compute_ne(mu, f); };
+            auto dN                         = [&](double mu) { return compute_ne(mu, df); };
+            auto ddN                        = [&](double mu) { return compute_ne(mu, ddf); };
+            auto res_newton = newton_minimization_chemical_potential(N, dN, ddN, efermi_guess, ne_target, tol,
+                                                                     ctx_.cfg().settings().tol_ne(), 1000);
+            if (res_newton) {
+                // Newton search success
+                if (ctx_.verbosity() >= 2) {
+                    RTE_OUT(ctx_.out()) << "Newton iteration converged after " << res_newton.value().iter << " steps\n";
+                }
+                return res_newton.value();
+            } // use bisection search
 
-    /* for cold and Methfessel Paxton smearing start newton minimization  */
-    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
-        f               = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-        auto df         = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
-        auto ddf        = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
-        auto N          = [&](double mu) { return compute_ne(mu, f); };
-        auto dN         = [&](double mu) { return compute_ne(mu, df); };
-        auto ddN        = [&](double mu) { return compute_ne(mu, ddf); };
-        auto res_newton = newton_minimization_chemical_potential(N, dN, ddN, efermi_guess, ne_target, tol,
-                                                                 ctx_.cfg().settings().tol_ne(), 1000);
-        if (!res_newton) {
-            // fallback to biesction search
-            if (ctx_.verbosity() >= 2) {
-                RTE_OUT(ctx_.out()) << res_newton.error() <<  "\n"
-                                    << "-> Fallback to bisection search";
+            auto bsearch = bisection_search(
+                    [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; }, emin, emax, 1e-11);
+            if (!bsearch) {
+                RTE_THROW(bsearch.error());
             }
-            f        = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-            auto F   = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-            auto res = bisection_search(F, emin, emax, tol);
-            if (!res) {
-                RTE_THROW(res.error());
-            }
-            this->energy_fermi_ = res.value();
-        } else {
-            // Newton search success
-            this->energy_fermi_ = res_newton.value().mu;
-            if (ctx_.verbosity() >= 2) {
-                RTE_OUT(ctx_.out()) << "Newton iteration converged after " << res_newton.value().iter << " steps\n";
-            }
+            return bsearch.value();
         }
-    }
-
-    for (auto it : spl_num_kpoints_) {
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            #pragma omp parallel for
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(energy_fermi_ - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
-                this->get<T>(it.i)->band_occupancy(j, ispn, o);
+        // all monotic smearing types
+        default: {
+            std::function<double(double)> f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+            auto M      = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+            auto result = bisection_search(M, emin, emax, 1e-11);
+            if (!result) {
+                RTE_THROW(result.error());
             }
+            return result.value();
         }
     }
 }
 
 template <typename T>
-void
+double
 K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
 
+    double ne_diff{0};
+
     auto band_occ_callback = ctx_.band_occ_callback();
     if (band_occ_callback) {
         band_occ_callback();
-        return;
+        return ne_diff;
     }
 
     /* target number of electrons */
@@ -464,7 +443,7 @@ K_point_set::find_band_occupancies()
     /* this is a special case when there are no empty states */
     if (ctx_.num_mag_dims() != 1 && std::abs(ctx_.num_bands() * ctx_.max_occupancy() - ne_target) < 1e-10) {
         this->find_band_occupancies_without_empty<T>();
-        return;
+        return ne_diff;
     }
 
     if (ctx_.smearing_width() == 0) {
@@ -488,15 +467,32 @@ K_point_set::find_band_occupancies()
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
-    /* collinear case with fixed magenetisation */
+    std::array<double, 2> ef_corr{0, 0};
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
-        this->find_band_occupancies_fixed_magn<T>(emin, emax);
+        // collinear case with fixed magenetisation
+        std::tie(energy_fermi_, ef_corr) = this->find_efermi_fixed_magn<T>(emin, emax);
     } else {
-        this->find_band_occupancies_generic<T>(emin, emax);
+        // generic case
+        auto res_efermi = find_efermi_generic<T>(emin, emax);
+        energy_fermi_ = res_efermi.mu;
+        ne_diff = res_efermi.ne_diff;
+    }
+    /* set band occupancies */
+    auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+    for (auto it : spl_num_kpoints_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            #pragma omp parallel for
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                auto o = f(this->energy_fermi_ + ef_corr[ispn] - this->get<T>(it.i)->band_energy(j, ispn)) *
+                         ctx_.max_occupancy();
+                this->get<T>(it.i)->band_occupancy(j, ispn, o);
+            }
+        }
     }
 
     this->sync_band<T, sync_band_t::occupancy>();
 
+    /* compute band gap */
     band_gap_ = 0.0;
 
     int nve = static_cast<int>(ne_target + 1e-12);
@@ -531,12 +527,13 @@ K_point_set::find_band_occupancies()
             band_gap_ = eband[ist].first - eband[ist - 1].second;
         }
     }
+    return ne_diff;
 }
 
-template void
+template double
 K_point_set::find_band_occupancies<double>();
 #if defined(SIRIUS_USE_FP32)
-template void
+template double
 K_point_set::find_band_occupancies<float>();
 #endif
 
@@ -701,8 +698,7 @@ K_point_set::load()
     //==     for (int ik = 0; ik < num_kpoints(); ik++)
     //==     {
     //==         r3::vector<double> dvk;
-    //==         for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
-    //==         if (dvk.length() < 1e-12)
+    //==         for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);//==         if (dvk.length() < 1e-12)
     //==         {
     //==             ikidx[ik] = jk;
     //==             break;
