@@ -348,7 +348,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                 << "bands are converged : " << boolstr(result.converged);
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
-            out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged);
+            out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged) << std::endl;
         }
 
         RTE_OUT(ctx_.out(1)) << out.str();
@@ -365,7 +365,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             if (std::abs(ne_diff) > 1e-10) {
                 std::stringstream ss;
                 if (ctx_.verbosity() >= 2) {
-                    RTE_OUT(ctx_.out()) << fmt::format("*WARNING* Wrong number of electrons {}", ne_diff);
+                    RTE_OUT(ctx_.out()) << fmt::format("*WARNING* Wrong number of electrons ne_diff: {}\n", ne_diff);
                 }
                 // ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
                 // ss << "\nReduce smearing width!";
