@@ -349,7 +349,7 @@ struct Linear_response_operator
     {
         PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
-        Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, num_active), *x.x, Hphi, Sphi);
+        Hk.apply_h_s<std::complex<double>>(mem, sr, wf::band_range(0, num_active), *x.x, Hphi, Sphi);
 
         std::vector<double> ones(num_active, 1.0);
 

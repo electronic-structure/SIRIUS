@@ -530,6 +530,7 @@ class Density : public Field4D
     std::array<periodic_function_integrate_t<double>, 3>
     get_magnetisation() const;
 
+    /// Print info about charges and magnetic moments.
     void
     print_info(std::ostream& out__) const;
 

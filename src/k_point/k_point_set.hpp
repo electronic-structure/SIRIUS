@@ -133,7 +133,7 @@ class K_point_set
     save(std::string const& name__) const;
 
     void
-    load();
+    load(std::string const& name__);
 
     /// Return sum of valence eigen-values.
     double

@@ -1,0 +1,131 @@
+{
+        "control": {
+            "beta_chunk_size": 256,
+            "beta_on_device": false,
+            "cyclic_block_size": 8,
+            "gvec_chunk_size": 500000,
+            "num_bands_to_print": 10,
+            "ortho_rf": false,
+            "output": "stdout:",
+            "print_forces": false,
+            "print_neighbors": false,
+            "print_stress": false,
+            "reduce_gvec": true,
+            "rmt_max": 2.2,
+            "save_rf": false,
+            "spglib_tolerance": 9.999999747378752e-05,
+            "use_second_variation": true,
+            "verbosity": 2,
+            "verification": 0
+        },
+        "iterative_solver": {
+            "converge_by_energy": 1,
+            "early_restart": 0.5,
+            "empty_states_tolerance": 0,
+            "energy_tolerance": 0.01,
+            "extra_ortho": false,
+            "init_eval_old": true,
+            "init_subspace": "lcao",
+            "locking": true,
+            "min_num_res": 0,
+            "min_occupancy": 1e-14,
+            "min_tolerance": 1e-13,
+            "num_singular": -1,
+            "num_steps": 20,
+            "relative_tolerance": 0,
+            "residual_tolerance": 1e-06,
+            "subspace_size": 2,
+            "tolerance_ratio": 0,
+            "tolerance_scale": [0.1,0.5],
+            "type": "davidson"
+        },
+        "mixer": {
+            "beta": 0.75,
+            "beta0": 0.15,
+            "beta_scaling_factor": 1.0,
+            "max_history": 8,
+            "rms_min": 1e-16,
+            "type": "anderson",
+            "use_hartree": true
+        },
+        "nlcg": {
+            "T": 300.0,
+            "kappa": 0.3,
+            "maxiter": 300,
+            "processing_unit": "",
+            "restart": 10,
+            "tau": 0.1,
+            "tol": 1e-09
+        },
+        "parameters": {
+            "auto_rmt": 1,
+            "aw_cutoff": 0.0,
+            "core_relativity": "dirac",
+            "density_tol": 1e-06,
+            "electronic_structure_method": "pseudopotential",
+            "energy_tol": 1e-06,
+            "extra_charge": 0,
+            "gamma_point": false,
+            "gk_cutoff": 7,
+            "lmax_apw": -1,
+            "lmax_pot": -1,
+            "lmax_rho": -1,
+            "molecule": false,
+            "ngridk": [8,8,8],
+            "nn_radius": -1,
+            "num_dft_iter": 200,
+            "num_fv_states": -1,
+            "num_mag_dims": 3,
+            "precision_gs": "auto",
+            "precision_hs": "fp64",
+            "precision_wf": "fp64",
+            "pw_cutoff": 30.0,
+            "reduce_aux_bf": 0,
+            "shiftk": [0,0,0],
+            "smearing": "fermi_dirac",
+            "smearing_width": 0.01,
+            "so_correction": false,
+            "use_ibz": true,
+            "use_scf_correction": true,
+            "use_symmetry": true,
+            "valence_relativity": "zora",
+            "veff_pw_cutoff": 0.0,
+            "vk": [],
+            "xc_dens_tre": -1,
+            "xc_functionals": ["XC_GGA_X_PBE","XC_GGA_C_PBE"]
+        },
+        "settings": {
+            "auto_enu_tol": 0,
+            "fp32_to_fp64_rms": 0,
+            "nprii_aug": 20,
+            "nprii_beta": 20,
+            "nprii_rho_core": 20,
+            "nprii_vloc": 200,
+            "radial_grid": "exponential, 1.0",
+            "real_occupation_matrix": true,
+            "sht_coverage": 0,
+            "sht_lmax": -1,
+            "simple_lapw_ri": false,
+            "smooth_initial_mag": false,
+            "use_coarse_fft_grid": true,
+            "xc_use_lapl": false
+        },
+        "unit_cell": {
+            "atom_coordinate_units": "lattice",
+            "atom_files": {
+                "Ni": "ni_pbesol_v1.4.uspp.F.UPF.json"
+            },
+            "atom_types": ["Ni"],
+            "atoms": {
+                "Ni": [
+                    [0.0,0.0,0.0, 1.5, 1.5, 1.5]
+                ]
+            },
+            "lattice_vectors": [
+                [-3.24,0.0,3.24],
+                [0.0,3.24,3.24],
+                [-3.24,3.24,0.0]
+            ],
+            "lattice_vectors_scale": 1.0
+        }
+}

@@ -21,7 +21,7 @@ namespace sirius {
 
 template <typename T, typename F>
 void
-check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
+check_wave_functions(Hamiltonian_k<T> const& Hk__, wf::Wave_functions<T>& psi__, wf::spin_range sr__,
                      wf::band_range br__, double* eval__)
 {
     wf::Wave_functions<T> hpsi(psi__.gkvec_sptr(), psi__.num_md(), wf::num_bands(br__.size()), memory_t::host);
@@ -30,7 +30,7 @@ check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions
     la::dmatrix<F> ovlp(br__.size(), br__.size());
 
     /* apply Hamiltonian and S operators to the wave-functions */
-    Hk__.template apply_h_s<F>(sr__, br__, psi__, &hpsi, &spsi);
+    Hk__.template apply_h_s<F>(memory_t::host, sr__, br__, psi__, &hpsi, &spsi);
 
     wf::inner(Hk__.H0().ctx().spla_context(), memory_t::host, sr__, psi__, br__, spsi, br__, ovlp, 0, 0);
 
@@ -49,13 +49,13 @@ check_wave_functions(Hamiltonian_k<real_type<T>> const& Hk__, wf::Wave_functions
             for (int ig = 0; ig < psi__.gkvec().count(); ig++) {
                 /* H|psi> - e S|psi> */
                 auto z = hpsi.pw_coeffs(ig, s1, wf::band_index(ib)) -
-                         spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<real_type<T>>(eval__[ib]);
+                         spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<T>(eval__[ib]);
                 l2norm += std::real(z * std::conj(z));
             }
-            psi__.gkvec().comm().allreduce(&l2norm, 1);
-            l2norm = std::sqrt(l2norm);
-            std::cout << "[check_wave_functions] band : " << ib << ", residual l2norm : " << l2norm << std::endl;
         }
+        psi__.gkvec().comm().allreduce(&l2norm, 1);
+        l2norm = std::sqrt(l2norm);
+        std::cout << "[check_wave_functions] band : " << ib << ", residual l2norm : " << l2norm << std::endl;
     }
 }
 
