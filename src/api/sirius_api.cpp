@@ -5737,8 +5737,8 @@ sirius_nlcg_params(void* const* gs_handler__, void* const* ks_handler__, double 
                 nlcglib::nlcg_info info;
                 switch (processing_unit) {
                     case device_t::CPU: {
-                        info = nlcglib::nlcg_us_cpu(energy, us_precond, S, Sinv, smearing_t, temp, tol, kappa, tau, maxiter,
-                                                    restart);
+                        info = nlcglib::nlcg_us_cpu(energy, us_precond, S, Sinv, smearing_t, temp, tol, kappa, tau,
+                                                    maxiter, restart);
                         break;
                     }
                     case device_t::GPU: {
