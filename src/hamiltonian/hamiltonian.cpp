@@ -158,7 +158,7 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
         zm.zero();
 
 /* only upper triangular part of zm is computed because it is a hermitian matrix */
-#pragma omp parallel for default(shared)
+        #pragma omp parallel for default(shared)
         for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
             int lm2    = atom.type().indexb(xi2).lm;
             int idxrf2 = atom.type().indexb(xi2).idxrf;
