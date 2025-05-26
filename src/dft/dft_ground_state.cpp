@@ -498,6 +498,14 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy2("Hubbard energy", e);
         write_energy2("Hubbard one-el contribution", hub_one_elec);
     }
+    if (ctx_.cfg().parameters().dftd3_correction()) {
+        auto e = energy_dftd3(potential_);
+        write_energy("dftd3 correction", e);
+    }
+    if (ctx_.cfg().parameters().dftd4_correction()) {
+        auto e = energy_dftd4(potential_);
+        write_energy("dftd4 correction", e);
+    }
     write_energy2("Total energy", etot);
     write_energy2("Free energy (E-TS)", etot + s_sum);
     out__ << std::endl;

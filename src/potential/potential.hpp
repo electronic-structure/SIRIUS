@@ -16,7 +16,11 @@
 
 #include "density/density.hpp"
 #include "hubbard/hubbard.hpp"
+#include "unit_cell/basis_functions_index.hpp"
+#include "unit_cell/radial_functions_index.hpp"
 #include "xc_functional.hpp"
+#include "dftd3_correction.hpp"
+#include "dftd4_correction.hpp"
 
 namespace sirius {
 
@@ -134,6 +138,12 @@ class Potential : public Field4D
 
     /// Hubbard potential correction operator.
     std::unique_ptr<Hubbard> U_;
+
+    /// dft-d3 correction
+    std::unique_ptr<dftd3> dftd3_;
+
+    /// dft-d3 correction
+    std::unique_ptr<dftd4> dftd4_;
 
     /// Hubbard potential correction matrix.
     Hubbard_matrix hubbard_potential_;
@@ -862,6 +872,30 @@ class Potential : public Field4D
     hubbard_potential() const
     {
         return hubbard_potential_;
+    }
+
+    auto const&
+    dftd3_ctx() const
+    {
+        return *dftd3_;
+    }
+
+    auto&
+    dftd3_ctx()
+    {
+        return *dftd3_;
+    }
+
+    auto const&
+    dftd4_ctx() const
+    {
+        return *dftd4_;
+    }
+
+    auto&
+    dftd4_ctx()
+    {
+        return *dftd4_;
     }
 
     inline double

@@ -41,6 +41,8 @@ set(_SOURCES
   "hubbard/hubbard_occupancies_derivatives.cpp"
   "hubbard/hubbard_potential_energy.cpp"
   "hubbard/hubbard_matrix.cpp"
+  "potential/dftd3_correction.cpp"
+  "potential/dftd4_correction.cpp"
   "potential/generate_d_mtrx.cpp"
   "potential/generate_pw_coeffs.cpp"
   "potential/paw_potential.cpp"
@@ -116,6 +118,8 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   SpFFT::spfft
   SPLA::spla
   GSL::gsl
+  $<$<BOOL:${SIRIUS_USE_DFTD3}>:sirius::dftd3 sirius::mctclib>
+  $<$<BOOL:${SIRIUS_USE_DFTD4}>:sirius::dftd4 sirius::mctclib sirius::multicharge>
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
@@ -145,7 +149,8 @@ target_compile_definitions(sirius_cxx PUBLIC
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:SIRIUS_USE_PUGIXML>
   $<$<BOOL:${SIRIUS_USE_FP32_BOOL}>:SIRIUS_USE_FP32>
   $<$<BOOL:${SIRIUS_USE_VCSQNM}>:SIRIUS_VCSQNM>
-  $<$<BOOL:${SIRIUS_HAVE_LIBVDW_WITH_MPI}>:SIRIUS_HAVE_VDWXC_MPI>
+  $<$<BOOL:${SIRIUS_USE_DFTD3}>:SIRIUS_USE_DFTD3>
+  $<$<BOOL:${SIRIUS_USE_DFTD4}>:SIRIUS_USE_DFTD4>
   $<$<AND:$<BOOL:${SIRIUS_USE_MAGMA}>,$<BOOL:${SIRIUS_USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )
 

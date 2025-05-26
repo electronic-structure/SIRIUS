@@ -126,6 +126,9 @@ and optionally any of the additional libraries:
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
  * [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page)**
+ * [dftd3][https://dftd3.readthedocs.io/en/latest]
+ * [dftd4][https://github.com/dftd4/dftd4]
+ * [libvdwxc][https://libvdwxc.gitlab.io/libvdwxc]
 
 \* Only required when `SIRIUS_BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.
 

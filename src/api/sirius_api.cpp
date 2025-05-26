@@ -734,6 +734,10 @@ sirius_set_parameters:
       type: string
       attr: in, optional
       doc: Type of localized orbitals.
+    dftd3_correction:
+      type: bool
+      attr: optional
+      doc: Enable the dftd3 correction
     sht_coverage:
       type: int
       attr: in, optional
@@ -773,9 +777,9 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       double const* iter_solver_tol_empty__, char const* iter_solver_type__, int const* verbosity__,
                       bool const* hubbard_correction__, int const* hubbard_correction_kind__,
                       bool const* hubbard_full_orthogonalization__, bool const* hubbard_constrained_calculation__,
-                      char const* hubbard_orbitals__, int const* sht_coverage__, double const* min_occupancy__,
-                      char const* smearing__, double const* smearing_width__, double const* spglib_tol__,
-                      char const* electronic_structure_method__, int* error_code__)
+                      char const* hubbard_orbitals__, bool const* dftd3_correction__, int const* sht_coverage__,
+                      double const* min_occupancy__, char const* smearing__, double const* smearing_width__,
+                      double const* spglib_tol__, char const* electronic_structure_method__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -864,6 +868,9 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                     if (!jump) {
                         sim_ctx.cfg().hubbard().hubbard_subspace_method(s);
                     }
+                }
+                if (dftd3_correction__ != nullptr) {
+                    sim_ctx.cfg().parameters().dftd3_correction(*dftd3_correction__);
                 }
                 if (fft_grid_size__ != nullptr) {
                     sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
@@ -7376,4 +7383,103 @@ sirius_set_atom_vector_field(void* const* handler__, int const* ia__, double con
             error_code__);
 }
 
-} // extern "C"
+/*
+  @api begin
+  sirius_set_dftd3_correction:
+    doc: Set the parameters controlling the dftd3 correction.
+    arguments:
+      handler:
+        type: ctx_handler
+        attr: in, required
+        doc: Simulation context handler.
+      method:
+        type: string
+        attr: in, required
+        doc: family of predefined parameters. Linked to the functional
+      damping__:
+        type: string
+        attr: in, optional
+        doc: damping correction, auto, manual.
+      atm:
+        type: bool
+        attr: in, optional
+        doc: Include the three body correction
+      damping_term:
+        type: string
+        attr: in, optional
+        doc: type of damping correction, rational, mrational, zero, mzero, ...
+      s6:
+        type: double
+        attr: in, optional
+        doc: s6 parameter for dftd3 model.
+      s8:
+        type: double
+        attr: in, optional
+        doc: s8 parameter for dftd3 model.
+      s9:
+        type: double
+        attr: in, optional
+        doc: s9 parameter for dftd3 model.
+      rs8:
+        type: double
+        attr: in, optional
+        doc: rs8 parameter for dftd3 model.
+      alp:
+        type: double
+        attr: in, optional
+        doc: alp parameter for dftd3 model.
+      beta:
+        type: double
+        attr: in, optional
+        doc: beta parameter for dftd3 model.
+      error_code:
+        type: int
+        attr: out, optional
+        doc: Error code.
+  @api end
+*/
+void
+sirius_set_dftd3_correction(void* const* handler__, char const* method__, char const* damping__, bool const* atm__,
+                            char* const damping_term__, double const* s6__, double const* s8__, double const* s9__,
+                            double const* rs6__, double const* rs8__, double const* alp__, double const* beta__,
+                            int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& sim_ctx = get_sim_ctx(handler__);
+                sim_ctx.cfg().dftd3().method(method__);
+                if (damping__ != nullptr) {
+                    sim_ctx.cfg().dftd3().damping(damping__);
+                }
+                if (atm__ != nullptr) {
+                    sim_ctx.cfg().dftd3().three_body(*atm__);
+                }
+                if (s6__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().s6(*s6__);
+                }
+                if (s8__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().s8(*s8__);
+                }
+                if (s9__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().s9(*s9__);
+                }
+                if (rs6__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().rs6(*rs6__);
+                }
+                if (rs8__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().rs8(*rs8__);
+                }
+                if (alp__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().alp(*alp__);
+                }
+                if (beta__ != nullptr) {
+                    sim_ctx.cfg().dftd3().parameters().beta(*beta__);
+                }
+                if (damping_term__ != nullptr) {
+                    sim_ctx.cfg().dftd3().damping_values(damping_term__);
+                }
+            },
+            error_code__);
+}
+}
+// extern "C"

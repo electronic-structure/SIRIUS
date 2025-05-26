@@ -65,6 +65,10 @@ class Force
 
     mdarray<double, 2> forces_total_;
 
+    mdarray<double, 2> forces_dftd3_;
+
+    mdarray<double, 2> forces_dftd4_;
+
     template <typename T, typename F>
     void
     add_k_point_contribution(K_point<T>& kp__, mdarray<double, 2>& forces__) const;
@@ -199,8 +203,15 @@ class Force
         return forces_ibs_;
     }
 
+    void
+    calc_forces_dftd3();
+
+    void
+    calc_forces_dftd4();
+
     mdarray<double, 2> const&
     calc_forces_total();
+
     mdarray<double, 2> const&
     calc_forces_total(bool add_scf_corr);
 

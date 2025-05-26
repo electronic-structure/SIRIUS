@@ -47,12 +47,12 @@ RUN ldconfig
 
 RUN spack install openblas threads=openmp
 
-ENV SPEC_GCC_CPU="sirius@develop %gcc build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa ^openblas threads=openmp ^mpich@3.4.3 ^nlcglib@master ^spfft+single_precision ^umpire~device_alloc target=x86_64"
+ENV SPEC_GCC_CPU="sirius@develop %gcc build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa +dftd3 +dftd4 ^openblas threads=openmp ^mpich@3.4.3 ^nlcglib@master ^spfft+single_precision ^umpire~device_alloc target=x86_64"
 RUN spack install --fail-fast --only=dependencies $SPEC_GCC_CPU
 
 RUN spack clean --all
 
-#ENV SPEC_GCC_GPU="sirius@develop %gcc build_type=Release +scalapack +vdwxc +fortran +tests +nlcglib +elpa +magma +cuda ^openblas threads=openmp ^mpich@3.4.3 ^nlcglib@master ^spfft+single_precision ^magma+cuda ^umpire+cuda~device_alloc target=x86_64"
+#ENV SPEC_GCC_GPU="sirius@develop %gcc build_type=Release +scalapack +vdwxc +fortran +tests +nlcglib +elpa +magma +dftd3 +dftd4 +cuda ^openblas threads=openmp ^mpich@3.4.3 ^nlcglib@master ^spfft+single_precision ^magma+cuda ^umpire+cuda~device_alloc target=x86_64"
 #RUN spack install --fail-fast --only=dependencies $SPEC_GCC_GPU
 #
 #ENV SPEC_CLANG_CPU="sirius@develop %clang build_type=Release +tests ^openblas%gcc threads=openmp ^mpich ~fortran ^spfft+single_precision ^libxc%gcc target=x86_64"

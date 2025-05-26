@@ -276,6 +276,12 @@ one_electron_energy_hubbard(Density const& density, Potential const& potential);
 double
 hubbard_energy(Density const& density);
 
+double
+energy_dftd3(Potential const& potential);
+
+double
+energy_dftd4(Potential const& potential);
+
 inline auto
 energy_dict(Simulation_context const& ctx__, K_point_set const& kset__, Density const& density__,
             Potential const& potential__, double scf_correction__)
@@ -298,6 +304,8 @@ energy_dict(Simulation_context const& ctx__, K_point_set const& kset__, Density 
     dict["energy"]["entropy_sum"]    = kset__.entropy_sum();
     dict["efermi"]                   = kset__.energy_fermi();
     dict["band_gap"]                 = kset__.band_gap();
+    dict["energy"]["dftd3"]          = energy_dftd3(potential__);
+    dict["energy"]["dftd4"]          = energy_dftd4(potential__);
     if (ctx__.full_potential()) {
         dict["energy"]["core_eval_sum"] = density__.core_eval_sum();
         dict["energy"]["enuc"]          = energy_enuc(ctx__, potential__);

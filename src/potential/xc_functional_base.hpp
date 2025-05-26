@@ -1425,7 +1425,6 @@ class XC_functional_base
                 RTE_THROW("xc_func_init() failed");
             }
         }
-
         libxc_initialized_ = true;
     }
 
