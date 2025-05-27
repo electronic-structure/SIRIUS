@@ -251,6 +251,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
         la::wrap(la).gemm('C', 'N', G.size(1), nbnd, G.size(0), &la::constant<numeric_t>::one(), G.at(pm), G.ld(),
                           X.at(pm), X.ld(), &la::constant<numeric_t>::zero(), bphi.at(pm, row_offset, 0), bphi.ld());
     }
+    acc::sync();
     if (bp_.comm().size() > 1) {
         bp_.comm().allreduce(bphi.at(pm), bphi.size());
     }
