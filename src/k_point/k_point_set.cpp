@@ -238,14 +238,15 @@ newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0,
         // double F = (Nf - ne) * (Nf - ne);
         double dF   = 2 * (Nf - ne) * dNf;
         double ddF  = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
-        double step = alpha * dF / std::abs(ddF);
-        mu          = mu - step;
 
         if (std::abs(ddF) < 1e-30) {
             std::stringstream s;
             return util::unexpected(
                     "Newton minimization (Fermi energy) failed because 2nd derivative too close to zero!");
         }
+
+        double step = alpha * dF / std::abs(ddF);
+        mu          = mu - step;
 
         if (std::abs(step) < tol || std::abs(Nf - ne) < tol) {
             if (std::abs(Nf - ne) > tol_ne) {
