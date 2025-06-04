@@ -105,7 +105,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
-                /* Van der Walls correction */
+              /* Van der Walls correction */
                 ixc.get_vdw(&rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(memory_t::host), &vsigma.value(0),
                             exc.at(memory_t::host));
             } else {
