@@ -35,9 +35,10 @@ class XC_functional : public XC_functional_base
 #if defined(SIRIUS_USE_VDWXC)
     vdwxc_data handler_vdw_{nullptr};
     bool vdw_functional_{false};
-    int func_      = -1;
-    int num_spins_ = -1;
+    int func_{-1};
+    int num_spins_{-1};
 #endif
+
     /* forbid copy constructor */
     XC_functional(const XC_functional& src) = delete;
 
@@ -90,9 +91,11 @@ class XC_functional : public XC_functional_base
         if (this->libxc_initialized_) {
             return;
         } else {
-            /* it means that the functional does not exist either in vdw or xc libraries */
+            /* it means that the functional does not exist either in vdw or xc
+               libraries or that SIRIUS is not compiled with vdwxc support */
             std::stringstream s;
             s << "XC functional " << libxc_name__ << " is unknown";
+
             RTE_THROW(s);
         }
 #endif /* SIRIUS_USE_VDWXC */

@@ -7396,7 +7396,7 @@ sirius_set_atom_vector_field(void* const* handler__, int const* ia__, double con
         type: string
         attr: in, required
         doc: family of predefined parameters. Linked to the functional
-      damping__:
+      damping:
         type: string
         attr: in, optional
         doc: damping correction, auto, manual.
@@ -7477,6 +7477,101 @@ sirius_set_dftd3_correction(void* const* handler__, char const* method__, char c
                 }
                 if (damping_term__ != nullptr) {
                     sim_ctx.cfg().dftd3().damping_values(damping_term__);
+                }
+            },
+            error_code__);
+}
+
+/*
+  @api begin
+  sirius_set_dftd4_correction:
+    doc: Set the parameters controlling the dftd3 correction.
+    arguments:
+      handler:
+        type: ctx_handler
+        attr: in, required
+        doc: Simulation context handler.
+      method:
+        type: string
+        attr: in, required
+        doc: family of predefined parameters. Linked to the functional
+      damping:
+        type: string
+        attr: in, optional
+        doc: damping correction, auto, manual.
+      atm:
+        type: bool
+        attr: in, optional
+        doc: Include the three body correction
+      damping_term:
+        type: string
+        attr: in, optional
+        doc: type of damping correction, rational, mrational
+      s6:
+        type: double
+        attr: in, optional
+        doc: s6 parameter for dftd4 model.
+      s8:
+        type: double
+        attr: in, optional
+        doc: s8 parameter for dftd4 model.
+      s9:
+        type: double
+        attr: in, optional
+        doc: s9 parameter for dftd4 model.
+      a1:
+        type: double
+        attr: in, optional
+        doc: a1 parameter for dftd4 model.
+      a2:
+        type: double
+        attr: in, optional
+        doc: a2 parameter for dftd4 model.
+      alp:
+        type: double
+        attr: in, optional
+        doc: alp parameter for dftd4 model.
+      error_code:
+        type: int
+        attr: out, optional
+        doc: Error code.
+  @api end
+*/
+void
+sirius_set_dftd4_correction(void* const* handler__, char const* method__, char const* damping__, bool const* atm__,
+                            char* const damping_term__, double const* s6__, double const* s8__, double const* s9__,
+                            double const* a1__, double const* a2__, double const* alp__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& sim_ctx = get_sim_ctx(handler__);
+                sim_ctx.cfg().dftd3().method(method__);
+                if (damping__ != nullptr) {
+                    sim_ctx.cfg().dftd4().damping(damping__);
+                }
+                if (atm__ != nullptr) {
+                    sim_ctx.cfg().dftd4().three_body(*atm__);
+                }
+                if (s6__ != nullptr) {
+                    sim_ctx.cfg().dftd4().parameters().s6(*s6__);
+                }
+                if (s8__ != nullptr) {
+                    sim_ctx.cfg().dftd4().parameters().s8(*s8__);
+                }
+                if (s9__ != nullptr) {
+                    sim_ctx.cfg().dftd4().parameters().s9(*s9__);
+                }
+                if (a1__ != nullptr) {
+                    sim_ctx.cfg().dftd4().parameters().a1(*a1__);
+                }
+                if (a2__ != nullptr) {
+                    sim_ctx.cfg().dftd4().parameters().a2(*a2__);
+                }
+                if (alp__ != nullptr) {
+                    sim_ctx.cfg().dftd4().parameters().alp(*alp__);
+                }
+                if (damping_term__ != nullptr) {
+                    sim_ctx.cfg().dftd4().damping_values(damping_term__);
                 }
             },
             error_code__);

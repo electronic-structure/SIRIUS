@@ -1,5 +1,4 @@
-# find spglib
-# if in non-standard location set environment variabled `SPG_DIR` to the root directory
+# find dftd4
 
 include(FindPackageHandleStandardArgs)
 find_package(PkgConfig REQUIRED)
@@ -32,9 +31,9 @@ if (SIRIUS_MULTICHARGE_FOUND AND NOT TARGET sirius::multicharge)
 endif()
 
 mark_as_advanced(
-  SIRIUS_DFTD3_FOUND
-  SIRIUS_DFTD3_LINK_LIBRARIES
-  SIRIUS_DFTD3_LINK_INCLUDE_DIRS
+  SIRIUS_DFTD4_FOUND
+  SIRIUS_DFTD4_LINK_LIBRARIES
+  SIRIUS_DFTD4_LINK_INCLUDE_DIRS
   SIRIUS_MCTCLIB_FOUND
   SIRIUS_MCTCLIB_LINK_LIBRARIES
   SIRIUS_MCTCLIB_LINK_INCLUDE_DIRS

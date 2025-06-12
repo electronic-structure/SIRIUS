@@ -149,11 +149,11 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     if (ctx_.cfg().parameters().dftd3_correction()) {
-        dftd3_ = std::unique_ptr<dftd3>(new dftd3(ctx_, unit_cell_));
+        dftd3_ = std::make_unique<dftd3>(new dftd3(ctx_, unit_cell_));
     }
 
     if (ctx_.cfg().parameters().dftd4_correction()) {
-        dftd4_ = std::unique_ptr<dftd4>(new dftd4(ctx_, unit_cell_));
+        dftd4_ = std::make_unique<dftd4>(new dftd4(ctx_, unit_cell_));
     }
 
     update();

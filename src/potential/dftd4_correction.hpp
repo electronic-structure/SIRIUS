@@ -63,11 +63,32 @@ class dftd4
     /* forbid copy constructor */
     dftd4(const dftd4& src) = delete;
 
+    dftd4(dftd4* src__)
+        : ctx_(src__->ctx_)
+        , unit_cell_(src__->unit_cell_)
+    {
+#if defined(SIRIUS_USE_DFTD3)
+        this->lattice_vectors_ = src__->lattice_vectors_;
+        this->forces_          = std::move(src__->forces_);
+        this->stress_          = std::move(src__->stress_);
+        this->z_charges_       = std::move(src__->z_charges_);
+        this->xc_method_       = src__->xc_method_;
+        this->error_           = src__->error_;
+        this->param_           = src__->param_;
+        this->mol_             = src__->mol_;
+        this->disp_            = src__->disp_;
+        src__->error_          = nullptr;
+        src__->param_          = nullptr;
+        src__->mol_            = nullptr;
+        src__->disp_           = nullptr;
+#endif
+    }
+
     dftd4(dftd4&& src__)
         : ctx_(src__.ctx_)
         , unit_cell_(src__.unit_cell_)
     {
-#if defined(SIRIUS_USE_VDWXC)
+#if defined(SIRIUS_USE_DFTD4)
         this->lattice_vectors_ = src__.lattice_vectors_;
         this->forces_          = std::move(src__.forces_);
         this->stress_          = std::move(src__.stress_);
@@ -88,7 +109,28 @@ class dftd4
     update_dftd4_ctx();
     void
     calculate_energy_forces_stress();
-    ~dftd4();
+    ~dftd4()
+    {
+        if (!ctx_.cfg().parameters().dftd4_correction()) {
+            return;
+        }
+#ifdef SIRIUS_USE_DFTD4
+        if (error_ != nullptr) {
+            dftd4_delete_error(&error_);
+        }
+        if (mol_ != nullptr) {
+            dftd4_delete_structure(&mol_);
+        }
+        if (disp_ != nullptr) {
+            dftd4_delete_model(&disp_);
+        }
+        if (param_ != nullptr) {
+            dftd4_delete_param(&param_);
+        }
+        atom_positions_.clear();
+        lattice_vectors_.clear();
+#endif
+    }
 
     double
     energy() const

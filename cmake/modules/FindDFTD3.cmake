@@ -1,5 +1,4 @@
-# find spglib
-# if in non-standard location set environment variabled `SPG_DIR` to the root directory
+# find dftd3
 
 include(FindPackageHandleStandardArgs)
 find_package(PkgConfig REQUIRED)

@@ -34,10 +34,10 @@ dftd3::update_dftd3_ctx()
     if (!ctx_.cfg().parameters().dftd3_correction())
         return;
 #ifdef SIRIUS_USE_DFTD3
-    auto lat_ = unit_cell_.lattice_vectors();
+    auto lat = unit_cell_.lattice_vectors();
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            lattice_vectors_[3 * i + j] = lat_(i, j);
+            lattice_vectors_[3 * i + j] = lat(i, j);
         }
     }
 
@@ -47,55 +47,53 @@ dftd3::update_dftd3_ctx()
 
     // calculate the cartesian coordinates of the atoms in bohr. SIRIUS works with fractional coordinates.
     for (int i = 0; i < unit_cell_.num_atoms(); i++) {
-        const auto& coord_         = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(i).position());
-        atom_positions_[3 * i]     = coord_[0];
-        atom_positions_[3 * i + 1] = coord_[1];
-        atom_positions_[3 * i + 2] = coord_[2];
+        const auto& coord          = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(i).position());
+        atom_positions_[3 * i]     = coord[0];
+        atom_positions_[3 * i + 1] = coord[1];
+        atom_positions_[3 * i + 2] = coord[2];
     }
 
     // we only need to initialize it once for the entire simulation. Updating the context does not affect it at all
-    if (!error_)
+    if (!error_) {
         error_ = dftd3_new_error();
-
-    char* buffer_error = static_cast<char*>(std::malloc(1024 * sizeof(char)));
-
+    }
+    std::string buffer_error;
+    buffer_error.resize(1024, 0);
     if (!mol_) {
-        const bool periodic_[3] = {true, true, true};
+        const bool periodic[3] = {true, true, true};
         mol_ = dftd3_new_structure(error_, ctx_.unit_cell().num_atoms(), z_charges_.data(), atom_positions_.data(),
-                                   lattice_vectors_.data(), periodic_);
+                                   lattice_vectors_.data(), periodic);
     } else {
         dftd3_update_structure(error_, mol_, atom_positions_.data(), lattice_vectors_.data());
     }
 
     if (dftd3_check_error(error_)) {
-        dftd3_get_error(error_, buffer_error, nullptr);
+        dftd3_get_error(error_, buffer_error.data(), nullptr);
         RTE_THROW(buffer_error);
     }
 
-    if (disp_ != nullptr)
+    if (disp_ != nullptr) {
         dftd3_delete_model(&disp_);
+    }
     disp_ = dftd3_new_d3_model(error_, mol_);
 
     if (dftd3_check_error(error_)) {
-        dftd3_get_error(error_, buffer_error, nullptr);
+        dftd3_get_error(error_, buffer_error.data(), nullptr);
         RTE_THROW(buffer_error);
     }
 
-    if (param_ != nullptr)
+    if (param_ != nullptr) {
         dftd3_delete_param(&param_);
-
+    }
     if (ctx_.cfg().dftd3().method() == "none") {
         RTE_THROW("DFT-D3: The method parameter in the dftd3 section of the input file should\n"
                   "be set and match the XC functional. See the simple-dftd3 documentation for more details");
     }
 
-    char* tmp = static_cast<char*>(std::malloc(sizeof(char) * 128));
-    memset(tmp, 0, sizeof(char) * 128);
-    std::memcpy(tmp, ctx_.cfg().dftd3().method().c_str(), sizeof(char) * ctx_.cfg().dftd3().method().size());
-
     if (ctx_.cfg().dftd3().damping() == "rational") {
         if (ctx_.cfg().dftd3().damping_values() == "auto") {
-            param_ = dftd3_load_rational_damping(error_, tmp, ctx_.cfg().dftd3().three_body());
+            param_ = dftd3_load_rational_damping(error_, ctx_.cfg().dftd3().method().data(),
+                                                 ctx_.cfg().dftd3().three_body());
         } else {
             param_ = dftd3_new_rational_damping(
                     error_, ctx_.cfg().dftd3().parameters().s6(), ctx_.cfg().dftd3().parameters().s8(),
@@ -106,7 +104,8 @@ dftd3::update_dftd3_ctx()
 
     if (ctx_.cfg().dftd3().damping() == "zero") {
         if (ctx_.cfg().dftd3().damping_values() == "auto") {
-            param_ = dftd3_load_zero_damping(error_, tmp, ctx_.cfg().dftd3().three_body());
+            param_ = dftd3_load_zero_damping(error_, ctx_.cfg().dftd3().method().data(),
+                                             ctx_.cfg().dftd3().three_body());
         } else {
             param_ = dftd3_new_zero_damping(
                     error_, ctx_.cfg().dftd3().parameters().s6(), ctx_.cfg().dftd3().parameters().s8(),
@@ -117,7 +116,8 @@ dftd3::update_dftd3_ctx()
 
     if (ctx_.cfg().dftd3().damping() == "mzero") {
         if (ctx_.cfg().dftd3().damping_values() == "auto") {
-            param_ = dftd3_load_mzero_damping(error_, tmp, ctx_.cfg().dftd3().three_body());
+            param_ = dftd3_load_mzero_damping(error_, ctx_.cfg().dftd3().method().data(),
+                                              ctx_.cfg().dftd3().three_body());
         } else {
             param_ = dftd3_new_mzero_damping(
                     error_, ctx_.cfg().dftd3().parameters().s6(), ctx_.cfg().dftd3().parameters().s8(),
@@ -129,7 +129,8 @@ dftd3::update_dftd3_ctx()
 
     if (ctx_.cfg().dftd3().damping() == "mrational") {
         if (ctx_.cfg().dftd3().damping_values() == "auto") {
-            param_ = dftd3_load_mrational_damping(error_, tmp, ctx_.cfg().dftd3().three_body());
+            param_ = dftd3_load_mrational_damping(error_, ctx_.cfg().dftd3().method().data(),
+                                                  ctx_.cfg().dftd3().three_body());
         } else {
             param_ = dftd3_new_mrational_damping(
                     error_, ctx_.cfg().dftd3().parameters().s6(), ctx_.cfg().dftd3().parameters().s8(),
@@ -140,7 +141,8 @@ dftd3::update_dftd3_ctx()
 
     if (ctx_.cfg().dftd3().damping() == "optimizedpower") {
         if (ctx_.cfg().dftd3().damping_values() == "auto") {
-            param_ = dftd3_load_optimizedpower_damping(error_, tmp, ctx_.cfg().dftd3().three_body());
+            param_ = dftd3_load_optimizedpower_damping(error_, ctx_.cfg().dftd3().method().data(),
+                                                       ctx_.cfg().dftd3().three_body());
         } else {
             param_ = dftd3_new_optimizedpower_damping(
                     error_, ctx_.cfg().dftd3().parameters().s6(), ctx_.cfg().dftd3().parameters().s8(),
@@ -151,12 +153,10 @@ dftd3::update_dftd3_ctx()
     }
 
     if (dftd3_check_error(error_)) {
-        dftd3_get_error(error_, buffer_error, nullptr);
+        dftd3_get_error(error_, buffer_error.data(), nullptr);
         RTE_THROW(buffer_error);
     }
 
-    std::free(tmp);
-    std::free(buffer_error);
     calculate_energy_forces_stress();
 #endif
 }
@@ -164,44 +164,28 @@ dftd3::update_dftd3_ctx()
 void
 dftd3::calculate_energy_forces_stress()
 {
-    if (!ctx_.cfg().parameters().dftd3_correction())
+    if (!ctx_.cfg().parameters().dftd3_correction()) {
         return;
-
+    }
 #ifdef SIRIUS_USE_DFTD3
     PROFILE("sirius::Potential::dft_d3");
     // do the actual calculations. It is needed only once since this correction does not depend on the density.
-    std::vector<double> forces_tmp_(unit_cell_.num_atoms() * 3);
-    std::vector<double> stress_tmp_(9);
-    dftd3_get_dispersion(error_, mol_, disp_, param_, &energy_, forces_tmp_.data(), stress_tmp_.data());
+    std::vector<double> forces_tmp(unit_cell_.num_atoms() * 3);
+    std::vector<double> stress_tmp(9);
+    dftd3_get_dispersion(error_, mol_, disp_, param_, &energy_, forces_tmp.data(), stress_tmp.data());
 
     // the library returns the gradients NOT the forces. We need to multiply by -1 to get the forces
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        forces_(0, ia) = -forces_tmp_[3 * ia];
-        forces_(1, ia) = -forces_tmp_[3 * ia + 1];
-        forces_(2, ia) = -forces_tmp_[3 * ia + 2];
+        forces_(0, ia) = -forces_tmp[3 * ia];
+        forces_(1, ia) = -forces_tmp[3 * ia + 1];
+        forces_(2, ia) = -forces_tmp[3 * ia + 2];
     }
 
-    for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-            stress_(i, j) = stress_tmp_[3 * i + j];
-#endif
-}
-
-dftd3::~dftd3()
-{
-    if (!ctx_.cfg().parameters().dftd3_correction())
-        return;
-#ifdef SIRIUS_USE_DFTD3
-    if (error_)
-        dftd3_delete_error(&error_);
-    if (mol_)
-        dftd3_delete_structure(&mol_);
-    if (disp_)
-        dftd3_delete_model(&disp_);
-    if (param_)
-        dftd3_delete_param(&param_);
-    atom_positions_.clear();
-    lattice_vectors_.clear();
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            stress_(i, j) = stress_tmp[3 * i + j];
+        }
+    }
 #endif
 }
 } // namespace sirius
