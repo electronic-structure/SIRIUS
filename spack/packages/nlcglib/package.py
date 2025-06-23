@@ -18,6 +18,7 @@ class Nlcglib(CMakePackage, CudaPackage, ROCmPackage):
     license("BSD-3-Clause")
 
     version("develop", branch="develop")
+    version("1.3.0", sha256="d6adfe97407be2ecf41eda6f530e9724052f5298c5f884113969a9204530a745")
     version("1.2.0", sha256="bb3676472cf7cc9effe06e416ecf4ef38e6c58c3e423dc70b8b6b32890bc89f2")
     version("1.1.0", sha256="9e7c2eea84a5ce191bd9af08f6c890717f7b6e88be7bd15cfe774eb0e0dabd8a")
     version("1.0b", sha256="086c46f06a117f267cbdf1df4ad42a8512689a9610885763f463469fb15e82dc")
@@ -46,6 +47,7 @@ class Nlcglib(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("googletest", type="build", when="+tests")
     depends_on("nlohmann-json")
     depends_on("kokkos@4:", when="@1.1:")
+    depends_on("fmt", when="@1.3:")
 
     # MKLConfig.cmake introduced in 2021.3
     conflicts("intel-oneapi-mkl@:2021.2", when="^intel-oneapi-mkl")
