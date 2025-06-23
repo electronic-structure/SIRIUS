@@ -81,7 +81,9 @@ build sirius eiger:
 
       stagedir=$(find /dev/shm/spack-stage -type d -name 'spack-stage-sirius-*')
       echo "stagedir: $stagedir"
-      cd $(find ./ -type d -name 'spack-build-*')
+      cd $stagedir
+      builddir=$(find ./ -type d -name spack-build-*)
+      cd $builddir
       if [ "$SLURM_PROCID" == "0" ]; then
       $TEST_COMMAND -V
       else
