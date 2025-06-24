@@ -47,7 +47,7 @@ dftd4::update_dftd4_ctx()
 
     // calculate the cartesian coordinates of the atoms in bohr. SIRIUS works with fractional coordinates.
     for (int i = 0; i < unit_cell_.num_atoms(); i++) {
-        const auto& coord         = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(i).position());
+        const auto& coord          = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(i).position());
         atom_positions_[3 * i]     = coord[0];
         atom_positions_[3 * i + 1] = coord[1];
         atom_positions_[3 * i + 2] = coord[2];
