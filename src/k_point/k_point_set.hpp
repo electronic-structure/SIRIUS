@@ -15,7 +15,7 @@
 #define __K_POINT_SET_HPP__
 
 #include "k_point.hpp"
-#include "dft/smearing.hpp"
+#include <array>
 
 namespace sirius {
 
@@ -24,6 +24,18 @@ enum class sync_band_t
     energy,
     occupancy
 };
+
+namespace local {
+struct efermi_search_t
+{
+    /// chemical potential
+    double mu;
+    /// error in number of electrons
+    double ne_diff;
+    /// number of steps
+    int iter{0};
+};
+} // namespace local
 
 /// Set of k-points.
 class K_point_set
@@ -73,12 +85,12 @@ class K_point_set
     find_band_occupancies_without_empty();
 
     template <typename T>
-    void
-    find_band_occupancies_fixed_magn(double emin, double emax);
+    std::tuple<double, std::array<double, 2>>
+    find_efermi_fixed_magn(double emin, double emax) const;
 
     template <typename T>
-    void
-    find_band_occupancies_generic(double emin, double emax);
+    local::efermi_search_t
+    find_efermi_generic(double emin, double emax) const;
 
   public:
     /// Create empty k-point set.
@@ -121,7 +133,7 @@ class K_point_set
 
     /// Find Fermi energy and band occupation numbers.
     template <typename T>
-    void
+    double
     find_band_occupancies();
 
     /// Print basic info to the standard output.

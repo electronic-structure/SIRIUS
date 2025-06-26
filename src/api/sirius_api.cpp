@@ -5731,17 +5731,18 @@ sirius_nlcg_params(void* const* gs_handler__, void* const* ks_handler__, double 
 
                 sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
                 sirius::Overlap_operators<sirius::S_k<std::complex<double>>> S(kset, ctx, H0.Q());
+                sirius::Overlap_operators<sirius::InverseS_k<std::complex<double>>> Sinv(kset, ctx, H0.Q());
 
                 // ultrasoft pp
                 nlcglib::nlcg_info info;
                 switch (processing_unit) {
                     case device_t::CPU: {
-                        info = nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing_t, temp, tol, kappa, tau, maxiter,
-                                                    restart);
+                        info = nlcglib::nlcg_us_cpu(energy, us_precond, S, Sinv, smearing_t, temp, tol, kappa, tau,
+                                                    maxiter, restart);
                         break;
                     }
                     case device_t::GPU: {
-                        info = nlcglib::nlcg_us_device(energy, us_precond, S, smearing_t, temp, tol, kappa, tau,
+                        info = nlcglib::nlcg_us_device(energy, us_precond, S, Sinv, smearing_t, temp, tol, kappa, tau,
                                                        maxiter, restart);
                         break;
                     }

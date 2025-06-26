@@ -15,6 +15,7 @@
 #define __BETA_PROJECTORS_BASE_HPP__
 
 #include <spla/context.hpp>
+#include "core/acc/acc.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "core/mpi/communicator.hpp"
 #include "context/simulation_context.hpp"
@@ -450,11 +451,10 @@ inner_beta(memory_t mem_t, const Beta_projectors_base<T>& beta)
                               bcoeffs_col.pw_coeffs_a_.ld(), &zero, C, out.ld());
         }
     }
-
+    acc::sync();
     if (beta.comm().size() > 1) {
         beta.comm().allreduce(out.at(mem_t), static_cast<int>(out.size()));
     }
-
     return out;
 }
 
@@ -502,6 +502,7 @@ inner_beta(memory_t mem_t, const Beta_projectors_base<T>& beta, Op&& op)
                               out.ld());
         }
     }
+    acc::sync();
     if (beta.comm().size() > 1) {
         beta.comm().allreduce(out.at(mem_t), static_cast<int>(out.size()));
     }
