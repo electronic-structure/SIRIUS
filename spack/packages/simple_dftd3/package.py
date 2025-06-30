@@ -2,10 +2,8 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from spack_repo.builtin.build_systems.meson import MesonPackage
-
 from spack.package import *
-
+from spack.build_systems import cmake, meson
 
 class SimpleDftd3(MesonPackage):
     """
