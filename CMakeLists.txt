@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.7.1
+  VERSION 7.8.0
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -51,8 +51,8 @@ if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   enable_language(Fortran)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_STANDARD 20)
 
 # This ensures that -std=c++17 is passed to nvcc. See
 # https://github.com/electronic-structure/SIRIUS/issues/716 for details.
@@ -226,6 +226,8 @@ endif()
 if(SIRIUS_USE_MEMORY_POOL)
   find_package(umpire REQUIRED)
 endif()
+
+find_package(fmt REQUIRED)
 
 # check if git command exists
 find_program(GIT_EXE NAMES git)

@@ -13,6 +13,9 @@
 
 #ifndef __STRING_TOOLS_HPP__
 #define __STRING_TOOLS_HPP__
+#include <string>
+#include <vector>
+#include <sstream>
 
 namespace sirius {
 

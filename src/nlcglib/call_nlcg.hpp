@@ -62,15 +62,16 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
 
     sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
     sirius::Overlap_operators<sirius::S_k<numeric_t>> S(kset, ctx, H0.Q());
+    sirius::Overlap_operators<sirius::InverseS_k<numeric_t>> Sinv(kset, ctx, H0.Q());
 
     // ultrasoft pp
     switch (nlcg_pu) {
         case device_t::CPU: {
-            nlcglib::nlcg_us_cpu(energy, us_precond, S, smearing, temp, tol, kappa, tau, maxiter, restart);
+            nlcglib::nlcg_us_cpu(energy, us_precond, S, Sinv, smearing, temp, tol, kappa, tau, maxiter, restart);
             break;
         }
         case device_t::GPU: {
-            nlcglib::nlcg_us_device(energy, us_precond, S, smearing, temp, tol, kappa, tau, maxiter, restart);
+            nlcglib::nlcg_us_device(energy, us_precond, S, Sinv, smearing, temp, tol, kappa, tau, maxiter, restart);
             break;
         }
     }
