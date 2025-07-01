@@ -19,10 +19,6 @@ dftd4::dftd4(Simulation_context& ctx__, Unit_cell& unit_cell__)
     if (!ctx_.cfg().parameters().dftd4_correction()) {
         return;
     }
-    atom_positions_.resize(3 * unit_cell_.num_atoms());
-    forces_ = mdarray<double, 2>({3, unit_cell_.num_atoms()});
-    lattice_vectors_.resize(9);
-    z_charges_.resize(unit_cell_.num_atoms());
     xc_method_ = ctx_.cfg().dftd4().method();
     update_dftd4_ctx();
 }
@@ -35,6 +31,10 @@ dftd4::update_dftd4_ctx()
     }
 #ifdef SIRIUS_USE_DFTD4
     auto lat = unit_cell_.lattice_vectors();
+    forces_  = mdarray<double, 2>({3, unit_cell_.num_atoms()});
+    lattice_vectors_.resize(9);
+    z_charges_.resize(unit_cell_.num_atoms());
+    atom_positions_.resize(3 * unit_cell_.num_atoms());
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             lattice_vectors_[3 * i + j] = lat(i, j);
