@@ -40,6 +40,36 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
 {
 }
 
+void
+Force::calc_forces_dftd3()
+{
+    forces_dftd3_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
+    forces_dftd3_.zero();
+    if (ctx_.cfg().parameters().dftd3_correction()) {
+        auto& f = potential_.dftd3_ctx().forces();
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            for (int x : {0, 1, 2}) {
+                forces_dftd3_(x, ia) = f(x, ia);
+            }
+        }
+    }
+}
+
+void
+Force::calc_forces_dftd4()
+{
+    forces_dftd4_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
+    forces_dftd4_.zero();
+    if (ctx_.cfg().parameters().dftd4_correction()) {
+        auto& f = potential_.dftd4_ctx().forces();
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            for (int x : {0, 1, 2}) {
+                forces_dftd4_(x, ia) = f(x, ia);
+            }
+        }
+    }
+}
+
 template <typename T>
 void
 Force::calc_forces_nonloc_aux()
@@ -167,13 +197,16 @@ mdarray<double, 2> const&
 Force::calc_forces_total(bool add_scf_corr)
 {
     forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
+
+    calc_forces_dftd3();
     if (ctx_.full_potential()) {
         calc_forces_rho();
         calc_forces_hf();
         calc_forces_ibs();
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             for (int x : {0, 1, 2}) {
-                forces_total_(x, ia) = forces_ibs_(x, ia) + forces_hf_(x, ia) + forces_rho_(x, ia);
+                forces_total_(x, ia) =
+                        forces_ibs_(x, ia) + forces_hf_(x, ia) + forces_rho_(x, ia) + forces_dftd3_(x, ia);
             }
         }
     } else {
@@ -193,10 +226,11 @@ Force::calc_forces_total(bool add_scf_corr)
                 if (add_scf_corr) {
                     forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
                                            forces_core_(x, ia) + forces_ewald_(x, ia) + forces_scf_corr_(x, ia) +
-                                           forces_hubbard_(x, ia);
+                                           forces_hubbard_(x, ia) + forces_dftd3_(x, ia);
                 } else {
                     forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
-                                           forces_core_(x, ia) + forces_ewald_(x, ia) + forces_hubbard_(x, ia);
+                                           forces_core_(x, ia) + forces_ewald_(x, ia) + forces_hubbard_(x, ia) +
+                                           forces_dftd3_(x, ia);
                 }
             }
         }
@@ -906,6 +940,14 @@ Force::print_info(std::ostream& out__, int verbosity__)
 
         if (ctx_.hubbard_correction()) {
             print_forces("contribution from Hubbard correction", forces_hubbard());
+        }
+
+        if (ctx_.cfg().parameters().dftd3_correction()) {
+            print_forces("contribution from the dftd3 dispersion correction", potential_.dftd3_ctx().forces());
+        }
+
+        if (ctx_.cfg().parameters().dftd4_correction()) {
+            print_forces("contribution from the dftd4 dispersion correction", potential_.dftd4_ctx().forces());
         }
     }
 }

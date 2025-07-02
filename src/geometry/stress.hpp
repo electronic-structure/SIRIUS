@@ -113,6 +113,10 @@ class Stress
 
     r3::matrix<double> stress_total_;
 
+    r3::matrix<double> stress_dftd3_;
+
+    r3::matrix<double> stress_dftd4_;
+
     /// Non-local contribution to stress.
     /** Energy contribution from the non-local part of pseudopotential:
      *  \f[
@@ -154,6 +158,10 @@ class Stress
     template <typename T, typename F>
     void
     calc_stress_nonloc_aux();
+
+    template <typename T, typename F>
+    void
+    calc_stress_dftd3();
 
   public:
     Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)

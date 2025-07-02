@@ -147,6 +147,12 @@ ks_energy(Simulation_context const& ctx, std::map<std::string, double> const& en
             if (ctx.hubbard_correction()) {
                 tot_en += energies.at("hubbard_energy") - energies.at("hubbard_one_el_contribution");
             }
+            if (ctx.cfg().parameters().dftd3_correction()) {
+                tot_en += energies.at("dftd3_energy");
+            }
+            if (ctx.cfg().parameters().dftd4_correction()) {
+                tot_en += energies.at("dftd4_energy");
+            }
             break;
         }
     }
@@ -181,10 +187,12 @@ total_energy_components(Simulation_context const& ctx, K_point_set const& kset, 
     std::map<std::string, double> table;
     switch (ctx.electronic_structure_method()) {
         case electronic_structure_method_t::full_potential_lapwlo: {
-            table["ekin"] = energy_kin(ctx, kset, density, potential);
-            table["exc"]  = energy_exc(density, potential);
-            table["vha"]  = energy_vha(potential);
-            table["enuc"] = energy_enuc(ctx, potential);
+            table["ekin"]         = energy_kin(ctx, kset, density, potential);
+            table["exc"]          = energy_exc(density, potential);
+            table["vha"]          = energy_vha(potential);
+            table["enuc"]         = energy_enuc(ctx, potential);
+            table["dftd3_energy"] = energy_dftd3(potential);
+            table["dftd4_energy"] = energy_dftd4(potential);
             break;
         }
 
@@ -197,6 +205,8 @@ total_energy_components(Simulation_context const& ctx, K_point_set const& kset, 
             table["exc"]              = energy_exc(density, potential);
             table["ewald"]            = potential.ewald_energy();
             table["PAW_total_energy"] = potential.PAW_total_energy(density);
+            table["dftd3_energy"]     = energy_dftd3(potential);
+            table["dftd4_energy"]     = energy_dftd4(potential);
             break;
         }
     }
@@ -246,4 +256,25 @@ energy_potential(Density const& density, Potential const& potential)
     return e;
 }
 
+double
+energy_dftd3(Potential const& potential)
+{
+    double e = 0.0;
+
+    if (potential.ctx().cfg().parameters().dftd3_correction())
+        e = potential.dftd3_ctx().energy();
+
+    return e;
+}
+
+double
+energy_dftd4(Potential const& potential)
+{
+    double e = 0.0;
+
+    if (potential.ctx().cfg().parameters().dftd4_correction())
+        e = potential.dftd4_ctx().energy();
+
+    return e;
+}
 } // namespace sirius

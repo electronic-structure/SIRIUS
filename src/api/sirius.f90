@@ -471,6 +471,7 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_full_orthogonalization Use all atomic orbitals found in all ps potentials to compute the orthogonalization operator.
 !> @param [in] hubbard_constrained_calculation Use the constrained hubbard method to intiate the scf loop
 !> @param [in] hubbard_orbitals Type of localized orbitals.
+!> @param [inout] dftd3_correction Enable the dftd3 correction
 !> @param [in] sht_coverage Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
 !> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
 !> @param [in] smearing Type of occupancy smearing.
@@ -482,8 +483,8 @@ subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
 &hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_constrained_calculation,&
-&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
-&error_code)
+&hubbard_orbitals,dftd3_correction,sht_coverage,min_occupancy,smearing,smearing_width,&
+&spglib_tol,electronic_structure_method,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
@@ -510,6 +511,7 @@ integer, optional, target, intent(in) :: hubbard_correction_kind
 logical, optional, target, intent(in) :: hubbard_full_orthogonalization
 logical, optional, target, intent(in) :: hubbard_constrained_calculation
 character(*), optional, target, intent(in) :: hubbard_orbitals
+logical, optional, target, intent(inout) :: dftd3_correction
 integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
 character(*), optional, target, intent(in) :: smearing
@@ -552,6 +554,8 @@ type(C_PTR) :: hubbard_constrained_calculation_ptr
 logical(C_BOOL), target :: hubbard_constrained_calculation_c_type
 type(C_PTR) :: hubbard_orbitals_ptr
 character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
+type(C_PTR) :: dftd3_correction_ptr
+logical(C_BOOL), target :: dftd3_correction_c_type
 type(C_PTR) :: sht_coverage_ptr
 type(C_PTR) :: min_occupancy_ptr
 type(C_PTR) :: smearing_ptr
@@ -567,8 +571,8 @@ subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,iter_solver_tol_empty,iter_solver_type,verbosity,&
 &hubbard_correction,hubbard_correction_kind,hubbard_full_orthogonalization,hubbard_constrained_calculation,&
-&hubbard_orbitals,sht_coverage,min_occupancy,smearing,smearing_width,spglib_tol,electronic_structure_method,&
-&error_code)&
+&hubbard_orbitals,dftd3_correction,sht_coverage,min_occupancy,smearing,smearing_width,&
+&spglib_tol,electronic_structure_method,error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -595,6 +599,7 @@ type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_full_orthogonalization
 type(C_PTR), value :: hubbard_constrained_calculation
 type(C_PTR), value :: hubbard_orbitals
+type(C_PTR), value :: dftd3_correction
 type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
 type(C_PTR), value :: smearing
@@ -713,6 +718,11 @@ allocate(hubbard_orbitals_c_type(len(hubbard_orbitals)+1))
 hubbard_orbitals_c_type = string_f2c(hubbard_orbitals)
 hubbard_orbitals_ptr = C_LOC(hubbard_orbitals_c_type)
 endif
+dftd3_correction_ptr = C_NULL_PTR
+if (present(dftd3_correction)) then
+dftd3_correction_c_type = dftd3_correction
+dftd3_correction_ptr = C_LOC(dftd3_correction_c_type)
+endif
 sht_coverage_ptr = C_NULL_PTR
 if (present(sht_coverage)) then
 sht_coverage_ptr = C_LOC(sht_coverage)
@@ -750,8 +760,8 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
 &core_rel_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,&
 &hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,hubbard_constrained_calculation_ptr,&
-&hubbard_orbitals_ptr,sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,&
-&spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
+&hubbard_orbitals_ptr,dftd3_correction_ptr,sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,&
+&smearing_width_ptr,spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -775,6 +785,9 @@ if (present(hubbard_constrained_calculation)) then
 endif
 if (present(hubbard_orbitals)) then
 deallocate(hubbard_orbitals_c_type)
+endif
+if (present(dftd3_correction)) then
+dftd3_correction = dftd3_correction_c_type
 endif
 if (present(smearing)) then
 deallocate(smearing_c_type)
@@ -7244,6 +7257,138 @@ error_code_ptr = C_LOC(error_code)
 endif
 call sirius_set_atom_vector_field_aux(handler_ptr,ia_ptr,vector_field_ptr,error_code_ptr)
 end subroutine sirius_set_atom_vector_field
+
+!
+!> @brief Set the parameters controlling the dftd3 correction.
+!> @param [in] handler Simulation context handler.
+!> @param [in] method family of predefined parameters. Linked to the functional
+!> @param [in] damping__ damping correction, auto, manual.
+!> @param [in] atm Include the three body correction
+!> @param [in] damping_term type of damping correction, rational, mrational, zero, mzero, ...
+!> @param [in] s6 s6 parameter for dftd3 model.
+!> @param [in] s8 s8 parameter for dftd3 model.
+!> @param [in] s9 s9 parameter for dftd3 model.
+!> @param [in] rs8 rs8 parameter for dftd3 model.
+!> @param [in] alp alp parameter for dftd3 model.
+!> @param [in] beta beta parameter for dftd3 model.
+!> @param [out] error_code Error code.
+subroutine sirius_set_dftd3_correction(handler,method,damping__,atm,damping_term,&
+&s6,s8,s9,rs8,alp,beta,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+character(*), target, intent(in) :: method
+character(*), optional, target, intent(in) :: damping__
+logical, optional, target, intent(in) :: atm
+character(*), optional, target, intent(in) :: damping_term
+real(8), optional, target, intent(in) :: s6
+real(8), optional, target, intent(in) :: s8
+real(8), optional, target, intent(in) :: s9
+real(8), optional, target, intent(in) :: rs8
+real(8), optional, target, intent(in) :: alp
+real(8), optional, target, intent(in) :: beta
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: method_ptr
+character(C_CHAR), target, allocatable :: method_c_type(:)
+type(C_PTR) :: damping___ptr
+character(C_CHAR), target, allocatable :: damping___c_type(:)
+type(C_PTR) :: atm_ptr
+logical(C_BOOL), target :: atm_c_type
+type(C_PTR) :: damping_term_ptr
+character(C_CHAR), target, allocatable :: damping_term_c_type(:)
+type(C_PTR) :: s6_ptr
+type(C_PTR) :: s8_ptr
+type(C_PTR) :: s9_ptr
+type(C_PTR) :: rs8_ptr
+type(C_PTR) :: alp_ptr
+type(C_PTR) :: beta_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_dftd3_correction_aux(handler,method,damping__,atm,damping_term,&
+&s6,s8,s9,rs8,alp,beta,error_code)&
+&bind(C, name="sirius_set_dftd3_correction")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: method
+type(C_PTR), value :: damping__
+type(C_PTR), value :: atm
+type(C_PTR), value :: damping_term
+type(C_PTR), value :: s6
+type(C_PTR), value :: s8
+type(C_PTR), value :: s9
+type(C_PTR), value :: rs8
+type(C_PTR), value :: alp
+type(C_PTR), value :: beta
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+method_ptr = C_NULL_PTR
+allocate(method_c_type(len(method)+1))
+method_c_type = string_f2c(method)
+method_ptr = C_LOC(method_c_type)
+damping___ptr = C_NULL_PTR
+if (present(damping__)) then
+allocate(damping___c_type(len(damping__)+1))
+damping___c_type = string_f2c(damping__)
+damping___ptr = C_LOC(damping___c_type)
+endif
+atm_ptr = C_NULL_PTR
+if (present(atm)) then
+atm_c_type = atm
+atm_ptr = C_LOC(atm_c_type)
+endif
+damping_term_ptr = C_NULL_PTR
+if (present(damping_term)) then
+allocate(damping_term_c_type(len(damping_term)+1))
+damping_term_c_type = string_f2c(damping_term)
+damping_term_ptr = C_LOC(damping_term_c_type)
+endif
+s6_ptr = C_NULL_PTR
+if (present(s6)) then
+s6_ptr = C_LOC(s6)
+endif
+s8_ptr = C_NULL_PTR
+if (present(s8)) then
+s8_ptr = C_LOC(s8)
+endif
+s9_ptr = C_NULL_PTR
+if (present(s9)) then
+s9_ptr = C_LOC(s9)
+endif
+rs8_ptr = C_NULL_PTR
+if (present(rs8)) then
+rs8_ptr = C_LOC(rs8)
+endif
+alp_ptr = C_NULL_PTR
+if (present(alp)) then
+alp_ptr = C_LOC(alp)
+endif
+beta_ptr = C_NULL_PTR
+if (present(beta)) then
+beta_ptr = C_LOC(beta)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_dftd3_correction_aux(handler_ptr,method_ptr,damping___ptr,atm_ptr,&
+&damping_term_ptr,s6_ptr,s8_ptr,s9_ptr,rs8_ptr,alp_ptr,beta_ptr,error_code_ptr)
+deallocate(method_c_type)
+if (present(damping__)) then
+deallocate(damping___c_type)
+endif
+if (present(atm)) then
+endif
+if (present(damping_term)) then
+deallocate(damping_term_c_type)
+endif
+end subroutine sirius_set_dftd3_correction
 
 
 subroutine sirius_free_handler_ctx(handler, error_code)

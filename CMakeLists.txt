@@ -38,7 +38,8 @@ option(SIRIUS_USE_PUGIXML             "enable reading of UPF v2 files with pugix
 option(SIRIUS_USE_POWER_COUNTER       "measure energy consumption with power counters" OFF)
 option(BUILD_TESTING                  "build test executables" OFF) # override default setting in CTest module
 option(SIRIUS_USE_VCSQNM              "use variable cell stabilized quasi Newton method" OFF)
-
+option(SIRIUS_USE_DFTD3               "Enable the dft-d3 contribution" OFF)
+option(SIRIUS_USE_DFTD4               "Enable the dft-d4 contribution" OFF)
 set(SIRIUS_GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(SIRIUS_USE_FP32 "AUTO" CACHE STRING "Enable single precision support.")
 
@@ -141,6 +142,14 @@ find_package(SPLA 1.4.0 CONFIG REQUIRED)
 if (SIRIUS_USE_PUGIXML)
    find_package(pugixml REQUIRED)
 endif()
+
+if (SIRIUS_USE_DFTD3)
+   find_package(DFTD3 REQUIRED)
+endif ()
+
+if (SIRIUS_USE_DFTD4)
+  find_package(DFTD4 REQUIRED)
+endif ()
 
 # Check if SpFFT support single precision if required
 if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")

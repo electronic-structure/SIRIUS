@@ -83,17 +83,30 @@ Stress::calc_stress_total()
     calc_stress_xc();
     calc_stress_us();
     calc_stress_nonloc();
+
     stress_hubbard_.zero();
     if (ctx_.hubbard_correction()) {
         calc_stress_hubbard();
     }
+
+    stress_dftd3_.zero();
+    if (ctx_.cfg().parameters().dftd3_correction()) {
+        stress_dftd3_ = potential_.dftd3_ctx().stress();
+    }
+
+    stress_dftd4_.zero();
+    if (ctx_.cfg().parameters().dftd4_correction()) {
+        stress_dftd4_ = potential_.dftd4_ctx().stress();
+    }
+
     stress_total_.zero();
 
     for (int mu = 0; mu < 3; mu++) {
         for (int nu = 0; nu < 3; nu++) {
             stress_total_(mu, nu) = stress_kin_(mu, nu) + stress_har_(mu, nu) + stress_ewald_(mu, nu) +
                                     stress_vloc_(mu, nu) + stress_core_(mu, nu) + stress_xc_(mu, nu) +
-                                    stress_us_(mu, nu) + stress_nonloc_(mu, nu) + stress_hubbard_(mu, nu);
+                                    stress_us_(mu, nu) + stress_nonloc_(mu, nu) + stress_hubbard_(mu, nu) +
+                                    stress_dftd3_(mu, nu) + stress_dftd4_(mu, nu);
         }
     }
     return stress_total_;
@@ -588,6 +601,14 @@ Stress::print_info(std::ostream& out__, int verbosity__) const
 
     if (ctx_.hubbard_correction()) {
         print_stress("stress_hubbard", stress_hubbard);
+    }
+
+    if (ctx_.cfg().parameters().dftd3_correction()) {
+        print_stress("stress_dftd3", stress_dftd3_);
+    }
+
+    if (ctx_.cfg().parameters().dftd4_correction()) {
+        print_stress("stress_dftd4", stress_dftd4_);
     }
 
     auto stress_total = stress_total_ * au2kbar;

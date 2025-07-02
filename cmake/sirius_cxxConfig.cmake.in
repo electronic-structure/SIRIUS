@@ -44,6 +44,14 @@ if(NOT TARGET sirius::sirius_cxx)
     find_dependency(OpenMP ${mode})
   endif()
 
+  if (@SIRIUS_USE_DFTD3@)
+    find_dependency(DFTD3 ${mode})
+  endif()
+
+  if (@SIRIUS_USE_DFTD4@)
+    find_dependency(DFTD4 ${mode})
+  endif()
+
   if(@SIRIUS_USE_MKL@)
     set(MKL_INTERFACE "@MKL_INTERFACE@")
     set(MKL_THREADING "@MKL_THREADING@")

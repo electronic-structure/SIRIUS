@@ -1344,6 +1344,30 @@ class config_t
             }
             dict_["/parameters/so_correction"_json_pointer] = so_correction__;
         }
+        /// True if the dft-d3 dispersion correction is applied.
+        inline auto dftd3_correction() const
+        {
+            return dict_.at("/parameters/dftd3_correction"_json_pointer).get<bool>();
+        }
+        inline void dftd3_correction(bool dftd3_correction__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/dftd3_correction"_json_pointer] = dftd3_correction__;
+        }
+        /// True if the dft-d4 dispersion correction is applied.
+        inline auto dftd4_correction() const
+        {
+            return dict_.at("/parameters/dftd4_correction"_json_pointer).get<bool>();
+        }
+        inline void dftd4_correction(bool dftd4_correction__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/dftd4_correction"_json_pointer] = dftd4_correction__;
+        }
         /// True if Hubbard U correction is applied.
         inline auto hubbard_correction() const
         {
@@ -1699,6 +1723,396 @@ class config_t
     };
     inline auto const& vcsqnm() const {return vcsqnm_;}
     inline auto& vcsqnm() {return vcsqnm_;}
+    /// parameters controlling the dft-d4 correction
+    /**
+        Consult the dft-d4 documentation for more details
+    */
+    class dftd4_t
+    {
+      public:
+        dftd4_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// name of the xc functional that determinates the default parameters. It should match the XC functional from libxc
+        inline auto method() const
+        {
+            return dict_.at("/dftd4/method"_json_pointer).get<std::string>();
+        }
+        inline void method(std::string method__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd4/method"_json_pointer] = method__;
+        }
+        /// Control the damping term of the correction D4 and all parameters associated to the correction
+        inline auto damping() const
+        {
+            return dict_.at("/dftd4/damping"_json_pointer).get<std::string>();
+        }
+        inline void damping(std::string damping__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd4/damping"_json_pointer] = damping__;
+        }
+        /// Use the default values for the damping term if set to auto. If set to manual then the parameters section should be included
+        inline auto damping_values() const
+        {
+            return dict_.at("/dftd4/damping_values"_json_pointer).get<std::string>();
+        }
+        inline void damping_values(std::string damping_values__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd4/damping_values"_json_pointer] = damping_values__;
+        }
+        /// Include the three-body dispersion in the calculations
+        inline auto three_body() const
+        {
+            return dict_.at("/dftd4/three_body"_json_pointer).get<bool>();
+        }
+        inline void three_body(bool three_body__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd4/three_body"_json_pointer] = three_body__;
+        }
+        /// parameters controlling the damping.
+        /**
+            Optional parameters that control the damping.
+        */
+        class parameters_t
+        {
+          public:
+            parameters_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            /// Enable custom dampping parameters. All parameters should be specified.
+            inline auto enable() const
+            {
+                return dict_.at("/dftd4/parameters/enable"_json_pointer).get<bool>();
+            }
+            inline void enable(bool enable__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/enable"_json_pointer] = enable__;
+            }
+            /// Scaling of induced dipole-dipole dispersion energy
+            inline auto s6() const
+            {
+                return dict_.at("/dftd4/parameters/s6"_json_pointer).get<double>();
+            }
+            inline void s6(double s6__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/s6"_json_pointer] = s6__;
+            }
+            /// Scaling of induced dipole-quadrupole dispersion energy
+            inline auto s8() const
+            {
+                return dict_.at("/dftd4/parameters/s8"_json_pointer).get<double>();
+            }
+            inline void s8(double s8__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/s8"_json_pointer] = s8__;
+            }
+            /// Scaling of induced dipole-quadrupole dispersion energy
+            inline auto s9() const
+            {
+                return dict_.at("/dftd4/parameters/s9"_json_pointer).get<double>();
+            }
+            inline void s9(double s9__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/s9"_json_pointer] = s9__;
+            }
+            /// Range-separation parameter for induced dipole-dipole dispersion energy
+            inline auto rs6() const
+            {
+                return dict_.at("/dftd4/parameters/rs6"_json_pointer).get<double>();
+            }
+            inline void rs6(double rs6__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/rs6"_json_pointer] = rs6__;
+            }
+            /// Range-separation parameter for induced dipole-quadrupole dispersion energy
+            inline auto rs8() const
+            {
+                return dict_.at("/dftd4/parameters/rs8"_json_pointer).get<double>();
+            }
+            inline void rs8(double rs8__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/rs8"_json_pointer] = rs8__;
+            }
+            /// Scaling of atom specific critical radii
+            inline auto a1() const
+            {
+                return dict_.at("/dftd4/parameters/a1"_json_pointer).get<double>();
+            }
+            inline void a1(double a1__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/a1"_json_pointer] = a1__;
+            }
+            /// Constant offset of critical radii
+            inline auto a2() const
+            {
+                return dict_.at("/dftd4/parameters/a2"_json_pointer).get<double>();
+            }
+            inline void a2(double a2__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/a2"_json_pointer] = a2__;
+            }
+            /// Exponent for the zero damping function
+            inline auto alp() const
+            {
+                return dict_.at("/dftd4/parameters/alp"_json_pointer).get<double>();
+            }
+            inline void alp(double alp__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/alp"_json_pointer] = alp__;
+            }
+            /// Exponent for the rational damping function
+            inline auto bet() const
+            {
+                return dict_.at("/dftd4/parameters/bet"_json_pointer).get<double>();
+            }
+            inline void bet(double bet__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd4/parameters/bet"_json_pointer] = bet__;
+            }
+          private:
+            nlohmann::json& dict_;
+        };
+        inline auto const& parameters() const {return parameters_;}
+        inline auto& parameters() {return parameters_;}
+      private:
+        nlohmann::json& dict_;
+        parameters_t parameters_{dict_};
+    };
+    inline auto const& dftd4() const {return dftd4_;}
+    inline auto& dftd4() {return dftd4_;}
+    /// parameters controlling the dft-d3 correction
+    /**
+        Consult the documentation of the simple-dftd3 library for more details
+    */
+    class dftd3_t
+    {
+      public:
+        dftd3_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Include the three-body dispersion in the calculations
+        inline auto three_body() const
+        {
+            return dict_.at("/dftd3/three_body"_json_pointer).get<bool>();
+        }
+        inline void three_body(bool three_body__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd3/three_body"_json_pointer] = three_body__;
+        }
+        /// name of the xc functional that determinates the default parameters. It should match the XC functional from libxc
+        inline auto method() const
+        {
+            return dict_.at("/dftd3/method"_json_pointer).get<std::string>();
+        }
+        inline void method(std::string method__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd3/method"_json_pointer] = method__;
+        }
+        /// Control the damping term of the correction D4 and all parameters associated to the correction
+        inline auto damping() const
+        {
+            return dict_.at("/dftd3/damping"_json_pointer).get<std::string>();
+        }
+        inline void damping(std::string damping__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd3/damping"_json_pointer] = damping__;
+        }
+        /// Use the default values for the damping term if set to auto. If set to manual then the parameters section should be included
+        inline auto damping_values() const
+        {
+            return dict_.at("/dftd3/damping_values"_json_pointer).get<std::string>();
+        }
+        inline void damping_values(std::string damping_values__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/dftd3/damping_values"_json_pointer] = damping_values__;
+        }
+        /// parameters controlling the damping.
+        /**
+            Optional parameters that control the damping. They are preset by the library if the damping option is not given
+        */
+        class parameters_t
+        {
+          public:
+            parameters_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            /// Scaling of induced dipole-dipole dispersion energy
+            inline auto s6() const
+            {
+                return dict_.at("/dftd3/parameters/s6"_json_pointer).get<double>();
+            }
+            inline void s6(double s6__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/s6"_json_pointer] = s6__;
+            }
+            /// Scaling of induced dipole-quadrupole dispersion energy
+            inline auto s8() const
+            {
+                return dict_.at("/dftd3/parameters/s8"_json_pointer).get<double>();
+            }
+            inline void s8(double s8__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/s8"_json_pointer] = s8__;
+            }
+            /// Scaling of induced dipole-quadrupole dispersion energy
+            inline auto s9() const
+            {
+                return dict_.at("/dftd3/parameters/s9"_json_pointer).get<double>();
+            }
+            inline void s9(double s9__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/s9"_json_pointer] = s9__;
+            }
+            /// Range-separation parameter for induced dipole-dipole dispersion energy
+            inline auto rs6() const
+            {
+                return dict_.at("/dftd3/parameters/rs6"_json_pointer).get<double>();
+            }
+            inline void rs6(double rs6__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/rs6"_json_pointer] = rs6__;
+            }
+            /// Range-separation parameter for induced dipole-quadrupole dispersion energy
+            inline auto rs8() const
+            {
+                return dict_.at("/dftd3/parameters/rs8"_json_pointer).get<double>();
+            }
+            inline void rs8(double rs8__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/rs8"_json_pointer] = rs8__;
+            }
+            /// Scaling of atom specific critical radii
+            inline auto a1() const
+            {
+                return dict_.at("/dftd3/parameters/a1"_json_pointer).get<double>();
+            }
+            inline void a1(double a1__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/a1"_json_pointer] = a1__;
+            }
+            /// Constant offset of critical radii
+            inline auto a2() const
+            {
+                return dict_.at("/dftd3/parameters/a2"_json_pointer).get<double>();
+            }
+            inline void a2(double a2__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/a2"_json_pointer] = a2__;
+            }
+            /// Exponent for the zero damping function
+            inline auto alp() const
+            {
+                return dict_.at("/dftd3/parameters/alp"_json_pointer).get<double>();
+            }
+            inline void alp(double alp__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/alp"_json_pointer] = alp__;
+            }
+            /// Exponent for the rational damping function
+            inline auto beta() const
+            {
+                return dict_.at("/dftd3/parameters/beta"_json_pointer).get<double>();
+            }
+            inline void beta(double beta__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/dftd3/parameters/beta"_json_pointer] = beta__;
+            }
+          private:
+            nlohmann::json& dict_;
+        };
+        inline auto const& parameters() const {return parameters_;}
+        inline auto& parameters() {return parameters_;}
+      private:
+        nlohmann::json& dict_;
+        parameters_t parameters_{dict_};
+    };
+    inline auto const& dftd3() const {return dftd3_;}
+    inline auto& dftd3() {return dftd3_;}
     /// Hubbard U correction
     class hubbard_t
     {
@@ -2064,6 +2478,8 @@ class config_t
     parameters_t parameters_{dict_};
     nlcg_t nlcg_{dict_};
     vcsqnm_t vcsqnm_{dict_};
+    dftd4_t dftd4_{dict_};
+    dftd3_t dftd3_{dict_};
     hubbard_t hubbard_{dict_};
   protected:
     nlohmann::json dict_;

@@ -691,13 +691,19 @@ Simulation_context::print_info(std::ostream& out__) const
         int i{1};
         os << std::endl << "XC functionals" << std::endl << hbar(14, '=') << std::endl;
         for (auto& xc_label : xc_functionals()) {
-            XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
 #if defined(SIRIUS_USE_VDWXC)
-            if (xc.is_vdw()) {
-                os << "Van der Walls functional" << std::endl << xc.refs() << std::endl;
+            bool test = (xc_label == "XC_FUNC_VDWDF");
+            test      = test || (xc_label == "XC_FUNC_VDWDF2");
+            test      = test || (xc_label == "XC_FUNC_VDWDFCX");
+
+            if (test) {
+                os << "Van der Walls functional:" << xc_label << " ";
+                os << "A. H. Larsen, et al, ";
+                os << "Modelling Simul. Mater. Sci. Eng. 25, 065004 (2017) (10.1088/1361-651X/aa7320)\n" << std::endl;
                 continue;
             }
 #endif
+            XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
             os << i << ") " << xc_label << " : " << xc.name() << std::endl << xc.refs() << std::endl;
             i++;
         }

@@ -22,6 +22,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     version("develop", branch="develop")
     version("master", branch="master")
 
+    version("7.7.1", sha256="6039c84197d9e719e826f98b840cff19bc513887b443f97c0099d3c8b908efed")
     version("7.7.0", sha256="be0bdc76db9eb8afdcb950f0ccaf7535b8e85d72a4232dc92246f54fa68d9d7b")
     version("7.6.2", sha256="1ba92942aa39b49771677cc8bf1c94a0b4350eb45bf3009318a6c2350b46a276")
     version("7.6.1", sha256="16a114dc17e28697750585820e69718a96e6929f88406d266c75cf9a7cdbdaaa")
@@ -59,6 +60,9 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
+    variant("dftd3", default=False, description="Enable dft-d3 corection", when="@7.7.2:")
+    variant("dftd4", default=False, description="Enable dft-d4 corection", when="@7.7.2:")
+
     with when("+cuda"):
         variant("nvtx", default=False, description="Use NVTX profiler")
 
@@ -87,6 +91,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("spglib")
     depends_on("hdf5+hl")
     depends_on("pkgconfig", type="build")
+    depends_on("simple-dftd3", when="+dftd3")
+    depends_on("dftd4", when="+dftd4")
 
     # Python module
     depends_on("python", when="+python", type=("build", "run"))
@@ -211,6 +217,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
             self.define_from_variant(cm_label + "USE_NVTX", "nvtx"),
             self.define_from_variant(cm_label + "USE_WANNIER90", "wannier90"),
             self.define_from_variant(cm_label + "USE_PUGIXML", "pugixml"),
+            self.define_from_variant(cm_label + "USE_DFTD3", "dftd3"),
+            self.define_from_variant(cm_label + "USE_DFTD4", "dftd4"),
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant("BUILD_TESTING", "tests"),
         ]
