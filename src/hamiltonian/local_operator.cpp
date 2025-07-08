@@ -201,6 +201,7 @@ static inline void
 mul_by_veff(fft::spfft_transform_type<T>& spfftk__, T const* in__,
             std::array<std::unique_ptr<Smooth_periodic_function<T>>, 6> const& veff_vec__, int idx_veff__, T* out__)
 {
+    PROFILE("sirius::Local_operator::apply_h::mul_by_veff");
     int nr = spfftk__.local_slice_size();
 
     switch (spfftk__.processing_unit()) {
@@ -324,6 +325,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
 
     /* transform function to PW domain */
     auto vphi_to_G = [&]() {
+        PROFILE("sirius::Local_operator::apply_h::vphi_to_G");
         spfftk__.forward(spfft_pu, reinterpret_cast<T*>(vphi_.at(spfft_mem)), SPFFT_FULL_SCALING);
     };
 
@@ -332,6 +334,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
         - first bit: spin component which is updated
         - second bit: add or not kinetic energy term */
     auto add_to_hphi = [&](int ispn_block, wf::band_index i) {
+        PROFILE("sirius::Local_operator::apply_h::add_to_hphi");
         /* index of spin component */
         int ispn = ispn_block & 1;
         /* add kinetic energy if this is a diagonal block */
