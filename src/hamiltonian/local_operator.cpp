@@ -319,6 +319,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
 
     /* transform wave-function to real space; the result of the transformation is stored in the FFT buffer */
     auto phi_to_r = [&](wf::spin_index ispn, wf::band_index i) {
+        PROFILE("sirius::Local_operator::apply_h::phi_to_r");
         auto phi_mem = phi_fft[ispn.get()].on_device() ? memory_t::device : memory_t::host;
         spfftk__.backward(phi_fft[ispn.get()].pw_coeffs_spfft(phi_mem, i), spfft_pu);
     };
