@@ -199,6 +199,8 @@ Force::calc_forces_total(bool add_scf_corr)
     forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
 
     calc_forces_dftd3();
+    calc_forces_dftd4();
+
     if (ctx_.full_potential()) {
         calc_forces_rho();
         calc_forces_hf();
@@ -226,11 +228,11 @@ Force::calc_forces_total(bool add_scf_corr)
                 if (add_scf_corr) {
                     forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
                                            forces_core_(x, ia) + forces_ewald_(x, ia) + forces_scf_corr_(x, ia) +
-                                           forces_hubbard_(x, ia) + forces_dftd3_(x, ia);
+                                           forces_hubbard_(x, ia) + forces_dftd3_(x, ia) + forces_dftd4_(x, ia);
                 } else {
                     forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
                                            forces_core_(x, ia) + forces_ewald_(x, ia) + forces_hubbard_(x, ia) +
-                                           forces_dftd3_(x, ia);
+                                           forces_dftd3_(x, ia) + forces_dftd4_(x, ia);
                 }
             }
         }

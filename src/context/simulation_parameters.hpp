@@ -503,6 +503,12 @@ class Simulation_parameters
         return cfg().parameters().xc_functionals();
     }
 
+    std::vector<double>
+    xc_functionals_weight() const
+    {
+        return cfg().parameters().xc_functionals_weight();
+    }
+
     /// Get the name of the standard eigen-value solver to use.
     std::string
     std_evp_solver_name() const

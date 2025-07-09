@@ -117,6 +117,14 @@ class Stress
 
     r3::matrix<double> stress_dftd4_;
 
+    r3::matrix<double> stress_vdw_total_;
+
+    r3::matrix<double> stress_vdw_kernel_;
+
+    r3::matrix<double> stress_vdw_gradient_;
+
+    r3::matrix<double> stress_vdw_potential_;
+
     /// Non-local contribution to stress.
     /** Energy contribution from the non-local part of pseudopotential:
      *  \f[

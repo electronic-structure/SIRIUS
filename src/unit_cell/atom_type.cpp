@@ -223,8 +223,8 @@ Atom_type::init()
     if (parameters_.full_potential()) {
         init_free_atom_density(false);
         free_atom_potential_spline_ = Spline<double>(free_atom_radial_grid_);
-        XC_functional_base Ex("XC_LDA_X", 1);
-        XC_functional_base Ec("XC_LDA_C_VWN", 1);
+        XC_functional_base Ex("XC_LDA_X", 1.0, 1);
+        XC_functional_base Ec("XC_LDA_C_VWN", 1.0, 1);
         std::vector<double> g1, g2;
         /* compute Hartree potential */
         free_atom_density_spline_.integrate(g2, 2);

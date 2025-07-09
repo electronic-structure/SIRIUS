@@ -23,7 +23,7 @@ namespace sirius {
 
 template <bool add_pseudo_core__>
 void
-Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
+Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__, const bool calculate_stress__)
 {
     PROFILE("sirius::Potential::xc_rg_nonmagnetic");
 
@@ -98,24 +98,34 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
     mdarray<double, 1> exc({num_points}, mdarray_label("exc_tmp"));
     mdarray<double, 1> vxc({num_points}, mdarray_label("vxc_tmp"));
 
+#if defined(SIRIUS_USE_VDWXC)
+    std::array<double, 9> stress_kernel;
+    std::fill(stress_kernel.begin(), stress_kernel.end(), 0.0);
+#endif
+
+    vdw_energy_ = 0.0;
     /* loop over XC functionals */
     for (auto& ixc : xc_func_) {
         PROFILE_START("sirius::Potential::xc_rg_nonmagnetic|libxc");
         if (ixc.is_vdw()) {
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
+
+            /* Energy and stress tensors are returned after mpi_allreduce */
             if (num_points) {
                 /* Van der Walls correction */
-                ixc.get_vdw(&rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(memory_t::host), &vsigma.value(0),
-                            exc.at(memory_t::host));
+                ixc.get_vdw(calculate_stress__, &rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(memory_t::host),
+                            &vsigma.value(0), &vdw_energy_, stress_kernel);
+                vdw_energy_ *= ixc.weight();
             } else {
-                ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr);
+                ixc.get_vdw(calculate_stress__, nullptr, nullptr, nullptr, nullptr, &vdw_energy_, stress_kernel);
             }
 #else
             RTE_THROW("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
 #endif
         } else {
-            if (num_points) {
+            // when we evaluate the stress tensor for vdw functionals we do not need to calculate the other functionals contributions
+            if (num_points && !calculate_stress__) {
                 #pragma omp parallel
                 {
                     /* split local size between threads */
@@ -134,56 +144,130 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
                                     exc.at(memory_t::host, spl_t.global_offset()));
                     }
                 } // omp parallel region
-            } // num_points != 0
-        }
-        PROFILE_STOP("sirius::Potential::xc_rg_nonmagnetic|libxc");
-        if (ixc.is_gga()) { /* generic for gga and vdw */
-            #pragma omp parallel for
-            for (int ir = 0; ir < num_points; ir++) {
-                /* save for future reuse in XC stress calculation */
-                vsigma_[0]->value(ir) += vsigma.value(ir);
             }
+        } // num_points != 0
 
-            if (use_lapl__) {
-                /* generate pw coeffs of the laplacian */
-                auto lapl_rho = to_rg(laplacian(rho));
+        PROFILE_STOP("sirius::Potential::xc_rg_nonmagnetic|libxc");
+        if (ixc.is_gga() || ixc.is_vdw()) { /* generic for gga and vdw */
 
-                /* forward transform vsigma to plane-wave domain */
-                vsigma.fft_transform(-1);
-
-                /* gradient of vsigma in plane-wave domain */
-                auto grad_vsigma = to_rg(gradient(vsigma));
-
-                /* compute scalar product of two gradients */
-                auto grad_vsigma_grad_rho = dot(grad_vsigma, grad_rho);
-
-                /* add remaining term to Vxc */
+            if (!calculate_stress__) {
                 #pragma omp parallel for
                 for (int ir = 0; ir < num_points; ir++) {
-                    vxc(ir) -= 2 * (vsigma.value(ir) * lapl_rho.value(ir) + grad_vsigma_grad_rho.value(ir));
+                    /* save for future reuse in XC stress calculation */
+                    vsigma_[0]->value(ir) += // ixc.weight() *
+                            vsigma.value(ir);
                 }
-            } else {
-                Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.spfft<double>(), gvp);
+            }
 
-                for (int x : {0, 1, 2}) {
+            // When calculating the stress tensor, the only functional we need
+            // to calculate is the vdw functional contribution. We can skip this
+            // step for all other functionals. Techincally speaking this step is
+            // not needed if we do not want to know what is the potential
+            // contribution of vdw to the stress tensor
+
+            if ((!calculate_stress__) || (calculate_stress__ && ixc.is_vdw())) {
+                if (use_lapl__) {
+                    /* generate pw coeffs of the laplacian */
+                    auto lapl_rho = to_rg(laplacian(rho));
+
+                    /* forward transform vsigma to plane-wave domain */
+                    vsigma.fft_transform(-1);
+
+                    /* gradient of vsigma in plane-wave domain */
+                    auto grad_vsigma = to_rg(gradient(vsigma));
+
+                    /* compute scalar product of two gradients */
+                    auto grad_vsigma_grad_rho = dot(grad_vsigma, grad_rho);
+
+                    /* add remaining term to Vxc */
+                    #pragma omp parallel for
                     for (int ir = 0; ir < num_points; ir++) {
-                        vsigma_grad_rho[x].value(ir) = grad_rho[x].value(ir) * vsigma.value(ir);
+                        vxc(ir) -= 2 * (vsigma.value(ir) * lapl_rho.value(ir) + grad_vsigma_grad_rho.value(ir));
                     }
-                    /* transform to plane wave domain */
-                    vsigma_grad_rho[x].fft_transform(-1);
-                }
-                auto div_vsigma_grad_rho = to_rg(divergence(vsigma_grad_rho));
-                for (int ir = 0; ir < num_points; ir++) {
-                    vxc(ir) -= 2 * div_vsigma_grad_rho.value(ir);
+                } else {
+                    Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.spfft<double>(), gvp);
+
+                    for (int x : {0, 1, 2}) {
+                        for (int ir = 0; ir < num_points; ir++) {
+                            vsigma_grad_rho[x].value(ir) = grad_rho[x].value(ir) * vsigma.value(ir);
+                        }
+                        /* transform to plane wave domain */
+                        vsigma_grad_rho[x].fft_transform(-1);
+                    }
+                    auto div_vsigma_grad_rho = to_rg(divergence(vsigma_grad_rho));
+                    #pragma omp parallel for
+                    for (int ir = 0; ir < num_points; ir++) {
+                        vxc(ir) -= 2 * div_vsigma_grad_rho.value(ir);
+                    }
                 }
             }
         }
 
-        #pragma omp parallel for
-        for (int ir = 0; ir < num_points; ir++) {
-            xc_energy_density_->rg().value(ir) += exc(ir);
-            xc_potential_->rg().value(ir) += vxc(ir);
+        // We only update the potential when we do not compute the stress tensor.
+        if (!calculate_stress__) {
+            // vdw correction has no energy density. It only return the energy for a given density
+            if (!ixc.is_vdw()) {
+                #pragma omp parallel for
+                for (int ir = 0; ir < num_points; ir++) {
+                    xc_energy_density_->rg().value(ir) += ixc.weight() * exc(ir);
+                }
+            }
+
+            #pragma omp parallel for
+            for (int ir = 0; ir < num_points; ir++) {
+                xc_potential_->rg().value(ir) += ixc.weight() * vxc(ir);
+            }
         }
+
+#if defined(SIRIUS_USE_VDWXC)
+        // Compute the kernel contribution to the stress tensor. We must remove
+        // $E_{nl}^c$ because the library already includes it and SIRIUS
+        // computes $\int E_{nl}^c - v d^3 r$.
+
+        if (ixc.is_vdw() && calculate_stress__) {
+            /*
+            It is the only important contribution for vdw stress tensor that is
+             calculated by libvdwxc. The others contributions are only for
+             printing information and are calculated in stress.cpp
+          */
+
+            ixc.vdw_calculate_stress_kernel(vdw_energy_, ctx_.unit_cell().omega(), stress_kernel, vdw_stress_kernel_);
+
+            double stress_vdwxc_pot = 0.0;
+
+            #pragma omp parallel for
+            for (int ir = 0; ir < num_points; ir++) {
+                stress_vdwxc_pot += vxc(ir) * rho.value(ir);
+            }
+
+            auto comm = mpi::Communicator(this->comm_);
+            comm.allreduce<double, mpi::op_t::sum>(&stress_vdwxc_pot, 1);
+            stress_vdwxc_pot *= 1.0 / (double)ctx_.fft_grid().num_points();
+
+            ixc.vdw_calculate_stress_potential(vdw_energy_, stress_vdwxc_pot, ctx_.unit_cell().omega(),
+                                               vdw_stress_potential_);
+
+            /* Compute the contribution coming from $\nabla n$. Common to all
+             GGA and non local. only for debugging/output information purpose */
+
+            std::array<double, 9> stress_gradient;
+            std::fill(stress_gradient.begin(), stress_gradient.end(), 0.0);
+
+            for (int nu = 0; nu < 3; nu++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    double stress_cumulative = 0.0;
+                    for (int iv = 0; iv < num_points; iv++) {
+                        stress_cumulative += vsigma.value(iv) * grad_rho[mu].value(iv) * grad_rho[nu].value(iv);
+                    }
+                    stress_gradient[nu * 3 + mu] = stress_cumulative / (double)ctx_.fft_grid().num_points();
+                }
+            }
+
+            comm.allreduce<double, mpi::op_t::sum>(stress_gradient.data(), 9);
+
+            ixc.vdw_calculate_stress_gradient(stress_gradient, vdw_stress_gradient_);
+        }
+#endif
     } // for loop over xc functionals
 
     if (env::print_checksum()) {
@@ -194,7 +278,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__)
 
 template <bool add_pseudo_core__>
 void
-Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
+Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__, const bool calculate_stress__)
 {
     PROFILE("sirius::Potential::xc_rg_magnetic");
 
@@ -254,33 +338,40 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
         vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
-        for (int i = 0; i < 3; i++) {
-            vsigma_[i]->zero();
+
+        if (!calculate_stress__) {
+            for (int i = 0; i < 3; i++) {
+                vsigma_[i]->zero();
+            }
         }
     }
 
     mdarray<double, 1> exc({num_points}, mdarray_label("exc_tmp"));
     mdarray<double, 1> vxc_up({num_points}, mdarray_label("vxc_up_tmp"));
     mdarray<double, 1> vxc_dn({num_points}, mdarray_label("vxc_dn_dmp"));
+    std::array<double, 9> stress_kernel;
 
     /* loop over XC functionals */
     for (auto& ixc : xc_func_) {
         PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
+
         if (ixc.is_vdw()) {
 #if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
-                ixc.get_vdw(&rho_up.value(0), &rho_dn.value(0), &grad_rho_up_grad_rho_up.value(0),
+                ixc.get_vdw(calculate_stress__, &rho_up.value(0), &rho_dn.value(0), &grad_rho_up_grad_rho_up.value(0),
                             &grad_rho_dn_grad_rho_dn.value(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
-                            &vsigma_uu.value(0), &vsigma_dd.value(0), exc.at(memory_t::host));
+                            &vsigma_uu.value(0), &vsigma_dd.value(0), &vdw_energy_, stress_kernel);
             } else {
-                ixc.get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                ixc.get_vdw(calculate_stress__, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                            &vdw_energy_, stress_kernel);
             }
+            vdw_energy_ *= ixc.weight();
 #else
             RTE_THROW("You should not be there since sirius is not compiled with libVDWXC\n");
 #endif
         } else {
-            if (num_points) {
+            if (num_points && !calculate_stress__) {
                 #pragma omp parallel
                 {
                     /* split local size between threads */
@@ -309,8 +400,11 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
                 } // omp parallel region
             } // num_points != 0
         }
+
         PROFILE_STOP("sirius::Potential::xc_rg_magnetic|libxc");
-        if (ixc.is_gga()) {
+        if (ixc.is_gga() || ixc.is_vdw()) {
+            // We only update the potential when we do not compute the stress tensor.
+            //if (!calculate_stress__ || (calculate_stress__ && ixc.is_vdw())) {
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
@@ -373,32 +467,93 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__)
                     vxc_dn(ir) -= div_dn_gradrho_vsigma.value(ir);
                 }
             }
-        }
+        } // GGA or VDW functional
 
-        #pragma omp parallel for
-        for (int irloc = 0; irloc < num_points; irloc++) {
-            /* add XC energy density */
-            xc_energy_density_->rg().value(irloc) += exc(irloc);
-            /* add XC potential */
-            xc_potential_->rg().value(irloc) += 0.5 * (vxc_up(irloc) + vxc_dn(irloc));
+        // We can avoid these calculations when we compute the stress tensor
+        if (!calculate_stress__) {
 
-            double bxc = 0.5 * (vxc_up(irloc) - vxc_dn(irloc));
-
-            /* get the sign between mag and B */
-            auto s = sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
-
-            r3::vector<double> m;
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                m[j] = density__.mag(j).rg().value(irloc);
+            /* libvdwxc only returns the energy not the energy density. */
+            if (!ixc.is_vdw()) {
+                #pragma omp parallel for
+                for (int irloc = 0; irloc < num_points; irloc++) {
+                    /* add XC energy density */
+                    xc_energy_density_->rg().value(irloc) += ixc.weight() * exc(irloc);
+                }
             }
-            auto m_len = m.length();
 
-            if (m_len > 1e-8) {
+            #pragma omp parallel for
+            for (int irloc = 0; irloc < num_points; irloc++) {
+                /* add XC potential */
+                xc_potential_->rg().value(irloc) += 0.5 * ixc.weight() * (vxc_up(irloc) + vxc_dn(irloc));
+
+                double bxc = 0.5 * ixc.weight() * (vxc_up(irloc) - vxc_dn(irloc));
+
+                /* get the sign between mag and B */
+                auto s = sign((rho_up.value(irloc) - rho_dn.value(irloc)) * bxc);
+
+                r3::vector<double> m;
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    effective_magnetic_field(j).rg().value(irloc) += std::abs(bxc) * s * m[j] / m_len;
+                    m[j] = density__.mag(j).rg().value(irloc);
+                }
+                auto m_len = m.length();
+
+                if (m_len > 1e-8) {
+                    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                        effective_magnetic_field(j).rg().value(irloc) += std::abs(bxc) * s * m[j] / m_len;
+                    }
                 }
             }
         }
+#if defined(SIRIUS_USE_VDWXC)
+        // Compute the kernel contribution to the stress tensor. We must remove
+        // $E_{nl}^c$ because the library already includes it and SIRIUS
+        // computes $\int E_{nl}^c - v d^3 r$.
+
+        if (ixc.is_vdw() && calculate_stress__) {
+            ixc.vdw_calculate_stress_kernel(vdw_energy_, ctx_.unit_cell().omega(), stress_kernel, vdw_stress_kernel_);
+
+            /* Compute 1/\Omega \int E - v d^3 r. vdw_energy_ is negative in
+             * libvdwxc but positive in QE
+             */
+            double stress_vdwxc_pot = 0.0;
+
+            #pragma omp parallel for
+            for (int ir = 0; ir < num_points; ir++) {
+                stress_vdwxc_pot += vxc_up(ir) * rho_up.value(ir);
+                stress_vdwxc_pot += vxc_dn(ir) * rho_dn.value(ir);
+            }
+
+            auto comm = mpi::Communicator(this->comm_);
+            comm.allreduce<double, mpi::op_t::sum>(&stress_vdwxc_pot, 1);
+
+            stress_vdwxc_pot *= 1.0 / (double)ctx_.fft_grid().num_points();
+
+            ixc.vdw_calculate_stress_potential(vdw_energy_, stress_vdwxc_pot, ctx_.unit_cell().omega(),
+                                               vdw_stress_potential_);
+
+            /* Compute the contribution coming from $\nabla n$. Common to all
+                     GGA and non local. only for debugging purpose */
+
+            std::array<double, 9> stress_gradient;
+            std::fill(stress_gradient.begin(), stress_gradient.end(), 0.0);
+
+            for (int nu = 0; nu < 3; nu++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    double stress_cumulative = 0.0;
+                    for (int iv = 0; iv < num_points; iv++) {
+                        stress_cumulative +=
+                                vsigma_uu.value(iv) * grad_rho_up[mu].value(iv) * grad_rho_up[nu].value(iv);
+                        stress_cumulative +=
+                                vsigma_dd.value(iv) * grad_rho_dn[mu].value(iv) * grad_rho_dn[nu].value(iv);
+                    }
+                    stress_gradient[nu * 3 + mu] = -2.0 * stress_cumulative / (double)ctx_.fft_grid().num_points();
+                }
+            }
+
+            comm.allreduce<double, mpi::op_t::sum>(stress_gradient.data(), 9);
+            ixc.vdw_calculate_stress_gradient(stress_gradient, vdw_stress_gradient_);
+        } // vdw stress calculations
+#endif
     } // for loop over XC functionals
 }
 
@@ -425,6 +580,7 @@ Potential::xc(Density const& density__)
     /* zero all fields */
     xc_potential_->zero();
     xc_energy_density_->zero();
+
     for (int i = 0; i < ctx_.num_mag_dims(); i++) {
         effective_magnetic_field(i).zero();
     }
@@ -440,9 +596,9 @@ Potential::xc(Density const& density__)
     }
 
     if (ctx_.num_spins() == 1) {
-        xc_rg_nonmagnetic<add_pseudo_core__>(density__, use_lapl);
+        xc_rg_nonmagnetic<add_pseudo_core__>(density__, use_lapl, false);
     } else {
-        xc_rg_magnetic<add_pseudo_core__>(density__, use_lapl);
+        xc_rg_magnetic<add_pseudo_core__>(density__, use_lapl, false);
     }
 
     if (ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
@@ -459,18 +615,51 @@ Potential::xc(Density const& density__)
     }
 }
 
+template <bool add_pseudo_core__>
+void
+Potential::xc_vdw_stress(Density const& density__)
+{
+    bool has_vdw = false;
+    vdw_stress_kernel_.zero();
+    vdw_stress_potential_.zero();
+    vdw_stress_gradient_.zero();
+    /* loop over XC functionals */
+    for (auto& ixc : xc_func_) {
+        if (ixc.is_vdw()) {
+            has_vdw = true;
+        }
+    }
+
+    auto use_lapl = this->ctx_.cfg().settings().xc_use_lapl();
+
+    /* quick return */
+    if ((xc_func_.size() == 0) || (has_vdw == false)) {
+        return;
+    }
+
+    if (ctx_.num_spins() == 1) {
+        xc_rg_nonmagnetic<add_pseudo_core__>(density__, use_lapl, true);
+    } else {
+        xc_rg_magnetic<add_pseudo_core__>(density__, use_lapl, true);
+    }
+}
+
 // explicit instantiation
 template void
-Potential::xc_rg_nonmagnetic<true>(Density const&, bool);
+Potential::xc_rg_nonmagnetic<true>(Density const&, bool, const bool);
 template void
-Potential::xc_rg_nonmagnetic<false>(Density const&, bool);
+Potential::xc_rg_nonmagnetic<false>(Density const&, bool, const bool);
 template void
-Potential::xc_rg_magnetic<true>(Density const&, bool);
+Potential::xc_rg_magnetic<true>(Density const&, bool, const bool);
 template void
-Potential::xc_rg_magnetic<false>(Density const&, bool);
+Potential::xc_rg_magnetic<false>(Density const&, bool, const bool);
 template void
 Potential::xc<true>(Density const&);
 template void
 Potential::xc<false>(Density const&);
+template void
+Potential::xc_vdw_stress<true>(Density const&);
+template void
+Potential::xc_vdw_stress<false>(Density const&);
 
 } // namespace sirius

@@ -123,8 +123,8 @@ dftd4::calculate_energy_forces_stress()
     PROFILE("sirius::Potential::dft_d4");
     // do the actual calculations. It is needed only once since this correction does not depend on the density.
     std::vector<double> forces_tmp(unit_cell_.num_atoms() * 3);
-    std::vector<double> stress_tmp(9);
-    dftd4_get_dispersion(error_, mol_, disp_, param_, &energy_, forces_tmp.data(), stress_tmp.data());
+    std::vector<double> virial_tmp(9);
+    dftd4_get_dispersion(error_, mol_, disp_, param_, &energy_, forces_tmp.data(), virial_tmp.data());
 
     // the library returns the gradients NOT the forces. We need to multiply by -1 to get the forces
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -135,7 +135,7 @@ dftd4::calculate_energy_forces_stress()
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            stress_(i, j) = stress_tmp[3 * i + j];
+            stress_(i, j) = virial_tmp[3 * i + j] / ctx_.unit_cell().omega();
         }
     }
 #endif
