@@ -6,7 +6,6 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <fmt/base.h>
 #include <fmt/format.h>
 #include <limits>
 #include "core/rte/rte.hpp"
