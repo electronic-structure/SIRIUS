@@ -16,6 +16,8 @@
 
 #include "core/memory.hpp"
 #include "density/occupation_matrix.hpp"
+#include "symmetry/crystal_symmetry.hpp"
+#include "symmetry/rotation.hpp"
 
 namespace sirius {
 

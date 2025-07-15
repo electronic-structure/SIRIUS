@@ -14,7 +14,6 @@
 #ifndef __SIMULATION_CONTEXT_HPP__
 #define __SIMULATION_CONTEXT_HPP__
 
-#include <algorithm>
 #include <memory>
 #include <spla/context.hpp>
 #include <spla/spla.hpp>
@@ -28,7 +27,6 @@
 #include "core/system_tools.hpp"
 #include "radial/radial_integrals.hpp"
 #include "density/augmentation_operator.hpp"
-#include "symmetry/rotation.hpp"
 #include "lapw/step_function.hpp"
 
 #ifdef SIRIUS_GPU

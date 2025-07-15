@@ -14,10 +14,14 @@
 #ifndef __MAKE_PERIODIC_FUNCTION_HPP__
 #define __MAKE_PERIODIC_FUNCTION_HPP__
 
+#include <complex>
+#include "unit_cell/unit_cell.hpp"
+#include "core/fft/gvec.hpp"
+
 namespace sirius {
 
-/// Make periodic function out of form factors.
-/** Return vector of plane-wave coefficients */
+// /// Make periodic function out of form factors.
+// /** Return vector of plane-wave coefficients */
 template <bool gvec_local, typename F>
 inline auto
 make_periodic_function(Unit_cell const& uc__, fft::Gvec const& gv__,
