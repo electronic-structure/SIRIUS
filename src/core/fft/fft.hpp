@@ -107,7 +107,7 @@ const std::map<SpfftProcessingUnitType, memory_t> spfft_memory_t = {{SPFFT_PU_HO
 
 template <typename F, typename T, typename... Args>
 using enable_return =
-        typename std::enable_if<std::is_same<typename std::invoke_result_t<F(Args...)>, T>::value, void>::type;
+typename std::enable_if<std::is_same<typename std::invoke_result_t<F, Args...>, T>::value, void>::type;
 
 /// Load data from real-valued lambda.
 template <typename T, typename F>
