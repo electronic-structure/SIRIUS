@@ -1,10 +1,10 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches:
-      - '**'  # all branches
   workflow_dispatch:
+  push:
+    branches-ignore:
+      - '**'
 
 jobs:
   build:
