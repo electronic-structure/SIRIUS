@@ -19,7 +19,6 @@
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 
-
 namespace sirius {
 
 void
