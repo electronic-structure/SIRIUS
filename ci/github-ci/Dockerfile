@@ -47,10 +47,9 @@ RUN spack install openmpi ^gcc
 
 RUN spack install openblas threads=openmp ^gcc
 
-#RUN spack install nlcglib ^openmpi ^openblas threads=openmp ^gcc
-
 #ENV SPEC_GCC_CPU="sirius@develop build_type=Release +python +scalapack +vdwxc +fortran +tests +nlcglib +elpa ^openblas threads=openmp ^openmpi ^spfft+single_precision ^umpire~device_alloc ^gcc"
-#RUN spack install --fail-fast --only=dependencies $SPEC_GCC_CPU
+ENV SPEC_GCC_CPU="sirius@develop build_type=Release +python +scalapack +vdwxc +fortran +tests +elpa ^openblas threads=openmp ^openmpi ^spfft+single_precision ^umpire~device_alloc ^gcc"
+RUN spack install --fail-fast --only=dependencies $SPEC_GCC_CPU
 ##== ##=
 ##== ##= RUN spack clean --all
 ##== ##=
