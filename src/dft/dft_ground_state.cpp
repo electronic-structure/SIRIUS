@@ -12,6 +12,7 @@
  */
 
 #include <iomanip>
+#include <fmt/format.h>
 #include "dft_ground_state.hpp"
 #include "core/profiler.hpp"
 #include "core/rte/rte.hpp"
