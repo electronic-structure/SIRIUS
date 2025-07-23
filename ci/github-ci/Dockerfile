@@ -38,13 +38,14 @@ RUN spack external find --all --scope system --not-buildable bash perl sed gcc l
     tar xz bzip2 cpio cmake gmake make ninja meson autoconf automake \
     binutils findutils diffutils coreutils git curl openssh openssl ncurses
 
-#RUN spack install openmpi ^gcc
-#
+RUN spack install openmpi ^gcc
+
 ###== ##=
 ###== ##= RUN echo $(spack find --format='{prefix.lib}' mpich) > /etc/ld.so.conf.d/mpich.conf
 ###== ##= RUN ldconfig
 ###== ##=
-#RUN spack install openblas threads=openmp ^gcc
+
+RUN spack install openblas threads=openmp ^gcc
 
 #RUN spack install nlcglib ^openmpi ^openblas threads=openmp ^gcc
 
