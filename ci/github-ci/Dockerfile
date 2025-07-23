@@ -12,7 +12,7 @@ RUN apt-get -y upgrade
 # install basic tools
 RUN apt-get install -y gcc g++ gfortran clang libomp-dev git make unzip \
     vim wget pkg-config curl tcl m4 cpio automake autoconf apt-transport-https \
-    ca-certificates gnupg software-properties-common patchelf meson \
+    ca-certificates gnupg software-properties-common patchelf \
     file libssl-dev cmake
 
 # install CMake
@@ -35,7 +35,7 @@ RUN spack config --scope system add packages:all:target:[x86_64]
 RUN spack compiler find --scope system
 
 RUN spack external find --all --scope system --not-buildable bash perl sed gcc llvm llvm-doe m4 \
-    tar xz bzip2 cpio cmake gmake make ninja meson autoconf automake \
+    tar xz bzip2 cpio cmake gmake make ninja autoconf automake \
     binutils findutils diffutils coreutils git curl openssh openssl ncurses
 
 RUN spack install openmpi ^gcc
