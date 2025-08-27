@@ -1,9 +1,7 @@
 gcc-env:
-  compiler:
-      - toolchain: gcc
-        spec: gcc
+  compiler: [gcc]
   mpi:
-      spec: cray-mpich@8.1.30
+      spec: cray-mpich@8.1.32
       gpu: cuda
   unify: when_possible
   specs:
