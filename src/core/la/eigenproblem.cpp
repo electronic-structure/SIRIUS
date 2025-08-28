@@ -104,8 +104,8 @@ Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<double
 
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_generalized_eigenvectors_d(handle, A__.at(memory_t::host), B__.at(memory_t::host), w.get(),
-                                    Z__.at(memory_t::host), 0, &error);
+    elpa_generalized_eigenvectors(handle, A__.at(memory_t::host), B__.at(memory_t::host), w.get(),
+                                  Z__.at(memory_t::host), 0, &error);
 
     if (error != ELPA_OK) {
         elpa_deallocate(handle, &error);
@@ -168,8 +168,8 @@ Eigensolver_elpa::solve(ftn_int matrix_size__, ftn_int nev__, la::dmatrix<std::c
 
     auto w = mph.get_unique_ptr<double>(matrix_size__);
 
-    elpa_generalized_eigenvectors_dc(handle, A__.at(memory_t::host), B__.at(memory_t::host), w.get(),
-                                     Z__.at(memory_t::host), 0, &error);
+    elpa_generalized_eigenvectors(handle, A__.at(memory_t::host), B__.at(memory_t::host), w.get(),
+                                  Z__.at(memory_t::host), 0, &error);
 
     if (error != ELPA_OK) {
         elpa_deallocate(handle, &error);
