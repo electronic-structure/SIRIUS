@@ -303,10 +303,6 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
                         [self.define("ENABLE_BLACS", "On"), self.define("ENABLE_SCALAPACK", "On")]
                     )
 
-        if "+elpa" in spec:
-            elpa_incdir = os.path.join(spec["elpa"].headers.directories[0], "elpa")
-            args.append(self.define(cm_label + "ELPA_INCLUDE_DIR", elpa_incdir))
-
         if "+cuda" in spec:
             cuda_arch = spec.variants["cuda_arch"].value
             if cuda_arch[0] != "none":
