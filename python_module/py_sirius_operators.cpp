@@ -6,18 +6,24 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "python_module_includes.hpp"
+// #include "python_module_includes.hpp"
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 #include <string>
 #include <iomanip>
 #include <complex>
 #include <sstream>
 #include <cstdio>
 
+#include "nlcglib/preconditioner/ultrasoft_precond_k.hpp"
+#include "beta_projectors/beta_projectors_base.hpp"
+#include "hamiltonian/hamiltonian.hpp"
+#include "potential/potential.hpp"
+#include "nlcglib/inverse_overlap.hpp"
+
 using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace sirius;
-using json = nlohmann::json;
-using nlohmann::basic_json;
 using complex_double = std::complex<double>;
 
 using PT = double;
