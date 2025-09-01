@@ -6,10 +6,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "k_point/k_point_set.hpp"
-#include "python_module_includes.hpp"
 #include <mpi.h>
-
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 #include "core/fft/gvec.hpp"
 #include "core/wf/wave_functions.hpp"
 #include "magnetization.hpp"
@@ -17,12 +16,12 @@
 #include "make_sirius_comm.hpp"
 #include "dft/smearing.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
-#include <pybind11/attr.h>
 #include <string>
 #include <vector>
-#include <list>
 #include <complex>
 #include <iostream>
+#include <pybind11/operators.h>
+#include "sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
