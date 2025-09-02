@@ -302,10 +302,10 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
 # sirius library
 add_subdirectory(src)
 
-if(SIRIUS_CREATE_PYTHON_MODULE)
-  # Python module
-  add_subdirectory(python_module)
-endif(SIRIUS_CREATE_PYTHON_MODULE)
+# if(SIRIUS_CREATE_PYTHON_MODULE)
+#   # Python module
+#   # add_subdirectory(python_module)
+# endif(SIRIUS_CREATE_PYTHON_MODULE)
 
 # applications
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
