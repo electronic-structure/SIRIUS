@@ -20,9 +20,12 @@ RUN apt-get install -y gcc g++ gfortran clang libomp-dev git make unzip \
 #    tar zxvf cmake.tar.gz --strip-components=1 -C /usr
 
 # get latest version of spack
-RUN git clone https://github.com/spack/spack.git
+RUN git clone -b releases/v1.0 https://github.com/spack/spack.git
 
-RUN spack repo set --destination ~/spack-packages builtin
+
+RUN git clone https://github.com/spack/spack_packages
+RUN git -C spack-packages checkout 9b5cdf0c383c9d67ab7c5f271509566e3d2ac758
+RUN spack repo set --destination ./spack-packages builtin
 
 #COPY ./spack /opt/spack
 #RUN spack repo add --scope system /opt/spack
