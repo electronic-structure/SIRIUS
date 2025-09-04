@@ -1,15 +1,12 @@
 gcc-env:
-  compiler:
-      - toolchain: gcc
-        spec: gcc
-  mpi:
-      spec: cray-mpich@8.1.30
-      gpu: cuda
+  compiler: [gcc]
+  network:
+      mpi: cray-mpich@8.1.32+cuda
   unify: when_possible
   specs:
-  - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack +nlcglib +dftd3 +dftd4
+  - sirius@develop +python +vdwxc +apps +tests +dlaf +scalapack +nlcglib +dftd3 +dftd4
   - sirius@develop +elpa
-  - nlcglib@1.2 +cuda
+  - nlcglib@1.3.0 +cuda
   variants:
   - +mpi
   - +cuda
