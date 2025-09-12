@@ -106,18 +106,22 @@ $ spack build-env $SPEC -- make -j$(nproc)
 
 ### Manual installation
 
-When installing SIRIUS without Spack, make sure to install the required dependencies first:
+When installing SIRIUS without Spack, make sure to install the required dependencies
+first:
 
  * CMake ≥ 3.14
  * C++ compiler with C++17 support
  * MPI (OpenMPI or MPICH)
  * BLAS/LAPACK (OpenBLAS or Intel MKL)
  * [GSL](https://www.gnu.org/software/gsl/) - GNU scientific library
- * [LibXC](https://www.tddft.org/programs/libxc/) - library of exchange-correlation potentials
+ * [LibXC](https://libxc.gitlab.io/) - library of exchange-correlation potentials
  * [HDF5](https://www.hdfgroup.org/solutions/hdf5/)
  * [spglib](https://spglib.github.io/spglib/) - library for finding and handling crystal symmetries
  * [SpFFT](https://github.com/eth-cscs/SpFFT) - domain-specific FFT library
  * [SPLA](https://github.com/eth-cscs/spla) - domain-specific distributed GEMM library
+ * [nlohmann json](https://github.com/nlohmann/json) - json library
+ * [fftw](https://www.fftw.org/) - FFTW
+ * [spglib](https://github.com/spglib/spglib) - C library for finding and handling crystal symmetries
 
 and optionally any of the additional libraries:
  * ScaLAPACK (Intel MKL or netlib scalapack)
