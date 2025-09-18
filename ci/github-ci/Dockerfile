@@ -13,7 +13,7 @@ RUN apt-get -y upgrade
 RUN apt-get install -y gcc g++ gfortran clang libomp-dev git make unzip \
     vim wget pkg-config curl tcl m4 cpio automake autoconf apt-transport-https \
     ca-certificates gnupg software-properties-common patchelf \
-    file libssl-dev cmake meson
+    file libssl-dev cmake
 
 # install CMake
 #RUN wget https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.tar.gz -O cmake.tar.gz && \
@@ -38,8 +38,8 @@ RUN spack config --scope system add packages:all:target:[x86_64]
 RUN spack compiler find --scope system
 
 RUN spack external find --all --scope system --not-buildable bash perl sed gcc llvm llvm-doe m4 \
-    tar xz bzip2 cpio cmake gmake make ninja autoconf automake \
-    binutils findutils diffutils coreutils git curl openssh openssl ncurses meson
+    tar xz bzip2 cpio gmake make autoconf automake \
+    binutils findutils diffutils coreutils git curl openssh openssl ncurses
 
 RUN spack install openmpi ^gcc
 
