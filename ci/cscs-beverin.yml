@@ -14,7 +14,7 @@ stages:
 build base uenv mi300:
   extends: [.uenv-builder-beverin-mi300, .f7t-secrets]
   stage: baseimage
-  timeout: 2h
+  timeout: 5h
   variables:
     UENV_NAME: sirius-mi300
     UENV_RECIPE: ci/sirius-uenv-recipe-mi300/
