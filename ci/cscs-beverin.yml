@@ -32,7 +32,7 @@ build sirius mi300:
   variables:
     SPEC: sirius@develop +rocm +apps +tests +scalapack ~python
     ROCM_ARCH: gfx942
-    REPO: ./ci/sirius-uenv-recipe-mi300/repo
+    REPO: ./ci/sirius-uenv-recipe-mi300/spack_repo/sirius_ci
   script:
     - |
       #
