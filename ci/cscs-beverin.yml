@@ -105,7 +105,6 @@ beverin test gpu band parallel:
 beverin test gpu k-point parallel:
   extends: [.run_tests_beverin]
   variables:
-    SLURM_CONSTRAINT: gpu
     SLURM_NTASKS: 4
     SLURM_GPUS: 4
     SLURM_GPUS_PER_TASK: 1
