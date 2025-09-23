@@ -78,6 +78,7 @@ build sirius mi300:
     OMP_NUM_THREADS: 24
     HSA_ENABLE_SDMA: 0
     SLURM_GPU_BIND: 'closest'
+    MPICH_SMP_SINGLE_COPY_MODE: 'NONE'
 
 beverin test gpu serial:
   extends: [.run_tests_beverin]
