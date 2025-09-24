@@ -10,7 +10,7 @@ jobs:
 
   build_and_test_cpu:
     runs-on: ubuntu-latest
-    container: electronicstructure/sirius
+    container: electronicstructure/sirius:latest
     env:
       DEVSPEC: sirius@develop %gcc +python +memory_pool +tests +apps +dftd3 +dftd4 +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
     steps:
