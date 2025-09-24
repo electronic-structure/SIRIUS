@@ -75,7 +75,7 @@ build sirius mi300:
   variables:
     SLURM_HINT: nomultithread
     SLURM_CPUS_PER_TASK: 24
-    OMP_NUM_THREADS: 8
+    OMP_NUM_THREADS: 1
     OMP_PLACES: cores
     HSA_ENABLE_SDMA: 0
     SLURM_GPU_BIND: 'closest'
