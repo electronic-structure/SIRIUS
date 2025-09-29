@@ -14,6 +14,7 @@
 
 #if defined(SIRIUS_DLAF)
 #include <dlaf_c/init.h>
+#include <dlaf_c/grid.h>
 #endif
 
 namespace sirius {
@@ -341,14 +342,16 @@ Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>
 void
 Eigensolver_dlaf::initialize()
 {
-    const char* pika_argv[] = {"sirius"};
-    const char* dlaf_argv[] = {"sirius"};
-    dlaf_initialize(1, pika_argv, 1, dlaf_argv);
+    // DLA-Future is initialized on-demand at the first use of an eigensolver
 }
 
 void
 Eigensolver_dlaf::finalize()
 {
+    // Free all oustanding DLA-Future grids
+    // DLAF grids are created on-demand at the first use of an eigensolver
+    // and are not freed until this function is called
+    dlaf_free_all_grids();
     dlaf_finalize();
 }
 
