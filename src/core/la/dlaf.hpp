@@ -19,7 +19,7 @@
 #include "core/la/dmatrix.hpp"
 
 #ifdef SIRIUS_DLAF
-#include <dlaf_c/utils.h>
+#include <dlaf_c/grid.h>
 #include <dlaf_c/eigensolver/eigensolver.h>
 #include <dlaf_c/eigensolver/gen_eigensolver.h>
 #endif
@@ -126,6 +126,6 @@ hermitian_generalized_eigensolver(ftn_int matrix_size__, la::dmatrix<T>& A__, la
 
 } // namespace sirius::la::dlaf
 
-#endif // SIRIUS_DLAF
-       //
-#endif // __DLAF_HPP__
+#endif  // SIRIUS_DLAF                                                                                                 \
+        //
+#endif  // __DLAF_HPP__

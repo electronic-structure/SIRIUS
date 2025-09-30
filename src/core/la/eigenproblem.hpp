@@ -1477,7 +1477,7 @@ class Eigensolver_magma : public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
                           Z__.at(memory_t::host, 0, i));
@@ -1530,7 +1530,7 @@ class Eigensolver_magma : public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
                           Z__.at(memory_t::host, 0, i));
@@ -1581,7 +1581,7 @@ class Eigensolver_magma : public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
                           Z__.at(memory_t::host, 0, i));
@@ -1630,7 +1630,7 @@ class Eigensolver_magma : public Eigensolver
 
         if (!info) {
             std::copy(w.get(), w.get() + nev__, eval__);
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < nev__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
                           Z__.at(memory_t::host, 0, i));
