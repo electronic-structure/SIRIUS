@@ -122,9 +122,6 @@ initialize(bool call_mpi_init__ = true)
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::initialize();
 #endif
-#if defined(SIRIUS_DLAF)
-    la::Eigensolver_dlaf::initialize();
-#endif
     /* for the fortran interface to blas/lapack */
     RTE_ASSERT(sizeof(int) == 4);
     RTE_ASSERT(sizeof(double) == 8);

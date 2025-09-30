@@ -149,9 +149,10 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("scalapack", when="+scalapack")
 
     with when("+dlaf"):
+        depends_on("dla-future +scalapack")
+        conflicts("+dlaf ~scalapack")
         depends_on("dla-future@0.3.0:", when="@:7.8.0")
         depends_on("dla-future@0.9.0:")
-        depends_on("dla-future +scalapack", when="+scalapack")
         depends_on("dla-future +cuda", when="+cuda")
         depends_on("dla-future +rocm", when="+rocm")
 
@@ -189,6 +190,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on("elpa+openmp", when="+elpa+openmp")
     depends_on("elpa~openmp", when="+elpa~openmp")
+    conflicts("+elpa ~scalapack")
 
     depends_on("eigen@3.4.0:", when="@7.3.2: +tests")
     depends_on("eigen@3.4.0:", when="@7.7: +vcsqnm")

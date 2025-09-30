@@ -83,6 +83,7 @@ set(_SOURCES
   "core/la/eigenproblem.cpp"
   "core/la/linalg_spla.cpp"
   "core/la/dmatrix.cpp"
+  "core/la/dlaf.cpp"
   "core/memory.cpp"
   )
 

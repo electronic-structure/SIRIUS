@@ -28,10 +28,7 @@
 #endif
 
 #if defined(SIRIUS_DLAF)
-#include <dlaf_c/init.h>
-#include <dlaf_c/grid.h>
-#include <dlaf_c/eigensolver/eigensolver.h>
-#include <dlaf_c/eigensolver/gen_eigensolver.h>
+#include "core/la/dlaf.hpp"
 #endif
 
 namespace sirius {
@@ -1244,8 +1241,6 @@ class Eigensolver_dlaf : public Eigensolver
     }
 
     static void
-    initialize();
-    static void
     finalize();
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -1254,46 +1249,7 @@ class Eigensolver_dlaf : public Eigensolver
     int
     solve_(ftn_int matrix_size__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        // Initialize DLAF on-demand
-        // If DLAF is already initialized this call has no effect
-        const char* pika_argv[] = {"sirius"};
-        const char* dlaf_argv[] = {"sirius"};
-        dlaf_initialize(1, pika_argv, 1, dlaf_argv);
-
-        // Create DLAF grid from the BLACS context
-        // If a grid is already present, this call has no effect
-        int blacs_context = A__.blacs_grid().context();
-        if (blacs_context == -1) {
-            blacs_context = dlaf_create_grid(A__.blacs_grid().comm().native(), A__.blacs_grid().num_ranks_row(),
-                                             A__.blacs_grid().num_ranks_col(), 'R');
-        } else {
-            dlaf_create_grid_from_blacs(blacs_context);
-        }
-
-        DLAF_descriptor desca{
-                matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, static_cast<int>(A__.ld())};
-        DLAF_descriptor descz{
-                matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
-
-        if (std::is_same_v<T, std::complex<double>>) {
-            return dlaf_hermitian_eigensolver_z(blacs_context, 'L',
-                                                reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), desca,
-                                                reinterpret_cast<double*>(eval__),
-                                                reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)), descz);
-        } else if (std::is_same_v<T, std::complex<float>>) {
-            return dlaf_hermitian_eigensolver_c(blacs_context, 'L',
-                                                reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), desca,
-                                                reinterpret_cast<float*>(eval__),
-                                                reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)), descz);
-        } else if (std::is_same_v<T, double>) {
-            return dlaf_symmetric_eigensolver_d(blacs_context, 'L', reinterpret_cast<double*>(A__.at(memory_t::host)),
-                                                desca, reinterpret_cast<double*>(eval__),
-                                                reinterpret_cast<double*>(Z__.at(memory_t::host)), descz);
-        } else if (std::is_same_v<T, float>) {
-            return dlaf_symmetric_eigensolver_s(blacs_context, 'L', reinterpret_cast<float*>(A__.at(memory_t::host)),
-                                                desca, reinterpret_cast<float*>(eval__),
-                                                reinterpret_cast<float*>(Z__.at(memory_t::host)), descz);
-        }
+        return dlaf::hermitian_eigensolver(matrix_size__, A__, eval__, Z__);
     }
 
     /// wrapper for solving a standard eigen-value problem for all eigen-pairs.
@@ -1378,52 +1334,7 @@ class Eigensolver_dlaf : public Eigensolver
     int
     solve_(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
-        // Initialize DLAF on-demand
-        // If DLAF is already initialized this call has no effect
-        const char* pika_argv[] = {"sirius"};
-        const char* dlaf_argv[] = {"sirius"};
-        dlaf_initialize(1, pika_argv, 1, dlaf_argv);
-
-        // Create DLAF grid from the BLACS context
-        // If a grid is already present, this call has no effect
-        int blacs_context = A__.blacs_grid().context();
-        if (blacs_context == -1) {
-            blacs_context = dlaf_create_grid(A__.blacs_grid().comm().native(), A__.blacs_grid().num_ranks_row(),
-                                             A__.blacs_grid().num_ranks_col(), 'R');
-        } else {
-            dlaf_create_grid_from_blacs(blacs_context);
-        }
-
-        DLAF_descriptor desca{
-                matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, 0, 0, static_cast<int>(A__.ld())};
-        DLAF_descriptor descb{
-                matrix_size__, matrix_size__, B__.bs_row(), B__.bs_col(), 0, 0, 0, 0, static_cast<int>(B__.ld())};
-        DLAF_descriptor descz{
-                matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, 0, 0, static_cast<int>(Z__.ld())};
-
-        if (std::is_same_v<T, std::complex<double>>) {
-            return dlaf_hermitian_generalized_eigensolver_z(
-                    blacs_context, 'L', reinterpret_cast<std::complex<double>*>(A__.at(memory_t::host)), desca,
-                    reinterpret_cast<std::complex<double>*>(B__.at(memory_t::host)), descb,
-                    reinterpret_cast<double*>(eval__), reinterpret_cast<std::complex<double>*>(Z__.at(memory_t::host)),
-                    descz);
-        } else if (std::is_same_v<T, std::complex<float>>) {
-            return dlaf_hermitian_generalized_eigensolver_c(
-                    blacs_context, 'L', reinterpret_cast<std::complex<float>*>(A__.at(memory_t::host)), desca,
-                    reinterpret_cast<std::complex<float>*>(B__.at(memory_t::host)), descb,
-                    reinterpret_cast<float*>(eval__), reinterpret_cast<std::complex<float>*>(Z__.at(memory_t::host)),
-                    descz);
-        } else if (std::is_same_v<T, double>) {
-            return dlaf_symmetric_generalized_eigensolver_d(
-                    blacs_context, 'L', reinterpret_cast<double*>(A__.at(memory_t::host)), desca,
-                    reinterpret_cast<double*>(B__.at(memory_t::host)), descb, reinterpret_cast<double*>(eval__),
-                    reinterpret_cast<double*>(Z__.at(memory_t::host)), descz);
-        } else if (std::is_same_v<T, float>) {
-            return dlaf_symmetric_generalized_eigensolver_s(
-                    blacs_context, 'L', reinterpret_cast<float*>(A__.at(memory_t::host)), desca,
-                    reinterpret_cast<float*>(A__.at(memory_t::host)), descb, reinterpret_cast<float*>(eval__),
-                    reinterpret_cast<float*>(Z__.at(memory_t::host)), descz);
-        }
+        return dlaf::hermitian_generalized_eigensolver(matrix_size__, A__, B__, eval__, Z__);
     }
 
     /// wrapper for solving a generalized eigen-value problem for all eigen-pairs.
