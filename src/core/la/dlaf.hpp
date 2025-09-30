@@ -126,6 +126,5 @@ hermitian_generalized_eigensolver(ftn_int matrix_size__, la::dmatrix<T>& A__, la
 
 } // namespace sirius::la::dlaf
 
-#endif  // SIRIUS_DLAF                                                                                                 \
-        //
-#endif  // __DLAF_HPP__
+#endif
+#endif

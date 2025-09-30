@@ -179,15 +179,17 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
         printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
     }
 #endif
+#if defined(SIRIUS_DLAF)
+    // Finalization frees DLA-Future grids
+    // It needs to be called before finalizing MPI
+    la::Eigensolver_dlaf::finalize();
+#endif
     auto rank = mpi::Communicator::world().rank();
     if (call_mpi_fin__) {
         mpi::Communicator::finalize();
     }
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::finalize();
-#endif
-#if defined(SIRIUS_DLAF)
-    la::Eigensolver_dlaf::finalize();
 #endif
     if (acc::num_devices() && reset_device__) {
         acc::reset();
