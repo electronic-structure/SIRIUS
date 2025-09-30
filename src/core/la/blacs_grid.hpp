@@ -19,10 +19,6 @@
 #include "core/rte/rte.hpp"
 #include "linalg_base.hpp"
 
-#ifdef SIRIUS_DLAF
-#include "dlaf_c/grid.h"
-#endif
-
 namespace sirius {
 
 namespace la {
@@ -101,9 +97,6 @@ class BLACS_grid
             linalg_base::free_blacs_handler(blacs_handler_);
 #endif
         }
-#ifdef SIRIUS_DLAF
-        dlaf_free_grid(blacs_context_);
-#endif
     }
 
     inline int
