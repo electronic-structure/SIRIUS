@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius
     env:
-      DEVSPEC: sirius@develop %gcc +python +memory_pool +tests +apps +dftd3 +dftd4 +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
+      DEVSPEC: sirius@develop +python +memory_pool +tests +apps +dftd3 +dftd4 +vdwxc +scalapack +fortran build_type=RelWithDebInfo %gcc ^openblas ^mpich
     steps:
       - uses: actions/checkout@v4
       - name: Configure SIRIUS
