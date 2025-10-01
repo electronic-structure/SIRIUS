@@ -48,7 +48,7 @@ RUN spack -e /sirius-env config add 'packages:all:require:"%[when=%c,cxxfortran]
 RUN spack -e /sirius-env config add packages:all:providers:lapack:[openblas]
 RUN spack -e /sirius-env config add packages:all:providers:mpi:[openmpi]
 RUN spack -e /sirius-env config add packages:openblas:require:[threads=openmp]
-RUN spack -e /sirius-env config add packages:spfft:require:[+single_precision]
+# RUN spack -e /sirius-env config add packages:spfft:require:[+single_precision]
 RUN spack -e /sirius-env config add packages:umpire:require:[~device_alloc]
 RUN spack -e /sirius-env concretize -f
 RUN spack -e /sirius-env install --only=dependencies
