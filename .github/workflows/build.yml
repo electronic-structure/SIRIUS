@@ -11,29 +11,21 @@ jobs:
   build_and_test_cpu:
     runs-on: ubuntu-latest
     container: electronicstructure/sirius:latest
-    env:
-      DEVSPEC: sirius@develop +python +memory_pool +tests +apps +dftd3 +dftd4 +vdwxc +scalapack +fortran build_type=RelWithDebInfo %c,cxx,fortran=gcc ^openblas ^mpich
     steps:
       - uses: actions/checkout@v4
-      - name: Configure SIRIUS
-        run: |
-          spack spec -I $DEVSPEC
-          cd ${GITHUB_WORKSPACE}
-          mkdir build
-          cd build
-          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_DFTD3=1 -DSIRIUS_USE_DFTD4=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DSIRIUS_CREATE_FORTRAN_BINDINGS=1 -DSIRIUS_CREATE_PYTHON_MODULE=1 -DSIRIUS_USE_PUGIXML=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/sirius_install
       - name: Build SIRIUS
         run: |
-          cd ${GITHUB_WORKSPACE}/build
-          spack --color always build-env $DEVSPEC -- make install
+          spack -e /sirius-env develop -p ${GITHUB_WORKSPACE} sirius@develop
+          spack -e /sirius-env concretize -f
+          spack -e /sirius-env install
       - name: Run unit tests
         run: |
-          cd ${GITHUB_WORKSPACE}/build
-          spack --color always build-env $DEVSPEC -- ctest --output-on-failure --label-exclude integration_test
+          cd $(spack -e /sirius-env location -b sirius)
+          spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure --label-exclude integration_test
       - name: Run verification tests
         run: |
-          cd ${GITHUB_WORKSPACE}/build
-          spack --color always build-env $DEVSPEC -- ctest --output-on-failure -L cpu_serial
+          cd $(spack -e /sirius-env location -b sirius)
+          spack -e /sirius-env --color always build-env sirus -- ctest --output-on-failure -L cpu_serial
       - name: Build QE
         run: |
           cd ${GITHUB_WORKSPACE}
@@ -42,25 +34,5 @@ jobs:
           mkdir build
           cd build
           export sirius_DIR=${GITHUB_WORKSPACE}/sirius_install
-          spack --color always build-env $DEVSPEC -- cmake .. -DQE_ENABLE_SIRIUS=1
-          spack --color always build-env $DEVSPEC -- make
-
-          #  build_cuda:
-          #    runs-on: ubuntu-latest
-          #    container: electronicstructure/sirius
-          #    env:
-          #      DEVSPEC: sirius@develop %gcc +python +cuda +tests +apps +dftd3 +dftd4 +vdwxc +scalapack +fortran build_type=RelWithDebInfo ^openblas ^mpich
-          #    steps:
-          #      - uses: actions/checkout@v4
-          #      - name: Configure SIRIUS
-          #        run: |
-          #          spack spec -I $DEVSPEC
-          #          cd ${GITHUB_WORKSPACE}
-          #          mkdir build
-          #          cd build
-          #          spack --color always build-env $DEVSPEC -- cmake .. -DSIRIUS_USE_SCALAPACK=1 -DSIRIUS_USE_CUDA=1 -DSIRIUS_USE_DFTD3=1 -DSIRIUS_USE_DFTD4=1 -DSIRIUS_USE_VDWXC=1 -DBUILD_TESTING=1 -DSIRIUS_CREATE_FORTRAN_BINDINGS=1 -DSIRIUS_CREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          #      - name: Build SIRIUS
-          #        run: |
-          #          cd ${GITHUB_WORKSPACE}/build
-          #          spack --color always build-env $DEVSPEC -- make
-          #
+          spack -e /sirius-env --color always build-env sirius -- cmake .. -DQE_ENABLE_SIRIUS=1
+          spack -e /sirius-env --color always build-env sirius -- make
