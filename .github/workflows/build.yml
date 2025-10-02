@@ -25,7 +25,7 @@ jobs:
       - name: Run verification tests
         run: |
           cd $(spack -e /sirius-env location -b sirius)
-          spack -e /sirius-env --color always build-env sirus -- ctest --output-on-failure -L cpu_serial
+          spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure -L cpu_serial
       - name: Build QE
         run: |
           cd ${GITHUB_WORKSPACE}
