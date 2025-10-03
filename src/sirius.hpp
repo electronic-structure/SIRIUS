@@ -122,9 +122,6 @@ initialize(bool call_mpi_init__ = true)
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::initialize();
 #endif
-#if defined(SIRIUS_DLAF)
-    la::Eigensolver_dlaf::initialize();
-#endif
     /* for the fortran interface to blas/lapack */
     RTE_ASSERT(sizeof(int) == 4);
     RTE_ASSERT(sizeof(double) == 8);
@@ -182,15 +179,17 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
         printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
     }
 #endif
+#if defined(SIRIUS_DLAF)
+    // Finalization frees DLA-Future grids
+    // It needs to be called before finalizing MPI
+    la::Eigensolver_dlaf::finalize();
+#endif
     auto rank = mpi::Communicator::world().rank();
     if (call_mpi_fin__) {
         mpi::Communicator::finalize();
     }
 #if defined(SIRIUS_ELPA)
     la::Eigensolver_elpa::finalize();
-#endif
-#if defined(SIRIUS_DLAF)
-    la::Eigensolver_dlaf::finalize();
 #endif
     if (acc::num_devices() && reset_device__) {
         acc::reset();

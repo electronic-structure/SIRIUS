@@ -13,7 +13,7 @@
 #endif
 
 #if defined(SIRIUS_DLAF)
-#include <dlaf_c/init.h>
+#include "core/la/dlaf.hpp"
 #endif
 
 namespace sirius {
@@ -339,17 +339,9 @@ Eigensolver_elpa::solve(ftn_int matrix_size__, la::dmatrix<std::complex<double>>
 #if defined(SIRIUS_DLAF)
 
 void
-Eigensolver_dlaf::initialize()
-{
-    const char* pika_argv[] = {"sirius"};
-    const char* dlaf_argv[] = {"sirius"};
-    dlaf_initialize(1, pika_argv, 1, dlaf_argv);
-}
-
-void
 Eigensolver_dlaf::finalize()
 {
-    dlaf_finalize();
+    dlaf::finalize();
 }
 
 #endif
