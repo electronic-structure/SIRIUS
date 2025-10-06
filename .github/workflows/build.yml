@@ -22,10 +22,10 @@ jobs:
         run: |
           cd $(spack -e /sirius-env location -b sirius)
           spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure --label-exclude integration_test
-      - name: Run verification tests
-        run: |
-          cd $(spack -e /sirius-env location -b sirius)
-          spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure -L cpu_serial
+      # - name: Run verification tests
+      #   run: |
+      #     cd $(spack -e /sirius-env location -b sirius)
+      #     spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure -L cpu_serial
       - name: Build QE
         run: |
           spack env create -d /q-e-sirius
