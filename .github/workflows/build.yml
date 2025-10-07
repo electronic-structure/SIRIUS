@@ -26,10 +26,19 @@ jobs:
       #   run: |
       #     cd $(spack -e /sirius-env location -b sirius)
       #     spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure -L cpu_serial
+      # - name: Build QE
+      #   run: |
+      #     spack env create -d /q-e-sirius
+      #     spack -e /q-e-sirius add q-e-sirius@=develop-ristretto
+      #     # make sure to resuse previously installed sirius
+      #     spack -e /q-e-sirius config add "packages:sirius:require:[$(spack -e /sirius-env find --format=\"/{hash}\" sirius)]"
+      #     spack -e /q-e-sirius install
       - name: Build QE
         run: |
-          spack env create -d /q-e-sirius
-          spack -e /q-e-sirius add q-e-sirius@=develop-ristretto
-          # make sure to resuse previously installed sirius
-          spack -e /q-e-sirius config add "packages:sirius:require:[$(spack -e /sirius-env find --format=\"/{hash}\" sirius)]"
-          spack -e /q-e-sirius install
+          cd ${GITHUB_WORKSPACE}
+          git clone --depth 1 https://github.com/electronic-structure/q-e-sirius.git
+          cd q-e-sirius
+          mkdir build
+          cd build
+          spack -e /sirius-env --color always build-env sirius -- cmake .. -DQE_ENABLE_SIRIUS=1
+          spack -e /sirius-env --color always build-env sirius -- make
