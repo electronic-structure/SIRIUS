@@ -40,10 +40,12 @@ jobs:
           cd q-e-sirius
           mkdir build
           cd build
-          echo "CMAKE_PREFIX_PATH=$(spack -e /sirius-env --color always build-env sirius -- sh -c 'echo $CMAKE_PREFIX_PATH')"
-          echo "installed packages in /sirius-env"
-          spack -e /sirius-env find -lp
-          find . $(spack -e /sirius-env find --format="{path}" sirius)
-          find . /sirius-env
-          spack -e /sirius-env --color always build-env sirius -- cmake .. -DQE_ENABLE_SIRIUS=1
-          spack -e /sirius-env --color always build-env sirius -- make
+          # echo "installed packages in /sirius-env"
+          # spack -e /sirius-env find -lp
+          # find . $(spack -e /sirius-env find --format="{path}" sirius)
+          # find . /sirius-env
+          eval $(spack -e /sirius-env load --sh sirius)
+          # spack -e /sirius-env --color always build-env sirius -- cmake .. -DQE_ENABLE_SIRIUS=1
+          # spack -e /sirius-env --color always build-env sirius -- make
+          cmake .. -DQE_ENABLE_SIRIUS=1
+          make
