@@ -22,33 +22,25 @@ jobs:
         run: |
           cd $(spack -e /sirius-env location -b sirius)
           spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure --label-exclude integration_test
-      # - name: Run verification tests
-      #   run: |
-      #     cd $(spack -e /sirius-env location -b sirius)
-      #     spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure -L cpu_serial
-      # - name: Build QE
-      #   run: |
-      #     spack env create -d /q-e-sirius
-      #     spack -e /q-e-sirius add q-e-sirius@=develop-ristretto
-      #     # make sure to resuse previously installed sirius
-      #     spack -e /q-e-sirius config add "packages:sirius:require:[$(spack -e /sirius-env find --format=\"/{hash}\" sirius)]"
-      #     spack -e /q-e-sirius install
+      - name: Run verification tests
+        run: |
+          cd $(spack -e /sirius-env location -b sirius)
+          spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure -L cpu_serial
       - name: Build QE
         run: |
-#wget https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.tar.gz -O cmake.tar.gz
-#tar zxvf cmake.tar.gz --strip-components=1 -C /usr
+          spack env create -d /q-e-sirius
+          spack -e /q-e-sirius add q-e-sirius@=develop-ristretto
+          # make sure to resuse previously installed sirius
+          spack -e /q-e-sirius config add "packages:sirius:require:[$(spack -e /sirius-env find --format=\"/{hash}\" sirius)]"
+          spack -e /q-e-sirius install
+      - name: Build QE
+        run: |
           cd ${GITHUB_WORKSPACE}
           git clone --depth 1 https://github.com/electronic-structure/q-e-sirius.git
           cd q-e-sirius
           mkdir build
           cd build
-          # echo "installed packages in /sirius-env"
-          # spack -e /sirius-env find -lp
-          # find . $(spack -e /sirius-env find --format="{path}" sirius)
-          # find . /sirius-env
           eval $(spack -e /sirius-env load --sh cmake)
           eval $(spack -e /sirius-env load --sh sirius)
-          # spack -e /sirius-env --color always build-env sirius -- cmake .. -DQE_ENABLE_SIRIUS=1
-          # spack -e /sirius-env --color always build-env sirius -- make
           cmake .. -DQE_ENABLE_SIRIUS=1
           make
