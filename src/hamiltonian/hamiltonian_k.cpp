@@ -866,6 +866,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
                               acc::stream_id(tid));
         }
+        acc::sync();
         if (is_device_memory(mem)) {
             h_apw_lo__.copy_to(memory_t::host);
         }
