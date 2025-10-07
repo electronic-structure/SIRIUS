@@ -44,6 +44,7 @@ jobs:
           # spack -e /sirius-env find -lp
           # find . $(spack -e /sirius-env find --format="{path}" sirius)
           # find . /sirius-env
+          eval $(spack -e /sirius-env load --sh cmake)
           eval $(spack -e /sirius-env load --sh sirius)
           # spack -e /sirius-env --color always build-env sirius -- cmake .. -DQE_ENABLE_SIRIUS=1
           # spack -e /sirius-env --color always build-env sirius -- make
