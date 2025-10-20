@@ -102,6 +102,8 @@ beverin test gpu band parallel:
     SLURM_CPU_BIND: 'verbose'
     HSA_ENABLE_SDMA: 0
     USE_MPI: 'YES'
+    AMD_LOG_LEVEL: 4
+    GPU_MAX_HW_QUEUES: 1
     TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
 
 beverin test gpu k-point parallel:
