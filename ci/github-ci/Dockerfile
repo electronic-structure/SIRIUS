@@ -23,12 +23,9 @@ RUN apt-get install -y gcc g++ gfortran clang clang-19 lld-19 \
 # get latest version of spack
 RUN git clone -b releases/v1.0 https://github.com/spack/spack.git
 
-
 RUN git clone https://github.com/spack/spack-packages.git
 RUN git -C spack-packages checkout 9b5cdf0c383c9d67ab7c5f271509566e3d2ac758
 RUN spack repo set --destination /spack-packages --scope system builtin
-#COPY ./spack /opt/spack
-#RUN spack repo add --scope system /opt/spack
 
 # set the location of packages built by spack
 RUN spack config --scope system add config:install_tree:root:/opt/local
@@ -45,7 +42,7 @@ RUN spack external find --all --scope system --not-buildable bash perl sed gcc l
 RUN spack env create -d /sirius-env
 RUN spack -e /sirius-env add sirius@develop build_type=Release +python +scalapack +vdwxc +fortran +tests +elpa +dftd3 +dftd4
 RUN spack -e /sirius-env config add packages:all:providers:blas:[openblas]
-RUN spack -e /sirius-env config add 'packages:all:require:"%[when=%c,cxxfortran]c=gcc"'
+RUN spack -e /sirius-env config add 'packages:all:require:"%[when=%c,cxx,fortran]=gcc"'
 RUN spack -e /sirius-env config add packages:all:providers:lapack:[openblas]
 RUN spack -e /sirius-env config add packages:all:providers:mpi:[openmpi]
 RUN spack -e /sirius-env config add packages:openblas:require:[threads=openmp]
@@ -56,13 +53,8 @@ RUN spack -e /sirius-env install --only=dependencies
 
 
 RUN spack env create -d /sirius-env-clang
-RUN spack -e /sirius-env-clang add sirius@develop build_type=Release +tests %c,cxx=clang@19
-RUN spack -e /sirius-env-clang config add packages:all:providers:blas:[openblas]
-RUN spack -e /sirius-env-clang config add 'packages:all:require:"%[when=%c,cxxfortran]c=clang@19"'
-RUN spack -e /sirius-env-clang config add packages:all:providers:lapack:[openblas]
+RUN spack -e /sirius-env-clang add sirius@develop build_type=Release +tests %c,cxx=clang@19 ^openblas threads=none ^spglib~openmp
 RUN spack -e /sirius-env-clang config add packages:all:providers:mpi:[openmpi]
-RUN spack -e /sirius-env-clang config add packages:openblas:require:[threads=openmp]
-# RUN spack -e /sirius-env config add packages:spfft:require:[+single_precision]
 RUN spack -e /sirius-env-clang config add packages:umpire:require:[~device_alloc]
 RUN spack -e /sirius-env-clang concretize -f
 RUN spack -e /sirius-env-clang install --only=dependencies
