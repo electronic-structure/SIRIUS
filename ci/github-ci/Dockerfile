@@ -10,11 +10,13 @@ RUN apt-get -y update && apt-get install -y apt-utils
 RUN apt-get -y upgrade
 
 # install basic tools
-RUN apt-get install -y gcc g++ gfortran clang clang-19 lld-19 libomp-19-dev \
+RUN apt-get install -y gcc g++ gfortran clang clang-19 lld-19 \
     libomp-dev git make unzip \
     vim wget pkg-config curl tcl m4 cpio automake autoconf apt-transport-https \
     ca-certificates gnupg software-properties-common patchelf \
     file libssl-dev lbzip2
+
+RUN apt-get install libomp-19-dev
 
 # install CMake
 #RUN wget https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.tar.gz -O cmake.tar.gz && \
