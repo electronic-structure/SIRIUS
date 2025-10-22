@@ -42,7 +42,7 @@ RUN spack external find --all --scope system --not-buildable bash perl sed gcc l
 RUN spack env create -d /sirius-env
 RUN spack -e /sirius-env add sirius@develop build_type=Release +python +scalapack +vdwxc +fortran +tests +elpa +dftd3 +dftd4
 RUN spack -e /sirius-env config add packages:all:providers:blas:[openblas]
-RUN spack -e /sirius-env config add 'packages:all:require:"%[when=%c,cxx,fortran]=gcc"'
+RUN spack -e /sirius-env config add "packages:all:require:%gcc"
 RUN spack -e /sirius-env config add packages:all:providers:lapack:[openblas]
 RUN spack -e /sirius-env config add packages:all:providers:mpi:[openmpi]
 RUN spack -e /sirius-env config add packages:openblas:require:[threads=openmp]
