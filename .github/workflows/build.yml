@@ -37,3 +37,13 @@ jobs:
           eval $(spack -e /sirius-env load --sh sirius)
           cmake .. -DQE_ENABLE_SIRIUS=1
           make
+  build_and_test_clang:
+    runs-on: ubuntu-latest
+    container: electronicstructure/sirius:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build SIRIUS
+        run: |
+          spack -e /sirius-env-clang develop -p ${GITHUB_WORKSPACE} sirius@develop
+          spack -e /sirius-env-clang concretize -f
+          spack -e /sirius-env-clang install
