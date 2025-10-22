@@ -44,6 +44,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build SIRIUS
         run: |
-          spack -e /sirius-env-clang develop -p ${GITHUB_WORKSPACE} sirius@develop
+          spack -e /sirius-env-clang develop -p ${GITHUB_WORKSPACE} sirius@develop~openmp
           spack -e /sirius-env-clang concretize -f
           spack -e /sirius-env-clang install
