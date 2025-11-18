@@ -89,30 +89,27 @@ Hamiltonian0<T>::~Hamiltonian0()
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, spin_block_t sblock__, int ngv__,
-                                  mdarray<std::complex<T>, 2>& alm__, mdarray<std::complex<T>, 2>& halm__) const
+Hamiltonian0<T>::apply_hmt_to_apw(int ia__, spin_block_t sblock__, int ngv__,
+                                  mdarray<std::complex<T>, 2> const& alm__, mdarray<std::complex<T>, 2>& halm__) const
 {
-    auto& type = atom__.type();
+    auto& type = ctx_.unit_cell().atom(ia__).type();
 
-    // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
-    // available
-    // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-    mdarray<std::complex<T>, 2> hmt({type.mt_aw_basis_size(), type.mt_aw_basis_size()});
+    //mdarray<std::complex<T>, 2> hmt({type.mt_aw_basis_size(), type.mt_aw_basis_size()});
     /* compute the muffin-tin Hamiltonian */
-    for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
-        int lm2    = type.indexb(j2).lm;
-        int idxrf2 = type.indexb(j2).idxrf;
-        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-            int lm1    = type.indexb(j1).lm;
-            int idxrf1 = type.indexb(j1).idxrf;
-            hmt(j1, j2) =
-                    atom__.radial_integrals_sum_L3(sblock__, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-        }
-    }
+    //for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
+    //    int lm2    = type.indexb(j2).lm;
+    //    int idxrf2 = type.indexb(j2).idxrf;
+    //    for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
+    //        int lm1    = type.indexb(j1).lm;
+    //        int idxrf1 = type.indexb(j1).idxrf;
+    //        hmt(j1, j2) =
+    //                atom__.radial_integrals_sum_L3(sblock__, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+    //    }
+    //}
     la::wrap(la::lib_t::blas)
             .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(), hmt.at(memory_t::host),
-                  hmt.ld(), &la::constant<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
+                  &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(), hmt_[ia__].at(memory_t::host),
+                  hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
 }
 
 template <typename T>

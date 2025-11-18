@@ -239,7 +239,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
             kp_.alm_coeffs_loc().template generate<false>(atom, alm);
             if (what & 1) {
-                H0_.apply_hmt_to_apw(atom, spin_block_t::nm, kp_.num_gkvec_loc(), alm, halm);
+                H0_.apply_hmt_to_apw(ia, spin_block_t::nm, kp_.num_gkvec_loc(), alm, halm);
             }
 
             for (int xi = 0; xi < nmt; xi++) {
@@ -426,7 +426,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
 
                 /* can't copy alm to device now as it might be modified by the iora */
 
-                H0_.apply_hmt_to_apw(atom, spin_block_t::nm, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
+                H0_.apply_hmt_to_apw(ia, spin_block_t::nm, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == device_t::GPU) {
                     halm_col_atom.copy_to(memory_t::device, acc::stream_id(tid));
                 }

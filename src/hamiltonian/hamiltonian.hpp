@@ -147,7 +147,7 @@ class Hamiltonian0
      *  \f]
      */
     void
-    apply_hmt_to_apw(Atom const& atom__, spin_block_t sblock__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
+    apply_hmt_to_apw(int ia__, spin_block_t sblock__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
                      mdarray<std::complex<T>, 2>& halm__) const;
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
