@@ -153,8 +153,18 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
                     int lm1    = atom.type().indexb(xi1).lm;
                     int idxrf1 = atom.type().indexb(xi1).idxrf;
 
-                    zm(xi1, xi2, i) = atom.type().gaunt_coefs().sum_L3_gaunt(
-                            lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
+                    //zm(xi1, xi2, i) = atom.type().gaunt_coefs().sum_L3_gaunt(
+                    //        lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
+                    if (ctx_.num_mag_dims() == 1) {
+                        zm(xi1, xi2, i) = atom.template radial_integrals_sum_L3<2>({0, 1}, idxrf1, idxrf2,
+                                                    atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                    }
+                    if (ctx_.num_mag_dims() == 3) {
+                        std::array<std::complex<double>, 4> c({0, 0, 0, 0});
+                        c[i + 1] = 1;
+                        zm(xi1, xi2, i) = atom.template radial_integrals_sum_L3<4>(c, idxrf1, idxrf2,
+                                                    atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                    }
                 }
             }
         }

@@ -458,7 +458,7 @@ class Atom
     radial_integrals_sum_L3(std::array<std::complex<double>, N> c__, int idxrf1__, int idxrf2__,
                             std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
     {
-        static_assert(N == 1 || N == 2 || N == 3, "wrong size of coefficients array");
+        static_assert(N == 1 || N == 2 || N == 4, "wrong size of coefficients array");
 
         auto h_int = [this, idxrf1__, idxrf2__](int lm3) { return this->h_radial_integrals_(lm3, idxrf1__, idxrf2__); };
         auto b_int = [this, idxrf1__, idxrf2__](int lm3, int i) {
@@ -466,67 +466,21 @@ class Atom
         };
         auto f = [h_int, b_int, &c__](auto const& gaunt_l3) {
             if (N == 1) {
-                return c__[0] * gaunt_l3.coef * h_int(gaunt_l3.lm3);
+                return c__[0] * h_int(gaunt_l3.lm3) * gaunt_l3.coef;
             }
             if (N == 2) {
-                return c__[0] * gaunt_l3.coef * h_int(gaunt_l3.lm3) + c__[1] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 0);
+                return (c__[0] * h_int(gaunt_l3.lm3) +
+                        c__[1] * b_int(gaunt_l3.lm3, 0)) * gaunt_l3.coef;
             }
             if (N == 4) {
-                return c__[0] * gaunt_l3.coef * h_int(gaunt_l3.lm3) + c__[1] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 0) +
-                    c__[2] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 1) + c__[3] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 2);
+                return (c__[0] *  h_int(gaunt_l3.lm3) +
+                        c__[1] *  b_int(gaunt_l3.lm3, 0) +
+                        c__[2] *  b_int(gaunt_l3.lm3, 1) +
+                        c__[3] *  b_int(gaunt_l3.lm3, 2)) * gaunt_l3.coef;
             }
         };
 
-
-        ///* just the Hamiltonian */
-        //auto nm = [h_int](const auto& gaunt_l3) { return gaunt_l3.coef * h_int(gaunt_l3.lm3); };
-        ///* h + Bz */
-        //auto uu = [h_int, b_int](const auto& gaunt_l3) {
-        //    return gaunt_l3.coef * (h_int(gaunt_l3.lm3) + b_int(gaunt_l3.lm3, 0));
-        //};
-        ///* h - Bz */
-        //auto dd = [h_int, b_int](const auto& gaunt_l3) {
-        //    return gaunt_l3.coef * (h_int(gaunt_l3.lm3) - b_int(gaunt_l3.lm3, 0));
-        //};
-        ///* Bx - i By */
-        //auto ud = [b_int](const auto& gaunt_l3) {
-        //    return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), -b_int(gaunt_l3.lm3, 2));
-        //};
-        ///* Bx + i By */
-        //auto du = [b_int](const auto& gaunt_l3) {
-        //    return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), b_int(gaunt_l3.lm3, 2));
-        //};
-
-        //std::complex<double> res{0};
         return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, f);
-
-        //switch (sblock) {
-        //    case spin_block_t::nm: {
-        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
-        //        break;
-        //    }
-        //    case spin_block_t::uu: {
-        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
-        //        break;
-        //    }
-        //    case spin_block_t::dd: {
-        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
-        //        break;
-        //    }
-        //    case spin_block_t::ud: {
-        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
-        //        break;
-        //    }
-        //    case spin_block_t::du: {
-        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
-        //        break;
-        //    }
-        //    default: {
-        //        RTE_THROW("unknown value for spin_block_t");
-        //    }
-        //}
-
-        //return res;
     }
 
     inline int
