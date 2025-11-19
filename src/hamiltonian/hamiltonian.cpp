@@ -66,7 +66,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                     for (int j1 = 0; j1 <= j2; j1++) {
                         int lm1          = type.indexb(j1).lm;
                         int idxrf1       = type.indexb(j1).idxrf;
-                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3(spin_block_t::nm, idxrf1, idxrf2,
+                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3<1>({1.0}, idxrf1, idxrf2,
                                                                         type.gaunt_coefs().gaunt_vector(lm1, lm2));
                         hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
                     }
@@ -89,23 +89,11 @@ Hamiltonian0<T>::~Hamiltonian0()
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(int ia__, spin_block_t sblock__, int ngv__,
+Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int j__, int ngv__,
                                   mdarray<std::complex<T>, 2> const& alm__, mdarray<std::complex<T>, 2>& halm__) const
 {
     auto& type = ctx_.unit_cell().atom(ia__).type();
 
-    //mdarray<std::complex<T>, 2> hmt({type.mt_aw_basis_size(), type.mt_aw_basis_size()});
-    /* compute the muffin-tin Hamiltonian */
-    //for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
-    //    int lm2    = type.indexb(j2).lm;
-    //    int idxrf2 = type.indexb(j2).idxrf;
-    //    for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-    //        int lm1    = type.indexb(j1).lm;
-    //        int idxrf1 = type.indexb(j1).idxrf;
-    //        hmt(j1, j2) =
-    //                atom__.radial_integrals_sum_L3(sblock__, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-    //    }
-    //}
     la::wrap(la::lib_t::blas)
             .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
                   &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(), hmt_[ia__].at(memory_t::host),

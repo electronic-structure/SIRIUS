@@ -20,7 +20,6 @@
         "rmt_max": 2.2,
         "spglib_tolerance": 0.00009999999747378752,
         "std_evp_solver_name": "lapack",
-        "use_second_variation": true,
         "verbosity": 2,
         "verification": 0
     },

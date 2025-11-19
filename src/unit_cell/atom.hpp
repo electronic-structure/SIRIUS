@@ -444,68 +444,89 @@ class Atom
         return &b_radial_integrals_(0, idxrf1, idxrf2, x);
     }
 
-    /** Compute the following kinds of sums for different spin-blocks of the Hamiltonian:
+    /** Compute the following kinds of sums for different components of the Hamiltonian:
      *  \f[
      *      \sum_{L_3} \langle Y_{L_1} u_{\ell_1 \nu_1} | R_{L_3} h_{L_3} | Y_{L_2} u_{\ell_2 \nu_2} \rangle =
      *      \sum_{L_3} \langle u_{\ell_1 \nu_1} | h_{L_3} | u_{\ell_2 \nu_2} \rangle
      *                 \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
      *  \f]
+     *
+     *  For the non-collinear case, up-dn block corresponds to Bx - i By and dn-up block corresponds to Bx + i By
      */
+    template <int N>
     inline auto
-    radial_integrals_sum_L3(spin_block_t sblock, int idxrf1__, int idxrf2__,
+    radial_integrals_sum_L3(std::array<std::complex<double>, N> c__, int idxrf1__, int idxrf2__,
                             std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
     {
+        static_assert(N == 1 || N == 2 || N == 3, "wrong size of coefficients array");
+
         auto h_int = [this, idxrf1__, idxrf2__](int lm3) { return this->h_radial_integrals_(lm3, idxrf1__, idxrf2__); };
         auto b_int = [this, idxrf1__, idxrf2__](int lm3, int i) {
             return this->b_radial_integrals_(lm3, idxrf1__, idxrf2__, i);
         };
-        /* just the Hamiltonian */
-        auto nm = [h_int](const auto& gaunt_l3) { return gaunt_l3.coef * h_int(gaunt_l3.lm3); };
-        /* h + Bz */
-        auto uu = [h_int, b_int](const auto& gaunt_l3) {
-            return gaunt_l3.coef * (h_int(gaunt_l3.lm3) + b_int(gaunt_l3.lm3, 0));
-        };
-        /* h - Bz */
-        auto dd = [h_int, b_int](const auto& gaunt_l3) {
-            return gaunt_l3.coef * (h_int(gaunt_l3.lm3) - b_int(gaunt_l3.lm3, 0));
-        };
-        /* Bx - i By */
-        auto ud = [b_int](const auto& gaunt_l3) {
-            return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), -b_int(gaunt_l3.lm3, 2));
-        };
-        /* Bx + i By */
-        auto du = [b_int](const auto& gaunt_l3) {
-            return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), b_int(gaunt_l3.lm3, 2));
+        auto f = [h_int, b_int, &c__](auto const& gaunt_l3) {
+            if (N == 1) {
+                return c__[0] * gaunt_l3.coef * h_int(gaunt_l3.lm3);
+            }
+            if (N == 2) {
+                return c__[0] * gaunt_l3.coef * h_int(gaunt_l3.lm3) + c__[1] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 0);
+            }
+            if (N == 4) {
+                return c__[0] * gaunt_l3.coef * h_int(gaunt_l3.lm3) + c__[1] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 0) +
+                    c__[2] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 1) + c__[3] * gaunt_l3.coef * b_int(gaunt_l3.lm3, 2);
+            }
         };
 
-        std::complex<double> res{0};
-        switch (sblock) {
-            case spin_block_t::nm: {
-                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
-                break;
-            }
-            case spin_block_t::uu: {
-                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
-                break;
-            }
-            case spin_block_t::dd: {
-                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
-                break;
-            }
-            case spin_block_t::ud: {
-                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
-                break;
-            }
-            case spin_block_t::du: {
-                res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
-                break;
-            }
-            default: {
-                RTE_THROW("unknown value for spin_block_t");
-            }
-        }
 
-        return res;
+        ///* just the Hamiltonian */
+        //auto nm = [h_int](const auto& gaunt_l3) { return gaunt_l3.coef * h_int(gaunt_l3.lm3); };
+        ///* h + Bz */
+        //auto uu = [h_int, b_int](const auto& gaunt_l3) {
+        //    return gaunt_l3.coef * (h_int(gaunt_l3.lm3) + b_int(gaunt_l3.lm3, 0));
+        //};
+        ///* h - Bz */
+        //auto dd = [h_int, b_int](const auto& gaunt_l3) {
+        //    return gaunt_l3.coef * (h_int(gaunt_l3.lm3) - b_int(gaunt_l3.lm3, 0));
+        //};
+        ///* Bx - i By */
+        //auto ud = [b_int](const auto& gaunt_l3) {
+        //    return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), -b_int(gaunt_l3.lm3, 2));
+        //};
+        ///* Bx + i By */
+        //auto du = [b_int](const auto& gaunt_l3) {
+        //    return gaunt_l3.coef * std::complex<double>(b_int(gaunt_l3.lm3, 1), b_int(gaunt_l3.lm3, 2));
+        //};
+
+        //std::complex<double> res{0};
+        return std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, f);
+
+        //switch (sblock) {
+        //    case spin_block_t::nm: {
+        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, nm);
+        //        break;
+        //    }
+        //    case spin_block_t::uu: {
+        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, uu);
+        //        break;
+        //    }
+        //    case spin_block_t::dd: {
+        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, dd);
+        //        break;
+        //    }
+        //    case spin_block_t::ud: {
+        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, ud);
+        //        break;
+        //    }
+        //    case spin_block_t::du: {
+        //        res = std::transform_reduce(gnt__.begin(), gnt__.end(), std::complex<double>{0}, std::plus{}, du);
+        //        break;
+        //    }
+        //    default: {
+        //        RTE_THROW("unknown value for spin_block_t");
+        //    }
+        //}
+
+        //return res;
     }
 
     inline int

@@ -21,7 +21,6 @@
 #include "core/profiler.hpp"
 #include "k_point/k_point.hpp"
 #include "lapw/generate_alm_block.hpp"
-#include <chrono>
 
 namespace sirius {
 
@@ -239,7 +238,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
             kp_.alm_coeffs_loc().template generate<false>(atom, alm);
             if (what & 1) {
-                H0_.apply_hmt_to_apw(ia, spin_block_t::nm, kp_.num_gkvec_loc(), alm, halm);
+                H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_loc(), alm, halm);
             }
 
             for (int xi = 0; xi < nmt; xi++) {
@@ -426,7 +425,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
 
                 /* can't copy alm to device now as it might be modified by the iora */
 
-                H0_.apply_hmt_to_apw(ia, spin_block_t::nm, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
+                H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == device_t::GPU) {
                     halm_col_atom.copy_to(memory_t::device, acc::stream_id(tid));
                 }
@@ -530,7 +529,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3(spin_block_t::nm, idxrf, idxrf1,
+            auto zsum = atom__.radial_integrals_sum_L3<1>({1.0}, idxrf, idxrf1,
                                                        type.gaunt_coefs().gaunt_vector(lm1, lm));
 
             if (std::abs(zsum) > 1e-14) {
@@ -572,7 +571,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3(spin_block_t::nm, idxrf1, idxrf,
+            auto zsum = atom__.radial_integrals_sum_L3<1>({1.0}, idxrf1, idxrf,
                                                        type.gaunt_coefs().gaunt_vector(lm, lm1));
 
             if (std::abs(zsum) > 1e-14) {
@@ -623,8 +622,8 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
                 int lm1    = kp.lo_basis_descriptor_row(irow).lm;
                 int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
 
-                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += atom.radial_integrals_sum_L3(
-                        spin_block_t::nm, idxrf1, idxrf2, atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += atom.template radial_integrals_sum_L3<1>(
+                        {1.0}, idxrf1, idxrf2, atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
 
                 if (lm1 == lm2) {
                     int l      = kp.lo_basis_descriptor_row(irow).l;
