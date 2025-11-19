@@ -273,7 +273,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
             if (what & 1) {
-                h_diag[kp_.num_gkvec_loc() + nlo + ilo] = hmt(xi_lo, xi_lo).real();
+                h_diag[kp_.num_gkvec_loc() + nlo + ilo] = hmt(xi_lo, xi_lo, 0).real();
             }
             if (what & 2) {
                 o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
@@ -859,7 +859,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = this->H0_.hmt(ia);
 
-            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw), hmt.ld(),
+            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw, 0), hmt.ld(),
                               phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
                               &la::constant<Tc>::zero(),
                               h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
@@ -917,7 +917,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = H0_.hmt(ia);
 
-            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw), hmt.ld(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw, 0), hmt.ld(),
                               phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
                               &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
@@ -999,7 +999,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             // TODO: add stream_id
 
-            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0), hmt.ld(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0, 0), hmt.ld(),
                               alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
                               &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
