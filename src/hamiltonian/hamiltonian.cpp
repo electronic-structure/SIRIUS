@@ -66,9 +66,35 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                     for (int j1 = 0; j1 < nmt; j1++) {
                         int lm1          = type.indexb(j1).lm;
                         int idxrf1       = type.indexb(j1).idxrf;
-                        hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>({1.0}, idxrf1, idxrf2,
+                        switch (ctx_.num_mag_dims()) {
+                            case 3: {
+                                // Bx + i By
+                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>({0, 0, 1, 1}, idxrf1, idxrf2,
                                                                         type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                        //hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
+
+                                // Bx - i By
+                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>({0, 0, 1, -1}, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                            }
+                            case 1: {
+                                if (ctx_.cfg().control().use_second_variation()) {
+                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>({1, 0}, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>({0, 1}, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                } else {
+                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>({1, 1}, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>({1, -1}, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                }
+                                break;
+                            }
+                            case 0: {
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>({1}, idxrf1, idxrf2,
+                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                            }
+                        }
                     }
                 }
                 if (pu == device_t::GPU) {
@@ -160,7 +186,7 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
                                                     atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
                     }
                     if (ctx_.num_mag_dims() == 3) {
-                        std::array<std::complex<double>, 4> c({0, 0, 0, 0});
+                        std::array<int, 4> c({0, 0, 0, 0});
                         c[i + 1] = 1;
                         zm(xi1, xi2, i) = atom.template radial_integrals_sum_L3<4>(c, idxrf1, idxrf2,
                                                     atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));

@@ -455,7 +455,7 @@ class Atom
      */
     template <int N>
     inline auto
-    radial_integrals_sum_L3(std::array<std::complex<double>, N> c__, int idxrf1__, int idxrf2__,
+    radial_integrals_sum_L3(std::array<int, N> c__, int idxrf1__, int idxrf2__,
                             std::vector<gaunt_L3<std::complex<double>>> const& gnt__) const
     {
         static_assert(N == 1 || N == 2 || N == 4, "wrong size of coefficients array");
@@ -466,17 +466,17 @@ class Atom
         };
         auto f = [h_int, b_int, &c__](auto const& gaunt_l3) {
             if (N == 1) {
-                return c__[0] * h_int(gaunt_l3.lm3) * gaunt_l3.coef;
+                return h_int(gaunt_l3.lm3) * gaunt_l3.coef;
             }
             if (N == 2) {
-                return (c__[0] * h_int(gaunt_l3.lm3) +
+                return (h_int(gaunt_l3.lm3) +
                         c__[1] * b_int(gaunt_l3.lm3, 0)) * gaunt_l3.coef;
             }
             if (N == 4) {
-                return (c__[0] *  h_int(gaunt_l3.lm3) +
-                        c__[1] *  b_int(gaunt_l3.lm3, 0) +
-                        c__[2] *  b_int(gaunt_l3.lm3, 1) +
-                        c__[3] *  b_int(gaunt_l3.lm3, 2)) * gaunt_l3.coef;
+                return (h_int(gaunt_l3.lm3) +
+                        c__[1] * b_int(gaunt_l3.lm3, 0) +
+                        std::complex<double>(c__[2], 0) *  b_int(gaunt_l3.lm3, 1) +
+                        std::complex<double>(0, c__[3]) *  b_int(gaunt_l3.lm3, 2)) * gaunt_l3.coef;
             }
         };
 
