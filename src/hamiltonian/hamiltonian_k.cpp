@@ -524,13 +524,16 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
         int lm    = kp_.lo_basis_descriptor_col(icol).lm;
         int idxrf = kp_.lo_basis_descriptor_col(icol).idxrf;
         int order = kp_.lo_basis_descriptor_col(icol).order;
+        auto j0   = type.indexb().index_by_lm_order(lm, order);
         /* loop over apw components and update H */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3<1>({1}, idxrf, idxrf1,
-                                                       type.gaunt_coefs().gaunt_vector(lm1, lm));
+            //auto zsum = atom__.radial_integrals_sum_L3<1>({1}, idxrf, idxrf1,
+           //                                            type.gaunt_coefs().gaunt_vector(lm1, lm));
+            auto zsum = H0_.hmt(ia__)(j1, j0, 0);
+
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_row(); igkloc++) {
