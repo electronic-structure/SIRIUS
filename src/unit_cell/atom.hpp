@@ -469,11 +469,11 @@ class Atom
                 return h_int(gaunt_l3.lm3) * gaunt_l3.coef;
             }
             if (N == 2) {
-                return (h_int(gaunt_l3.lm3) +
+                return (c__[0] * h_int(gaunt_l3.lm3) +
                         c__[1] * b_int(gaunt_l3.lm3, 0)) * gaunt_l3.coef;
             }
             if (N == 4) {
-                return (h_int(gaunt_l3.lm3) +
+                return (c__[0] * h_int(gaunt_l3.lm3) +
                         c__[1] * b_int(gaunt_l3.lm3, 0) +
                         std::complex<double>(c__[2], 0) *  b_int(gaunt_l3.lm3, 1) +
                         std::complex<double>(0, c__[3]) *  b_int(gaunt_l3.lm3, 2)) * gaunt_l3.coef;
