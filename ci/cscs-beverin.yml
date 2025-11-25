@@ -55,9 +55,6 @@ build sirius mi300:
         sleep 0.2
       done
 
-      # ls -alhrt /dev/shm/
-      # ls -alhrt /dev/shm//spack-stage/antonk/*
-
       stagedir=$(find /dev/shm/spack-stage -type d -name spack-stage-sirius-*)
       echo "stagedir: $stagedir"
       cd $stagedir/spack-build-*
@@ -74,7 +71,8 @@ build sirius mi300:
   needs: ["build sirius mi300"]
   variables:
     SLURM_HINT: nomultithread
-    SLURM_CPUS_PER_TASK: 24
+    SLURM_CPUS_PER_TASK: 8
+    SLURM_CONSTRAINT: 'amdgpu_tpx'
     OMP_NUM_THREADS: 8
     OMP_PLACES: cores
     HSA_ENABLE_SDMA: 0
@@ -108,8 +106,7 @@ beverin test gpu band parallel:
 beverin test gpu k-point parallel:
   extends: [.run_tests_beverin]
   variables:
-    SLURM_NTASKS: 4
-    SLURM_GPUS: 4
+    SLURM_NTASKS: 12
     SLURM_GPUS_PER_TASK: 1
     SLURM_CPU_BIND: 'verbose'
     USE_MPI: 'YES'
