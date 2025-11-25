@@ -1,4 +1,4 @@
-gcc-env:
+sirius-env:
   compiler: [gcc]
   network:
       mpi: cray-mpich@8.1.32+rocm
