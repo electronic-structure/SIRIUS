@@ -85,8 +85,8 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
 
     for (int ispn = 0; ispn < H0_.ctx().num_spins(); ispn++) {
 
-/* local H contribution */
-#pragma omp parallel for schedule(static)
+        /* local H contribution */
+        #pragma omp parallel for schedule(static)
         for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
             if (what & 1) {
                 auto ekin            = 0.5 * kp_.gkvec().gkvec_cart(gvec_index_t::local(ig_loc)).length2();
@@ -145,9 +145,9 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                         .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &la::constant<std::complex<T>>::one(),
                               &beta_gk_t(0, offs), beta_gk_t.ld(), &d_sum(0, 0), d_sum.ld(),
                               &la::constant<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
-#pragma omp parallel
+                #pragma omp parallel
                 for (int xi = 0; xi < nbf; xi++) {
-#pragma omp for schedule(static) nowait
+                    #pragma omp for schedule(static) nowait
                     for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
                         /* compute <G+k|beta_xi1> D_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
                         h_diag(ig_loc, ispn) +=
@@ -161,9 +161,9 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                         .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &la::constant<std::complex<T>>::one(),
                               &beta_gk_t(0, offs), beta_gk_t.ld(), &q_sum(0, 0), q_sum.ld(),
                               &la::constant<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
-#pragma omp parallel
+                #pragma omp parallel
                 for (int xi = 0; xi < nbf; xi++) {
-#pragma omp for schedule(static) nowait
+                    #pragma omp for schedule(static) nowait
                     for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
                         /* compute <G+k|beta_xi1> Q_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
                         o_diag(ig_loc, ispn) +=
@@ -203,7 +203,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
     auto h_diag = (what & 1) ? mdarray<T, 2>({kp_.num_gkvec_loc() + nlo, 1}) : mdarray<T, 2>();
     auto o_diag = (what & 2) ? mdarray<T, 2>({kp_.num_gkvec_loc() + nlo, 1}) : mdarray<T, 2>();
 
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
         if (what & 1) {
             auto gvc      = kp_.gkvec().gkvec_cart(gvec_index_t::local(igloc));
@@ -215,7 +215,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         }
     }
 
-#pragma omp parallel
+    #pragma omp parallel
     {
         matrix<std::complex<T>> alm({kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size()});
 
@@ -232,7 +232,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             o_diag_omp.zero();
         }
 
-#pragma omp for
+        #pragma omp for
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             auto& atom = uc.atom(ia);
             int nmt    = atom.mt_aw_basis_size();
@@ -254,7 +254,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             }
         }
 
-#pragma omp critical
+        #pragma omp critical
         for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
             if (what & 1) {
                 h_diag[igloc] += h_diag_omp[igloc];
@@ -270,7 +270,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         auto& atom = uc.atom(it.i);
         auto& type = atom.type();
         auto& hmt  = H0_.hmt(it.i);
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
             if (what & 1) {
@@ -381,10 +381,10 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
             halm_col.zero();
         }
 
-#pragma omp parallel
+        #pragma omp parallel
         {
             int tid = omp_get_thread_num();
-#pragma omp for
+            #pragma omp for
             for (int ia = ia_begin; ia < ia_end; ia++) {
                 auto& atom = uc.atom(ia);
                 auto& type = atom.type();
@@ -609,8 +609,8 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
 
     auto& kp = this->kp_;
 
-/* lo-lo block */
-#pragma omp parallel for default(shared)
+    /* lo-lo block */
+    #pragma omp parallel for default(shared)
     for (int icol = 0; icol < kp.num_lo_col(); icol++) {
         int ia     = kp.lo_basis_descriptor_col(icol).ia;
         int lm2    = kp.lo_basis_descriptor_col(icol).lm;
@@ -654,7 +654,7 @@ Hamiltonian_k<T>::set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<s
 
     auto& kp = this->kp_;
 
-#pragma omp parallel for default(shared)
+    #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp.num_gkvec_col(); igk_col++) {
         /* fractional coordinates of G vectors */
         auto gvec_col = kp.gkvec_col().gvec(gvec_index_t::local(igk_col));
@@ -846,8 +846,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto& zero = la::constant<Tc>::zero();
 
     /* apply APW-lo part of Hamiltonian to lo- part of wave-functions */
-    auto apply_hmt_apw_lo = [&H0 = H0_, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T>& h_apw_lo__) {
-#pragma omp parallel for
+    auto apply_hmt_apw_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T>& h_apw_lo__) {
+        #pragma omp parallel for
         for (auto it : spl_atoms) {
             int tid    = omp_get_thread_num();
             int ia     = it.i;
@@ -858,7 +858,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
-            auto& hmt = H0.hmt(ia);
+            auto& hmt = this->H0_.hmt(ia);
 
             la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw), hmt.ld(),
                               phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
@@ -873,10 +873,10 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     };
 
     /* apply APW-lo part of overlap matrix to lo- part of wave-functions */
-    auto apply_omt_apw_lo = [&ctx, &phi__, &b__, &spl_atoms](wf::Wave_functions_mt<T>& o_apw_lo__) {
+    auto apply_omt_apw_lo = [this, &ctx, &phi__, &b__, &spl_atoms](wf::Wave_functions_mt<T>& o_apw_lo__) {
         o_apw_lo__.zero(memory_t::host, wf::spin_index(0), wf::band_range(0, b__.size()));
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (auto it : spl_atoms) {
             int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
@@ -904,9 +904,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
     };
 
-    auto appy_hmt_lo_lo = [&H0=H0_, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions<T>& hphi__) {
-/* lo-lo contribution */
-#pragma omp parallel for
+    auto appy_hmt_lo_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions<T>& hphi__) {
+        /* lo-lo contribution */
+        #pragma omp parallel for
         for (auto it : spl_atoms) {
             int tid    = omp_get_thread_num();
             auto ia    = it.i;
@@ -917,7 +917,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
-            auto& hmt =  H0.hmt(ia);
+            auto& hmt = H0_.hmt(ia);
 
             la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw), hmt.ld(),
                               phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
@@ -927,9 +927,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
     };
 
-    auto appy_omt_lo_lo = [&ctx, &phi__, &b__, &spl_atoms](wf::Wave_functions<T>& ophi__) {
-/* lo-lo contribution */
-#pragma omp parallel for
+    auto appy_omt_lo_lo = [this, &ctx, &phi__, &b__, &spl_atoms](wf::Wave_functions<T>& ophi__) {
+        /* lo-lo contribution */
+        #pragma omp parallel for
         for (auto it : spl_atoms) {
             auto ia    = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
@@ -961,9 +961,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
     };
 
-    auto appy_hmt_apw_apw = [&H0=H0_, &ctx, la, mem, &b__](int atom_begin__, wf::Wave_functions_mt<T> const& alm_phi__,
+    auto appy_hmt_apw_apw = [this, &ctx, la, mem, &b__](int atom_begin__, wf::Wave_functions_mt<T> const& alm_phi__,
                                                         wf::Wave_functions_mt<T>& halm_phi__) {
-#pragma omp parallel for
+        #pragma omp parallel for
         for (auto it : alm_phi__.spl_num_atoms()) {
             int tid    = omp_get_thread_num();
             int ia     = atom_begin__ + it.i;
@@ -973,7 +973,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
-            auto& hmt = H0.hmt(ia);
+            auto& hmt = H0_.hmt(ia);
 
             // TODO: use in-place trmm
             la::wrap(la).gemm('N', 'N', naw, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem), hmt.ld(),
@@ -984,9 +984,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
     };
 
-    auto apply_hmt_lo_apw = [&H0=H0_, &ctx, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__,
+    auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__,
                                                                     wf::Wave_functions<T>& hphi__) {
-#pragma omp parallel for
+        #pragma omp parallel for
         for (auto it : spl_atoms) {
             int tid    = omp_get_thread_num();
             int ia     = it.i;
@@ -997,7 +997,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
-            auto& hmt = H0.hmt(ia);
+            auto& hmt = H0_.hmt(ia);
 
             // TODO: add stream_id
 
@@ -1009,9 +1009,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
     };
 
-    auto apply_omt_lo_apw = [&ctx, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__,
+    auto apply_omt_lo_apw = [this, &ctx, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__,
                                                                 wf::Wave_functions<T>& ophi__) {
-#pragma omp parallel for
+        #pragma omp parallel for
         for (auto it : spl_atoms) {
             int ia     = it.i;
             auto& atom = ctx.unit_cell().atom(ia);
