@@ -865,9 +865,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = this->H0_.hmt(ia);
 
-            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw, 0), hmt.ld(),
-                              phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
-                              &la::constant<Tc>::zero(),
+            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw, 0),
+                              hmt.ld(), phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
+                              phi__.ld(), &la::constant<Tc>::zero(),
                               h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
                               acc::stream_id(tid));
         }
@@ -923,9 +923,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = H0_.hmt(ia);
 
-            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw, 0), hmt.ld(),
-                              phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
-                              &la::constant<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw, 0),
+                              hmt.ld(), phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
+                              phi__.ld(), &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
                               acc::stream_id(tid));
         }
@@ -1005,9 +1005,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             // TODO: add stream_id
 
-            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0, 0), hmt.ld(),
-                              alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
-                              &la::constant<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0, 0),
+                              hmt.ld(), alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)),
+                              alm_phi__.ld(), &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
                               acc::stream_id(tid));
         }

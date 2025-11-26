@@ -64,35 +64,35 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                     int lm2    = type.indexb(j2).lm;
                     int idxrf2 = type.indexb(j2).idxrf;
                     for (int j1 = 0; j1 < nmt; j1++) {
-                        int lm1          = type.indexb(j1).lm;
-                        int idxrf1       = type.indexb(j1).idxrf;
+                        int lm1    = type.indexb(j1).lm;
+                        int idxrf1 = type.indexb(j1).idxrf;
                         switch (ctx_.num_mag_dims()) {
                             case 3: {
                                 // Bx + i By
-                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>({0, 0, 1, 1}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
+                                        {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
 
                                 // Bx - i By
-                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>({0, 0, 1, -1}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
+                                        {0, 0, 1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                             }
                             case 1: {
                                 if (ctx_.cfg().control().use_second_variation()) {
-                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>({1, 0}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>({0, 1}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
+                                            {1, 0}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
+                                            {0, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                                 } else {
-                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>({1, 1}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>({1, -1}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
+                                            {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
+                                            {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                                 }
                                 break;
                             }
                             case 0: {
-                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>({1}, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>(
+                                        {1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                             }
                         }
                     }
@@ -115,15 +115,16 @@ Hamiltonian0<T>::~Hamiltonian0()
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int j__, int ngv__,
-                                  mdarray<std::complex<T>, 2> const& alm__, mdarray<std::complex<T>, 2>& halm__) const
+Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int j__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
+                                  mdarray<std::complex<T>, 2>& halm__) const
 {
     auto& type = ctx_.unit_cell().atom(ia__).type();
 
     la::wrap(la::lib_t::blas)
             .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(), hmt_[ia__].at(memory_t::host),
-                  hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
+                  &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(),
+                  hmt_[ia__].at(memory_t::host), hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(),
+                  halm__.at(memory_t::host), halm__.ld());
 }
 
 template <typename T>
@@ -168,8 +169,9 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
         /* compute bwf = B_z*|wf_j> */
         la::wrap(la::lib_t::blas)
                 .hemm('L', 'U', mt_basis_size, ctx_.num_fv_states(), &la::constant<std::complex<T>>::one(),
-                      zm.at(memory_t::host, 0, 0, 1), zm.ld(), &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)),
-                      psi__.ld(), &la::constant<std::complex<T>>::zero(),
+                      zm.at(memory_t::host, 0, 0, 1), zm.ld(),
+                      &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), psi__.ld(),
+                      &la::constant<std::complex<T>>::zero(),
                       &bpsi__[0].mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), bpsi__[0].ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
