@@ -2,6 +2,7 @@ sirius-env:
   compiler: [gcc]
   network:
       mpi: cray-mpich@8.1.32+rocm
+      specs: [ 'libfabric@2.3 +rocm' ]
   unify: when_possible
   specs:
   - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack +rocm
