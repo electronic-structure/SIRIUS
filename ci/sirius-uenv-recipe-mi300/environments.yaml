@@ -9,6 +9,7 @@ sirius-env:
   - sirius@develop +elpa
   - nlcglib@1.3.0
   - hip@6.3.3 ^mesa@23.3.6
+  - kokkos+serial
   variants:
   - amdgpu_target=gfx942
   - amdgpu_target_sram_ecc=gfx942
