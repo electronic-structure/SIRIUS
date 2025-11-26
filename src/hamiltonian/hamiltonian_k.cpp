@@ -624,7 +624,7 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
 
                 int lm1    = kp.lo_basis_descriptor_row(irow).lm;
                 int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
-                int order1 = kp.lo_basis_descriptor_col(irow).order;
+                int order1 = kp.lo_basis_descriptor_row(irow).order;
 
                 auto j2 = atom.type().indexb().index_by_lm_order(lm2, order2);
                 auto j1 = atom.type().indexb().index_by_lm_order(lm1, order1);
