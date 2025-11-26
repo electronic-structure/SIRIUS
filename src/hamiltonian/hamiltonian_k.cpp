@@ -569,13 +569,16 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
 
         std::fill(ztmp.begin(), ztmp.end(), 0);
 
+        auto j0   = type.indexb().index_by_lm_order(lm, order);
+
         /* loop over apw components */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3<1>({1}, idxrf1, idxrf,
-                                                       type.gaunt_coefs().gaunt_vector(lm, lm1));
+            //auto zsum = atom__.radial_integrals_sum_L3<1>({1}, idxrf1, idxrf,
+            auto zsum = H0_.hmt(ia__)(j0, j1, 0);
+                                      //                 type.gaunt_coefs().gaunt_vector(lm, lm1));
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_col(); igkloc++) {
@@ -617,16 +620,25 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
         int ia     = kp.lo_basis_descriptor_col(icol).ia;
         int lm2    = kp.lo_basis_descriptor_col(icol).lm;
         int idxrf2 = kp.lo_basis_descriptor_col(icol).idxrf;
+        int order2 = kp.lo_basis_descriptor_col(icol).order;
 
         for (int irow = 0; irow < kp.num_lo_row(); irow++) {
             /* lo-lo block is diagonal in atom index */
             if (ia == kp.lo_basis_descriptor_row(irow).ia) {
                 auto& atom = H0_.ctx().unit_cell().atom(ia);
+                
                 int lm1    = kp.lo_basis_descriptor_row(irow).lm;
                 int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
+                int order1 = kp.lo_basis_descriptor_col(irow).order;
 
-                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += atom.template radial_integrals_sum_L3<1>(
-                        {1}, idxrf1, idxrf2, atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                auto j2   = atom.type().indexb().index_by_lm_order(lm2, order2);
+                auto j1   = atom.type().indexb().index_by_lm_order(lm1, order1);
+
+
+                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += H0_.hmt(ia)(j1, j2, 0);
+
+                    //atom.template radial_integrals_sum_L3<1>(
+                    //    {1}, idxrf1, idxrf2, atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
 
                 if (lm1 == lm2) {
                     int l      = kp.lo_basis_descriptor_row(irow).l;
