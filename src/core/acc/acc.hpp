@@ -284,12 +284,23 @@ print_device_info(int device_id__, std::ostream& out__)
 
     CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
 
+    int clockRate{-1};
+    int memoryClockRate{-1};
+#if CUDA_VERSION < 13000 || defined(SIRIUS_ROCM)
+    clockRate = devprop.clockRate;
+    memoryClockRate = devprop.memoryClockRate;
+#else
+    CALL_DEVICE_API(DeviceGetAttribute, (&clockRate, cudaDevAttrClockRate, device_id__));
+    CALL_DEVICE_API(DeviceGetAttribute, (&memoryClockRate, cudaDevAttrMemoryClockRate, device_id__));
+#endif
+
+https: //developer.nvidia.com/blog/whats-new-and-important-in-cuda-toolkit-13-0/#changes_to_cudadeviceprop
 #if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     out__ << "  name                             : " << std::string(devprop.name) << std::endl
           << "  major                            : " << devprop.major << std::endl
           << "  minor                            : " << devprop.minor << std::endl
-          << "  clockRate                        : " << devprop.clockRate << " kHz" << std::endl
-          << "  memoryClockRate                  : " << devprop.memoryClockRate << " kHz" << std::endl
+          << "  clockRate                        : " << clockRate << " kHz" << std::endl
+          << "  memoryClockRate                  : " << memoryClockRate << " kHz" << std::endl
           << "  memoryBusWidth                   : " << devprop.memoryBusWidth << " bits" << std::endl
           << "  sharedMemPerBlock                : " << (devprop.sharedMemPerBlock >> 10) << " kB" << std::endl
           << "  totalConstMem                    : " << (devprop.totalConstMem >> 10) << " kB" << std::endl
