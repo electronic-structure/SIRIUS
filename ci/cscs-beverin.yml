@@ -19,7 +19,7 @@ build base uenv mi300:
     UENV_NAME: sirius-mi300
     UENV_RECIPE: ci/sirius-uenv-recipe-mi300/
     UENV_VERSION: v1
-    SLURM_TIMELIMIT: 300
+    SLURM_TIMELIMIT: 600
 
 build sirius mi300:
   extends: [.uenv-runner-beverin-mi300, .f7t-secrets]
