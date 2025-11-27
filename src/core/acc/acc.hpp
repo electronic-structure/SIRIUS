@@ -286,6 +286,7 @@ print_device_info(int device_id__, std::ostream& out__)
 
     int clockRate{-1};
     int memoryClockRate{-1};
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
 #if CUDA_VERSION < 13000 || defined(SIRIUS_ROCM)
     clockRate       = devprop.clockRate;
     memoryClockRate = devprop.memoryClockRate;
@@ -295,7 +296,6 @@ print_device_info(int device_id__, std::ostream& out__)
     CALL_DEVICE_API(DeviceGetAttribute, (&memoryClockRate, cudaDevAttrMemoryClockRate, device_id__));
 #endif
 
-#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     out__ << "  name                             : " << std::string(devprop.name) << std::endl
           << "  major                            : " << devprop.major << std::endl
           << "  minor                            : " << devprop.minor << std::endl
