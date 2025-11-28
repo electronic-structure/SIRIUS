@@ -1,5 +1,5 @@
 if(SIRIUS_USE_VCSQNM)
-  find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+  find_package (Eigen3 REQUIRED NO_MODULE)
 endif()
 add_executable(sirius.scf sirius.scf.cpp)
 target_link_libraries(sirius.scf PRIVATE sirius_cxx)
