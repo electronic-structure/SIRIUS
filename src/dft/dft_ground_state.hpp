@@ -100,6 +100,7 @@ class DFT_ground_state
     inline Hamiltonian0<double>&
     get_H0() const
     {
+        RTE_ASSERT(H0_ != nullptr);
         return *H0_;
     }
 
