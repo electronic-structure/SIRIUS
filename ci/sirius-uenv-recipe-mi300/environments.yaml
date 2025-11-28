@@ -8,6 +8,7 @@ sirius-env:
   - sirius@develop ~python +vdwxc +apps +tests +dlaf +scalapack +rocm
   - sirius@develop +elpa
   - nlcglib@1.3.0
+  - eigen@3
   - hip@6.3.3 ^mesa@23.3.6
   - kokkos+serial
   variants:
