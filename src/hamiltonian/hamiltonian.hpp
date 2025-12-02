@@ -429,7 +429,7 @@ class Hamiltonian_k
      *  \f]
      */
     void
-    set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
+    set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap.
     void

@@ -295,7 +295,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o");
 
@@ -317,27 +317,24 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
     auto la  = la::lib_t::none;
     auto mt  = memory_t::none;
     auto mt1 = memory_t::none;
-    int nb   = 0;
     switch (pu) {
         case device_t::CPU: {
             la  = la::lib_t::blas;
             mt  = memory_t::host;
             mt1 = memory_t::host;
-            nb  = 1;
             break;
         }
         case device_t::GPU: {
             la  = la::lib_t::spla;
             mt  = memory_t::host_pinned;
             mt1 = memory_t::device;
-            nb  = 1;
             break;
         }
     }
 
-    mdarray<std::complex<T>, 3> alm_row({kp_.num_gkvec_row(), max_mt_aw, nb}, get_memory_pool(mt));
-    mdarray<std::complex<T>, 3> alm_col({kp_.num_gkvec_col(), max_mt_aw, nb}, get_memory_pool(mt));
-    mdarray<std::complex<T>, 3> halm_col({kp_.num_gkvec_col(), max_mt_aw, nb}, get_memory_pool(mt));
+    mdarray<std::complex<T>, 2> alm_row({kp_.num_gkvec_row(), max_mt_aw}, get_memory_pool(mt));
+    mdarray<std::complex<T>, 2> alm_col({kp_.num_gkvec_col(), max_mt_aw}, get_memory_pool(mt));
+    mdarray<std::complex<T>, 2> halm_col({kp_.num_gkvec_col(), max_mt_aw}, get_memory_pool(mt));
 
     print_memory_usage(H0_.ctx().out(), FILE_LINE);
 
@@ -371,9 +368,6 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
             num_mt_aw += uc.atom(ia).type().mt_aw_basis_size();
         }
 
-        int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
-        s     = 0;
-
         if (env::print_checksum()) {
             alm_row.zero();
             alm_col.zero();
@@ -396,27 +390,27 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
                 switch (pu) {
                     case device_t::CPU: {
                         alm_row_atom = mdarray<std::complex<T>, 2>({kp_.num_gkvec_row(), naw},
-                                                                   alm_row.at(memory_t::host, 0, offsets[ia], s));
+                                                                   alm_row.at(memory_t::host, 0, offsets[ia]));
 
                         alm_col_atom = mdarray<std::complex<T>, 2>({kp_.num_gkvec_col(), naw},
-                                                                   alm_col.at(memory_t::host, 0, offsets[ia], s));
+                                                                   alm_col.at(memory_t::host, 0, offsets[ia]));
 
                         halm_col_atom = mdarray<std::complex<T>, 2>({kp_.num_gkvec_col(), naw},
-                                                                    halm_col.at(memory_t::host, 0, offsets[ia], s));
+                                                                    halm_col.at(memory_t::host, 0, offsets[ia]));
                         break;
                     }
                     case device_t::GPU: {
                         alm_row_atom = mdarray<std::complex<T>, 2>({kp_.num_gkvec_row(), naw},
-                                                                   alm_row.at(memory_t::host, 0, offsets[ia], s),
-                                                                   alm_row.at(memory_t::device, 0, offsets[ia], s));
+                                                                   alm_row.at(memory_t::host, 0, offsets[ia]),
+                                                                   alm_row.at(memory_t::device, 0, offsets[ia]));
 
                         alm_col_atom = mdarray<std::complex<T>, 2>({kp_.num_gkvec_col(), naw},
-                                                                   alm_col.at(memory_t::host, 0, offsets[ia], s),
-                                                                   alm_col.at(memory_t::device, 0, offsets[ia], s));
+                                                                   alm_col.at(memory_t::host, 0, offsets[ia]),
+                                                                   alm_col.at(memory_t::device, 0, offsets[ia]));
 
                         halm_col_atom = mdarray<std::complex<T>, 2>({kp_.num_gkvec_col(), naw},
-                                                                    halm_col.at(memory_t::host, 0, offsets[ia], s),
-                                                                    halm_col.at(memory_t::device, 0, offsets[ia], s));
+                                                                    halm_col.at(memory_t::host, 0, offsets[ia]),
+                                                                    halm_col.at(memory_t::device, 0, offsets[ia]));
                         break;
                     }
                 }
@@ -425,7 +419,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
 
                 /* can't copy alm to device now as it might be modified by the iora */
 
-                H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
+                H0_.apply_hmt_to_apw(ia, ispn__, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == device_t::GPU) {
                     halm_col_atom.copy_to(memory_t::device, acc::stream_id(tid));
                 }
@@ -464,13 +458,13 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
         }
 
         la::wrap(la).gemm('N', 'T', kp_.num_gkvec_row(), kp_.num_gkvec_col(), num_mt_aw,
-                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
-                          alm_col.at(mt1, 0, 0, s), alm_col.ld(), &la::constant<std::complex<T>>::one(), o__.at(mt),
+                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1), alm_row.ld(),
+                          alm_col.at(mt1), alm_col.ld(), &la::constant<std::complex<T>>::one(), o__.at(mt),
                           o__.ld());
 
         la::wrap(la).gemm('N', 'T', kp_.num_gkvec_row(), kp_.num_gkvec_col(), num_mt_aw,
-                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1, 0, 0, s), alm_row.ld(),
-                          halm_col.at(mt1, 0, 0, s), halm_col.ld(), &la::constant<std::complex<T>>::one(), h__.at(mt),
+                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1), alm_row.ld(),
+                          halm_col.at(mt1), halm_col.ld(), &la::constant<std::complex<T>>::one(), h__.at(mt),
                           h__.ld());
     }
 

@@ -50,7 +50,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
                                         get_memory_pool(solver.host_memory_t()));
 
     /* setup Hamiltonian and overlap */
-    Hk__.set_fv_h_o(h, o);
+    Hk__.set_fv_h_o(0, h, o);
 
     if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
         auto& mpd = get_memory_pool(memory_t::device);
