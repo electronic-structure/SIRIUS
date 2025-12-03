@@ -307,6 +307,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
     int nblk               = uc.num_atoms() / num_atoms_in_block + std::min(1, uc.num_atoms() % num_atoms_in_block);
 
     // TODO: use new way to split in blocks
+    //        for (auto na : split_in_blocks(ctx.unit_cell().num_atoms(), 64)) {
     // TODO: use generate_alm_block()
 
     /* maximum number of apw coefficients in the block of atoms */
@@ -1159,7 +1160,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* loop over blocks of atoms */
     for (auto na : split_in_blocks(ctx.unit_cell().num_atoms(), 64)) {
 
-        splindex_block<> spl_atoms(na, n_blocks(comm.size()), block_id(comm.rank()));
+        //splindex_block<> spl_atoms(na, n_blocks(comm.size()), block_id(comm.rank()));
 
         /* actual number of AW radial functions in a block of atoms */
         int num_mt_aw{0};

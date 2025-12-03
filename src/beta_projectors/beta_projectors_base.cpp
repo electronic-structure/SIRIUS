@@ -137,7 +137,6 @@ Beta_projectors_base<T>::split_in_chunks()
         /* no beta projectors at all */
         beta_chunks_ = std::vector<beta_chunk_t>(0);
         num_beta_t_  = 0;
-        // max_num_beta_ = 0;
         return;
     }
 
@@ -190,11 +189,6 @@ Beta_projectors_base<T>::split_in_chunks()
         }
     }
     num_beta_ = offset_in_beta_gk;
-
-    // max_num_beta_ = 0;
-    // for (auto& e : beta_chunks_) {
-    //     max_num_beta_ = std::max(max_num_beta_, e.num_beta_);
-    // }
 
     num_beta_t_ = 0;
     for (int iat = 0; iat < uc.num_atom_types(); iat++) {
