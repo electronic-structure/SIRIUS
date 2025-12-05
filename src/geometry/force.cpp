@@ -394,10 +394,11 @@ Force::calc_forces_ewald()
             double d  = unit_cell.nearest_neighbour(i, ia).distance;
             double d2 = d * d;
 
-            //auto tl = unit_cell.atom(ia).position() - unit_cell.atom(ja).position() - r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation);
+            auto tl = unit_cell.atom(ia).position() - unit_cell.atom(ja).position();// + r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation);
+            tl = r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation) - tl;
 
-            //auto t = dot(unit_cell.lattice_vectors(), tl);
-            auto& t = unit_cell.nearest_neighbour(i, ia).rc;
+            auto t = dot(unit_cell.lattice_vectors(), tl);
+            //auto& t = unit_cell.nearest_neighbour(i, ia).rc;
 
             double scalar_part =
                     static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
