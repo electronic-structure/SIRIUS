@@ -147,23 +147,6 @@ operator<<(std::ostream& out, radial_solution_descriptor const& rsd)
 /// Set of radial solution descriptors, used to construct augmented waves or local orbitals.
 using radial_solution_descriptor_set = std::vector<radial_solution_descriptor>;
 
-/// Descriptor of an atom in a list of nearest neighbours for each atom.
-/** See sirius::Unit_cell::find_nearest_neighbours() for the details of usage. */
-struct nearest_neighbour_descriptor
-{
-    /// Index of the neighbouring atom.
-    int atom_id;
-
-    /// Translation in fractional coordinates.
-    std::array<int, 3> translation;
-
-    /// Distance from the central atom.
-    double distance;
-
-    /// Vector connecting central atom with the neighbour in Cartesian coordinates.
-    std::array<double, 3> rc;
-};
-
 struct unit_cell_parameters_descriptor
 {
     double a;
