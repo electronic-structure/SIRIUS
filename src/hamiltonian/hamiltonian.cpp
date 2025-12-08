@@ -45,7 +45,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
             }
             ctx_.unit_cell().generate_radial_integrals();
         }
-        hmt_    = std::vector<mdarray<std::complex<T>, 2>>(ctx_.unit_cell().num_atoms());
+        hmt_    = std::vector<mdarray<std::complex<T>, 3>>(ctx_.unit_cell().num_atoms());
         auto pu = ctx_.processing_unit();
         #pragma omp parallel
         {
@@ -57,18 +57,44 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
 
                 int nmt = type.mt_basis_size();
 
-                hmt_[ia] = mdarray<std::complex<T>, 2>({nmt, nmt}, mdarray_label("hmt"));
+                hmt_[ia] = mdarray<std::complex<T>, 3>({nmt, nmt, ctx_.num_mag_dims() + 1}, mdarray_label("hmt"));
 
                 /* compute muffin-tin Hamiltonian */
                 for (int j2 = 0; j2 < nmt; j2++) {
                     int lm2    = type.indexb(j2).lm;
                     int idxrf2 = type.indexb(j2).idxrf;
-                    for (int j1 = 0; j1 <= j2; j1++) {
-                        int lm1          = type.indexb(j1).lm;
-                        int idxrf1       = type.indexb(j1).idxrf;
-                        hmt_[ia](j1, j2) = atom.radial_integrals_sum_L3(spin_block_t::nm, idxrf1, idxrf2,
-                                                                        type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                        hmt_[ia](j2, j1) = std::conj(hmt_[ia](j1, j2));
+                    for (int j1 = 0; j1 < nmt; j1++) {
+                        int lm1    = type.indexb(j1).lm;
+                        int idxrf1 = type.indexb(j1).idxrf;
+                        switch (ctx_.num_mag_dims()) {
+                            case 3: {
+                                // Bx + i By
+                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
+                                        {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+
+                                // Bx - i By
+                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
+                                        {0, 0, 1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                            }
+                            case 1: {
+                                if (ctx_.cfg().control().use_second_variation()) {
+                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
+                                            {1, 0}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
+                                            {0, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                } else {
+                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
+                                            {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
+                                            {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                }
+                                break;
+                            }
+                            case 0: {
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>(
+                                        {1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                            }
+                        }
                     }
                 }
                 if (pu == device_t::GPU) {
@@ -89,30 +115,16 @@ Hamiltonian0<T>::~Hamiltonian0()
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(Atom const& atom__, spin_block_t sblock__, int ngv__,
-                                  mdarray<std::complex<T>, 2>& alm__, mdarray<std::complex<T>, 2>& halm__) const
+Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int j__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
+                                  mdarray<std::complex<T>, 2>& halm__) const
 {
-    auto& type = atom__.type();
+    auto& type = ctx_.unit_cell().atom(ia__).type();
 
-    // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
-    // available
-    // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-    mdarray<std::complex<T>, 2> hmt({type.mt_aw_basis_size(), type.mt_aw_basis_size()});
-    /* compute the muffin-tin Hamiltonian */
-    for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
-        int lm2    = type.indexb(j2).lm;
-        int idxrf2 = type.indexb(j2).idxrf;
-        for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-            int lm1    = type.indexb(j1).lm;
-            int idxrf1 = type.indexb(j1).idxrf;
-            hmt(j1, j2) =
-                    atom__.radial_integrals_sum_L3(sblock__, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-        }
-    }
     la::wrap(la::lib_t::blas)
             .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(), hmt.at(memory_t::host),
-                  hmt.ld(), &la::constant<std::complex<T>>::zero(), halm__.at(memory_t::host), halm__.ld());
+                  &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(),
+                  hmt_[ia__].at(memory_t::host), hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(),
+                  halm__.at(memory_t::host), halm__.ld());
 }
 
 template <typename T>
@@ -147,57 +159,26 @@ template <typename T>
 void
 Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& bpsi__) const
 {
-    mdarray<std::complex<T>, 3> zm(
-            {unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims()});
-
     for (auto it : psi__.spl_num_atoms()) {
         auto ia           = it.i;
         auto& atom        = unit_cell_.atom(ia);
         int mt_basis_size = atom.type().mt_basis_size();
 
-        zm.zero();
+        auto const& zm = hmt_[ia];
 
-        /* only upper triangular part of zm is computed because it is a hermitian matrix */
-        #pragma omp parallel for default(shared)
-        for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
-            int lm2    = atom.type().indexb(xi2).lm;
-            int idxrf2 = atom.type().indexb(xi2).idxrf;
-
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    int lm1    = atom.type().indexb(xi1).lm;
-                    int idxrf1 = atom.type().indexb(xi1).idxrf;
-
-                    zm(xi1, xi2, i) = atom.type().gaunt_coefs().sum_L3_gaunt(
-                            lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
-                }
-            }
-        }
         /* compute bwf = B_z*|wf_j> */
         la::wrap(la::lib_t::blas)
                 .hemm('L', 'U', mt_basis_size, ctx_.num_fv_states(), &la::constant<std::complex<T>>::one(),
-                      zm.at(memory_t::host), zm.ld(), &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)),
-                      psi__.ld(), &la::constant<std::complex<T>>::zero(),
+                      zm.at(memory_t::host, 0, 0, 1), zm.ld(),
+                      &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), psi__.ld(),
+                      &la::constant<std::complex<T>>::zero(),
                       &bpsi__[0].mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), bpsi__[0].ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {
-            /* reuse first (z) component of zm matrix to store (B_x - iB_y) */
-            for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
-                for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - std::complex<T>(0, 1) * zm(xi1, xi2, 2);
-                }
-
-                /* remember: zm for x,y,z, components of magnetic field is hermitian and we computed
-                 * only the upper triangular part */
-                for (int xi1 = xi2 + 1; xi1 < mt_basis_size; xi1++) {
-                    zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - std::complex<T>(0, 1) * std::conj(zm(xi2, xi1, 2));
-                }
-            }
-
             la::wrap(la::lib_t::blas)
                     .gemm('N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
-                          &la::constant<std::complex<T>>::one(), zm.at(memory_t::host), zm.ld(),
+                          &la::constant<std::complex<T>>::one(), zm.at(memory_t::host, 0, 0, 3), zm.ld(),
                           &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), psi__.ld(),
                           &la::constant<std::complex<T>>::zero(),
                           &bpsi__[2].mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), bpsi__[2].ld());

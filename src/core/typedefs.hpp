@@ -47,25 +47,6 @@ using real_type = typename Real<T>::type;
 template <class T>
 constexpr bool is_real_v = std::is_same<T, real_type<T>>::value;
 
-/// Spin-blocks of the Hamiltonian.
-enum class spin_block_t
-{
-    /// Non-magnetic case.
-    nm,
-
-    /// Up-up block.
-    uu,
-
-    /// Down-donw block.
-    dd,
-
-    /// Up-down block.
-    ud,
-
-    /// Down-up block.
-    du
-};
-
 /// Type of electronic structure methods.
 enum class electronic_structure_method_t
 {

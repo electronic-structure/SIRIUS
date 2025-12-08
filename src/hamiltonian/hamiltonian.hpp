@@ -80,7 +80,9 @@ class Hamiltonian0
     /// Q operator (non-local part of S-operator).
     std::unique_ptr<Q_operator<T>> q_op_;
 
-    std::vector<mdarray<std::complex<T>, 2>> hmt_;
+    /// Muffin-tin part of potential and magentic field.
+    /** This quantities are k-point independent and can be precomputed when H0 is created. */
+    std::vector<mdarray<std::complex<T>, 3>> hmt_;
 
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0<T> const& src) = delete;
@@ -147,7 +149,7 @@ class Hamiltonian0
      *  \f]
      */
     void
-    apply_hmt_to_apw(Atom const& atom__, spin_block_t sblock__, int ngv__, mdarray<std::complex<T>, 2>& alm__,
+    apply_hmt_to_apw(int ia__, int j__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
                      mdarray<std::complex<T>, 2>& halm__) const;
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).

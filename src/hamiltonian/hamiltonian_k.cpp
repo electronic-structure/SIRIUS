@@ -21,7 +21,6 @@
 #include "core/profiler.hpp"
 #include "k_point/k_point.hpp"
 #include "lapw/generate_alm_block.hpp"
-#include <chrono>
 
 namespace sirius {
 
@@ -239,7 +238,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
             kp_.alm_coeffs_loc().template generate<false>(atom, alm);
             if (what & 1) {
-                H0_.apply_hmt_to_apw(atom, spin_block_t::nm, kp_.num_gkvec_loc(), alm, halm);
+                H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_loc(), alm, halm);
             }
 
             for (int xi = 0; xi < nmt; xi++) {
@@ -274,7 +273,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
             if (what & 1) {
-                h_diag[kp_.num_gkvec_loc() + nlo + ilo] = hmt(xi_lo, xi_lo).real();
+                h_diag[kp_.num_gkvec_loc() + nlo + ilo] = hmt(xi_lo, xi_lo, 0).real();
             }
             if (what & 2) {
                 o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
@@ -426,7 +425,7 @@ Hamiltonian_k<T>::set_fv_h_o(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std:
 
                 /* can't copy alm to device now as it might be modified by the iora */
 
-                H0_.apply_hmt_to_apw(atom, spin_block_t::nm, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
+                H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == device_t::GPU) {
                     halm_col_atom.copy_to(memory_t::device, acc::stream_id(tid));
                 }
@@ -525,13 +524,13 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
         int lm    = kp_.lo_basis_descriptor_col(icol).lm;
         int idxrf = kp_.lo_basis_descriptor_col(icol).idxrf;
         int order = kp_.lo_basis_descriptor_col(icol).order;
+        auto j0   = type.indexb().index_by_lm_order(lm, order);
         /* loop over apw components and update H */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3(spin_block_t::nm, idxrf, idxrf1,
-                                                       type.gaunt_coefs().gaunt_vector(lm1, lm));
+            auto zsum = H0_.hmt(ia__)(j1, j0, 0);
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_row(); igkloc++) {
@@ -567,13 +566,14 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
 
         std::fill(ztmp.begin(), ztmp.end(), 0);
 
+        auto j0 = type.indexb().index_by_lm_order(lm, order);
+
         /* loop over apw components */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
             int lm1    = type.indexb(j1).lm;
             int idxrf1 = type.indexb(j1).idxrf;
 
-            auto zsum = atom__.radial_integrals_sum_L3(spin_block_t::nm, idxrf1, idxrf,
-                                                       type.gaunt_coefs().gaunt_vector(lm, lm1));
+            auto zsum = H0_.hmt(ia__)(j0, j1, 0);
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_col(); igkloc++) {
@@ -615,16 +615,21 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
         int ia     = kp.lo_basis_descriptor_col(icol).ia;
         int lm2    = kp.lo_basis_descriptor_col(icol).lm;
         int idxrf2 = kp.lo_basis_descriptor_col(icol).idxrf;
+        int order2 = kp.lo_basis_descriptor_col(icol).order;
 
         for (int irow = 0; irow < kp.num_lo_row(); irow++) {
             /* lo-lo block is diagonal in atom index */
             if (ia == kp.lo_basis_descriptor_row(irow).ia) {
                 auto& atom = H0_.ctx().unit_cell().atom(ia);
+
                 int lm1    = kp.lo_basis_descriptor_row(irow).lm;
                 int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
+                int order1 = kp.lo_basis_descriptor_row(irow).order;
 
-                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += atom.radial_integrals_sum_L3(
-                        spin_block_t::nm, idxrf1, idxrf2, atom.type().gaunt_coefs().gaunt_vector(lm1, lm2));
+                auto j2 = atom.type().indexb().index_by_lm_order(lm2, order2);
+                auto j1 = atom.type().indexb().index_by_lm_order(lm1, order1);
+
+                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += H0_.hmt(ia)(j1, j2, 0);
 
                 if (lm1 == lm2) {
                     int l      = kp.lo_basis_descriptor_row(irow).l;
@@ -860,9 +865,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = this->H0_.hmt(ia);
 
-            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw), hmt.ld(),
-                              phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
-                              &la::constant<Tc>::zero(),
+            la::wrap(la).gemm('N', 'N', naw, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, 0, naw, 0),
+                              hmt.ld(), phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
+                              phi__.ld(), &la::constant<Tc>::zero(),
                               h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
                               acc::stream_id(tid));
         }
@@ -918,9 +923,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto& hmt = H0_.hmt(ia);
 
-            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw), hmt.ld(),
-                              phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(),
-                              &la::constant<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), nlo, &la::constant<Tc>::one(), hmt.at(mem, naw, naw, 0),
+                              hmt.ld(), phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
+                              phi__.ld(), &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
                               acc::stream_id(tid));
         }
@@ -1000,9 +1005,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             // TODO: add stream_id
 
-            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0), hmt.ld(),
-                              alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
-                              &la::constant<Tc>::one(),
+            la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0, 0),
+                              hmt.ld(), alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)),
+                              alm_phi__.ld(), &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
                               acc::stream_id(tid));
         }
