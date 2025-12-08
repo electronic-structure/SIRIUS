@@ -6,6 +6,7 @@ gcc-env:
   specs:
   - sirius@develop +python +vdwxc +elpa +apps +tests +dlaf +scalapack +nlcglib +dftd3 +dftd4
   - nlcglib@1.3.0 +cuda
+  - kokkos+serial
   variants:
   - +mpi
   - +cuda
