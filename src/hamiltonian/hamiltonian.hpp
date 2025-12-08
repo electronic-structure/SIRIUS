@@ -433,15 +433,15 @@ class Hamiltonian_k
 
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap.
     void
-    set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
+    set_fv_h_o_it(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup lo-lo block of Hamiltonian and overlap matrices.
     void
-    set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
+    set_fv_h_o_lo_lo(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const;
 
     /// Setup apw-lo and lo-apw blocks of LAPW Hamiltonian and overlap matrices.
     void
-    set_fv_h_o_apw_lo(Atom const& atom, int ia, mdarray<std::complex<T>, 2>& alm_row,
+    set_fv_h_o_apw_lo(Atom const& atom, int ia, int isnp__, mdarray<std::complex<T>, 2>& alm_row,
                       mdarray<std::complex<T>, 2>& alm_col, mdarray<std::complex<T>, 2>& h,
                       mdarray<std::complex<T>, 2>& o) const;
 

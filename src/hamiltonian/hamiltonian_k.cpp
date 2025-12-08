@@ -432,7 +432,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
                 }
 
                 /* setup apw-lo and lo-apw blocks */
-                set_fv_h_o_apw_lo(atom, ia, alm_row_atom, alm_col_atom, h__, o__);
+                set_fv_h_o_apw_lo(atom, ia, ispn__, alm_row_atom, alm_col_atom, h__, o__);
 
                 /* finally, modify alm coefficients for iora */
                 if (H0_.ctx().valence_relativity() == relativity_t::iora) {
@@ -489,10 +489,10 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(h__, o__);
+    set_fv_h_o_it(ispn__, h__, o__);
 
     /* setup lo-lo block */
-    set_fv_h_o_lo_lo(h__, o__);
+    set_fv_h_o_lo_lo(ispn__, h__, o__);
 
     /*  copy back to GPU */ // TODO: optimize the copies
     // if (pu == device_t::GPU) {
@@ -506,7 +506,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
 /* alm_row comes in already conjugated */
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::complex<T>, 2>& alm_row__,
+Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, int ispn__, mdarray<std::complex<T>, 2>& alm_row__,
                                     mdarray<std::complex<T>, 2>& alm_col__, mdarray<std::complex<T>, 2>& h__,
                                     mdarray<std::complex<T>, 2>& o__) const
 {
@@ -522,10 +522,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
         auto j0   = type.indexb().index_by_lm_order(lm, order);
         /* loop over apw components and update H */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-            int lm1    = type.indexb(j1).lm;
-            int idxrf1 = type.indexb(j1).idxrf;
-
-            auto zsum = H0_.hmt(ia__)(j1, j0, 0);
+            auto zsum = H0_.hmt(ia__)(j1, j0, ispn__);
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_row(); igkloc++) {
@@ -565,10 +562,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
 
         /* loop over apw components */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-            int lm1    = type.indexb(j1).lm;
-            int idxrf1 = type.indexb(j1).idxrf;
-
-            auto zsum = H0_.hmt(ia__)(j0, j1, 0);
+            auto zsum = H0_.hmt(ia__)(j0, j1, ispn__);
 
             if (std::abs(zsum) > 1e-14) {
                 for (int igkloc = 0; igkloc < kp_.num_gkvec_col(); igkloc++) {
@@ -598,7 +592,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, mdarray<std::c
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_lo_lo(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_lo_lo");
 
@@ -609,7 +603,6 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
     for (int icol = 0; icol < kp.num_lo_col(); icol++) {
         int ia     = kp.lo_basis_descriptor_col(icol).ia;
         int lm2    = kp.lo_basis_descriptor_col(icol).lm;
-        int idxrf2 = kp.lo_basis_descriptor_col(icol).idxrf;
         int order2 = kp.lo_basis_descriptor_col(icol).order;
 
         for (int irow = 0; irow < kp.num_lo_row(); irow++) {
@@ -618,13 +611,12 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
                 auto& atom = H0_.ctx().unit_cell().atom(ia);
 
                 int lm1    = kp.lo_basis_descriptor_row(irow).lm;
-                int idxrf1 = kp.lo_basis_descriptor_row(irow).idxrf;
                 int order1 = kp.lo_basis_descriptor_row(irow).order;
 
                 auto j2 = atom.type().indexb().index_by_lm_order(lm2, order2);
                 auto j1 = atom.type().indexb().index_by_lm_order(lm1, order1);
 
-                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += H0_.hmt(ia)(j1, j2, 0);
+                h__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) += H0_.hmt(ia)(j1, j2, ispn__);
 
                 if (lm1 == lm2) {
                     int l      = kp.lo_basis_descriptor_row(irow).l;
@@ -646,7 +638,7 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(la::dmatrix<std::complex<T>>& h__, la::dmatri
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_it(la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_it(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_it");
 
