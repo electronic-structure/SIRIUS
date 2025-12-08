@@ -129,7 +129,7 @@ Simulation_context::init_fft_grid()
 double
 Simulation_context::ewald_lambda() const
 {
-    auto gmax = pw_cutoff();
+    auto gmax   = pw_cutoff();
     auto charge = unit_cell().num_electrons();
     double lambda{1.0};
     double upper_bound{0};
