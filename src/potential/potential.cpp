@@ -116,7 +116,7 @@ Potential::Potential(Simulation_context& ctx__)
                 rm_inv_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
             }
             default: {
-                veff_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
+                veff_pw_ = mdarray<std::complex<double>, 2>({ctx_.gvec().num_gvec(), 1});
             }
         }
     }
