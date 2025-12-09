@@ -407,12 +407,10 @@ Unit_cell::find_nearest_neighbours(double cluster_radius)
             for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++) {
                 for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++) {
                     nearest_neighbour_descriptor nnd;
-                    nnd.translation[0] = i0;
-                    nnd.translation[1] = i1;
-                    nnd.translation[2] = i2;
+                    nnd.translation = r3::vector<int>({i0, i1, i2});
 
                     for (int ja = 0; ja < num_atoms(); ja++) {
-                        auto v1 = atom(ja).position() + r3::vector<int>(nnd.translation) - atom(ia).position();
+                        auto v1 = atom(ja).position() + nnd.translation - atom(ia).position();
                         auto rc = get_cartesian_coordinates(v1);
 
                         nnd.atom_id  = ja;

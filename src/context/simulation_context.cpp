@@ -129,25 +129,25 @@ Simulation_context::init_fft_grid()
 double
 Simulation_context::ewald_lambda() const
 {
-    /* alpha = 1 / (2*sigma^2), selecting alpha here for better convergence */
-    double lambda{1};
-    double gmax = pw_cutoff();
+    auto gmax   = pw_cutoff();
+    auto charge = unit_cell().num_electrons();
+    double lambda{1.0};
     double upper_bound{0};
-    double charge = unit_cell().num_electrons();
 
-    /* iterate to find lambda */
-    do {
-        lambda += 0.1;
+    for (int i = 10; i > 0; i--) {
+        lambda = i * 0.1;
         upper_bound =
                 charge * charge * std::sqrt(2.0 * lambda / twopi) * std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
-    } while (upper_bound < 1e-8);
-
-    if (lambda < 1.5 && comm().rank() == 0) {
+        if (upper_bound < 1e-13) {
+            return lambda;
+        }
+    }
+    if (comm().rank() == 0) {
         std::stringstream s;
-        s << "ewald_lambda(): pw_cutoff is too small";
+        s << "ewald_lambda(): lambda parameter is not found, pw_cutoff might be too small";
         RTE_WARNING(s);
     }
-    return lambda;
+    return 1.0;
 }
 
 void

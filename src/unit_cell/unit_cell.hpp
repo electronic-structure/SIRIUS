@@ -29,6 +29,22 @@ using json = nlohmann::json;
 /* forward declaration */
 class Crystal_symmetry;
 
+/// Descriptor of an atom in a list of nearest neighbours for each atom.
+struct nearest_neighbour_descriptor
+{
+    /// Index of the neighbouring atom.
+    int atom_id;
+
+    /// Translation in fractional coordinates.
+    r3::vector<int> translation;
+
+    /// Distance from the central atom.
+    double distance;
+
+    /// Vector connecting central atom with the neighbour in Cartesian coordinates.
+    r3::vector<double> rc;
+};
+
 /// Representation of a unit cell.
 class Unit_cell
 {
