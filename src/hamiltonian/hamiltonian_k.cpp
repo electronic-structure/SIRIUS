@@ -657,7 +657,7 @@ Hamiltonian_k<T>::set_fv_h_o_it(int ispn__, la::dmatrix<std::complex<T>>& h__, l
             auto gkvec_row_cart = kp.gkvec_row().gkvec_cart(gvec_index_t::local(igk_row));
             int ig12            = H0().ctx().gvec().index_g12(gvec_row, gvec_col);
 
-            h__(igk_row, igk_col) += H0().potential().veff_pw(ig12);
+            h__(igk_row, igk_col) += H0().potential().veff_pw(ig12, ispn__);
             o__(igk_row, igk_col) += H0().ctx().theta_pw(ig12);
 
             /* pw kinetic energy */

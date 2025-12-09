@@ -774,9 +774,9 @@ class Potential : public Field4D
     }
 
     auto const&
-    veff_pw(int ig__) const
+    veff_pw(int ig__, int ispn__ = 0) const
     {
-        return veff_pw_(ig__, 0);
+        return veff_pw_(ig__, ispn__);
     }
 
     void
