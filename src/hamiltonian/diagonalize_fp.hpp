@@ -32,12 +32,12 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
 
     auto& ctx = Hk__.H0().ctx();
 
-    RTE_ASSERT(kp__.gklo_basis_size() > ctx.num_fv_states());
-
-    auto& solver = ctx.gen_evp_solver();
-
     /* total eigen-value problem size */
     int ngklo = kp__.gklo_basis_size();
+
+    RTE_ASSERT(ngklo > ctx.num_fv_states());
+
+    auto& solver = ctx.gen_evp_solver();
 
     /* block size of scalapack 2d block-cyclic distribution */
     int bs = ctx.cyclic_block_size();
@@ -84,7 +84,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     std::vector<double> eval(ctx.num_fv_states());
 
     print_memory_usage(ctx.out(), FILE_LINE);
-    if (solver.solve(kp__.gklo_basis_size(), ctx.num_fv_states(), h, o, eval.data(), kp__.fv_eigen_vectors())) {
+    if (solver.solve(ngklo, ctx.num_fv_states(), h, o, eval.data(), kp__.fv_eigen_vectors())) {
         RTE_THROW("error in generalized eigen-value problem");
     }
     print_memory_usage(ctx.out(), FILE_LINE);
@@ -104,7 +104,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     }
 
     if (pcs) {
-        auto z1 = kp__.fv_eigen_vectors().checksum(kp__.gklo_basis_size(), ctx.num_fv_states());
+        auto z1 = kp__.fv_eigen_vectors().checksum(ngklo, ctx.num_fv_states());
         print_checksum("fv_eigen_vectors", z1, kp__.out(1));
     }
 
@@ -481,6 +481,41 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     for (int ispn = 0; ispn < ctx.num_spinors(); ispn++) {
         for (int j = 0; j < ctx.num_bands(); j++) {
             kp.band_energy(j, ispn, band_energies(j, ispn));
+        }
+    }
+}
+
+template <typename T>
+void diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
+{
+    auto& ctx = Hk__.H0().ctx();
+
+    auto& solver = ctx.gen_evp_solver();
+
+    /* total eigen-value problem size */
+    int ngklo = kp__.gklo_basis_size();
+
+    /* block size of scalapack 2d block-cyclic distribution */
+    int bs = ctx.cyclic_block_size();
+
+    std::array<la::dmatrix<std::complex<double>>, 2> h;
+    std::array<la::dmatrix<std::complex<double>>, 2> o;
+    std::array<la::dmatrix<std::complex<double>>, 2> z;
+    for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
+        h[ispn] = la::dmatrix<std::complex<double>>(ngklo, ngklo, ctx.blacs_grid(), bs, bs,
+                                        get_memory_pool(solver.host_memory_t()));
+        o[ispn] = la::dmatrix<std::complex<double>>(ngklo, ngklo, ctx.blacs_grid(), bs, bs,
+                                        get_memory_pool(solver.host_memory_t()));
+        z[ispn] = la::dmatrix<std::complex<double>>(ngklo, ngklo, ctx.blacs_grid(), bs, bs,
+                                        get_memory_pool(solver.host_memory_t()));
+        /* setup Hamiltonian and overlap */
+        Hk__.set_fv_h_o(ispn, h[ispn], o[ispn]);
+    }
+
+    std::vector<double> eval(ctx.num_bands());
+    for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
+        if (solver.solve(ngklo, ctx.num_bands(), h[ispn], o[ispn], eval.data(), z[ispn])) {
+            RTE_THROW("error in generalized eigen-value problem");
         }
     }
 }

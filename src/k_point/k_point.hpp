@@ -78,7 +78,7 @@ class K_point
     std::array<la::dmatrix<std::complex<T>>, 2> sv_eigen_vectors_;
 
     /// Full-diagonalization eigen vectors.
-    mdarray<std::complex<T>, 2> fd_eigen_vectors_;
+    //mdarray<std::complex<T>, 2> fd_eigen_vectors_;
 
     /// First-variational states.
     std::unique_ptr<wf::Wave_functions<T>> fv_states_{nullptr};
@@ -701,11 +701,11 @@ class K_point
         return sv_eigen_vectors_[ispn];
     }
 
-    inline auto&
-    fd_eigen_vectors()
-    {
-        return fd_eigen_vectors_;
-    }
+    //inline auto&
+    //fd_eigen_vectors()
+    //{
+    //    return fd_eigen_vectors_;
+    //}
 
     void
     bypass_sv()
