@@ -30,7 +30,7 @@ build sirius mi300:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@develop +rocm +apps +tests +scalapack ~python
+    SPEC: sirius@develop +rocm +apps +tests +scalapack ~python +dftd4 +dftd3
     ROCM_ARCH: gfx942
     REPO: ./ci/sirius-uenv-recipe-mi300/spack_repo/sirius_ci
   script:
