@@ -471,7 +471,6 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__, const bool 
 
         // We can avoid these calculations when we compute the stress tensor
         if (!calculate_stress__) {
-
             /* libvdwxc only returns the energy not the energy density. */
             if (!ixc.is_vdw()) {
                 #pragma omp parallel for
