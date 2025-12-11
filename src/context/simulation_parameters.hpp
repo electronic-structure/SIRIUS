@@ -497,27 +497,27 @@ class Simulation_parameters
         return (electronic_structure_method_ == electronic_structure_method_t::full_potential_lapwlo);
     }
 
-    std::vector<std::string>
+    inline auto
     xc_functionals() const
     {
         return cfg().parameters().xc_functionals();
     }
 
-    std::vector<double>
+    inline auto
     xc_functionals_weight() const
     {
         return cfg().parameters().xc_functionals_weight();
     }
 
     /// Get the name of the standard eigen-value solver to use.
-    std::string
+    inline auto
     std_evp_solver_name() const
     {
         return cfg().control().std_evp_solver_name();
     }
 
     /// Set the name of the standard eigen-value solver to use.
-    std::string
+    inline auto
     std_evp_solver_name(std::string name__)
     {
         cfg().control().std_evp_solver_name(name__);
@@ -525,27 +525,27 @@ class Simulation_parameters
     }
 
     /// Get the name of the generalized eigen-value solver to use.
-    std::string
+    inline auto
     gen_evp_solver_name() const
     {
         return cfg().control().gen_evp_solver_name();
     }
 
     /// Set the name of the generalized eigen-value solver to use.
-    std::string
+    inline auto
     gen_evp_solver_name(std::string name__)
     {
         cfg().control().gen_evp_solver_name(name__);
         return name__;
     }
 
-    relativity_t
+    inline auto
     valence_relativity() const
     {
         return valence_relativity_;
     }
 
-    relativity_t
+    inline auto
     core_relativity() const
     {
         return core_relativity_;
