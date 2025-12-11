@@ -97,9 +97,7 @@ beverin test gpu band parallel:
     SLURM_GPUS_PER_TASK: 1
     SLURM_NTASKS: 12
     SLURM_CPU_BIND: 'verbose'
-    HSA_ENABLE_SDMA: 0
     USE_MPI: 'YES'
-    GPU_MAX_HW_QUEUES: 1
     TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
 
 # skip this, it wants to use cusolver
