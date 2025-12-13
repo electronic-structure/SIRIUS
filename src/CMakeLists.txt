@@ -57,7 +57,7 @@ set(_SOURCES
   "symmetry/crystal_symmetry.cpp"
   "geometry/force.cpp"
   "geometry/stress.cpp"
-  "k_point/generate_fv_states.cpp"
+  "k_point/generate_lapw_wave_functions.cpp"
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"

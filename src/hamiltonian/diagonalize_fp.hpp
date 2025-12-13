@@ -340,15 +340,14 @@ diagonalize_fp_sv(Hamiltonian_k<float> const&, K_point<float>&)
 
 /// Diagonalize second-variational Hamiltonian.
 inline void
-diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
+diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__)
 {
     PROFILE("sirius::diagonalize_fp_sv");
 
-    // auto& kp = Hk__.kp();
     auto& ctx = Hk__.H0().ctx();
 
     if (!ctx.need_sv()) {
-        kp.bypass_sv();
+        kp__.bypass_sv();
         return;
     }
 
@@ -367,14 +366,14 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<wf::Wave_functions<double>> hpsi;
     for (int i = 0; i < ctx.num_mag_comp(); i++) {
-        hpsi.push_back(wf::Wave_functions<double>(kp.gkvec_sptr(), num_mt_coeffs, wf::num_mag_dims(0),
+        hpsi.push_back(wf::Wave_functions<double>(kp__.gkvec_sptr(), num_mt_coeffs, wf::num_mag_dims(0),
                                                   wf::num_bands(nfv), ctx.host_memory_t()));
     }
 
     if (pcs) {
-        auto cs1 = kp.fv_states().checksum_pw(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
-        auto cs2 = kp.fv_states().checksum_mt(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
-        if (kp.comm().rank() == 0) {
+        auto cs1 = kp__.fv_states().checksum_pw(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        auto cs2 = kp__.fv_states().checksum_mt(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
+        if (kp__.comm().rank() == 0) {
             print_checksum("psi_pw", cs1, RTE_OUT(ctx.out()));
             print_checksum("psi_mt", cs2, RTE_OUT(ctx.out()));
         }
@@ -382,7 +381,7 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
 
     /* compute product of magnetic field and wave-function */
     if (ctx.num_spins() == 2) {
-        Hk__.apply_b(kp.fv_states(), hpsi);
+        Hk__.apply_b(kp__.fv_states(), hpsi);
     } else {
         hpsi[0].zero(memory_t::host, wf::spin_index(0), wf::band_range(0, nfv));
     }
@@ -401,11 +400,11 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
     //== }
 
     if (ctx.so_correction()) {
-        Hk__.H0().apply_so_correction(kp.fv_states(), hpsi);
+        Hk__.H0().apply_so_correction(kp__.fv_states(), hpsi);
     }
 
     std::vector<wf::device_memory_guard> mg;
-    mg.emplace_back(kp.fv_states().memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device));
+    mg.emplace_back(kp__.fv_states().memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device));
     for (int i = 0; i < ctx.num_mag_comp(); i++) {
         mg.emplace_back(hpsi[i].memory_guard(ctx.processing_unit_memory_t(), wf::copy_to::device));
     }
@@ -429,7 +428,7 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
             if (pcs) {
                 auto cs1 = hpsi[ispn].checksum_pw(mem, wf::spin_index(0), wf::band_range(0, nfv));
                 auto cs2 = hpsi[ispn].checksum_mt(mem, wf::spin_index(0), wf::band_range(0, nfv));
-                if (kp.comm().rank() == 0) {
+                if (kp__.comm().rank() == 0) {
                     std::stringstream s1;
                     s1 << "hpsi_pw_" << ispn;
                     print_checksum(s1.str(), cs1, RTE_OUT(ctx.out()));
@@ -439,13 +438,13 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
                 }
             }
             /* compute <wf_i | h * wf_j> */
-            wf::inner(ctx.spla_context(), mem, sr, kp.fv_states(), br, hpsi[ispn], br, h, 0, 0);
+            wf::inner(ctx.spla_context(), mem, sr, kp__.fv_states(), br, hpsi[ispn], br, h, 0, 0);
 
             for (int i = 0; i < nfv; i++) {
-                h.add(i, i, kp.fv_eigen_value(i));
+                h.add(i, i, kp__.fv_eigen_value(i));
             }
             PROFILE("sirius::diagonalize_fp_sv|stdevp");
-            std_solver.solve(nfv, nfv, h, &band_energies(0, ispn), kp.sv_eigen_vectors(ispn));
+            std_solver.solve(nfv, nfv, h, &band_energies(0, ispn), kp__.sv_eigen_vectors(ispn));
         }
     } else {
         int nb = ctx.num_bands();
@@ -454,13 +453,13 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
             h.allocate(get_memory_pool(memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
-        wf::inner(ctx.spla_context(), mem, sr, kp.fv_states(), br, hpsi[0], br, h, 0, 0);
+        wf::inner(ctx.spla_context(), mem, sr, kp__.fv_states(), br, hpsi[0], br, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        wf::inner(ctx.spla_context(), mem, sr, kp.fv_states(), br, hpsi[1], br, h, nfv, nfv);
+        wf::inner(ctx.spla_context(), mem, sr, kp__.fv_states(), br, hpsi[1], br, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        wf::inner(ctx.spla_context(), mem, sr, kp.fv_states(), br, hpsi[2], br, h, 0, nfv);
+        wf::inner(ctx.spla_context(), mem, sr, kp__.fv_states(), br, hpsi[2], br, h, 0, nfv);
 
-        if (kp.comm().size() == 1) {
+        if (kp__.comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {
                 for (int j = 0; j < nfv; j++) {
                     h(nfv + j, i) = std::conj(h(i, nfv + j));
@@ -471,16 +470,16 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp)
         }
 
         for (int i = 0; i < nfv; i++) {
-            h.add(i, i, kp.fv_eigen_value(i));
-            h.add(i + nfv, i + nfv, kp.fv_eigen_value(i));
+            h.add(i, i, kp__.fv_eigen_value(i));
+            h.add(i + nfv, i + nfv, kp__.fv_eigen_value(i));
         }
         PROFILE("sirius::diagonalize_fp_sv|stdevp");
-        std_solver.solve(nb, nb, h, &band_energies(0, 0), kp.sv_eigen_vectors(0));
+        std_solver.solve(nb, nb, h, &band_energies(0, 0), kp__.sv_eigen_vectors(0));
     }
 
     for (int ispn = 0; ispn < ctx.num_spinors(); ispn++) {
         for (int j = 0; j < ctx.num_bands(); j++) {
-            kp.band_energy(j, ispn, band_energies(j, ispn));
+            kp__.band_energy(j, ispn, band_energies(j, ispn));
         }
     }
 }
@@ -517,6 +516,27 @@ void diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& k
         if (solver.solve(ngklo, ctx.num_bands(), h[ispn], o[ispn], eval.data(), z[ispn])) {
             RTE_THROW("error in generalized eigen-value problem");
         }
+        for (int j = 0; j < ctx.num_bands(); j++) {
+            kp__.band_energy(j, ispn, eval[j]);
+        }
+        /* remap to slab */
+        if (true) {
+            /* G+k vector part */
+            auto layout_in = z[ispn].grid_layout(0, 0, kp__.gkvec().num_gvec(), ctx.num_bands());
+            auto layout_out = kp__.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn),
+                    wf::band_range(0, ctx.num_bands()));
+            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
+                             la::constant<std::complex<double>>::zero(), kp__.comm().native());
+        }
+        if (ctx.unit_cell().mt_lo_basis_size()) {
+            /* muffin-tin part */
+            auto layout_in = z[ispn].grid_layout(kp__.gkvec().num_gvec(), 0, ctx.unit_cell().mt_lo_basis_size(),
+                    ctx.num_bands());
+            auto layout_out = kp__.spinor_wave_functions().grid_layout_mt(wf::spin_index(ispn),
+                    wf::band_range(0, ctx.num_bands()));
+            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
+                             la::constant<std::complex<double>>::zero(), kp__.comm().native());
+        }
     }
 }
 
@@ -536,14 +556,13 @@ diagonalize_fp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
             diagonalize_fp_fv_davidson(Hk__, kp__, itsol_tol__);
         }
         /* generate first-variational states */
-        kp__.generate_fv_states();
+        kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.fv_states(), 0);
         /* solve magnetic Hamiltonian */
         diagonalize_fp_sv(Hk__, kp__);
         /* generate spinor wave-functions */
         kp__.generate_spinor_wave_functions();
     } else {
-        RTE_THROW("not implemented");
-        // diag_full_potential_single_variation();
+        diagonalize_fp_single_variation(Hk__, kp__);
     }
     print_memory_usage(ctx.out(), FILE_LINE);
 }
