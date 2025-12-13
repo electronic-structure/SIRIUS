@@ -369,7 +369,6 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<K_point<double>>(m, "K_point")
             .def("band_energy", py::overload_cast<int, int>(&K_point<double>::band_energy, py::const_))
             .def_property_readonly("vk", &K_point<double>::vk, py::return_value_policy::copy)
-            .def("generate_fv_states", &K_point<double>::generate_fv_states)
             .def("set_band_energy",
                  [](K_point<double>& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
             .def(
