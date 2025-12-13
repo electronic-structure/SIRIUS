@@ -405,7 +405,7 @@ PYBIND11_MODULE(py_sirius, m)
             .def("weight", &K_point<double>::weight)
             .def("beta_projectors", py::overload_cast<>(&K_point<double>::beta_projectors, py::const_),
                  py::return_value_policy::reference_internal)
-            .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions, py::const_),
+            .def("spinor_wave_functions", py::overload_cast<>(&K_point<double>::spinor_wave_functions),
                  py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
