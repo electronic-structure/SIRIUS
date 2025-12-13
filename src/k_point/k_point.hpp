@@ -480,15 +480,15 @@ class K_point
         return *fv_states_;
     }
 
-    inline auto const&
-    spinor_wave_functions() const
+    inline wf::Wave_functions<T>&
+    spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
 
-    inline wf::Wave_functions<T>&
-    spinor_wave_functions()
+    inline wf::Wave_functions<T> const&
+    spinor_wave_functions() const
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
