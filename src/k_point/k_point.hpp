@@ -487,7 +487,7 @@ class K_point
         return *spinor_wave_functions_;
     }
 
-    inline auto&
+    inline wf::Wave_functions<T>&
     spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
