@@ -480,7 +480,6 @@ class K_point
         return *fv_states_;
     }
 
-    //inline wf::Wave_functions<T> const&
     inline auto const&
     spinor_wave_functions() const
     {
@@ -488,20 +487,12 @@ class K_point
         return *spinor_wave_functions_;
     }
 
-    //inline wf::Wave_functions<T>&
     inline auto&
     spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
     }
-
-    //inline auto&
-    //spinor_wave_functions2()
-    //{
-    //    RTE_ASSERT(spinor_wave_functions_ != nullptr);
-    //    return *spinor_wave_functions_;
-    //}
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on
     /// these functions.
