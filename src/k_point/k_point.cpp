@@ -64,7 +64,7 @@ K_point<T>::initialize()
     generate_gklo_basis();
 
     if (ctx_.full_potential()) {
-        /* allocate fv eien vectors 
+        /* allocate first-variational eigen vectors in slab distribution;
          * in case of full variation, fv_eigen_vectors_slab will be uses as a temporary working space
          * for each of the spin channels
          * */
