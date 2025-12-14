@@ -19,6 +19,10 @@
 
 namespace sirius {
 
+/// Reshuffle eigen-vectors from 2D block cyclic to a slab decomposition.
+/** This is required for two things: compute inner product between Alm matching
+ *  coefficients and eigen vectors using SPLA library and second, collect local orbital
+ *  coefficients for atoms fully on one of the MPI ranks. */
 inline void
 remap_lapw_evec_to_slab(int num_gkvec__, int num_mt_lo__, int num_bands__, la::dmatrix<std::complex<double>>& evec__,
         wf::Wave_functions<double>& evec_slab__, mpi::Communicator const& comm__)
@@ -40,6 +44,7 @@ remap_lapw_evec_to_slab(int num_gkvec__, int num_mt_lo__, int num_bands__, la::d
     }
 }
 
+/// IORA changes overlap matrix. Wave functions need to be renormalized to preserve the number of electrons.
 inline void
 normalize_for_iora(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__)
 {
@@ -176,34 +181,6 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     /* renormalize wave-functions */
     if (ctx.valence_relativity() == relativity_t::iora) {
         normalize_for_iora(Hk__, kp__);
-
-        //std::vector<int> num_mt_coeffs(ctx.unit_cell().num_atoms());
-        //for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
-        //    num_mt_coeffs[ia] = ctx.unit_cell().atom(ia).mt_lo_basis_size();
-        //}
-        //wf::Wave_functions<double> ofv_new(kp__.gkvec_sptr(), num_mt_coeffs, wf::num_mag_dims(0),
-        //                                   wf::num_bands(ctx.num_fv_states()), memory_t::host);
-
-        //{
-        //    auto mem = ctx.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
-        //    auto mg1 = kp__.fv_eigen_vectors_slab().memory_guard(mem, wf::copy_to::device);
-        //    auto mg2 = ofv_new.memory_guard(mem, wf::copy_to::host);
-
-        //    Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx.num_fv_states()), kp__.fv_eigen_vectors_slab(),
-        //                      nullptr, &ofv_new);
-        //}
-
-        //auto norm1 =
-        //        wf::inner_diag<double, std::complex<double>>(memory_t::host, kp__.fv_eigen_vectors_slab(), ofv_new,
-        //                                                     wf::spin_range(0), wf::num_bands(ctx.num_fv_states()));
-
-        //std::vector<double> norm;
-        //for (auto e : norm1) {
-        //    norm.push_back(1 / std::sqrt(std::real(e)));
-        //}
-
-        //wf::axpby<double, double>(memory_t::host, wf::spin_range(0), wf::band_range(0, ctx.num_fv_states()), nullptr,
-        //                          nullptr, norm.data(), &kp__.fv_eigen_vectors_slab());
     }
 
     // if (ctx.cfg().control().verification() >= 2) {
