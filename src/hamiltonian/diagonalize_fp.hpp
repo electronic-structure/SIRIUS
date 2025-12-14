@@ -25,19 +25,19 @@ namespace sirius {
  *  coefficients for atoms fully on one of the MPI ranks. */
 inline void
 remap_lapw_evec_to_slab(int num_gkvec__, int num_mt_lo__, int num_bands__, la::dmatrix<std::complex<double>>& evec__,
-        wf::Wave_functions<double>& evec_slab__, mpi::Communicator const& comm__)
+                        wf::Wave_functions<double>& evec_slab__, mpi::Communicator const& comm__)
 {
     /* remap to slab */
     if (true) {
         /* G+k vector part */
-        auto layout_in = evec__.grid_layout(0, 0, num_gkvec__, num_bands__);
+        auto layout_in  = evec__.grid_layout(0, 0, num_gkvec__, num_bands__);
         auto layout_out = evec_slab__.grid_layout_pw(wf::spin_index(0), wf::band_range(0, num_bands__));
         costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
                          la::constant<std::complex<double>>::zero(), comm__.native());
     }
     if (num_mt_lo__) {
         /* muffin-tin part */
-        auto layout_in = evec__.grid_layout(num_gkvec__, 0, num_mt_lo__, num_bands__);
+        auto layout_in  = evec__.grid_layout(num_gkvec__, 0, num_mt_lo__, num_bands__);
         auto layout_out = evec_slab__.grid_layout_mt(wf::spin_index(0), wf::band_range(0, num_bands__));
         costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
                          la::constant<std::complex<double>>::zero(), comm__.native());
@@ -61,13 +61,12 @@ normalize_for_iora(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__)
         auto mg1 = kp__.fv_eigen_vectors_slab().memory_guard(mem, wf::copy_to::device);
         auto mg2 = ofv_new.memory_guard(mem, wf::copy_to::host);
 
-        Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx.num_fv_states()), kp__.fv_eigen_vectors_slab(),
-                          nullptr, &ofv_new);
+        Hk__.apply_fv_h_o(false, false, wf::band_range(0, ctx.num_fv_states()), kp__.fv_eigen_vectors_slab(), nullptr,
+                          &ofv_new);
     }
 
-    auto norm1 =
-            wf::inner_diag<double, std::complex<double>>(memory_t::host, kp__.fv_eigen_vectors_slab(), ofv_new,
-                                                         wf::spin_range(0), wf::num_bands(ctx.num_fv_states()));
+    auto norm1 = wf::inner_diag<double, std::complex<double>>(memory_t::host, kp__.fv_eigen_vectors_slab(), ofv_new,
+                                                              wf::spin_range(0), wf::num_bands(ctx.num_fv_states()));
 
     std::vector<double> norm;
     for (auto e : norm1) {
@@ -167,8 +166,8 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
         print_checksum("fv_eigen_vectors", z1, kp__.out(1));
     }
 
-    remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(),
-            ctx.num_fv_states(), kp__.fv_eigen_vectors(), kp__.fv_eigen_vectors_slab(), kp__.comm());
+    remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(), ctx.num_fv_states(),
+                            kp__.fv_eigen_vectors(), kp__.fv_eigen_vectors_slab(), kp__.comm());
 
     if (pcs) {
         auto z1 = kp__.fv_eigen_vectors_slab().checksum_pw(memory_t::host, wf::spin_index(0),
@@ -501,7 +500,8 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__)
 }
 
 template <typename T>
-void diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
+void
+diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 {
     PROFILE("sirius::diagonalize_fp_single_variation");
 
@@ -520,11 +520,11 @@ void diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& k
     std::array<la::dmatrix<std::complex<double>>, 2> z;
     for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
         h[ispn] = la::dmatrix<std::complex<double>>(ngklo, ngklo, ctx.blacs_grid(), bs, bs,
-                                        get_memory_pool(solver.host_memory_t()));
+                                                    get_memory_pool(solver.host_memory_t()));
         o[ispn] = la::dmatrix<std::complex<double>>(ngklo, ngklo, ctx.blacs_grid(), bs, bs,
-                                        get_memory_pool(solver.host_memory_t()));
+                                                    get_memory_pool(solver.host_memory_t()));
         z[ispn] = la::dmatrix<std::complex<double>>(ngklo, ngklo, ctx.blacs_grid(), bs, bs,
-                                        get_memory_pool(solver.host_memory_t()));
+                                                    get_memory_pool(solver.host_memory_t()));
         /* setup Hamiltonian and overlap */
         Hk__.set_fv_h_o(ispn, h[ispn], o[ispn]);
     }
@@ -537,8 +537,8 @@ void diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& k
         for (int j = 0; j < ctx.num_bands(); j++) {
             kp__.band_energy(j, ispn, eval[j]);
         }
-        remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(),
-                ctx.num_fv_states(), z[ispn], kp__.fv_eigen_vectors_slab(), kp__.comm());
+        remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(), ctx.num_fv_states(),
+                                z[ispn], kp__.fv_eigen_vectors_slab(), kp__.comm());
         if (ctx.valence_relativity() == relativity_t::iora) {
             normalize_for_iora(Hk__, kp__);
         }

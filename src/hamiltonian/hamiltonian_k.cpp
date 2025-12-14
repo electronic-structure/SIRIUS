@@ -459,14 +459,12 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
         }
 
         la::wrap(la).gemm('N', 'T', kp_.num_gkvec_row(), kp_.num_gkvec_col(), num_mt_aw,
-                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1), alm_row.ld(),
-                          alm_col.at(mt1), alm_col.ld(), &la::constant<std::complex<T>>::one(), o__.at(mt),
-                          o__.ld());
+                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1), alm_row.ld(), alm_col.at(mt1),
+                          alm_col.ld(), &la::constant<std::complex<T>>::one(), o__.at(mt), o__.ld());
 
         la::wrap(la).gemm('N', 'T', kp_.num_gkvec_row(), kp_.num_gkvec_col(), num_mt_aw,
-                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1), alm_row.ld(),
-                          halm_col.at(mt1), halm_col.ld(), &la::constant<std::complex<T>>::one(), h__.at(mt),
-                          h__.ld());
+                          &la::constant<std::complex<T>>::one(), alm_row.at(mt1), alm_row.ld(), halm_col.at(mt1),
+                          halm_col.ld(), &la::constant<std::complex<T>>::one(), h__.at(mt), h__.ld());
     }
 
     // TODO: fix the logic of matrices setup
@@ -592,7 +590,8 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, int ispn__, md
 
 template <typename T>
 void
-Hamiltonian_k<T>::set_fv_h_o_lo_lo(int ispn__, la::dmatrix<std::complex<T>>& h__, la::dmatrix<std::complex<T>>& o__) const
+Hamiltonian_k<T>::set_fv_h_o_lo_lo(int ispn__, la::dmatrix<std::complex<T>>& h__,
+                                   la::dmatrix<std::complex<T>>& o__) const
 {
     PROFILE("sirius::Hamiltonian_k::set_fv_h_o_lo_lo");
 

@@ -64,33 +64,35 @@ Potential::generate_pw_coefs()
                 // 1: V + Bz
                 // 2: Bx - i By
                 // 3: Bx + i By
-                fft::spfft_input<std::complex<double>>(
-                        fft, [&](int ir) -> std::complex<double> {
-                            // Bx - i By
-                            return std::complex<double>(effective_magnetic_field(1).rg().value(ir),
-                                    -effective_magnetic_field(2).rg().value(ir)) * ctx_.theta(ir); });
+                fft::spfft_input<std::complex<double>>(fft, [&](int ir) -> std::complex<double> {
+                    // Bx - i By
+                    return std::complex<double>(effective_magnetic_field(1).rg().value(ir),
+                                                -effective_magnetic_field(2).rg().value(ir)) *
+                           ctx_.theta(ir);
+                });
                 get_fft_result(&veff_pw_(0, 2));
 
-                fft::spfft_input<std::complex<double>>(
-                        fft, [&](int ir) -> std::complex<double> {
-                            // Bx + i By
-                            return std::complex<double>(effective_magnetic_field(1).rg().value(ir),
-                                    effective_magnetic_field(2).rg().value(ir)) * ctx_.theta(ir); });
+                fft::spfft_input<std::complex<double>>(fft, [&](int ir) -> std::complex<double> {
+                    // Bx + i By
+                    return std::complex<double>(effective_magnetic_field(1).rg().value(ir),
+                                                effective_magnetic_field(2).rg().value(ir)) *
+                           ctx_.theta(ir);
+                });
                 get_fft_result(&veff_pw_(0, 3));
             }
             case 1: {
-                fft::spfft_input<double>(
-                        fft, [&](int ir) -> double { 
-                            // V - Bz
-                            return (effective_potential().rg().value(ir) -
-                                effective_magnetic_field(0).rg().value(ir)) * ctx_.theta(ir); });
+                fft::spfft_input<double>(fft, [&](int ir) -> double {
+                    // V - Bz
+                    return (effective_potential().rg().value(ir) - effective_magnetic_field(0).rg().value(ir)) *
+                           ctx_.theta(ir);
+                });
                 get_fft_result(&veff_pw_(0, 0));
 
-                fft::spfft_input<double>(
-                        fft, [&](int ir) -> double { 
-                            // V + Bz
-                            return (effective_potential().rg().value(ir) +
-                                effective_magnetic_field(0).rg().value(ir)) * ctx_.theta(ir); });
+                fft::spfft_input<double>(fft, [&](int ir) -> double {
+                    // V + Bz
+                    return (effective_potential().rg().value(ir) + effective_magnetic_field(0).rg().value(ir)) *
+                           ctx_.theta(ir);
+                });
                 get_fft_result(&veff_pw_(0, 1));
                 break;
             }

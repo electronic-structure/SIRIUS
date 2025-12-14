@@ -56,8 +56,7 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
         spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_TRANSPOSE, 1.0,
-                        alm.at(memory_t::host), alm.ld(),
-                        &evec__.pw_coeffs(0, wf::spin_index(0), wf::band_index(0)),
+                        alm.at(memory_t::host), alm.ld(), &evec__.pw_coeffs(0, wf::spin_index(0), wf::band_index(0)),
                         evec__.ld(), 0.0, alm_fv.at(memory_t::host), alm_fv.ld(), mt_aw_offset, 0,
                         alm_fv.spla_distribution(), ctx_.spla_context());
 
@@ -109,10 +108,12 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
 }
 
 template void
-K_point<double>::generate_lapw_wave_functions(wf::Wave_functions<double> const& evec__, wf::Wave_functions<double>& wf__, int ispn__);
+K_point<double>::generate_lapw_wave_functions(wf::Wave_functions<double> const& evec__,
+                                              wf::Wave_functions<double>& wf__, int ispn__);
 #ifdef SIRIUS_USE_FP32
 template void
-K_point<float>::generate_lapw_wave_functions(wf::Wave_functions<float> const& evec__, wf::Wave_functions<float>& wf__, int ispn__);
+K_point<float>::generate_lapw_wave_functions(wf::Wave_functions<float> const& evec__, wf::Wave_functions<float>& wf__,
+                                             int ispn__);
 #endif
 
 } // namespace sirius
