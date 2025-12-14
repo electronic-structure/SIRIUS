@@ -132,25 +132,6 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(),
             ctx.num_fv_states(), kp__.fv_eigen_vectors(), kp__.fv_eigen_vectors_slab(), kp__.comm());
 
-    ///* remap to slab */
-    //{
-    //    /* G+k vector part */
-    //    auto layout_in = kp__.fv_eigen_vectors().grid_layout(0, 0, kp__.gkvec().num_gvec(), ctx.num_fv_states());
-    //    auto layout_out =
-    //            kp__.fv_eigen_vectors_slab().grid_layout_pw(wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
-    //    costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
-    //                     la::constant<std::complex<double>>::zero(), kp__.comm().native());
-    //}
-    //if (ctx.unit_cell().mt_lo_basis_size()) {
-    //    /* muffin-tin part */
-    //    auto layout_in = kp__.fv_eigen_vectors().grid_layout(kp__.gkvec().num_gvec(), 0,
-    //                                                         ctx.unit_cell().mt_lo_basis_size(), ctx.num_fv_states());
-    //    auto layout_out =
-    //            kp__.fv_eigen_vectors_slab().grid_layout_mt(wf::spin_index(0), wf::band_range(0, ctx.num_fv_states()));
-    //    costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
-    //                     la::constant<std::complex<double>>::zero(), kp__.comm().native());
-    //}
-
     if (pcs) {
         auto z1 = kp__.fv_eigen_vectors_slab().checksum_pw(memory_t::host, wf::spin_index(0),
                                                            wf::band_range(0, ctx.num_fv_states()));
@@ -543,24 +524,9 @@ void diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& k
         for (int j = 0; j < ctx.num_bands(); j++) {
             kp__.band_energy(j, ispn, eval[j]);
         }
-        /* remap to slab */
-        if (true) {
-            /* G+k vector part */
-            auto layout_in = z[ispn].grid_layout(0, 0, kp__.gkvec().num_gvec(), ctx.num_bands());
-            auto layout_out = kp__.spinor_wave_functions().grid_layout_pw(wf::spin_index(ispn),
-                    wf::band_range(0, ctx.num_bands()));
-            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
-                             la::constant<std::complex<double>>::zero(), kp__.comm().native());
-        }
-        if (ctx.unit_cell().mt_lo_basis_size()) {
-            /* muffin-tin part */
-            auto layout_in = z[ispn].grid_layout(kp__.gkvec().num_gvec(), 0, ctx.unit_cell().mt_lo_basis_size(),
-                    ctx.num_bands());
-            auto layout_out = kp__.spinor_wave_functions().grid_layout_mt(wf::spin_index(ispn),
-                    wf::band_range(0, ctx.num_bands()));
-            costa::transform(layout_in, layout_out, 'N', la::constant<std::complex<double>>::one(),
-                             la::constant<std::complex<double>>::zero(), kp__.comm().native());
-        }
+        remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(),
+                ctx.num_fv_states(), z[ispn], kp__.fv_eigen_vectors_slab(), kp__.comm());
+        kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.spinor_wave_functions(), ispn);
     }
 }
 
