@@ -5,6 +5,6 @@ spack:
   repo: https://github.com/spack/spack.git
   packages:
     repo: https://github.com/spack/spack-packages.git
-    commit: 19ab19246ef7ff41c03ce3e58eeba5dfa6df360d
+    commit: 1f1e66d43b5b97fe8bd85c17f8eee62530febb3a
 store: /user-environment
 description: SIRIUS dependencies for SIRIUS CI

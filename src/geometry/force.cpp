@@ -355,26 +355,26 @@ Force::calc_forces_ewald()
     #pragma omp parallel for schedule(static)
     for (auto it : skip_g0(ctx_.gvec())) {
 
+        double g2 = std::pow(ctx_.gvec().gvec_len(it.igloc), 2);
+
         std::complex<double> rho(0, 0);
 
         for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
             rho += ctx_.gvec_phase_factor(it.ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
         }
 
-        rho_tmp[it.igloc] = std::conj(rho);
+        rho_tmp[it.igloc] = prefac * std::conj(rho) * std::exp(-g2 / (4 * alpha)) / g2;
     }
 
     #pragma omp parallel for
     for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
         for (auto it : skip_g0(ctx_.gvec())) {
 
-            double g2 = std::pow(ctx_.gvec().gvec_len(it.igloc), 2);
-
-            /* cartesian form for getting cartesian force components */
+            /* cartesian coordinates for getting cartesian force components */
             auto gvec_cart = ctx_.gvec().gvec_cart(it.igloc);
 
-            double scalar_part = prefac * (rho_tmp[it.igloc] * ctx_.gvec_phase_factor(it.ig, ja)).imag() *
-                                 static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
+            double scalar_part = (rho_tmp[it.igloc] * ctx_.gvec_phase_factor(it.ig, ja)).imag() *
+                                 static_cast<double>(unit_cell.atom(ja).zn());
 
             for (int x : {0, 1, 2}) {
                 forces_ewald_(x, ja) += scalar_part * gvec_cart[x];
@@ -384,7 +384,7 @@ Force::calc_forces_ewald()
 
     ctx_.comm().allreduce(&forces_ewald_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
-    double invpi = 1. / pi;
+    double invpi = 1.0 / pi;
 
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
@@ -394,7 +394,8 @@ Force::calc_forces_ewald()
             double d  = unit_cell.nearest_neighbour(i, ia).distance;
             double d2 = d * d;
 
-            auto t = dot(unit_cell.lattice_vectors(), r3::vector<int>(unit_cell.nearest_neighbour(i, ia).translation));
+            /* rc = r_j + T - r_i, but we need the inverse */
+            auto t = -1 * unit_cell.nearest_neighbour(i, ia).rc;
 
             double scalar_part =
                     static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
