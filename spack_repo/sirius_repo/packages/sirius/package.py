@@ -168,7 +168,6 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     conflicts("^libxc@5.0.0")  # known to produce incorrect results
     conflicts("+single_precision", when="@:7.2.4")
     conflicts("+scalapack", when="^cray-libsci")
-    conflicts("+nvtx", when="~cuda~rocm")
 
     # Propagate openmp to blas
     depends_on("openblas threads=openmp", when="+openmp ^[virtuals=blas,lapack] openblas")
