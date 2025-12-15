@@ -29,6 +29,7 @@ struct task_t
     static const int read_config              = 4;
     static const int ground_state_new_relax   = 5;
     static const int ground_state_new_vcrelax = 6;
+    static const int fixed_mag                = 7;
 };
 
 void
@@ -468,6 +469,42 @@ run_tasks(cmd_args const& args)
             }
             dict["volume"] = volume;
             dict["energy"] = energy;
+            write_json_to_file(dict, "output_eos.json");
+        }
+    }
+
+    if (task_id == task_t::fixed_mag) {
+        auto num_eos_points = args.value<int>("num_eos_points", 7);
+
+        int write_output{0};
+
+        json dict;
+        json_output_common(dict);
+        dict["result"] = {};
+
+        int rank{0};
+        std::vector<double> fixed_mag;
+        std::vector<double> energy;
+        for (int i = 0; i < num_eos_points; i++) {
+            double scale = static_cast<double>(i) / (num_eos_points - 1);
+            auto ctx  = create_sim_ctx(fname, args);
+            rank      = ctx->comm().rank();
+            auto mag  = (i == 0) ? 1e-8 : ctx->cfg().parameters().fixed_mag() * scale;
+            ctx->cfg().parameters().fixed_mag(mag);
+            ctx->initialize();
+            ctx->out() << "EOS step : " << i << ", fixed magnetic moment : " << mag << std::endl;
+            auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+            dict["result"] += e;
+            fixed_mag.push_back(mag);
+            energy.push_back(e["energy"]["free"].get<double>());
+        }
+        if (rank == 0) {
+            std::cout << "final result:" << std::endl;
+            for (int i = 0; i < num_eos_points; i++) {
+                std::cout << "magnetisation: " << fixed_mag[i] << ", energy: " << energy[i] << std::endl;
+            }
+            dict["fixed_mag"] = fixed_mag;
+            dict["energy"]    = energy;
             write_json_to_file(dict, "output_eos.json");
         }
     }
