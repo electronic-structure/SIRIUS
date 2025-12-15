@@ -487,9 +487,9 @@ run_tasks(cmd_args const& args)
         std::vector<double> energy;
         for (int i = 0; i < num_eos_points; i++) {
             double scale = static_cast<double>(i) / (num_eos_points - 1);
-            auto ctx  = create_sim_ctx(fname, args);
-            rank      = ctx->comm().rank();
-            auto mag  = (i == 0) ? 1e-8 : ctx->cfg().parameters().fixed_mag() * scale;
+            auto ctx     = create_sim_ctx(fname, args);
+            rank         = ctx->comm().rank();
+            auto mag     = (i == 0) ? 1e-8 : ctx->cfg().parameters().fixed_mag() * scale;
             ctx->cfg().parameters().fixed_mag(mag);
             ctx->initialize();
             ctx->out() << "EOS step : " << i << ", fixed magnetic moment : " << mag << std::endl;
