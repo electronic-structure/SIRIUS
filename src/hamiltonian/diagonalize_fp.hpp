@@ -531,6 +531,12 @@ diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
 
     std::vector<double> eval(ctx.num_bands());
     for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
+        if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
+            auto& mpd = get_memory_pool(memory_t::device);
+            h[ispn].allocate(mpd);
+            o[ispn].allocate(mpd);
+            z[ispn].allocate(mpd);
+        }
         if (solver.solve(ngklo, ctx.num_bands(), h[ispn], o[ispn], eval.data(), z[ispn])) {
             RTE_THROW("error in generalized eigen-value problem");
         }
@@ -543,6 +549,11 @@ diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
             normalize_for_iora(Hk__, kp__);
         }
         kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.spinor_wave_functions(), ispn);
+        if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
+            h[ispn].deallocate(memory_t::device);
+            o[ispn].deallocate(memory_t::device);
+            z[ispn].deallocate(memory_t::device);
+        }
     }
 }
 
