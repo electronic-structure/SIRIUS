@@ -75,7 +75,10 @@ Potential::Potential(Simulation_context& ctx__)
         RTE_THROW("The table containing the weight of each functional should have the same number of elements "
                   "than the xc_functionals parameter\n");
     }
-    weight = ctx_.xc_functionals_weight();
+
+    if (ctx_.xc_functionals_weight().size() == ctx_.xc_functionals().size()) {
+        weight = ctx_.xc_functionals_weight();
+    }
 
     int i = 0;
     for (auto& xc_label : ctx_.xc_functionals()) {
