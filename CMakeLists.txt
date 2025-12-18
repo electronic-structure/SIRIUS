@@ -198,7 +198,7 @@ if(SIRIUS_USE_MAGMA)
 endif(SIRIUS_USE_MAGMA)
 
 if(SIRIUS_USE_VDWXC)
-  find_package(LibVDWXC 0.3.0 REQUIRED)
+  find_package(LibVDWXC 0.5.0 REQUIRED)
 endif(SIRIUS_USE_VDWXC)
 
 find_package(costa CONFIG REQUIRED)
