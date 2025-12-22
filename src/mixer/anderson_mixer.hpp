@@ -121,9 +121,11 @@ class Anderson : public Mixer<FUNCS...>
             }
 
             // Make a copy because factorizing destroys the matrix.
-            for (int i = 0; i < history_size; ++i)
-                for (int j = 0; j < history_size; ++j)
+            for (int i = 0; i < history_size; ++i) {
+                for (int j = 0; j < history_size; ++j) {
                     this->S_factorized_(j, i) = this->S_(j, i);
+                }
+            }
 
             mdarray<double, 1> h({history_size});
             for (int i = 1; i <= history_size; ++i) {
