@@ -18,7 +18,6 @@
 #include "core/rte/rte.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
-#include "symmetry/symmetrize_field4d.hpp"
 
 namespace sirius {
 
