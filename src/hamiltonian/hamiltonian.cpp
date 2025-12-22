@@ -68,13 +68,18 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                         int idxrf1 = type.indexb(j1).idxrf;
                         switch (ctx_.num_mag_dims()) {
                             case 3: {
-                                // Bx + i By
-                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
-                                        {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                // spin-block index is consistent with non-local pseudopotential operator
+                                // 0: V - Bz
+                                // 1: V + Bz
+                                // 2: Bx - i By
+                                // 3: Bx + i By
 
                                 // Bx - i By
-                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
+                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
                                         {0, 0, 1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                // Bx + i By
+                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
+                                        {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                             }
                             case 1: {
                                 if (ctx_.cfg().control().use_second_variation()) {
@@ -115,7 +120,7 @@ Hamiltonian0<T>::~Hamiltonian0()
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int j__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
+Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int ispn__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
                                   mdarray<std::complex<T>, 2>& halm__) const
 {
     auto& type = ctx_.unit_cell().atom(ia__).type();
@@ -123,7 +128,7 @@ Hamiltonian0<T>::apply_hmt_to_apw(int ia__, int j__, int ngv__, mdarray<std::com
     la::wrap(la::lib_t::blas)
             .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
                   &la::constant<std::complex<T>>::one(), alm__.at(memory_t::host), alm__.ld(),
-                  hmt_[ia__].at(memory_t::host), hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(),
+                  hmt_[ia__].at(memory_t::host, 0, 0, ispn__), hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(),
                   halm__.at(memory_t::host), halm__.ld());
 }
 
@@ -178,7 +183,7 @@ Hamiltonian0<T>::apply_bmt(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fu
         if (bpsi__.size() == 3) {
             la::wrap(la::lib_t::blas)
                     .gemm('N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
-                          &la::constant<std::complex<T>>::one(), zm.at(memory_t::host, 0, 0, 3), zm.ld(),
+                          &la::constant<std::complex<T>>::one(), zm.at(memory_t::host, 0, 0, 2), zm.ld(),
                           &psi__.mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), psi__.ld(),
                           &la::constant<std::complex<T>>::zero(),
                           &bpsi__[2].mt_coeffs(0, it.li, wf::spin_index(0), wf::band_index(0)), bpsi__[2].ld());

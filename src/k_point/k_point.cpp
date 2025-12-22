@@ -64,9 +64,33 @@ K_point<T>::initialize()
     generate_gklo_basis();
 
     if (ctx_.full_potential()) {
+        /* allocate first-variational eigen vectors in slab distribution;
+         * in case of full variation, fv_eigen_vectors_slab will be uses as a temporary working space
+         * for each of the spin channels
+         * */
+        std::vector<int> num_mt_coeffs(unit_cell_.num_atoms());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
+        }
+        fv_eigen_vectors_slab_ = std::make_unique<wf::Wave_functions<T>>(
+                gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ctx_.num_fv_states()), ctx_.host_memory_t());
+        fv_eigen_vectors_slab_->zero(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
+
+        /* now allocate space for spinor wave-functions */
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_basis_size();
+        }
+        spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(
+                gkvec_, num_mt_coeffs, wf::num_mag_dims(ctx_.num_mag_dims()), wf::num_bands(nst), ctx_.host_memory_t());
         if (ctx_.cfg().control().use_second_variation()) {
 
             RTE_ASSERT(ctx_.num_fv_states() > 0);
+
+            /* allocate space for first-variational wave-functions */
+            fv_states_ =
+                    std::make_unique<wf::Wave_functions<T>>(gkvec_, num_mt_coeffs, wf::num_mag_dims(0),
+                                                            wf::num_bands(ctx_.num_fv_states()), ctx_.host_memory_t());
+
             fv_eigen_values_ = mdarray<double, 1>({ctx_.num_fv_states()}, mdarray_label("fv_eigen_values"));
 
             if (ctx_.need_sv()) {
@@ -78,17 +102,6 @@ K_point<T>::initialize()
                 }
             }
 
-            std::vector<int> num_mt_coeffs(unit_cell_.num_atoms());
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
-            }
-
-            /* allocate fv eien vectors */
-            fv_eigen_vectors_slab_ =
-                    std::make_unique<wf::Wave_functions<T>>(gkvec_, num_mt_coeffs, wf::num_mag_dims(0),
-                                                            wf::num_bands(ctx_.num_fv_states()), ctx_.host_memory_t());
-
-            fv_eigen_vectors_slab_->zero(memory_t::host, wf::spin_index(0), wf::band_range(0, ctx_.num_fv_states()));
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 for (int igloc = 0; igloc < gkvec().count(comm().rank()); igloc++) {
                     int ig = igloc + gkvec().offset(comm().rank());
@@ -104,7 +117,7 @@ K_point<T>::initialize()
                 }
             }
             if (ctx_.cfg().iterative_solver().type() == "exact") {
-                /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
+                /* ELPA and DLA-F need a full matrix of eigen-vectors as they uses it as a work space */
                 if (ctx_.gen_evp_solver().type() == la::ev_solver_t::elpa ||
                     ctx_.gen_evp_solver().type() == la::ev_solver_t::dlaf) {
                     fv_eigen_vectors_ = la::dmatrix<std::complex<T>>(gklo_basis_size(), gklo_basis_size(),
@@ -119,6 +132,9 @@ K_point<T>::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_lo_basis_size();
+                }
                 singular_components_ = std::make_unique<wf::Wave_functions<T>>(
                         gkvec_, num_mt_coeffs, wf::num_mag_dims(0), wf::num_bands(ncomp), ctx_.host_memory_t());
 
@@ -139,19 +155,6 @@ K_point<T>::initialize()
                     }
                 }
             }
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                num_mt_coeffs[ia] = unit_cell_.atom(ia).mt_basis_size();
-            }
-            fv_states_ =
-                    std::make_unique<wf::Wave_functions<T>>(gkvec_, num_mt_coeffs, wf::num_mag_dims(0),
-                                                            wf::num_bands(ctx_.num_fv_states()), ctx_.host_memory_t());
-
-            spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, num_mt_coeffs,
-                                                                             wf::num_mag_dims(ctx_.num_mag_dims()),
-                                                                             wf::num_bands(nst), ctx_.host_memory_t());
-        } else {
-            RTE_THROW("not implemented");
         }
     } else {
         spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(ctx_.num_mag_dims()),

@@ -801,7 +801,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         kp__->alm_coeffs_col().generate<false>(atom, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
-        Hk__.set_fv_h_o_apw_lo(atom, ia, alm_row, alm_col, h, o);
+        Hk__.set_fv_h_o_apw_lo(atom, ia, 0, alm_row, alm_col, h, o);
 
         /* apply MT Hamiltonian to column coefficients */
         Hk__.H0().apply_hmt_to_apw(ia, 0, kp__->num_gkvec_col(), alm_col, halm_col);

@@ -284,9 +284,10 @@ print_device_info(int device_id__, std::ostream& out__)
 
     CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
 
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     int clockRate{-1};
     int memoryClockRate{-1};
-#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
+
 #if CUDA_VERSION < 13000 || defined(SIRIUS_ROCM)
     clockRate       = devprop.clockRate;
     memoryClockRate = devprop.memoryClockRate;
