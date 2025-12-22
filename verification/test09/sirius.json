@@ -58,6 +58,6 @@
     "mixer" : {
         "beta" : 0.15,
         "use_hartree" : true,
-        "type" : "broyden2"
+        "!type" : "broyden2"
     }
 }
