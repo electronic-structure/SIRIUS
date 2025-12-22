@@ -29,7 +29,10 @@ FunctionProperties<Periodic_function<double>>
 periodic_function_property();
 
 FunctionProperties<Periodic_function<double>>
-periodic_function_property_modified(bool use_coarse_gvec__);
+periodic_function_property_rho_pw(bool use_coarse_gvec__);
+
+FunctionProperties<Periodic_function<double>>
+periodic_function_property_mag_pw(bool use_coarse_gvec__);
 
 FunctionProperties<density_matrix_t>
 density_function_property();
