@@ -1930,7 +1930,8 @@ void
 Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
-    auto func_prop1   = mixer::periodic_function_property_modified(true);
+    auto func_prop1   = mixer::periodic_function_property_rho_pw(true);
+    auto func_prop2   = mixer::periodic_function_property_mag_pw(true);
     auto density_prop = mixer::density_function_property();
     auto paw_prop     = mixer::paw_density_function_property();
     auto hubbard_prop = mixer::hubbard_matrix_function_property();
@@ -1962,11 +1963,11 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
             this->mixer_->initialize_function<0>(func_prop, component(0), ctx_);
         }
         if (ctx_.num_mag_dims() > 0) {
-            this->mixer_->initialize_function<1>(func_prop, component(1), ctx_);
+            this->mixer_->initialize_function<1>(func_prop2, component(1), ctx_);
         }
         if (ctx_.num_mag_dims() > 1) {
-            this->mixer_->initialize_function<2>(func_prop, component(2), ctx_);
-            this->mixer_->initialize_function<3>(func_prop, component(3), ctx_);
+            this->mixer_->initialize_function<2>(func_prop2, component(2), ctx_);
+            this->mixer_->initialize_function<3>(func_prop2, component(3), ctx_);
         }
     }
 
