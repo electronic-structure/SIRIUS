@@ -41,7 +41,7 @@
         "beta_scaling_factor": 1.0,
         "max_history": 8,
         "type": "anderson",
-        "use_hartree": false
+        "!use_hartree": false
     },
     "parameters": {
         "density_tol": 1e-06,
