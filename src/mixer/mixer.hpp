@@ -31,8 +31,8 @@ namespace mixer {
 
 /// Describes operations on a function type used for mixing.
 /** The properties contain functions, which determine the behaviour of a given type during mixing. The inner product
- * function result is used for calculating mixing parameters. If a function should not contribute to generation of
- * mixing parameters, the inner product function should always return 0.
+ *  function result is used for calculating mixing parameters. If a function should not contribute to generation of
+ *  mixing parameters, the inner product function should always return 0.
  */
 template <typename FUNC>
 struct FunctionProperties
@@ -41,11 +41,12 @@ struct FunctionProperties
 
     ///
     /**
-     *  \param [in]  size_         Function, which returns a measure of size of the (global) function.
-     *  \param [in]  inner_        Function, which computes the (global) inner product. This determines the contribution
-     * to mixing parameters rmse. \param [in]  scal_         Function, which scales the input (x = alpha * x). \param
-     * [in]  copy_         Function, which copies from one object to the other (y = x). \param [in]  axpy_ Function,
-     * which scales and adds one object to the other (y = alpha * x + y).
+     *  \param [in]  size_  Function, which returns a measure of size of the (global) function.
+     *  \param [in]  inner_ Function, which computes the (global) inner product. This determines the
+     *                      contribution to mixing parameters rmse.
+     *  \param [in]  scal_  Function, which scales the input (x = alpha * x).
+     *  \param [in]  copy_  Function, which copies from one object to the other (y = x).
+     *  \param [in]  axpy_  Function, which scales and adds one object to the other (y = alpha * x + y).
      */
     FunctionProperties(std::function<double(const FUNC&)> size_, std::function<double(const FUNC&, const FUNC&)> inner_,
                        std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
@@ -119,7 +120,6 @@ struct InnerProduct
                     v = 0;
                 }
             }
-
             result += v;
         }
         return result + InnerProduct<FUNC_REVERSE_INDEX - 1, normalize, FUNCS...>::apply(function_prop, x, y);
