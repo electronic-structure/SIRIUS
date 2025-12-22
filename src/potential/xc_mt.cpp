@@ -139,8 +139,8 @@ xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag
             auto rud = get_rho_up_dn(num_mag_dims__, rho_tp__[0](itp, ir), m);
 
             /* compute "up" and "dn" components */
-            rho_up_tp(itp, ir) = rud.first;
-            rho_dn_tp(itp, ir) = rud.second;
+            rho_up_tp(itp, ir) = rud[0];
+            rho_dn_tp(itp, ir) = rud[1];
         }
     }
     /* transform from (theta, phi) to Rlm */

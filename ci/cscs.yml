@@ -9,20 +9,22 @@ stages:
 build base uenv gh200:
   extends: .uenv-builder-daint-gh200
   stage: baseimage
-  timeout: 2h
+  timeout: 24h
   variables:
     UENV_NAME: sirius-gh200
     UENV_RECIPE: ci/sirius-uenv-recipe-gh200/
     UENV_VERSION: v1
+    SLURM_TIMELIMIT: 150
 
 build base uenv zen2:
   extends: .uenv-builder-eiger-zen2
   stage: baseimage
-  timeout: 2h
+  timeout: 24h
   variables:
     UENV_NAME: sirius-zen2
     UENV_RECIPE: ci/sirius-uenv-recipe-cpu/
     UENV_VERSION: v1
+    SLURM_TIMELIMIT: 150
 
 build sirius cuda:
   extends: .uenv-runner-daint-gh200

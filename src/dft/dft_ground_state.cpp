@@ -343,11 +343,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         print_info(out);
         out << std::endl;
         out << "iteration : " << iter << ", RMS : " << std::setprecision(12) << std::scientific << rms
-            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold;
+            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold << std::endl;
         if (!ctx_.full_potential()) {
-            out << std::endl
-                << "Hartree energy of density residual : " << eha_res << std::endl
-                << "bands are converged : " << boolstr(result.converged);
+            out << "Hartree energy of density residual : " << eha_res << std::endl
+                << "bands are converged : " << boolstr(result.converged) << std::endl;
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
             out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged) << std::endl;

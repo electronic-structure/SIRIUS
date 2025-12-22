@@ -77,9 +77,6 @@ class K_point
      *  matrix in case of general non-collinear magnetism. */
     std::array<la::dmatrix<std::complex<T>>, 2> sv_eigen_vectors_;
 
-    /// Full-diagonalization eigen vectors.
-    mdarray<std::complex<T>, 2> fd_eigen_vectors_;
-
     /// First-variational states.
     std::unique_ptr<wf::Wave_functions<T>> fv_states_{nullptr};
 
@@ -251,9 +248,13 @@ class K_point
     void
     update();
 
-    /// Generate first-variational states from eigen-vectors.
-    /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
-        \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
+    /// Generate LAPW wave-functions from eigen-vectors.
+    /** Wave-functions can be either first-variational or full-variationel depending on the method of
+        diagonalizing magnetic Hamiltonian. They are obtained from the LAPW+lo eigen-vectors and
+        LAPW matching coefficients.
+
+        APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
+        \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand wave-functions:
 
         \f[
         \psi_{i{\bf k}}({\bf r}) = \sum_{\mu} c_{\mu i}^{\bf k} \varphi_{\mu \bf k}({\bf r}) =
@@ -269,19 +270,20 @@ class K_point
         Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
         \f]
 
-        Thus, the total number of coefficients representing a wave-funstion is equal
+        Thus, the total number of coefficients representing a wave-function is equal
         to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r)
         Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves.
-        First-variational states are obtained from the first-variational eigen-vectors and
-        LAPW matching coefficients.
 
-        APW part:
+        Muffin-tin part of expansion coefficients \f$ F_{L \lambda}^{i {\bf k},\alpha} \f$ consists of
+        two contributions:
+        APW part
         \f[
-        \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
+        F_{L \lambda}^{i {\bf k},\alpha} = \sum_{{\bf G}} c_{{\bf G} i}^{\bf k} A_{L \nu}^{{\bf k},\alpha}({\bf G})
         \f]
+        and local-orbital coefficients copied directly from \f$ c_{j i}^{\bf k} \f$.
      */
     void
-    generate_fv_states();
+    generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__);
 
     /// Generate two-component spinor wave functions.
     /** In case of second-variational diagonalization spinor wave-functions are generated from the first-variational
@@ -478,27 +480,18 @@ class K_point
         return *fv_states_;
     }
 
-    inline wf::Wave_functions<T> const&
-    spinor_wave_functions() const
-    {
-        RTE_ASSERT(spinor_wave_functions_ != nullptr);
-        return *spinor_wave_functions_;
-    }
-
     inline wf::Wave_functions<T>&
     spinor_wave_functions()
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
-        // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
     }
 
-    inline auto&
-    spinor_wave_functions2()
+    inline wf::Wave_functions<T> const&
+    spinor_wave_functions() const
     {
         RTE_ASSERT(spinor_wave_functions_ != nullptr);
         return *spinor_wave_functions_;
-        // return const_cast<wf::Wave_functions<T>&>(static_cast<K_point const&>(*this).spinor_wave_functions());;
     }
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on
@@ -699,12 +692,6 @@ class K_point
     sv_eigen_vectors(int ispn)
     {
         return sv_eigen_vectors_[ispn];
-    }
-
-    inline auto&
-    fd_eigen_vectors()
-    {
-        return fd_eigen_vectors_;
     }
 
     void

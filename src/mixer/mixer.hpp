@@ -41,12 +41,13 @@ struct FunctionProperties
 
     ///
     /**
-     *  \param [in]  size_  Function, which returns a measure of size of the (global) function.
-     *  \param [in]  inner_ Function, which computes the (global) inner product. This determines the
-     *                      contribution to mixing parameters rmse.
-     *  \param [in]  scal_  Function, which scales the input (x = alpha * x).
-     *  \param [in]  copy_  Function, which copies from one object to the other (y = x).
-     *  \param [in]  axpy_  Function, which scales and adds one object to the other (y = alpha * x + y).
+     *  \param [in]  size_   Function, which returns a measure of size of the (global) function.
+     *  \param [in]  inner_  Function, which computes the (global) inner product. This determines the
+     *                       contribution to mixing parameters rmse.
+     *  \param [in]  scal_   Function, which scales the input (x = alpha * x).
+     *  \param [in]  copy_   Function, which copies from one object to the other (y = x).
+     *  \param [in]  axpy_   Function, which scales and adds one object to the other (y = alpha * x + y).
+     *  \param [in]  rotate_ Function that computes two new linear compibations out of x,y 
      */
     FunctionProperties(std::function<double(const FUNC&)> size_, std::function<double(const FUNC&, const FUNC&)> inner_,
                        std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
