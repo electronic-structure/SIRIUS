@@ -2853,7 +2853,11 @@ sirius_generate_density:
     paw_only:
       type: bool
       attr: in, optional
-      doc: it true, only local PAW density is generated
+      doc: if true, only local PAW density is generated
+    efermi:
+      type: bool
+      attr: in, optional
+      doc: if true, Fermi energy level is also computed
     error_code:
       type: int
       attr: out, optional
@@ -2862,7 +2866,7 @@ sirius_generate_density:
 */
 void
 sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool const* transform_to_rg__,
-                        bool const* paw_only__, int* error_code__)
+                        bool const* paw_only__, bool const* efermi__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -2870,6 +2874,11 @@ sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool 
                 auto add_core        = get_value<bool>(add_core__, false);
                 auto transform_to_rg = get_value<bool>(transform_to_rg__, false);
                 auto paw_only        = get_value<bool>(paw_only__, false);
+                auto efermi          = get_value<bool>(efermi__, false);
+
+                if (efermi) {
+                    gs.k_point_set().find_band_occupancies<double>();
+                }
 
                 if (paw_only) {
                     gs.density().generate_paw_density();

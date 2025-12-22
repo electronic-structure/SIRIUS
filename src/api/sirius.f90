@@ -3006,16 +3006,18 @@ end subroutine sirius_generate_effective_potential
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] add_core Add core charge density in the muffin-tins.
 !> @param [in] transform_to_rg If true, density and magnetization are transformed to real-space grid.
-!> @param [in] paw_only it true, only local PAW density is generated
+!> @param [in] paw_only if true, only local PAW density is generated
+!> @param [in] efermi if true, Fermi energy level is also computed
 !> @param [out] error_code Error code.
 subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg,paw_only,&
-&error_code)
+&efermi,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 logical, optional, target, intent(in) :: add_core
 logical, optional, target, intent(in) :: transform_to_rg
 logical, optional, target, intent(in) :: paw_only
+logical, optional, target, intent(in) :: efermi
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
@@ -3025,17 +3027,20 @@ type(C_PTR) :: transform_to_rg_ptr
 logical(C_BOOL), target :: transform_to_rg_c_type
 type(C_PTR) :: paw_only_ptr
 logical(C_BOOL), target :: paw_only_c_type
+type(C_PTR) :: efermi_ptr
+logical(C_BOOL), target :: efermi_c_type
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg,paw_only,&
-&error_code)&
+&efermi,error_code)&
 &bind(C, name="sirius_generate_density")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: add_core
 type(C_PTR), value :: transform_to_rg
 type(C_PTR), value :: paw_only
+type(C_PTR), value :: efermi
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -3057,18 +3062,17 @@ if (present(paw_only)) then
 paw_only_c_type = paw_only
 paw_only_ptr = C_LOC(paw_only_c_type)
 endif
+efermi_ptr = C_NULL_PTR
+if (present(efermi)) then
+efermi_c_type = efermi
+efermi_ptr = C_LOC(efermi_c_type)
+endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_generate_density_aux(gs_handler_ptr,add_core_ptr,transform_to_rg_ptr,&
-&paw_only_ptr,error_code_ptr)
-if (present(add_core)) then
-endif
-if (present(transform_to_rg)) then
-endif
-if (present(paw_only)) then
-endif
+&paw_only_ptr,efermi_ptr,error_code_ptr)
 end subroutine sirius_generate_density
 
 !
@@ -7262,7 +7266,7 @@ end subroutine sirius_set_atom_vector_field
 !> @brief Set the parameters controlling the dftd3 correction.
 !> @param [in] handler Simulation context handler.
 !> @param [in] method family of predefined parameters. Linked to the functional
-!> @param [in] damping__ damping correction, auto, manual.
+!> @param [in] damping damping correction, auto, manual.
 !> @param [in] atm Include the three body correction
 !> @param [in] damping_term type of damping correction, rational, mrational, zero, mzero, ...
 !> @param [in] s6 s6 parameter for dftd3 model.
@@ -7272,13 +7276,13 @@ end subroutine sirius_set_atom_vector_field
 !> @param [in] alp alp parameter for dftd3 model.
 !> @param [in] beta beta parameter for dftd3 model.
 !> @param [out] error_code Error code.
-subroutine sirius_set_dftd3_correction(handler,method,damping__,atm,damping_term,&
-&s6,s8,s9,rs8,alp,beta,error_code)
+subroutine sirius_set_dftd3_correction(handler,method,damping,atm,damping_term,s6,&
+&s8,s9,rs8,alp,beta,error_code)
 implicit none
 !
 type(sirius_context_handler), target, intent(in) :: handler
 character(*), target, intent(in) :: method
-character(*), optional, target, intent(in) :: damping__
+character(*), optional, target, intent(in) :: damping
 logical, optional, target, intent(in) :: atm
 character(*), optional, target, intent(in) :: damping_term
 real(8), optional, target, intent(in) :: s6
@@ -7292,8 +7296,8 @@ integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: method_ptr
 character(C_CHAR), target, allocatable :: method_c_type(:)
-type(C_PTR) :: damping___ptr
-character(C_CHAR), target, allocatable :: damping___c_type(:)
+type(C_PTR) :: damping_ptr
+character(C_CHAR), target, allocatable :: damping_c_type(:)
 type(C_PTR) :: atm_ptr
 logical(C_BOOL), target :: atm_c_type
 type(C_PTR) :: damping_term_ptr
@@ -7307,13 +7311,13 @@ type(C_PTR) :: beta_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_dftd3_correction_aux(handler,method,damping__,atm,damping_term,&
+subroutine sirius_set_dftd3_correction_aux(handler,method,damping,atm,damping_term,&
 &s6,s8,s9,rs8,alp,beta,error_code)&
 &bind(C, name="sirius_set_dftd3_correction")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: method
-type(C_PTR), value :: damping__
+type(C_PTR), value :: damping
 type(C_PTR), value :: atm
 type(C_PTR), value :: damping_term
 type(C_PTR), value :: s6
@@ -7332,11 +7336,11 @@ method_ptr = C_NULL_PTR
 allocate(method_c_type(len(method)+1))
 method_c_type = string_f2c(method)
 method_ptr = C_LOC(method_c_type)
-damping___ptr = C_NULL_PTR
-if (present(damping__)) then
-allocate(damping___c_type(len(damping__)+1))
-damping___c_type = string_f2c(damping__)
-damping___ptr = C_LOC(damping___c_type)
+damping_ptr = C_NULL_PTR
+if (present(damping)) then
+allocate(damping_c_type(len(damping)+1))
+damping_c_type = string_f2c(damping)
+damping_ptr = C_LOC(damping_c_type)
 endif
 atm_ptr = C_NULL_PTR
 if (present(atm)) then
@@ -7377,11 +7381,11 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_set_dftd3_correction_aux(handler_ptr,method_ptr,damping___ptr,atm_ptr,&
+call sirius_set_dftd3_correction_aux(handler_ptr,method_ptr,damping_ptr,atm_ptr,&
 &damping_term_ptr,s6_ptr,s8_ptr,s9_ptr,rs8_ptr,alp_ptr,beta_ptr,error_code_ptr)
 deallocate(method_c_type)
-if (present(damping__)) then
-deallocate(damping___c_type)
+if (present(damping)) then
+deallocate(damping_c_type)
 endif
 if (present(atm)) then
 endif
@@ -7389,6 +7393,138 @@ if (present(damping_term)) then
 deallocate(damping_term_c_type)
 endif
 end subroutine sirius_set_dftd3_correction
+
+!
+!> @brief Set the parameters controlling the dftd3 correction.
+!> @param [in] handler Simulation context handler.
+!> @param [in] method family of predefined parameters. Linked to the functional
+!> @param [in] damping damping correction, auto, manual.
+!> @param [in] atm Include the three body correction
+!> @param [in] damping_term type of damping correction, rational, mrational
+!> @param [in] s6 s6 parameter for dftd4 model.
+!> @param [in] s8 s8 parameter for dftd4 model.
+!> @param [in] s9 s9 parameter for dftd4 model.
+!> @param [in] a1 a1 parameter for dftd4 model.
+!> @param [in] a2 a2 parameter for dftd4 model.
+!> @param [in] alp alp parameter for dftd4 model.
+!> @param [out] error_code Error code.
+subroutine sirius_set_dftd4_correction(handler,method,damping,atm,damping_term,s6,&
+&s8,s9,a1,a2,alp,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+character(*), target, intent(in) :: method
+character(*), optional, target, intent(in) :: damping
+logical, optional, target, intent(in) :: atm
+character(*), optional, target, intent(in) :: damping_term
+real(8), optional, target, intent(in) :: s6
+real(8), optional, target, intent(in) :: s8
+real(8), optional, target, intent(in) :: s9
+real(8), optional, target, intent(in) :: a1
+real(8), optional, target, intent(in) :: a2
+real(8), optional, target, intent(in) :: alp
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: method_ptr
+character(C_CHAR), target, allocatable :: method_c_type(:)
+type(C_PTR) :: damping_ptr
+character(C_CHAR), target, allocatable :: damping_c_type(:)
+type(C_PTR) :: atm_ptr
+logical(C_BOOL), target :: atm_c_type
+type(C_PTR) :: damping_term_ptr
+character(C_CHAR), target, allocatable :: damping_term_c_type(:)
+type(C_PTR) :: s6_ptr
+type(C_PTR) :: s8_ptr
+type(C_PTR) :: s9_ptr
+type(C_PTR) :: a1_ptr
+type(C_PTR) :: a2_ptr
+type(C_PTR) :: alp_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_dftd4_correction_aux(handler,method,damping,atm,damping_term,&
+&s6,s8,s9,a1,a2,alp,error_code)&
+&bind(C, name="sirius_set_dftd4_correction")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: method
+type(C_PTR), value :: damping
+type(C_PTR), value :: atm
+type(C_PTR), value :: damping_term
+type(C_PTR), value :: s6
+type(C_PTR), value :: s8
+type(C_PTR), value :: s9
+type(C_PTR), value :: a1
+type(C_PTR), value :: a2
+type(C_PTR), value :: alp
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+method_ptr = C_NULL_PTR
+allocate(method_c_type(len(method)+1))
+method_c_type = string_f2c(method)
+method_ptr = C_LOC(method_c_type)
+damping_ptr = C_NULL_PTR
+if (present(damping)) then
+allocate(damping_c_type(len(damping)+1))
+damping_c_type = string_f2c(damping)
+damping_ptr = C_LOC(damping_c_type)
+endif
+atm_ptr = C_NULL_PTR
+if (present(atm)) then
+atm_c_type = atm
+atm_ptr = C_LOC(atm_c_type)
+endif
+damping_term_ptr = C_NULL_PTR
+if (present(damping_term)) then
+allocate(damping_term_c_type(len(damping_term)+1))
+damping_term_c_type = string_f2c(damping_term)
+damping_term_ptr = C_LOC(damping_term_c_type)
+endif
+s6_ptr = C_NULL_PTR
+if (present(s6)) then
+s6_ptr = C_LOC(s6)
+endif
+s8_ptr = C_NULL_PTR
+if (present(s8)) then
+s8_ptr = C_LOC(s8)
+endif
+s9_ptr = C_NULL_PTR
+if (present(s9)) then
+s9_ptr = C_LOC(s9)
+endif
+a1_ptr = C_NULL_PTR
+if (present(a1)) then
+a1_ptr = C_LOC(a1)
+endif
+a2_ptr = C_NULL_PTR
+if (present(a2)) then
+a2_ptr = C_LOC(a2)
+endif
+alp_ptr = C_NULL_PTR
+if (present(alp)) then
+alp_ptr = C_LOC(alp)
+endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_dftd4_correction_aux(handler_ptr,method_ptr,damping_ptr,atm_ptr,&
+&damping_term_ptr,s6_ptr,s8_ptr,s9_ptr,a1_ptr,a2_ptr,alp_ptr,error_code_ptr)
+deallocate(method_c_type)
+if (present(damping)) then
+deallocate(damping_c_type)
+endif
+if (present(atm)) then
+endif
+if (present(damping_term)) then
+deallocate(damping_term_c_type)
+endif
+end subroutine sirius_set_dftd4_correction
 
 
 subroutine sirius_free_handler_ctx(handler, error_code)
