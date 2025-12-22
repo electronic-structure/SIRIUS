@@ -21,12 +21,15 @@ double
 density_residual_hartree_energy(Density const& rho1__, Density const& rho2__)
 {
     double eh{0};
-    auto const& gv = rho1__.ctx().gvec();
+    auto const& gv = rho1__.ctx().gvec_coarse();
     #pragma omp parallel for reduction(+:eh)
     for (int igloc = gv.skip_g0(); igloc < gv.count(); igloc++) {
-        auto z   = rho1__.component(0).rg().f_pw_local(igloc) - rho2__.component(0).rg().f_pw_local(igloc);
-        double g = gv.gvec_len(gvec_index_t::local(igloc));
-        eh += (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / std::pow(g, 2);
+        /* local index in fine G-vector list */
+        int ig1  = rho1__.ctx().gvec().gvec_base_mapping(igloc);
+        auto z   = rho1__.component(0).rg().f_pw_local(ig1) - rho2__.component(0).rg().f_pw_local(ig1);
+
+        eh += (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) /
+               std::pow(rho1__.ctx().gvec().gvec_len(gvec_index_t::local(ig1)), 2);
     }
     gv.comm().allreduce(&eh, 1);
     eh *= twopi * rho1__.ctx().unit_cell().omega();
