@@ -18,6 +18,7 @@
 #include "core/rte/rte.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
+#include "symmetry/symmetrize_field4d.hpp"
 
 namespace sirius {
 
@@ -27,7 +28,6 @@ DFT_ground_state::initial_state()
     PROFILE("sirius::DFT_ground_state::initial_state");
 
     density_.initial_density();
-    density_.print_info(ctx_.out(1));
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
@@ -37,7 +37,6 @@ DFT_ground_state::initial_state()
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
-
         } else {
             Hamiltonian0<double> H0(potential_, true);
             initialize_subspace(kset_, H0);
@@ -201,8 +200,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
       << "energy_tol                : " << energy_tol__ << std::endl
       << "iter_solver_tol (initial) : " << iter_solver_tol__ << std::endl
       << "iter_solver_tol (target)  : " << ctx_.cfg().iterative_solver().min_tolerance() << std::endl
-      << "num_dft_iter              : " << num_dft_iter__;
+      << "num_dft_iter              : " << num_dft_iter__ << std::endl;
     RTE_OUT(ctx_.out(1)) << s.str();
+
+    density_.print_info(ctx_.out(1));
 
     for (int iter = 0; iter < num_dft_iter__; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
@@ -216,7 +217,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         diagonalize_result_t result;
 
-        double ne_diff = 0;
+        double ne_diff{0};
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
             Hamiltonian0<float> H0(potential_, true);
@@ -239,7 +240,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
             result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__,
-                                                         ctx_.cfg().iterative_solver().num_steps());
+                    ctx_.cfg().iterative_solver().num_steps());
             /* find band occupancies */
             ne_diff = kset_.find_band_occupancies<double>();
 
