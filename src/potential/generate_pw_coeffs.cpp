@@ -82,18 +82,19 @@ Potential::generate_pw_coefs()
             }
             case 1: {
                 fft::spfft_input<double>(fft, [&](int ir) -> double {
-                    // V - Bz
-                    return (effective_potential().rg().value(ir) - effective_magnetic_field(0).rg().value(ir)) *
+                    // V + Bz
+                    return (effective_potential().rg().value(ir) + effective_magnetic_field(0).rg().value(ir)) *
                            ctx_.theta(ir);
                 });
                 get_fft_result(&veff_pw_(0, 0));
 
                 fft::spfft_input<double>(fft, [&](int ir) -> double {
-                    // V + Bz
-                    return (effective_potential().rg().value(ir) + effective_magnetic_field(0).rg().value(ir)) *
+                    // V - Bz
+                    return (effective_potential().rg().value(ir) - effective_magnetic_field(0).rg().value(ir)) *
                            ctx_.theta(ir);
                 });
                 get_fft_result(&veff_pw_(0, 1));
+
                 break;
             }
             case 0: {
