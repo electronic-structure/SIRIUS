@@ -7,6 +7,7 @@ gcc-env:
   specs:
   - sirius@develop +elpa +python +vdwxc +apps +tests +scalapack +nlcglib +dftd3 +dftd4
   - nlcglib@1.3.0
+  - libvdwxc@develop # 0.5 is broken
   - kokkos+serial
   variants:
   - +mpi
