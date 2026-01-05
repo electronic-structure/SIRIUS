@@ -1,7 +1,7 @@
 name: sirius-uenv-base
 version: 2
 spack:
-  commit: releases/v1.0
+  commit: releases/v1.1
   repo: https://github.com/spack/spack.git
   packages:
     repo: https://github.com/spack/spack-packages.git
