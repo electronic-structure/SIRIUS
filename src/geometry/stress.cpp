@@ -380,12 +380,8 @@ Stress::calc_stress_xc()
         stress_xc_ += t;
     }
 
-    // compute the contributions of the stress tensor originating from non-local corrections
-    if (ctx_.full_potential()) {
-        potential_.xc_vdw_stress<false>(density_);
-    } else {
-        potential_.xc_vdw_stress<true>(density_);
-    }
+    // compute the contributions of the stress tensor originating from non-local corrections. Only valid when pseudo-potential are used
+    potential_.xc_vdw_stress<true>(density_);
 
     // compute the contribution of the stress originating from VDW (it contains all terms)
     stress_vdw_total_ =
