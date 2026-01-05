@@ -4,6 +4,7 @@ spack:
   commit: releases/v1.1
   repo: https://github.com/spack/spack.git
   packages:
+    repo: https://github.com/spack/spack-packages.git
     # Jan 5, 2026
     commit: bb70f8fa8de963a258152bf29809e115d5394937
 store: /user-environment
