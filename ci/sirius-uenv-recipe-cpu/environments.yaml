@@ -2,6 +2,7 @@ gcc-env:
   compiler: [gcc]
   network:
     mpi: cray-mpich@8.1.32
+    specs: ['libfabric@1.22.0']
   unify: true
   specs:
   - sirius@develop +elpa +python +vdwxc +apps +tests +scalapack +nlcglib +dftd3 +dftd4
