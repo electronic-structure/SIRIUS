@@ -99,7 +99,7 @@ class Potential : public Field4D
     std::vector<XC_functional> xc_func_;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
-    mdarray<std::complex<double>, 1> veff_pw_;
+    mdarray<std::complex<double>, 2> veff_pw_;
 
     /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
     mdarray<std::complex<double>, 1> rm_inv_pw_;
@@ -791,9 +791,9 @@ class Potential : public Field4D
     }
 
     auto const&
-    veff_pw(int ig__) const
+    veff_pw(int ig__, int ispn__ = 0) const
     {
-        return veff_pw_(ig__);
+        return veff_pw_(ig__, ispn__);
     }
 
     void

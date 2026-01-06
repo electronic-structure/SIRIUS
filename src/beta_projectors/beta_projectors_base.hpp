@@ -276,8 +276,6 @@ class Beta_projectors_base
     /// For large systems beta-projectors are split into "chunks" to reduce memory consumption.
     std::vector<beta_chunk_t> beta_chunks_;
 
-    // int max_num_beta_;
-
     /// Total number of beta-projectors for the entire unit cell.
     int num_beta_{0};
 

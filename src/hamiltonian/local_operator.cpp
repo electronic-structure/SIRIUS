@@ -34,6 +34,7 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         veff_vec_[j] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
+            /* this is done for debug/test purposes and is only used by the test app */
             veff_vec_[j]->value(ir) = 2.71828;
         }
     }

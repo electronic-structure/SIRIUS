@@ -533,6 +533,7 @@ class Wave_functions_mt : public Wave_functions_base<T>
     }
 
     /// Construct without muffin-tin part.
+    /** Called by Wave_functions() constructor for the pure plane-wave case. */
     Wave_functions_mt(mpi::Communicator const& comm__, num_mag_dims num_md__, num_bands num_wf__,
                       memory_t default_mem__, int num_pw__)
         : Wave_functions_base<T>(num_pw__, 0, num_md__, num_wf__, default_mem__)
@@ -729,6 +730,12 @@ class Wave_functions : public Wave_functions_mt<T>
     /// Return reference to the plane-wave coefficient for a given plane-wave, spin and band indices.
     inline auto&
     pw_coeffs(int ig__, spin_index ispn__, band_index i__)
+    {
+        return this->data_[ispn__.get()](ig__, i__.get());
+    }
+
+    inline auto const&
+    pw_coeffs(int ig__, spin_index ispn__, band_index i__) const
     {
         return this->data_[ispn__.get()](ig__, i__.get());
     }
