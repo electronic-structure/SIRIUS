@@ -100,7 +100,6 @@ class Free_atom : public sirius::Atom_type
         );
 
         auto mixer_function_prop = mixer::FunctionProperties<std::vector<double>>(
-                [](const std::vector<double>& x) -> std::size_t { return x.size(); },
                 /* use simple inner product for mixing */
                 [](const std::vector<double>& x, const std::vector<double>& y) -> double {
                     double result = 0.0;
