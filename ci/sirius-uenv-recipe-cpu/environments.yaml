@@ -2,10 +2,13 @@ gcc-env:
   compiler: [gcc]
   network:
     mpi: cray-mpich@8.1.32
+    specs: ['libfabric@1.22.0']
   unify: true
   specs:
-  - sirius@develop +elpa +python +vdwxc +apps +tests +scalapack +nlcglib +dftd3 +dftd4
+  - sirius@develop +elpa +python +vdwxc +apps +tests +scalapack +nlcglib +dftd3 +dftd4 ~memory_pool
   - nlcglib@1.3.0
+  - libvdwxc@master # 0.5 is broken
+  - kokkos+serial@4.7.02
   variants:
   - +mpi
   views:
