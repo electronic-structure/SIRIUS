@@ -159,6 +159,18 @@ class Potential : public Field4D
     /// Ewald energy.
     double ewald_energy_{0};
 
+    /// VDW energy
+    double vdw_energy_{0.0};
+
+    // kernel contribution of the VDW stress_tensor
+    r3::matrix<double> vdw_stress_kernel_;
+
+    // gradient contribution of the VDW stress_tensor
+    r3::matrix<double> vdw_stress_gradient_;
+
+    // gradient contribution of the VDW stress_tensor
+    r3::matrix<double> vdw_stress_potential_;
+
     void
     init_PAW();
 
@@ -282,12 +294,12 @@ class Potential : public Field4D
     /// Generate non-magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
     void
-    xc_rg_nonmagnetic(Density const& density__, bool use_lapl);
+    xc_rg_nonmagnetic(Density const& density__, bool use_lapl, const bool calculate_vdw_stress__);
 
     /// Generate magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
     void
-    xc_rg_magnetic(Density const& density__, bool use_lapl);
+    xc_rg_magnetic(Density const& density__, bool use_lapl, const bool calculate_vdw_stress__);
 
   public:
     /// Constructor
@@ -609,6 +621,11 @@ class Potential : public Field4D
     void
     xc(Density const& rho__);
 
+    /// calculate the stress tensor contribution coming the vdw functional
+    template <bool add_pseudo_core__>
+    void
+    xc_vdw_stress(Density const& density__);
+
     /// Generate effective potential and magnetic field from charge density and magnetization.
     void
     generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
@@ -831,6 +848,9 @@ class Potential : public Field4D
         if (!ctx_.full_potential()) {
             exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density().rg());
         }
+
+        exc -= vdw_energy_;
+
         return exc;
     }
 
@@ -908,6 +928,22 @@ class Potential : public Field4D
     d_mtrx(int ia) const
     {
         return d_mtrx_[ia];
+    }
+
+    inline auto&
+    vdw_stress_kernel()
+    {
+        return vdw_stress_kernel_;
+    }
+    inline auto&
+    vdw_stress_gradient()
+    {
+        return vdw_stress_gradient_;
+    }
+    inline auto&
+    vdw_stress_potential()
+    {
+        return vdw_stress_potential_;
     }
 };
 

@@ -1050,6 +1050,21 @@ class config_t
             }
             dict_["/parameters/xc_functionals"_json_pointer] = xc_functionals__;
         }
+        /// Weight associated to each functional.
+        /**
+            By default all weights are equal to 1 but it is possible to add functional with different weights if needed. The order of the weights should match the order of the functionals
+        */
+        inline auto xc_functionals_weight() const
+        {
+            return dict_.at("/parameters/xc_functionals_weight"_json_pointer).get<std::vector<double>>();
+        }
+        inline void xc_functionals_weight(std::vector<double> xc_functionals_weight__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/xc_functionals_weight"_json_pointer] = xc_functionals_weight__;
+        }
         /// Type of core-states relativity in full-potential LAPW case.
         inline auto core_relativity() const
         {

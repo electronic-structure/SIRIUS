@@ -76,12 +76,12 @@ class Free_atom : public sirius::Atom_type
         RTE_ASSERT(np > 0);
 
         std::unique_ptr<XC_functional_base> Ex;
-        XC_functional_base Ec("XC_LDA_C_VWN", 1);
+        XC_functional_base Ec("XC_LDA_C_VWN", 1.0, 1);
 
         if (rel_ == relativity_t::koelling_harmon) {
-            Ex = std::make_unique<XC_functional_base>("XC_LDA_X_REL", 1);
+            Ex = std::make_unique<XC_functional_base>("XC_LDA_X_REL", 1.0, 1);
         } else {
-            Ex = std::make_unique<XC_functional_base>("XC_LDA_X", 1);
+            Ex = std::make_unique<XC_functional_base>("XC_LDA_X", 1.0, 1);
         }
 
         std::vector<double> veff(np);

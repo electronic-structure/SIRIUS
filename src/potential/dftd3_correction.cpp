@@ -185,7 +185,7 @@ dftd3::calculate_energy_forces_stress()
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            stress_(i, j) = stress_tmp[3 * i + j];
+            stress_(i, j) = -stress_tmp[3 * i + j] / ctx_.unit_cell().omega();
         }
     }
 #endif

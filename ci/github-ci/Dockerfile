@@ -28,6 +28,7 @@ RUN git clone -b releases/v1.0 https://github.com/spack/spack.git
 RUN git clone https://github.com/spack/spack-packages.git
 RUN git -C spack-packages checkout 9b5cdf0c383c9d67ab7c5f271509566e3d2ac758
 RUN spack repo set --destination /spack-packages --scope system builtin
+COPY ./spack_repo/sirius_repo/packages/libvdwxc/package.py /spack-packages/repos/spack_repo/builtin/packages/libvdwxc
 
 # set the location of packages built by spack
 RUN spack config --scope system add config:install_tree:root:/opt/local

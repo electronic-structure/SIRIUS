@@ -97,12 +97,12 @@ set_target_properties(sirius_cxx PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(SIRIUS_USE_ROCM)
   set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
-  set_target_properties(sirius_cxx PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
+  #  set_target_properties(sirius_cxx PROPERTIES HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECTURES})
 endif()
 
-#if(SIRIUS_USE_CUDA)
-#  set_target_properties(sirius PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
-#endif()
+if(SIRIUS_USE_CUDA)
+   set_target_properties(sirius_cxx PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+endif()
 
 target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   MPI::MPI_CXX

@@ -1386,7 +1386,7 @@ class XC_functional_base
 {
   protected:
     std::string libxc_name_;
-
+    double weight_{1.0};
     int num_spins_;
 
     std::unique_ptr<xc_func_type> handler_{nullptr};
@@ -1402,8 +1402,9 @@ class XC_functional_base
     operator=(const XC_functional_base& src) = delete;
 
   public:
-    XC_functional_base(const std::string libxc_name__, int num_spins__)
+    XC_functional_base(const std::string libxc_name__, const double weight__, int num_spins__)
         : libxc_name_(libxc_name__)
+        , weight_(weight__)
         , num_spins_(num_spins__)
     {
         /* check if functional name is in list */
@@ -1534,6 +1535,12 @@ class XC_functional_base
     is_exchange_correlation() const
     {
         return kind() == XC_EXCHANGE_CORRELATION;
+    }
+
+    const double
+    weight() const
+    {
+        return weight_;
     }
 
     /// Get LDA contribution.
