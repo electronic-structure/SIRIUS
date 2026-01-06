@@ -72,7 +72,8 @@ energy_acc()
 
 struct null_buffer : std::streambuf
 {
-    int overflow(int c) override
+    int
+    overflow(int c) override
     {
         return c;
     }

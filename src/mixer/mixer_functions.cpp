@@ -26,13 +26,9 @@ periodic_function_property()
         return inner(x, y);
     };
 
-    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
-        x *= alpha;
-    };
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { x *= alpha; };
 
-    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void {
-        copy(x, y);
-    };
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void { copy(x, y); };
 
     auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
         axpy(alpha, x, y);
@@ -42,8 +38,8 @@ periodic_function_property()
         rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function,
-                                                         copy_function, axpy_function, rotate_function);
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                         rotate_function);
 }
 
 /// Only for the PP-PW case.
@@ -77,13 +73,9 @@ periodic_function_property_rho_pw(bool use_coarse_gvec__)
         return result;
     };
 
-    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
-        x *= alpha;
-    };
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { x *= alpha; };
 
-    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void {
-        copy(x, y);
-    };
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void { copy(x, y); };
 
     auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
         axpy(alpha, x, y);
@@ -93,8 +85,8 @@ periodic_function_property_rho_pw(bool use_coarse_gvec__)
         rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function,
-                                                         copy_function, axpy_function, rotate_function);
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                         rotate_function);
 }
 
 /// Only for the PP-PW case.
@@ -126,13 +118,9 @@ periodic_function_property_mag_pw(bool use_coarse_gvec__)
         return result;
     };
 
-    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
-        x *= alpha;
-    };
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { x *= alpha; };
 
-    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void {
-        copy(x, y);
-    };
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void { copy(x, y); };
 
     auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
         axpy(alpha, x, y);
@@ -142,8 +130,8 @@ periodic_function_property_mag_pw(bool use_coarse_gvec__)
         rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function,
-                                                         copy_function, axpy_function, rotate_function);
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                         rotate_function);
 }
 
 FunctionProperties<density_matrix_t>
@@ -190,8 +178,8 @@ density_function_property()
         }
     };
 
-    return FunctionProperties<density_matrix_t>(inner_prod_func, scal_function, copy_function,
-                                                axpy_function, rotate_function);
+    return FunctionProperties<density_matrix_t>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                rotate_function);
 }
 
 FunctionProperties<PAW_density<double>>
@@ -244,8 +232,8 @@ paw_density_function_property()
         }
     };
 
-    return FunctionProperties<PAW_density<double>>(inner_prod_func, scale_func, copy_function,
-                                                   axpy_function, rotate_function);
+    return FunctionProperties<PAW_density<double>>(inner_prod_func, scale_func, copy_function, axpy_function,
+                                                   rotate_function);
 }
 
 FunctionProperties<Hubbard_matrix>
@@ -348,8 +336,7 @@ hubbard_matrix_function_property()
         }
     };
 
-    return FunctionProperties<Hubbard_matrix>(inner_prod_func, scale_func, copy_func, axpy_func,
-                                              rotate_func);
+    return FunctionProperties<Hubbard_matrix>(inner_prod_func, scale_func, copy_func, axpy_func, rotate_func);
 }
 } // namespace mixer
 

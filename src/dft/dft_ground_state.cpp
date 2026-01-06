@@ -239,7 +239,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             Hamiltonian0<double> H0(potential_, true);
             /* find new wave-functions */
             result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__,
-                    ctx_.cfg().iterative_solver().num_steps());
+                                                         ctx_.cfg().iterative_solver().num_steps());
             /* find band occupancies */
             ne_diff = kset_.find_band_occupancies<double>();
 
@@ -356,7 +356,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold << std::endl;
         if (!ctx_.full_potential()) {
             out //<< "Hartree energy of density residual : " << eha_res << std::endl
-                << "bands are converged : " << boolstr(result.converged) << std::endl;
+                    << "bands are converged : " << boolstr(result.converged) << std::endl;
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
             out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged) << std::endl;

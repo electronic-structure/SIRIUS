@@ -114,8 +114,7 @@ class Anderson : public Mixer<FUNCS...>
             for (int i = 0; i <= history_size - 1; ++i) {
                 auto j                                           = this->idx_hist(this->step_ - i - 1);
                 this->S_(history_size - 1, history_size - i - 1) = this->S_(history_size - i - 1, history_size - 1) =
-                        this->inner_product(this->residual_history_[j],
-                                                                this->residual_history_[idx_prev_step]);
+                        this->inner_product(this->residual_history_[j], this->residual_history_[idx_prev_step]);
             }
 
             // Make a copy because factorizing destroys the matrix.
@@ -127,9 +126,9 @@ class Anderson : public Mixer<FUNCS...>
 
             mdarray<double, 1> h({history_size});
             for (int i = 1; i <= history_size; ++i) {
-                auto j              = this->idx_hist(this->step_ - i);
-                h(history_size - i) = this->inner_product(this->residual_history_[j],
-                                                                              this->residual_history_[idx_step]);
+                auto j = this->idx_hist(this->step_ - i);
+                h(history_size - i) =
+                        this->inner_product(this->residual_history_[j], this->residual_history_[idx_step]);
             }
 
             bool invertible = la::wrap(la::lib_t::lapack).sysolve(history_size, this->S_factorized_, h);

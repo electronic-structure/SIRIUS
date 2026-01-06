@@ -48,8 +48,8 @@ struct FunctionProperties
      *  \param [in]  axpy_   Function, which scales and adds one object to the other (y = alpha * x + y).
      *  \param [in]  rotate_ Function that computes two new linear compibations out of x,y 
      */
-    FunctionProperties(std::function<double(const FUNC&, const FUNC&)> inner_,
-                       std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
+    FunctionProperties(std::function<double(const FUNC&, const FUNC&)> inner_, std::function<void(double, FUNC&)> scal_,
+                       std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_,
                        std::function<void(double, double, FUNC&, FUNC&)> rotate_)
         : inner(inner_)
