@@ -361,8 +361,9 @@ class Mixer
         std::get<FUNC_INDEX>(functions_).copy(*std::get<FUNC_INDEX>(output_history_[idx]), output);
     }
 
-    /// Mix input and stored history. Returns the root mean square error computed by inner products of residuals.
-    /** \param [in]  rms_min  Minimum root mean square error. Mixing is only performed, if current RMS is above this
+    /// Mix input and stored history.
+    /** Returns the root mean square error computed by inner products of residuals.
+     *  \param [in]  rms_min  Minimum root mean square error. Mixing is only performed, if current RMS is above this
      *                        threshold.
      */
     double
@@ -371,14 +372,12 @@ class Mixer
         this->update_residual();
         this->update_rms();
         double rmse = rmse_history_[idx_hist(step_)];
-        if (rmse < rms_min__) {
-            return rmse;
+        if (rmse > rms_min__) {
+            /* call mixing implementation */
+            this->mix_impl();
+            step_++;
         }
 
-        /* call mixing implementation */
-        this->mix_impl();
-
-        ++step_;
         return rmse;
     }
 

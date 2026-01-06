@@ -31,8 +31,8 @@ double
 xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
       int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__, bool use_lalp__);
 
-double
-density_residual_hartree_energy(Density const& rho1__, Density const& rho2__);
+//double
+//density_residual_hartree_energy(Density const& rho1__, Density const& rho2__);
 
 /// Generate effective potential from charge density and magnetization.
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the

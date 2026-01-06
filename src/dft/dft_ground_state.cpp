@@ -195,8 +195,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     Density rho1(ctx_);
 
     std::stringstream s;
-    s << "density_tol               : " << density_tol__ << std::endl
-      << "energy_tol                : " << energy_tol__ << std::endl
+    s << "density tolerance         : " << density_tol__ << std::endl
+      << "total energy tolerance    : " << energy_tol__ << std::endl
       << "iter_solver_tol (initial) : " << iter_solver_tol__ << std::endl
       << "iter_solver_tol (target)  : " << ctx_.cfg().iterative_solver().min_tolerance() << std::endl
       << "num_dft_iter              : " << num_dft_iter__ << std::endl;
@@ -255,14 +255,33 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         /* mix density */
         rms = density_.mix();
 
-        double eha_res = density_residual_hartree_energy(density_, rho1);
-
-        /* estimate new tolerance of the iterative solver */
-        double tol = rms;
-        if (ctx_.cfg().mixer().use_hartree()) {
-            // tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
-            tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
+        /* we need to estimate new tolerance of the iterative solver;
+         * several cases need to be handeled:
+         *  - full-potential
+         *  - pseudo-potential
+         *    - use Hartree energy of residuals
+         *    - use inner product of residuals */
+        double tol{0};
+        if (ctx_.full_potential()) {
+            /* this will be Sqrt( <res | res> ) i.e. root mean square error */
+            tol = rms;
+        } else {
+            if (ctx_.cfg().mixer().use_hartree()) {
+                tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+            } else {
+                /* same as full-potential case */
+                tol = rms;
+            }
         }
+
+        //double eha_res = density_residual_hartree_energy(density_, rho1);
+
+        ///* estimate new tolerance of the iterative solver */
+        //if (ctx_.cfg().mixer().use_hartree()) {
+        //    // tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+        //    tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
+        //}
+
         tol = std::min(ctx_.cfg().iterative_solver().tolerance_scale()[0] * tol,
                        ctx_.cfg().iterative_solver().tolerance_scale()[1] * iter_solver_tol__);
         /* tolerance can't be too small */
@@ -344,7 +363,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         out << "iteration : " << iter << ", RMS : " << std::setprecision(12) << std::scientific << rms
             << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold << std::endl;
         if (!ctx_.full_potential()) {
-            out << "Hartree energy of density residual : " << eha_res << std::endl
+            out //<< "Hartree energy of density residual : " << eha_res << std::endl
                 << "bands are converged : " << boolstr(result.converged) << std::endl;
         }
         if (ctx_.cfg().iterative_solver().type() != "exact") {
@@ -353,14 +372,13 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         RTE_OUT(ctx_.out(1)) << out.str();
         /* check if the calculation has converged */
-        bool converged{true};
-        // converged = (std::abs(eold - etot) < energy_tol__) && result.converged && iter_solver_converged;
-        converged = (std::abs(eold - etot) < energy_tol__) && iter_solver_converged;
-        if (ctx_.cfg().mixer().use_hartree()) {
-            converged = converged && (eha_res < density_tol__);
-        } else {
-            converged = converged && (rms < density_tol__);
-        }
+        //bool converged{true};
+        bool converged = (std::abs(eold - etot) < energy_tol__) && (rms < density_tol__) && iter_solver_converged;
+        //if (ctx_.cfg().mixer().use_hartree()) {
+        //    converged = converged && (rms * rms < density_tol__);
+        //} else {
+        //    converged = converged && (rms < density_tol__);
+        //}
         if (converged) {
             if (std::abs(ne_diff) > 1e-10) {
                 std::stringstream ss;

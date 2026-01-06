@@ -92,6 +92,7 @@ initialize(bool call_mpi_init__ = true)
     energy_acc() = -power::device_energy();
 #endif
     if (call_mpi_init__) {
+        PROFILE("sirius::initialize::mpi");
         mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
@@ -115,6 +116,7 @@ initialize(bool call_mpi_init__ = true)
     /* get number of ranks per node during the global call to sirius::initialize() */
     mpi::num_ranks_per_node();
     if (acc::num_devices() > 0) {
+        PROFILE("sirius::initialize::acc");
         int devid = mpi::get_device_id(acc::num_devices());
         acc::set_device_id(devid);
         /* create extensive amount of streams */
