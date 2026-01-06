@@ -22,8 +22,6 @@ namespace mixer {
 FunctionProperties<Periodic_function<double>>
 periodic_function_property()
 {
-    auto global_size_func = [](const Periodic_function<double>& x) -> double { return x.ctx().unit_cell().omega(); };
-
     auto inner_prod_func = [](const Periodic_function<double>& x, const Periodic_function<double>& y) -> double {
         return inner(x, y);
     };
@@ -44,7 +42,7 @@ periodic_function_property()
         rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function,
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function,
                                                          copy_function, axpy_function, rotate_function);
 }
 
@@ -52,10 +50,6 @@ periodic_function_property()
 FunctionProperties<Periodic_function<double>>
 periodic_function_property_rho_pw(bool use_coarse_gvec__)
 {
-    auto global_size_func = [](Periodic_function<double> const& x) -> double {
-        return 1.0;// / x.ctx().unit_cell().omega();
-    };
-
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x,
                                                Periodic_function<double> const& y) -> double {
         double result{0};
@@ -99,7 +93,7 @@ periodic_function_property_rho_pw(bool use_coarse_gvec__)
         rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function,
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function,
                                                          copy_function, axpy_function, rotate_function);
 }
 
@@ -107,10 +101,6 @@ periodic_function_property_rho_pw(bool use_coarse_gvec__)
 FunctionProperties<Periodic_function<double>>
 periodic_function_property_mag_pw(bool use_coarse_gvec__)
 {
-    auto global_size_func = [](Periodic_function<double> const& x) -> double {
-        return 1.0;
-    };
-
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x,
                                                Periodic_function<double> const& y) -> double {
         double result{0};
@@ -152,21 +142,13 @@ periodic_function_property_mag_pw(bool use_coarse_gvec__)
         rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function,
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function,
                                                          copy_function, axpy_function, rotate_function);
 }
 
 FunctionProperties<density_matrix_t>
 density_function_property()
 {
-    auto global_size_func = [](density_matrix_t const& x) -> double {
-        size_t result{0};
-        for (auto& e : x) {
-            result += e.size();
-        }
-        return result;
-    };
-
     auto inner_prod_func = [](density_matrix_t const& x, density_matrix_t const& y) -> double {
         // do not contribute to mixing
         return 0.0;
@@ -208,15 +190,13 @@ density_function_property()
         }
     };
 
-    return FunctionProperties<density_matrix_t>(global_size_func, inner_prod_func, scal_function, copy_function,
+    return FunctionProperties<density_matrix_t>(inner_prod_func, scal_function, copy_function,
                                                 axpy_function, rotate_function);
 }
 
 FunctionProperties<PAW_density<double>>
 paw_density_function_property()
 {
-    auto global_size_func = [](PAW_density<double> const& x) -> double { return x.unit_cell().num_paw_atoms(); };
-
     auto inner_prod_func = [](PAW_density<double> const& x, PAW_density<double> const& y) -> double {
         return inner(x, y);
     };
@@ -264,15 +244,13 @@ paw_density_function_property()
         }
     };
 
-    return FunctionProperties<PAW_density<double>>(global_size_func, inner_prod_func, scale_func, copy_function,
+    return FunctionProperties<PAW_density<double>>(inner_prod_func, scale_func, copy_function,
                                                    axpy_function, rotate_function);
 }
 
 FunctionProperties<Hubbard_matrix>
 hubbard_matrix_function_property()
 {
-    auto global_size_func = [](Hubbard_matrix const& x) -> double { return 1.0; };
-
     auto inner_prod_func = [](Hubbard_matrix const& x, Hubbard_matrix const& y) -> double {
         /* do not contribute to mixing */
         return 0;
@@ -370,7 +348,7 @@ hubbard_matrix_function_property()
         }
     };
 
-    return FunctionProperties<Hubbard_matrix>(global_size_func, inner_prod_func, scale_func, copy_func, axpy_func,
+    return FunctionProperties<Hubbard_matrix>(inner_prod_func, scale_func, copy_func, axpy_func,
                                               rotate_func);
 }
 } // namespace mixer

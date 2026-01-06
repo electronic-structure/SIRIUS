@@ -82,8 +82,6 @@ class Anderson : public Mixer<FUNCS...>
 
         const auto history_size = static_cast<int>(this->history_size_);
 
-        const bool normalize = false;
-
         // beta scaling
         if (this->step_ > this->max_history_) {
             const double rmse_avg = std::accumulate(this->rmse_history_.begin(), this->rmse_history_.end(), 0.0) /
@@ -116,7 +114,7 @@ class Anderson : public Mixer<FUNCS...>
             for (int i = 0; i <= history_size - 1; ++i) {
                 auto j                                           = this->idx_hist(this->step_ - i - 1);
                 this->S_(history_size - 1, history_size - i - 1) = this->S_(history_size - i - 1, history_size - 1) =
-                        this->template inner_product<normalize>(this->residual_history_[j],
+                        this->inner_product(this->residual_history_[j],
                                                                 this->residual_history_[idx_prev_step]);
             }
 
@@ -130,7 +128,7 @@ class Anderson : public Mixer<FUNCS...>
             mdarray<double, 1> h({history_size});
             for (int i = 1; i <= history_size; ++i) {
                 auto j              = this->idx_hist(this->step_ - i);
-                h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j],
+                h(history_size - i) = this->inner_product(this->residual_history_[j],
                                                                               this->residual_history_[idx_step]);
             }
 

@@ -274,14 +274,6 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             }
         }
 
-        //double eha_res = density_residual_hartree_energy(density_, rho1);
-
-        ///* estimate new tolerance of the iterative solver */
-        //if (ctx_.cfg().mixer().use_hartree()) {
-        //    // tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
-        //    tol = eha_res / std::max(1.0, unit_cell_.num_electrons());
-        //}
-
         tol = std::min(ctx_.cfg().iterative_solver().tolerance_scale()[0] * tol,
                        ctx_.cfg().iterative_solver().tolerance_scale()[1] * iter_solver_tol__);
         /* tolerance can't be too small */
@@ -372,13 +364,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         RTE_OUT(ctx_.out(1)) << out.str();
         /* check if the calculation has converged */
-        //bool converged{true};
         bool converged = (std::abs(eold - etot) < energy_tol__) && (rms < density_tol__) && iter_solver_converged;
-        //if (ctx_.cfg().mixer().use_hartree()) {
-        //    converged = converged && (rms * rms < density_tol__);
-        //} else {
-        //    converged = converged && (rms < density_tol__);
-        //}
+
         if (converged) {
             if (std::abs(ne_diff) > 1e-10) {
                 std::stringstream ss;

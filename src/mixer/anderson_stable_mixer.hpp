@@ -74,8 +74,6 @@ class Anderson_stable : public Mixer<FUNCS...>
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
         const auto idx_step_prev = this->idx_hist(this->step_ - 1);
 
-        const bool normalize = false;
-
         const auto history_size = static_cast<int>(this->history_size_);
 
         // TODO: beta scaling?
@@ -102,7 +100,7 @@ class Anderson_stable : public Mixer<FUNCS...>
             // orthogonalize residual_history_[step-1] w.r.t. residual_history_[1:step-2] using modified Gram-Schmidt.
             for (int i = 1; i <= history_size - 1; ++i) {
                 auto j  = this->idx_hist(this->step_ - i - 1);
-                auto sz = this->template inner_product<normalize>(this->residual_history_[j],
+                auto sz = this->inner_product(this->residual_history_[j],
                                                                   this->residual_history_[idx_step_prev]);
                 this->R_(history_size - 1 - i, history_size - 1) = sz;
                 this->axpy(-sz, this->residual_history_[j], this->residual_history_[idx_step_prev]);
@@ -111,14 +109,14 @@ class Anderson_stable : public Mixer<FUNCS...>
             // repeat orthogonalization.. seems really necessary.
             for (int i = 1; i <= history_size - 1; ++i) {
                 auto j  = this->idx_hist(this->step_ - i - 1);
-                auto sz = this->template inner_product<normalize>(this->residual_history_[j],
+                auto sz = this->inner_product(this->residual_history_[j],
                                                                   this->residual_history_[idx_step_prev]);
                 this->R_(history_size - 1 - i, history_size - 1) += sz;
                 this->axpy(-sz, this->residual_history_[j], this->residual_history_[idx_step_prev]);
             }
 
             // normalize the new residual difference vec itself
-            auto nrm2 = this->template inner_product<normalize>(this->residual_history_[idx_step_prev],
+            auto nrm2 = this->inner_product(this->residual_history_[idx_step_prev],
                                                                 this->residual_history_[idx_step_prev]);
 
             if (nrm2 > 0) {
@@ -132,7 +130,7 @@ class Anderson_stable : public Mixer<FUNCS...>
                 mdarray<double, 1> h({history_size});
                 for (int i = 1; i <= history_size; ++i) {
                     auto j              = this->idx_hist(this->step_ - i);
-                    h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j],
+                    h(history_size - i) = this->inner_product(this->residual_history_[j],
                                                                                   this->residual_history_[idx_step]);
                 }
 
