@@ -11,7 +11,7 @@
 [![Verification tests master](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/badges/master/pipeline.svg?key_text=master)](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/-/commits/master)
 [![Verification tests develop](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/badges/master/pipeline.svg?key_text=develop)](https://gitlab.com/cscs-ci/ci-testing/webhook-ci/mirrors/7415069138667150/4626796664769983/-/commits/develop)
 
-## Table of contents
+## Table of contents 
 * [Introduction](#introduction)
 * [Installation](#installation)
   * [Configuring SIRIUS](#configuring-sirius)
