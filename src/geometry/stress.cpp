@@ -285,6 +285,24 @@ Stress::calc_stress_xc()
 {
     stress_xc_.zero();
 
+    /* Calculating the exchange functional contribution can be tricky when vdw functional is present.
+     * The contribution to the stress tensor coming from vdw has three terms. The first term is common
+     * to all functionals E_xc - E_vxc, the second term is coming from the gradient correction and one
+     * last term appears due to the non-local nature of the exchange functional (see Eq.4 of ref.
+     * J. Phys.: Condens. Matter 24 (2012) 424209).
+     *
+     * The gradient correction should be split in two different contributions, one coming from the libxc
+     * functional and one coming from libvdwxc. The PR in libvdwxc states explicitly than the last two
+     * terms of Eq.4 are implemented. It means that we only need to compute the gradient corrections for
+     * the libxc functionals and compute the remaining term of the stress tensor contribution of vdw with
+     * libvdwxc.
+     *
+     * The first term of Eq.4 is common to all functionals so no special treatment is required in that
+     * case. What does this imply, we need to calculate the sigma of all libxc contributions only.for
+     * the gradient corrections.
+     *
+     */
+
     double e = sirius::energy_exc(density_, potential_) - sirius::energy_vxc(density_, potential_) -
                sirius::energy_bxc(density_, potential_);
 
@@ -362,8 +380,39 @@ Stress::calc_stress_xc()
         stress_xc_ += t;
     }
 
-    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_xc_);
+    // compute the contributions of the stress tensor originating from non-local corrections. Only valid when pseudo-potential are used
+    potential_.xc_vdw_stress<true>(density_);
 
+    // compute the contribution of the stress originating from VDW (it contains all terms)
+    stress_vdw_total_ =
+            potential_.vdw_stress_kernel() + potential_.vdw_stress_potential() + potential_.vdw_stress_gradient();
+
+    /*
+     * purely non local contribution See Eq.4 Sabatini {\it et al}, Journal of
+     * Physics: Condensed Matter, {\bf 24}, 424209 (2012)
+     * (10.1088/0953-8984/24/42/424209)
+     */
+
+    stress_vdw_kernel_ = potential_.vdw_stress_kernel();
+
+    // the last two terms are already included in the xc contribution. We only
+    // compute them to print their value
+
+    // GGA type contribution coming from the gradient.
+    stress_vdw_gradient_ = potential_.vdw_stress_gradient();
+    // common to all functionals
+    stress_vdw_potential_ = potential_.vdw_stress_potential();
+
+    // Only add the kernel contribution, as the potential and gradient parts are
+    // already calculated. Sign convention difference between QE and SIRIUS.
+
+    stress_xc_ += (-1.0) * potential_.vdw_stress_kernel();
+
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_xc_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_vdw_total_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_vdw_potential_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_vdw_kernel_);
+    symmetrize_stress_tensor(ctx_.unit_cell().symmetry(), stress_vdw_gradient_);
     return stress_xc_;
 }
 
@@ -567,16 +616,20 @@ Stress::print_info(std::ostream& out__, int verbosity__) const
         }
     };
 
-    const double au2kbar = 2.94210119E5;
-    auto stress_kin      = stress_kin_ * au2kbar;
-    auto stress_har      = stress_har_ * au2kbar;
-    auto stress_ewald    = stress_ewald_ * au2kbar;
-    auto stress_vloc     = stress_vloc_ * au2kbar;
-    auto stress_xc       = stress_xc_ * au2kbar;
-    auto stress_nonloc   = stress_nonloc_ * au2kbar;
-    auto stress_us       = stress_us_ * au2kbar;
-    auto stress_hubbard  = stress_hubbard_ * au2kbar;
-    auto stress_core     = stress_core_ * au2kbar;
+    const double au2kbar      = 2.94210119E5;
+    auto stress_kin           = stress_kin_ * au2kbar;
+    auto stress_har           = stress_har_ * au2kbar;
+    auto stress_ewald         = stress_ewald_ * au2kbar;
+    auto stress_vloc          = stress_vloc_ * au2kbar;
+    auto stress_xc            = stress_xc_ * au2kbar;
+    auto stress_nonloc        = stress_nonloc_ * au2kbar;
+    auto stress_us            = stress_us_ * au2kbar;
+    auto stress_hubbard       = stress_hubbard_ * au2kbar;
+    auto stress_core          = stress_core_ * au2kbar;
+    auto stress_vdw_total     = stress_vdw_total_ * au2kbar;
+    auto stress_vdw_kernel    = stress_vdw_kernel_ * au2kbar;
+    auto stress_vdw_gradient  = stress_vdw_gradient_ * au2kbar;
+    auto stress_vdw_potential = stress_vdw_potential_ * au2kbar;
 
     out__ << "=== stress tensor components [kbar] ===" << std::endl;
 
@@ -610,6 +663,11 @@ Stress::print_info(std::ostream& out__, int verbosity__) const
     if (ctx_.cfg().parameters().dftd4_correction()) {
         print_stress("stress_dftd4", stress_dftd4_);
     }
+
+    print_stress("stress_vdw_total", stress_vdw_total);
+    print_stress("stress_vdw_kernel", stress_vdw_kernel);
+    print_stress("stress_vdw_gradient", stress_vdw_gradient);
+    print_stress("stress_vdw_potential", stress_vdw_potential);
 
     auto stress_total = stress_total_ * au2kbar;
     print_stress("stress_total", stress_total);

@@ -15,6 +15,7 @@
 #include "core/profiler.hpp"
 #include "core/env/env.hpp"
 #include "core/omp.hpp"
+#include "core/rte/rte.hpp"
 #include "core/sirius_version.hpp"
 #include "core/ostream_tools.hpp"
 #include "simulation_context.hpp"
@@ -690,6 +691,19 @@ Simulation_context::print_info(std::ostream& out__) const
         rte::ostream os(out__, "info");
         int i{1};
         os << std::endl << "XC functionals" << std::endl << hbar(14, '=') << std::endl;
+        std::vector<double> weight(xc_functionals().size(), 1.0);
+
+        /* Check if the weights are given and if the number of elements match the number of functionals. If empty, then default to 1.0
+         */
+        if ((xc_functionals_weight().size() != 0) && (xc_functionals_weight().size() != xc_functionals().size())) {
+            RTE_THROW("The table containing the weight of each functional should have the same number of elements "
+                      "than the xc_functionals parameter\n");
+        }
+
+        if (xc_functionals_weight().size() != 0) {
+            weight = xc_functionals_weight();
+        }
+
         for (auto& xc_label : xc_functionals()) {
 #if defined(SIRIUS_USE_VDWXC)
             bool test = (xc_label == "XC_FUNC_VDWDF");
@@ -697,18 +711,17 @@ Simulation_context::print_info(std::ostream& out__) const
             test      = test || (xc_label == "XC_FUNC_VDWDFCX");
 
             if (test) {
-                os << "Van der Walls functional:" << xc_label << " ";
+                os << i << ") " << xc_label << " : \n";
                 os << "A. H. Larsen, et al, ";
                 os << "Modelling Simul. Mater. Sci. Eng. 25, 065004 (2017) (10.1088/1361-651X/aa7320)\n" << std::endl;
                 continue;
             }
 #endif
-            XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, num_spins());
+            XC_functional xc(spfft<double>(), unit_cell().lattice_vectors(), xc_label, weight[i - 1], num_spins());
             os << i << ") " << xc_label << " : " << xc.name() << std::endl << xc.refs() << std::endl;
             i++;
         }
     }
-
     if (!full_potential()) {
         rte::ostream os(out__, "info");
         os << std::endl << "memory consumption" << std::endl << hbar(18, '=') << std::endl;

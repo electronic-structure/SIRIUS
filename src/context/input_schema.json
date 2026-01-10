@@ -58,7 +58,7 @@
             "properties": {
                 "tol_ne": {
                     "type": "number",
-                    "default": 1E-2,
+                    "default": 0.01,
                     "title": "tol_ne in Newton protocol"
                 },
                 "nprii_vloc": {
@@ -569,6 +569,15 @@
                         "XC_LDA_C_PZ"
                     ]
                 },
+                "xc_functionals_weight": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "default": [],
+                    "title": "Weight associated to each functional.",
+                    "description": "By default all weights are equal to 1 but it is possible to add functional with different weights if needed. The order of the weights should match the order of the functionals"
+                },
                 "core_relativity": {
                     "type": "string",
                     "default": "dirac",
@@ -918,14 +927,14 @@
             }
         },
         "dftd4": {
-            "type":"object",
-            "title":"parameters controlling the dft-d4 correction",
+            "type": "object",
+            "title": "parameters controlling the dft-d4 correction",
             "description": "Consult the dft-d4 documentation for more details",
             "properties": {
                 "method": {
                     "type": "string",
                     "default": "none",
-                    "enum":    [
+                    "enum": [
                         "none",
                         "hf",
                         "p_am05",
@@ -1044,7 +1053,8 @@
                         "camqtp01",
                         "lcblyp",
                         "lcwpbe",
-                        "lcwpbeh"],
+                        "lcwpbeh"
+                    ],
                     "title": "name of the xc functional that determinates the default parameters. It should match the XC functional from libxc"
                 },
                 "damping": {
@@ -1172,7 +1182,8 @@
                         "lcwhpbe",
                         "lcomegahpbe",
                         "lcωhpbe",
-                        "b1p", "b1p86",
+                        "b1p",
+                        "b1p86",
                         "b2gpplyp",
                         "b2plyp",
                         "b971",
@@ -1191,7 +1202,8 @@
                         "dm21mu",
                         "drpa75",
                         "dsdsvwn5",
-                        "dsdsp86",  "dsdslyp",
+                        "dsdsp86",
+                        "dsdslyp",
                         "dsdspbe",
                         "dsdbvwn5",
                         "dsdblyp",
@@ -1203,7 +1215,8 @@
                         "dsdbb95",
                         "dsdpbevwn5",
                         "dsdpbelyp",
-                        "dsdpbe", "dsdpbepbe",
+                        "dsdpbe",
+                        "dsdpbepbe",
                         "dsdpbedrpa75",
                         "dsdpbep86",
                         "dsdpbep86_2011",
@@ -1221,7 +1234,8 @@
                         "dsdhsepw91",
                         "dsdhsep86",
                         "dsdhselyp",
-                        "dsdtpss", "dsdtpsstpss",
+                        "dsdtpss",
+                        "dsdtpsstpss",
                         "dsdtpssb95",
                         "dsdolyp",
                         "dsdxlyp",
@@ -1281,7 +1295,8 @@
                         "optscsdrpa75",
                         "otpss",
                         "pbe",
-                        "pbe0", "pbeh",
+                        "pbe0",
+                        "pbeh",
                         "pbe1kcis",
                         "pbe38",
                         "pbeh1pbe",
@@ -1290,7 +1305,8 @@
                         "pbesol",
                         "pkzb",
                         "ptpss",
-                        "pwp", "pw91p86",
+                        "pwp",
+                        "pw91p86",
                         "pw1pw",
                         "pw6b95",
                         "pw91",
@@ -1351,11 +1367,13 @@
                     ],
                     "title": "Control the damping term of the correction D4 and all parameters associated to the correction"
                 },
-                "damping_values" : {
+                "damping_values": {
                     "type": "string",
-                    "default":"auto",
-                    "enum" : ["auto",
-                              "manual"],
+                    "default": "auto",
+                    "enum": [
+                        "auto",
+                        "manual"
+                    ],
                     "title": "Use the default values for the damping term if set to auto. If set to manual then the parameters section should be included"
                 },
                 "parameters": {

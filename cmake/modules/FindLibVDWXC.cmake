@@ -5,37 +5,29 @@ include(FindPackageHandleStandardArgs)
 include(CheckSymbolExists)
 find_package(PkgConfig REQUIRED)
 
-pkg_search_module(_LIBVDWXC libvdwxc>=${LibVDWXC_FIND_VERSION})
+pkg_check_modules(SIRIUS_LIBVDWXC IMPORTED_TARGET GLOBAL libvdwxc>=${LibVDWXC_FIND_VERSION})
+pkg_check_modules(SIRIUS_FFTW3 IMPORTED_TARGET GLOBAL fftw3)
+
+find_library(SIRIUS_FFTW3_MPI_LINK_LIBRARIES
+             NAME fftw3_mpi
+             HINTS
+             SIRIUS_FFTW3_LIBRARIES_DIRS
+             DOC "fftw3_mpi library")
 
 find_path(SIRIUS_LIBVDWXC_INCLUDE_DIR
-  NAMES vdwxc.h vdwxc_mpi.h
-  PATH_SUFFIXES include inc
-  HINTS
-  ENV EBROOTLIBVDWXC
-  ENV VDWXC_DIR
-  ENV LIBVDWXCROOT
-  ${_LIBVDWXC_INCLUDE_DIRS}
-  DOC "vdwxc include directory")
-
-find_library(SIRIUS_LIBVDWXC_LIBRARIES
-  NAMES vdwxc
-  PATH_SUFFIXES lib
-  HINTS
-  ENV EBROOTLIBVDWXC
-  ENV VDWXC_DIR
-  ENV LIBVDWXCROOT
-  ${_LIBVDWXC_LIBRARY_DIRS}
-  DOC "vdwxc libraries list")
+          NAMES vdwxc_mpi.h
+          HINTS ${SIRIUS_LIBVDWXC_INCLUDE_DIRS}
+          DOC "vdwxc include directory")
 
 # try linking in C (C++ fails because vdwxc_mpi.h includes mpi.h inside extern "C"{...})
-set(CMAKE_REQUIRED_LIBRARIES "${SIRIUS_LIBVDWXC_LIBRARIES}")
-check_symbol_exists(vdwxc_init_mpi "${SIRIUS_LIBVDWXC_INCLUDE_DIR}/vdwxc_mpi.h" HAVE_LIBVDW_WITH_MPI)
+set(CMAKE_REQUIRED_LIBRARIES "${SIRIUS_LIBVDWXC_LINK_LIBRARIES}")
 
 find_package_handle_standard_args(LibVDWXC DEFAULT_MSG SIRIUS_LIBVDWXC_LIBRARIES SIRIUS_LIBVDWXC_INCLUDE_DIR)
 
 if(LibVDWXC_FOUND AND NOT TARGET sirius::libvdwxc)
   add_library(sirius::libvdwxc INTERFACE IMPORTED)
   set_target_properties(sirius::libvdwxc PROPERTIES
-                                         INTERFACE_INCLUDE_DIRECTORIES "${SIRIUS_LIBVDWXC_INCLUDE_DIR}"
-                                         INTERFACE_LINK_LIBRARIES "${SIRIUS_LIBVDWXC_LIBRARIES}")
+                                         INTERFACE_INCLUDE_DIRECTORIES "${SIRIUS_LIBVDWXC_INCLUDE_DIR};${SIRIUS_LIBVDWXC_INCLUDE_DIRS};${SIRIUS_FFTW3_INCLUDE_DIRS}"
+                                         INTERFACE_LINK_LIBRARIES "${SIRIUS_LIBVDWXC_LINK_LIBRARIES};${SIRIUS_FFTW3_MPI_LINK_LIBRARIES};${SIRIUS_FFTW3_LINK_LIBRARIES}")
 endif()
+

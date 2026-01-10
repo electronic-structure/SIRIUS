@@ -4734,7 +4734,7 @@ sirius_option_get_info(char const* section__, int elem__, char* key_name__, int 
                 for (int i = 0; i < elem__ - 1; i++, it++)
                     ;
                 auto key = it.key();
-                if (!dict[key].count("default")) {
+                if ((!dict[key].count("default")) && (dict[key]["type"] != "object")) {
                     RTE_THROW("the default value is missing for key '" + key + "' in section '" + section + "'");
                 }
                 if (dict[key]["type"] == "array") {
