@@ -45,69 +45,73 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
             }
             ctx_.unit_cell().generate_radial_integrals();
         }
-        hmt_    = std::vector<mdarray<std::complex<T>, 3>>(ctx_.unit_cell().num_atoms());
         auto pu = ctx_.processing_unit();
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            #pragma omp for
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                auto& atom = ctx_.unit_cell().atom(ia);
-                auto& type = atom.type();
 
-                int nmt = type.mt_basis_size();
+        hmt_ = std::vector<mdarray<std::complex<T>, 3>>(ctx_.unit_cell().num_atoms());
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            auto& atom = ctx_.unit_cell().atom(ia);
+            auto& type = atom.type();
 
-                hmt_[ia] = mdarray<std::complex<T>, 3>({nmt, nmt, ctx_.num_mag_dims() + 1}, mdarray_label("hmt"));
+            int nmt = type.mt_basis_size();
+            hmt_[ia] = mdarray<std::complex<T>, 3>({nmt, nmt, ctx_.num_mag_dims() + 1}, mdarray_label("hmt"));
+            if (pu == device_t::GPU) {
+                hmt_[ia].allocate(memory_t::device);
+            }
+        }
+        #pragma omp parallel for
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            auto& atom = ctx_.unit_cell().atom(ia);
+            auto& type = atom.type();
 
-                /* compute muffin-tin Hamiltonian */
-                for (int j2 = 0; j2 < nmt; j2++) {
-                    int lm2    = type.indexb(j2).lm;
-                    int idxrf2 = type.indexb(j2).idxrf;
-                    for (int j1 = 0; j1 < nmt; j1++) {
-                        int lm1    = type.indexb(j1).lm;
-                        int idxrf1 = type.indexb(j1).idxrf;
-                        switch (ctx_.num_mag_dims()) {
-                            case 3: {
-                                // spin-block index is consistent with non-local pseudopotential operator
-                                // 0: V - Bz
-                                // 1: V + Bz
-                                // 2: Bx - i By
-                                // 3: Bx + i By
+            int nmt = type.mt_basis_size();
 
-                                // Bx - i By
-                                hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
-                                        {0, 0, 1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                // Bx + i By
-                                hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
-                                        {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+            /* compute muffin-tin Hamiltonian */
+            for (int j2 = 0; j2 < nmt; j2++) {
+                int lm2    = type.indexb(j2).lm;
+                int idxrf2 = type.indexb(j2).idxrf;
+                for (int j1 = 0; j1 < nmt; j1++) {
+                    int lm1    = type.indexb(j1).lm;
+                    int idxrf1 = type.indexb(j1).idxrf;
+                    switch (ctx_.num_mag_dims()) {
+                        case 3: {
+                            // spin-block index is consistent with non-local pseudopotential operator
+                            // 0: V - Bz
+                            // 1: V + Bz
+                            // 2: Bx - i By
+                            // 3: Bx + i By
+
+                            // Bx - i By
+                            hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
+                                    {0, 0, 1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                            // Bx + i By
+                            hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
+                                    {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                        }
+                        case 1: {
+                            if (ctx_.cfg().control().use_second_variation()) {
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
+                                        {1, 0}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
+                                        {0, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                            } else {
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
+                                        {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+                                hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
+                                        {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                             }
-                            case 1: {
-                                if (ctx_.cfg().control().use_second_variation()) {
-                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
-                                            {1, 0}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
-                                            {0, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                } else {
-                                    hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
-                                            {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                    hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
-                                            {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                }
-                                break;
-                            }
-                            case 0: {
-                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>(
-                                        {1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                            }
+                            break;
+                        }
+                        case 0: {
+                            hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>(
+                                    {1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                         }
                     }
                 }
-                if (pu == device_t::GPU) {
-                    hmt_[ia].allocate(memory_t::device).copy_to(memory_t::device, acc::stream_id(tid));
-                }
             }
-            if (pu == device_t::GPU) {
-                acc::sync_stream(acc::stream_id(tid));
+        }
+        if (pu == device_t::GPU) {
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                hmt_[ia].copy_to(memory_t::device);
             }
         }
     }
