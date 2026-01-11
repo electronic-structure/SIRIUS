@@ -52,7 +52,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
             auto& atom = ctx_.unit_cell().atom(ia);
             auto& type = atom.type();
 
-            int nmt = type.mt_basis_size();
+            int nmt  = type.mt_basis_size();
             hmt_[ia] = mdarray<std::complex<T>, 3>({nmt, nmt, ctx_.num_mag_dims() + 1}, mdarray_label("hmt"));
             if (pu == device_t::GPU) {
                 hmt_[ia].allocate(memory_t::device);
