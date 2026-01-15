@@ -68,6 +68,13 @@ energy_acc()
     static double e__{0};
     return e__;
 }
+
+inline static double&
+energy_cpu()
+{
+    static double e__{0};
+    return e__;
+}
 #endif
 
 /// Initialize the library.
@@ -81,7 +88,8 @@ initialize(bool call_mpi_init__ = true)
     }
 #if defined(SIRIUS_USE_POWER_COUNTER)
     energy()     = -power::energy();
-    energy_acc() = -power::device_energy();
+    energy_acc() = -power::accel_energy();
+    energy_cpu() = -power::cpu_energy();
 #endif
     if (call_mpi_init__) {
         mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
@@ -164,19 +172,29 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
 #endif
 #if defined(SIRIUS_USE_POWER_COUNTER)
     double e     = energy() + power::energy();
-    double e_acc = energy_acc() + power::device_energy();
-    if (mpi::Communicator::world().rank() == 0) {
-        printf("=== Energy consumption (root MPI rank) ===\n");
-        printf("energy     : %9.2f Joules\n", e);
-        printf("energy_acc : %9.2f Joules\n", e_acc);
-    }
-    mpi::Communicator::world().allreduce(&e, 1);
-    mpi::Communicator::world().allreduce(&e_acc, 1);
-    int nn = power::num_nodes();
-    if (Communicator::world().rank() == 0 && nn > 0) {
-        printf("=== Energy consumption (all nodes) ===\n");
-        printf("energy     : %9.2f Joules\n", e * nn / Communicator::world().size());
-        printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
+    double e_acc = energy_acc() + power::accel_energy();
+    double e_cpu = energy_cpu() + power::cpu_energy();
+
+    auto local_id = env::get_value_ptr<int>("SLURM_LOCALID");
+    auto node_id = env::get_value_ptr<int>("SLURM_NODEID");
+    if (local_id) {
+        int color = (*local_id == 0) ? 0 : 1;
+        auto comm = mpi::Communicator::world().split(color);
+        mpi::pstdout pout(comm);
+        if (color == 0) {
+            pout << "node : " << *node_id << ", energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " " << e_acc << " " << e_cpu + e_acc << std::endl;
+            comm.allreduce(&e, 1);
+            comm.allreduce(&e_acc, 1);
+            comm.allreduce(&e_cpu, 1);
+            if (comm.rank() == 0) {
+                std::cout << "=== Energy consumption report ===" << std::endl;
+            }
+            std::cout << pout.flush(0);
+            if (comm.rank() == 0) {
+                std::cout << "=== total ===" << std::endl;
+                std::cout << " energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " " << e_acc << " " << e_cpu + e_acc << std::endl;
+            }
+        }
     }
 #endif
 #if defined(SIRIUS_DLAF)

@@ -29,9 +29,12 @@ read_pm_file(const std::string& fname)
 }
 
 static double
-device_energy(void)
+accel_energy(void)
 {
-    return read_pm_file("/sys/cray/pm_counters/accel_energy");
+    return read_pm_file("/sys/cray/pm_counters/accel0_energy") +
+           read_pm_file("/sys/cray/pm_counters/accel1_energy") +
+           read_pm_file("/sys/cray/pm_counters/accel2_energy") +
+           read_pm_file("/sys/cray/pm_counters/accel3_energy");
 }
 
 static double
@@ -41,16 +44,22 @@ energy()
 }
 
 static double
-device_power()
+cpu_energy()
 {
-    return read_pm_file("/sys/cray/pm_counters/accel_power");
+    return read_pm_file("/sys/cray/pm_counters/cpu_energy");
 }
 
-static double
-power()
-{
-    return read_pm_file("/sys/cray/pm_counters/power");
-}
+//static double
+//device_power()
+//{
+//    return read_pm_file("/sys/cray/pm_counters/accel_power");
+//}
+//
+//static double
+//power()
+//{
+//    return read_pm_file("/sys/cray/pm_counters/power");
+//}
 
 static int
 num_nodes()
