@@ -277,12 +277,13 @@ K_point_set::find_band_occupancies_without_empty()
     /* this is an insulator, skip search for band occupancies */
     this->band_gap_ = 0;
 
+    double ef = std::numeric_limits<double>::lowest();
+
     /* determine fermi energy as max occupied band energy. */
-    energy_fermi_ = std::numeric_limits<double>::lowest();
     for (int ik = 0; ik < num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                energy_fermi_ = std::max(energy_fermi_, this->get<T>(ik)->band_energy(j, ispn));
+                ef = std::max(ef, this->get<T>(ik)->band_energy(j, ispn));
             }
         }
     }
@@ -294,6 +295,7 @@ K_point_set::find_band_occupancies_without_empty()
             }
         }
     }
+    energy_fermi_[0] = energy_fermi_[1] = ef;
 
     this->sync_band<T, sync_band_t::occupancy>();
 }
@@ -307,7 +309,7 @@ K_point_set::find_band_occupancies_without_empty()
            - Fermi energy corrections for spin up [0] and down [1]
  */
 template <typename T>
-std::tuple<double, std::array<double, 2>>
+void
 K_point_set::find_efermi_fixed_magn(double emin, double emax) const
 {
     /* split number of bands between available ranks */
@@ -331,22 +333,14 @@ K_point_set::find_efermi_fixed_magn(double emin, double emax) const
         return ne;
     };
 
-    std::array<double, 2> ef;
-
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         auto F      = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
         auto result = bisection_search(F, emin, emax, 1e-11);
         if (!result) {
             RTE_THROW(result.error());
         }
-        ef[ispn] = result.value().mu;
+        energy_fermi_[ispn] = result.value().mu;
     }
-
-    double energy_fermi = std::max(ef[0], ef[1]);
-
-    std::array<double, 2> ef_corr = {ef[0] - energy_fermi, ef[1] - energy_fermi};
-
-    return std::make_tuple(energy_fermi, ef_corr);
 }
 
 template <typename T>
@@ -471,7 +465,7 @@ K_point_set::find_band_occupancies()
     std::array<double, 2> ef_corr{0, 0};
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
         // collinear case with fixed magenetisation
-        std::tie(energy_fermi_, ef_corr) = this->find_efermi_fixed_magn<T>(emin, emax);
+        this->find_efermi_fixed_magn<T>(emin, emax);
     } else {
         // generic case
         auto res_efermi = find_efermi_generic<T>(emin, emax);
@@ -484,8 +478,7 @@ K_point_set::find_band_occupancies()
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(this->energy_fermi_ + ef_corr[ispn] - this->get<T>(it.i)->band_energy(j, ispn)) *
-                         ctx_.max_occupancy();
+                auto o = f(this->energy_fermi_ - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
                 this->get<T>(it.i)->band_occupancy(j, ispn, o);
             }
         }
@@ -601,7 +594,7 @@ K_point_set::entropy_sum() const
         #pragma omp parallel for reduction(+ : tmp)
         for (int j = 0; j < splb.local_size(); j++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb.global_index(j), ispn));
+                tmp += ctx_.max_occupancy() * f(energy_fermi_[ispn] - kp->band_energy(splb.global_index(j), ispn));
             }
         }
         s_sum += kp->weight() * tmp;
