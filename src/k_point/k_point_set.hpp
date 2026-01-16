@@ -59,7 +59,7 @@ class K_point_set
     /** For normal cases two values are equal. For the fixed collinear magnetic calulcation
      *  two values are different such that difference of occupancies corresponds to the fixed
      *  magnetisation. */
-    std::array<double,2> energy_fermi_;
+    std::array<double, 2> energy_fermi_;
 
     /// Band gap found by find_band_occupancies().
     double band_gap_{0};
@@ -89,7 +89,7 @@ class K_point_set
 
     template <typename T>
     void
-    find_efermi_fixed_magn(double emin, double emax) const;
+    find_efermi_fixed_magn(double emin, double emax);
 
     template <typename T>
     local::efermi_search_t

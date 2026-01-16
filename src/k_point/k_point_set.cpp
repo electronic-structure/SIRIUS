@@ -310,7 +310,7 @@ K_point_set::find_band_occupancies_without_empty()
  */
 template <typename T>
 void
-K_point_set::find_efermi_fixed_magn(double emin, double emax) const
+K_point_set::find_efermi_fixed_magn(double emin, double emax)
 {
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
@@ -468,9 +468,10 @@ K_point_set::find_band_occupancies()
         this->find_efermi_fixed_magn<T>(emin, emax);
     } else {
         // generic case
-        auto res_efermi = find_efermi_generic<T>(emin, emax);
-        energy_fermi_   = res_efermi.mu;
-        ne_diff         = res_efermi.ne_diff;
+        auto res_efermi  = find_efermi_generic<T>(emin, emax);
+        energy_fermi_[0] = res_efermi.mu;
+        energy_fermi_[1] = res_efermi.mu;
+        ne_diff          = res_efermi.ne_diff;
     }
     /* set band occupancies */
     auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
@@ -478,7 +479,7 @@ K_point_set::find_band_occupancies()
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                auto o = f(this->energy_fermi_ - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
+                auto o = f(this->energy_fermi_[ispn] - this->get<T>(it.i)->band_energy(j, ispn)) * ctx_.max_occupancy();
                 this->get<T>(it.i)->band_occupancy(j, ispn, o);
             }
         }
