@@ -176,13 +176,14 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
     double e_cpu = energy_cpu() + power::cpu_energy();
 
     auto local_id = env::get_value_ptr<int>("SLURM_LOCALID");
-    auto node_id = env::get_value_ptr<int>("SLURM_NODEID");
+    auto node_id  = env::get_value_ptr<int>("SLURM_NODEID");
     if (local_id) {
         int color = (*local_id == 0) ? 0 : 1;
         auto comm = mpi::Communicator::world().split(color);
         mpi::pstdout pout(comm);
         if (color == 0) {
-            pout << "node : " << *node_id << ", energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " " << e_acc << " " << e_cpu + e_acc << std::endl;
+            pout << "node : " << *node_id << ", energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " "
+                 << e_acc << " " << e_cpu + e_acc << std::endl;
             comm.allreduce(&e, 1);
             comm.allreduce(&e_acc, 1);
             comm.allreduce(&e_cpu, 1);
@@ -192,7 +193,8 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
             std::cout << pout.flush(0);
             if (comm.rank() == 0) {
                 std::cout << "=== total ===" << std::endl;
-                std::cout << " energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " " << e_acc << " " << e_cpu + e_acc << std::endl;
+                std::cout << " energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " " << e_acc << " "
+                          << e_cpu + e_acc << std::endl;
             }
         }
     }

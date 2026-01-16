@@ -31,10 +31,8 @@ read_pm_file(const std::string& fname)
 static double
 accel_energy(void)
 {
-    return read_pm_file("/sys/cray/pm_counters/accel0_energy") +
-           read_pm_file("/sys/cray/pm_counters/accel1_energy") +
-           read_pm_file("/sys/cray/pm_counters/accel2_energy") +
-           read_pm_file("/sys/cray/pm_counters/accel3_energy");
+    return read_pm_file("/sys/cray/pm_counters/accel0_energy") + read_pm_file("/sys/cray/pm_counters/accel1_energy") +
+           read_pm_file("/sys/cray/pm_counters/accel2_energy") + read_pm_file("/sys/cray/pm_counters/accel3_energy");
 }
 
 static double
