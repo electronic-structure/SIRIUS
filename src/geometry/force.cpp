@@ -242,6 +242,11 @@ Force::calc_forces_ibs()
     forces_ibs_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_ibs_.zero();
 
+    if (ctx_.cfg().control().use_second_variation() == false) {
+        RTE_WARNING("IBS forces are not implemented for full variational diagonalization!");
+        return forces_ibs_;
+    }
+
     mdarray<double, 2> ffac({ctx_.unit_cell().num_atom_types(), ctx_.gvec().num_shells()});
     #pragma omp parallel for
     for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
