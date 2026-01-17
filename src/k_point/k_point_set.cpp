@@ -309,7 +309,7 @@ K_point_set::find_band_occupancies_without_empty()
            - Fermi energy corrections for spin up [0] and down [1]
  */
 template <typename T>
-void
+std::array<double, 2>
 K_point_set::find_efermi_fixed_magn(double emin, double emax)
 {
     /* split number of bands between available ranks */
@@ -318,7 +318,8 @@ K_point_set::find_efermi_fixed_magn(double emin, double emax)
     double const fixed_mag = ctx_.cfg().parameters().fixed_mag();
     auto f                 = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
 
-    double occ[2]   = {(ne_target + fixed_mag) / 2, (ne_target - fixed_mag) / 2};
+    std::array<double, 2> occ({(ne_target + fixed_mag) / 2, (ne_target - fixed_mag) / 2});
+    std::array<double, 2> efermi;
     auto compute_ne = [&](int ispn, double ef, auto&& f) {
         double ne{0};
         for (auto it : spl_num_kpoints_) {
@@ -339,8 +340,9 @@ K_point_set::find_efermi_fixed_magn(double emin, double emax)
         if (!result) {
             RTE_THROW(result.error());
         }
-        energy_fermi_[ispn] = result.value().mu;
+        efermi[ispn] = result.value().mu;
     }
+    return efermi;
 }
 
 template <typename T>
@@ -465,7 +467,7 @@ K_point_set::find_band_occupancies()
     std::array<double, 2> ef_corr{0, 0};
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
         // collinear case with fixed magenetisation
-        this->find_efermi_fixed_magn<T>(emin, emax);
+        energy_fermi_ = this->find_efermi_fixed_magn<T>(emin, emax);
     } else {
         // generic case
         auto res_efermi  = find_efermi_generic<T>(emin, emax);

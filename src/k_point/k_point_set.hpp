@@ -88,7 +88,7 @@ class K_point_set
     find_band_occupancies_without_empty();
 
     template <typename T>
-    void
+    std::array<double, 2>
     find_efermi_fixed_magn(double emin, double emax);
 
     template <typename T>
