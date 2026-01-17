@@ -15,6 +15,7 @@
 #define __HUBBARD_MATRIX_HPP__
 
 #include "context/simulation_context.hpp"
+#include <xc.h>
 
 namespace sirius {
 
@@ -293,27 +294,102 @@ class Hubbard_matrix
 inline void
 copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
-    for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
+    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
         copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
 
-    for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
-        copy(src__.nonlocal(i), dest__.nonlocal(i));
+    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
+        copy(src__.nonlocal(at_lvl), dest__.nonlocal(at_lvl));
     }
 
     if (src__.ctx().cfg().hubbard().constrained_calculation()) {
-        for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
-            if (src__.apply_constraints(at_lvl)) {
-                // the two might be redundant as they are initialized when the Hubbard_matrix is created.
-                copy(src__.local_constraints(at_lvl), dest__.local_constraints(at_lvl));
-                dest__.apply_constraints()[at_lvl] = src__.apply_constraints(at_lvl);
-                copy(src__.multipliers_constraints(at_lvl), dest__.multipliers_constraints(at_lvl));
-            }
+        for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
+            copy(src__.multipliers_constraints(at_lvl), dest__.multipliers_constraints(at_lvl));
         }
-        dest__.num_steps(src__.num_steps());
-        dest__.constraint_error() = src__.constraint_error();
     }
 }
+
+inline void
+axpy(const double alpha__, Hubbard_matrix const& src__, Hubbard_matrix& dest__)
+{
+    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+        for (size_t i = 0; i < src__.local(at_lvl).size(); i++) {
+            dest__.local(at_lvl)[i] = alpha__ * src__.local(at_lvl)[i] + dest__.local(at_lvl)[i];
+        }
+    }
+    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
+        for (size_t i = 0; i < src__.nonlocal(at_lvl).size(); i++) {
+            dest__.nonlocal(at_lvl)[i] = alpha__ * src__.nonlocal(at_lvl)[i] + dest__.nonlocal(at_lvl)[i];
+        }
+    }
+
+    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
+        for (size_t at_lvl = 0; at_lvl < src__.multipliers_constraints().size(); at_lvl++) {
+            for (size_t i = 0; i < src__.multipliers_constraints(at_lvl).size(); i++) {
+                dest__.multipliers_constraints(at_lvl)[i] =
+                        alpha__ * src__.multipliers_constraints(at_lvl)[i] + dest__.multipliers_constraints(at_lvl)[i];
+            }
+        }
+    }
+}
+
+inline void
+rotate(double c__, double s__, Hubbard_matrix& src__, Hubbard_matrix& dest__)
+{
+    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+        for (size_t i = 0; i < src__.local(at_lvl).size(); i++) {
+            auto xi                 = src__.local(at_lvl)[i];
+            auto yi                 = dest__.local(at_lvl)[i];
+            src__.local(at_lvl)[i]  = xi * c__ + yi * s__;
+            dest__.local(at_lvl)[i] = yi * c__ - xi * s__;
+        }
+    }
+
+    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
+        for (size_t i = 0; i < src__.nonlocal(at_lvl).size(); i++) {
+            auto xi                    = src__.nonlocal(at_lvl)[i];
+            auto yi                    = dest__.nonlocal(at_lvl)[i];
+            src__.nonlocal(at_lvl)[i]  = xi * c__ + yi * s__;
+            dest__.nonlocal(at_lvl)[i] = yi * c__ - xi * s__;
+        }
+    }
+
+    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
+        for (size_t at_lvl = 0; at_lvl < src__.multipliers_constraints().size(); at_lvl++) {
+            for (size_t i = 0; i < src__.multipliers_constraints(at_lvl).size(); i++) {
+                auto xi                                   = src__.multipliers_constraints(at_lvl)[i];
+                auto yi                                   = dest__.multipliers_constraints(at_lvl)[i];
+                src__.multipliers_constraints(at_lvl)[i]  = xi * c__ + yi * s__;
+                dest__.multipliers_constraints(at_lvl)[i] = yi * c__ - xi * s__;
+            }
+        }
+    }
+}
+
+inline void
+scale(double alpha__, Hubbard_matrix& src__)
+{
+    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+        for (size_t i = 0; i < src__.local(at_lvl).size(); i++) {
+            src__.local(at_lvl)[i] *= alpha__;
+        }
+    }
+
+    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
+        for (size_t i = 0; i < src__.nonlocal(at_lvl).size(); i++) {
+            src__.nonlocal(at_lvl)[i] *= alpha__;
+        }
+    }
+
+    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
+        for (size_t at_lvl = 0; at_lvl < src__.multipliers_constraints().size(); at_lvl++) {
+            for (size_t i = 0; i < src__.multipliers_constraints(at_lvl).size(); i++) {
+                src__.multipliers_constraints(at_lvl)[i] *= alpha__;
+            }
+        }
+    }
+}
+
 } // namespace sirius
 
 #endif

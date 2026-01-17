@@ -50,7 +50,7 @@ periodic_function_property_rho_pw(bool use_coarse_gvec__)
                                                Periodic_function<double> const& y) -> double {
         double result{0};
         if (use_coarse_gvec__) {
-            #pragma omp parallel for reduction(+:result)
+            #pragma omp parallel for reduction(+ : result)
             for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
@@ -59,7 +59,7 @@ periodic_function_property_rho_pw(bool use_coarse_gvec__)
                           std::pow(x.ctx().gvec().gvec_len(gvec_index_t::local(ig1)), 2);
             }
         } else {
-            #pragma omp parallel for reduction(+:result)
+            #pragma omp parallel for reduction(+ : result)
             for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
                 result += std::real(std::conj(x.rg().f_pw_local(igloc)) * y.rg().f_pw_local(igloc)) /
                           std::pow(x.ctx().gvec().gvec_len(gvec_index_t::local(igloc)), 2);
@@ -97,7 +97,7 @@ periodic_function_property_mag_pw(bool use_coarse_gvec__)
                                                Periodic_function<double> const& y) -> double {
         double result{0};
         if (use_coarse_gvec__) {
-            #pragma omp parallel for reduction(+:result)
+            #pragma omp parallel for reduction(+ : result)
             for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
@@ -105,7 +105,7 @@ periodic_function_property_mag_pw(bool use_coarse_gvec__)
                 result += std::real(std::conj(x.rg().f_pw_local(ig1)) * y.rg().f_pw_local(ig1));
             }
         } else {
-            #pragma omp parallel for reduction(+:result)
+            #pragma omp parallel for reduction(+ : result)
             for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
                 result += std::real(std::conj(x.rg().f_pw_local(igloc)) * y.rg().f_pw_local(igloc));
             }
@@ -244,97 +244,14 @@ hubbard_matrix_function_property()
         return 0;
     };
 
-    auto scale_func = [](double alpha, Hubbard_matrix& x) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
-                x.local(at_lvl)[i] *= alpha;
-            }
-        }
-
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
-                x.nonlocal(at_lvl)[i] *= alpha;
-            }
-        }
-
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
-                for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
-                    x.multipliers_constraints(at_lvl)[i] *= alpha;
-                }
-            }
-        }
-    };
+    auto scale_func = [](double alpha, Hubbard_matrix& x) -> void { scale(alpha, x); };
 
     // TODO: check with Mathieu which copy function is the one; replace
-    auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            copy(x.local(at_lvl), y.local(at_lvl));
-        }
+    auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void { copy(x, y); };
 
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            copy(x.nonlocal(at_lvl), y.nonlocal(at_lvl));
-        }
+    auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void { axpy(alpha, x, y); };
 
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-                copy(x.multipliers_constraints(at_lvl), y.multipliers_constraints(at_lvl));
-            }
-        }
-    };
-
-    auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
-                y.local(at_lvl)[i] = alpha * x.local(at_lvl)[i] + y.local(at_lvl)[i];
-            }
-        }
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
-                y.nonlocal(at_lvl)[i] = alpha * x.nonlocal(at_lvl)[i] + y.nonlocal(at_lvl)[i];
-            }
-        }
-
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
-                for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
-                    y.multipliers_constraints(at_lvl)[i] =
-                            alpha * x.multipliers_constraints(at_lvl)[i] + y.multipliers_constraints(at_lvl)[i];
-                }
-            }
-        }
-    };
-
-    auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
-                auto xi            = x.local(at_lvl)[i];
-                auto yi            = y.local(at_lvl)[i];
-                x.local(at_lvl)[i] = xi * c + yi * s;
-                y.local(at_lvl)[i] = yi * c - xi * s;
-            }
-        }
-
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
-                auto xi               = x.nonlocal(at_lvl)[i];
-                auto yi               = y.nonlocal(at_lvl)[i];
-                x.nonlocal(at_lvl)[i] = xi * c + yi * s;
-                y.nonlocal(at_lvl)[i] = yi * c - xi * s;
-            }
-        }
-
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
-                for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
-                    auto xi                              = x.multipliers_constraints(at_lvl)[i];
-                    auto yi                              = y.multipliers_constraints(at_lvl)[i];
-                    x.multipliers_constraints(at_lvl)[i] = xi * c + yi * s;
-                    y.multipliers_constraints(at_lvl)[i] = yi * c - xi * s;
-                }
-            }
-        }
-    };
+    auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void { rotate(c, s, x, y); };
 
     return FunctionProperties<Hubbard_matrix>(inner_prod_func, scale_func, copy_func, axpy_func, rotate_func);
 }
