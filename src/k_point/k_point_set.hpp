@@ -56,7 +56,10 @@ class K_point_set
     splindex_chunk<kp_index_t> spl_num_kpoints_;
 
     /// Fermi energy which is searched in find_band_occupancies().
-    double energy_fermi_{0};
+    /** For normal cases two values are equal. For the fixed collinear magnetic calulcation
+     *  two values are different such that difference of occupancies corresponds to the fixed
+     *  magnetisation. */
+    std::array<double, 2> energy_fermi_;
 
     /// Band gap found by find_band_occupancies().
     double band_gap_{0};
@@ -85,8 +88,8 @@ class K_point_set
     find_band_occupancies_without_empty();
 
     template <typename T>
-    std::tuple<double, std::array<double, 2>>
-    find_efermi_fixed_magn(double emin, double emax) const;
+    std::array<double, 2>
+    find_efermi_fixed_magn(double emin, double emax);
 
     template <typename T>
     local::efermi_search_t
@@ -250,13 +253,13 @@ class K_point_set
     inline double
     energy_fermi() const
     {
-        return energy_fermi_;
+        return std::max(energy_fermi_[0], energy_fermi_[1]);
     }
 
     inline void
     set_energy_fermi(double energy_fermi__)
     {
-        this->energy_fermi_ = energy_fermi__;
+        this->energy_fermi_[0] = this->energy_fermi_[1] = energy_fermi__;
     }
 
     inline double

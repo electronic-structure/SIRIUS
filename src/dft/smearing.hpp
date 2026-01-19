@@ -85,9 +85,11 @@ struct cold
     entropy(double x__, double width__);
 
     /** Second derivative of the occupation function \f$f(x,w)\f$.
-     *   \f[
-     *     \frac{\partial^2 f(x,w)}{\partial x^2} = \frac{e^{-y^2} \left(2 \sqrt{2} y^2-2 y-\sqrt{2}\right)}{\sqrt{\pi }
-     * w^2}, \qquad y=\frac{x}{w} - \frac{1}{\sqrt{2}} \f]
+     *  \f[
+     *     \frac{\partial^2 f(x,w)}{\partial x^2} = 
+     *     \frac{e^{-y^2} \left(2 \sqrt{2} y^2-2 y-\sqrt{2}\right)}{\sqrt{\pi } w^2}, 
+     *     \qquad y=\frac{x}{w} - \frac{1}{\sqrt{2}}
+     *  \f]
      */
     static double
     dxdelta(double x__, double width__);
