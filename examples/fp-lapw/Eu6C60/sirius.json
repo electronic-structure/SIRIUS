@@ -9,20 +9,20 @@
         "smearing_width" : 0.05,
         "valence_relativity" : "iora",
         "core_relativity" : "dirac",
-        "aw_cutoff" : 6.0,
+        "aw_cutoff" : 6.2,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 1,
         "num_mag_dims" : 1,
         "use_symmetry": true,
-        "ngridk" : [1, 1, 1],
+        "ngridk" : [2,2,2],
         "density_tol" : 1e-5,
         "energy_tol" : 1e-8,
-        "num_dft_iter" : 1
+        "num_dft_iter" : 10
     },
 
     "mixer" : {
         "beta" : 0.5,
-        "type" : "anderson",
+        "type" : "broyden2",
         "max_history" : 8
     },
 
