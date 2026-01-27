@@ -30,7 +30,7 @@ build sirius mi300:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@develop +rocm +apps +tests +scalapack ~python +dftd4 +dftd3
+    SPEC: sirius@develop +rocm +apps +tests +scalapack ~python +dftd4 +dftd3 +vdwxc
     ROCM_ARCH: gfx942
     REPO: ./ci/sirius-uenv-recipe-mi300/spack_repo/sirius_ci
   script:
@@ -95,7 +95,7 @@ beverin test gpu band parallel:
   variables:
     SLURM_TIMELIMIT: '60:00'
     SLURM_GPUS_PER_TASK: 1
-    SLURM_NTASKS: 12
+    SLURM_NTASKS: 4
     SLURM_CPU_BIND: 'verbose'
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
