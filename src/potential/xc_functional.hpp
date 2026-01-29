@@ -225,11 +225,14 @@ class XC_functional : public XC_functional_base
             RTE_THROW("Error wrong vdw XC");
         }
 
-        if (!calculate_vdw_stress__) {
-            energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, vrho, vsigma);
-        } else {
-            std::fill(vdw_stress__.begin(), vdw_stress__.end(), 0.0);
-            energy__[0] = vdwxc_stress(handler_vdw_, vdw_stress__.data(), rho, sigma, vrho, vsigma);
+        if (rho != nullptr) {
+            // vdwxc will raise an exception if any input is a nullpointer
+            if (!calculate_vdw_stress__) {
+                energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, vrho, vsigma);
+            } else {
+                std::fill(vdw_stress__.begin(), vdw_stress__.end(), 0.0);
+                energy__[0] = vdwxc_stress(handler_vdw_, vdw_stress__.data(), rho, sigma, vrho, vsigma);
+            }
         }
 
         auto comm = mpi::Communicator(this->comm_);
