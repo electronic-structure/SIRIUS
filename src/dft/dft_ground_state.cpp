@@ -363,7 +363,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         RTE_OUT(ctx_.out(1)) << out.str();
         /* check if the calculation has converged */
-        bool converged = (std::abs(eold - etot) < energy_tol__) && (rms < density_tol__);// && iter_solver_converged;
+        bool converged = (std::abs(eold - etot) < energy_tol__) && (rms < density_tol__); // && iter_solver_converged;
 
         if (converged) {
             if (std::abs(ne_diff) > 1e-10) {
