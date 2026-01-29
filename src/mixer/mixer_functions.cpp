@@ -246,7 +246,6 @@ hubbard_matrix_function_property()
 
     auto scale_func = [](double alpha, Hubbard_matrix& x) -> void { scale(alpha, x); };
 
-    // TODO: check with Mathieu which copy function is the one; replace
     auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void { copy(x, y); };
 
     auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void { axpy(alpha, x, y); };
