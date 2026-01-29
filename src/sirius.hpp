@@ -77,6 +77,15 @@ energy_cpu()
 }
 #endif
 
+struct null_buffer : std::streambuf
+{
+    int
+    overflow(int c) override
+    {
+        return c;
+    }
+};
+
 /// Initialize the library.
 inline void
 initialize(bool call_mpi_init__ = true)
@@ -92,6 +101,7 @@ initialize(bool call_mpi_init__ = true)
     energy_cpu() = -power::cpu_energy();
 #endif
     if (call_mpi_init__) {
+        PROFILE("sirius::initialize::mpi");
         mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
@@ -105,9 +115,17 @@ initialize(bool call_mpi_init__ = true)
         std::printf("# Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif
     }
+
+    // uncomment this if you want to supress std::cout from all MPI ranks except from rank=0
+    //static null_buffer null;
+    //if (mpi::Communicator::world().rank() != 0) {
+    //    std::cout.rdbuf(&null);
+    //}
+
     /* get number of ranks per node during the global call to sirius::initialize() */
     mpi::num_ranks_per_node();
     if (acc::num_devices() > 0) {
+        PROFILE("sirius::initialize::acc");
         int devid = mpi::get_device_id(acc::num_devices());
         acc::set_device_id(devid);
         /* create extensive amount of streams */

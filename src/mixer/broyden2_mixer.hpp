@@ -109,12 +109,10 @@ class Broyden2 : public Mixer<FUNCS...>
 
         const auto n = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
 
-        const bool normalize = false;
-
         for (int i = 0; i <= n; ++i) {
             int j              = this->idx_hist(this->step_ - i);
-            this->S_(n - i, n) = this->S_(n, n - i) = this->template inner_product<normalize>(
-                    this->residual_history_[j], this->residual_history_[idx_step]);
+            this->S_(n - i, n) = this->S_(n, n - i) =
+                    this->inner_product(this->residual_history_[j], this->residual_history_[idx_step]);
         }
 
         // Expand (I - Δf₁Δf₁ᵀ/Δf₁ᵀΔf₁)...(I - Δfₙ₋₁Δfₙ₋₁ᵀ/Δfₙ₋₁ᵀΔfₙ₋₁)fₙ

@@ -22,76 +22,35 @@ namespace mixer {
 FunctionProperties<Periodic_function<double>>
 periodic_function_property()
 {
-    auto global_size_func = [](const Periodic_function<double>& x) -> double { return x.ctx().unit_cell().omega(); };
-
     auto inner_prod_func = [](const Periodic_function<double>& x, const Periodic_function<double>& y) -> double {
-        return sirius::inner(x, y);
+        return inner(x, y);
     };
 
-    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
-        scale(alpha, x.rg());
-        if (x.ctx().full_potential()) {
-            scale(alpha, x.mt());
-        }
-    };
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { x *= alpha; };
 
-    auto copy_function = [](const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        copy(x.rg(), y.rg());
-        if (x.ctx().full_potential()) {
-            copy(x.mt(), y.mt());
-        }
-    };
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void { copy(x, y); };
 
     auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        axpy(alpha, x.rg(), y.rg());
-        if (x.ctx().full_potential()) {
-            axpy(alpha, x.mt(), y.mt());
-        }
+        axpy(alpha, x, y);
     };
 
     auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel
-        {
-            #pragma omp for schedule(static) nowait
-            for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
-                auto xi         = x.rg().value(i);
-                auto yi         = y.rg().value(i);
-                x.rg().value(i) = xi * c + yi * s;
-                y.rg().value(i) = xi * -s + yi * c;
-            }
-            if (x.ctx().full_potential()) {
-                for (auto it : x.ctx().unit_cell().spl_num_atoms()) {
-                    int ia       = it.i;
-                    auto& x_f_mt = x.mt()[ia];
-                    auto& y_f_mt = y.mt()[ia];
-                    #pragma omp for schedule(static) nowait
-                    for (int i = 0; i < static_cast<int>(x.mt()[ia].size()); i++) {
-                        auto xi   = x_f_mt[i];
-                        auto yi   = y_f_mt[i];
-                        x_f_mt[i] = xi * c + yi * s;
-                        y_f_mt[i] = xi * -s + yi * c;
-                    }
-                }
-            }
-        }
+        rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function,
-                                                         copy_function, axpy_function, rotate_function);
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                         rotate_function);
 }
 
 /// Only for the PP-PW case.
 FunctionProperties<Periodic_function<double>>
-periodic_function_property_modified(bool use_coarse_gvec__)
+periodic_function_property_rho_pw(bool use_coarse_gvec__)
 {
-    auto global_size_func = [](Periodic_function<double> const& x) -> double {
-        return 1.0 / x.ctx().unit_cell().omega();
-    };
-
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x,
                                                Periodic_function<double> const& y) -> double {
         double result{0};
         if (use_coarse_gvec__) {
+            #pragma omp parallel for reduction(+ : result)
             for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
                 int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
@@ -100,6 +59,7 @@ periodic_function_property_modified(bool use_coarse_gvec__)
                           std::pow(x.ctx().gvec().gvec_len(gvec_index_t::local(ig1)), 2);
             }
         } else {
+            #pragma omp parallel for reduction(+ : result)
             for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
                 result += std::real(std::conj(x.rg().f_pw_local(igloc)) * y.rg().f_pw_local(igloc)) /
                           std::pow(x.ctx().gvec().gvec_len(gvec_index_t::local(igloc)), 2);
@@ -108,46 +68,75 @@ periodic_function_property_modified(bool use_coarse_gvec__)
         if (x.ctx().gvec().reduced()) {
             result *= 2;
         }
-        result *= fourpi;
+        result *= (twopi * x.ctx().unit_cell().omega());
         x.ctx().comm().allreduce(&result, 1);
         return result;
     };
 
-    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { scale(alpha, x.rg()); };
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { x *= alpha; };
 
-    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void {
-        copy(x.rg(), y.rg());
-    };
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void { copy(x, y); };
 
     auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        axpy(alpha, x.rg(), y.rg());
+        axpy(alpha, x, y);
     };
 
     auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void {
-        #pragma omp parallel for schedule(static)
-        for (std::size_t i = 0; i < x.rg().values().size(); ++i) {
-            auto xi         = x.rg().value(i);
-            auto yi         = y.rg().value(i);
-            x.rg().value(i) = xi * c + yi * s;
-            y.rg().value(i) = xi * -s + yi * c;
-        }
+        rotate(c, s, x, y);
     };
 
-    return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function,
-                                                         copy_function, axpy_function, rotate_function);
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                         rotate_function);
+}
+
+/// Only for the PP-PW case.
+FunctionProperties<Periodic_function<double>>
+periodic_function_property_mag_pw(bool use_coarse_gvec__)
+{
+    auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x,
+                                               Periodic_function<double> const& y) -> double {
+        double result{0};
+        if (use_coarse_gvec__) {
+            #pragma omp parallel for reduction(+ : result)
+            for (int igloc = x.ctx().gvec_coarse().skip_g0(); igloc < x.ctx().gvec_coarse().count(); igloc++) {
+                /* local index in fine G-vector list */
+                int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
+
+                result += std::real(std::conj(x.rg().f_pw_local(ig1)) * y.rg().f_pw_local(ig1));
+            }
+        } else {
+            #pragma omp parallel for reduction(+ : result)
+            for (int igloc = x.ctx().gvec().skip_g0(); igloc < x.ctx().gvec().count(); igloc++) {
+                result += std::real(std::conj(x.rg().f_pw_local(igloc)) * y.rg().f_pw_local(igloc));
+            }
+        }
+        if (x.ctx().gvec().reduced()) {
+            result *= 2;
+        }
+        result *= (0.5 * x.ctx().unit_cell().omega() / pi);
+        x.ctx().comm().allreduce(&result, 1);
+        return result;
+    };
+
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void { x *= alpha; };
+
+    auto copy_function = [](Periodic_function<double> const& x, Periodic_function<double>& y) -> void { copy(x, y); };
+
+    auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
+        axpy(alpha, x, y);
+    };
+
+    auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void {
+        rotate(c, s, x, y);
+    };
+
+    return FunctionProperties<Periodic_function<double>>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                         rotate_function);
 }
 
 FunctionProperties<density_matrix_t>
 density_function_property()
 {
-    auto global_size_func = [](density_matrix_t const& x) -> double {
-        size_t result{0};
-        for (auto& e : x) {
-            result += e.size();
-        }
-        return result;
-    };
-
     auto inner_prod_func = [](density_matrix_t const& x, density_matrix_t const& y) -> double {
         // do not contribute to mixing
         return 0.0;
@@ -189,15 +178,13 @@ density_function_property()
         }
     };
 
-    return FunctionProperties<density_matrix_t>(global_size_func, inner_prod_func, scal_function, copy_function,
-                                                axpy_function, rotate_function);
+    return FunctionProperties<density_matrix_t>(inner_prod_func, scal_function, copy_function, axpy_function,
+                                                rotate_function);
 }
 
 FunctionProperties<PAW_density<double>>
 paw_density_function_property()
 {
-    auto global_size_func = [](PAW_density<double> const& x) -> double { return x.unit_cell().num_paw_atoms(); };
-
     auto inner_prod_func = [](PAW_density<double> const& x, PAW_density<double> const& y) -> double {
         return inner(x, y);
     };
@@ -245,113 +232,27 @@ paw_density_function_property()
         }
     };
 
-    return FunctionProperties<PAW_density<double>>(global_size_func, inner_prod_func, scale_func, copy_function,
-                                                   axpy_function, rotate_function);
+    return FunctionProperties<PAW_density<double>>(inner_prod_func, scale_func, copy_function, axpy_function,
+                                                   rotate_function);
 }
 
 FunctionProperties<Hubbard_matrix>
 hubbard_matrix_function_property()
 {
-    auto global_size_func = [](Hubbard_matrix const& x) -> double { return 1.0; };
-
     auto inner_prod_func = [](Hubbard_matrix const& x, Hubbard_matrix const& y) -> double {
         /* do not contribute to mixing */
         return 0;
     };
 
-    auto scale_func = [](double alpha, Hubbard_matrix& x) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
-                x.local(at_lvl)[i] *= alpha;
-            }
-        }
+    auto scale_func = [](double alpha, Hubbard_matrix& x) -> void { scale(alpha, x); };
 
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
-                x.nonlocal(at_lvl)[i] *= alpha;
-            }
-        }
+    auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void { copy(x, y); };
 
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
-                for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
-                    x.multipliers_constraints(at_lvl)[i] *= alpha;
-                }
-            }
-        }
-    };
+    auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void { axpy(alpha, x, y); };
 
-    auto copy_func = [](Hubbard_matrix const& x, Hubbard_matrix& y) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            copy(x.local(at_lvl), y.local(at_lvl));
-        }
+    auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void { rotate(c, s, x, y); };
 
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            copy(x.nonlocal(at_lvl), y.nonlocal(at_lvl));
-        }
-
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-                copy(x.multipliers_constraints(at_lvl), y.multipliers_constraints(at_lvl));
-            }
-        }
-    };
-
-    auto axpy_func = [](double alpha, Hubbard_matrix const& x, Hubbard_matrix& y) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
-                y.local(at_lvl)[i] = alpha * x.local(at_lvl)[i] + y.local(at_lvl)[i];
-            }
-        }
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
-                y.nonlocal(at_lvl)[i] = alpha * x.nonlocal(at_lvl)[i] + y.nonlocal(at_lvl)[i];
-            }
-        }
-
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
-                for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
-                    y.multipliers_constraints(at_lvl)[i] =
-                            alpha * x.multipliers_constraints(at_lvl)[i] + y.multipliers_constraints(at_lvl)[i];
-                }
-            }
-        }
-    };
-
-    auto rotate_func = [](double c, double s, Hubbard_matrix& x, Hubbard_matrix& y) -> void {
-        for (size_t at_lvl = 0; at_lvl < x.local().size(); at_lvl++) {
-            for (size_t i = 0; i < x.local(at_lvl).size(); i++) {
-                auto xi            = x.local(at_lvl)[i];
-                auto yi            = y.local(at_lvl)[i];
-                x.local(at_lvl)[i] = xi * c + yi * s;
-                y.local(at_lvl)[i] = yi * c - xi * s;
-            }
-        }
-
-        for (size_t at_lvl = 0; at_lvl < x.nonlocal().size(); at_lvl++) {
-            for (size_t i = 0; i < x.nonlocal(at_lvl).size(); i++) {
-                auto xi               = x.nonlocal(at_lvl)[i];
-                auto yi               = y.nonlocal(at_lvl)[i];
-                x.nonlocal(at_lvl)[i] = xi * c + yi * s;
-                y.nonlocal(at_lvl)[i] = yi * c - xi * s;
-            }
-        }
-
-        if (x.ctx().cfg().hubbard().constrained_calculation()) {
-            for (size_t at_lvl = 0; at_lvl < x.multipliers_constraints().size(); at_lvl++) {
-                for (size_t i = 0; i < x.multipliers_constraints(at_lvl).size(); i++) {
-                    auto xi                              = x.multipliers_constraints(at_lvl)[i];
-                    auto yi                              = y.multipliers_constraints(at_lvl)[i];
-                    x.multipliers_constraints(at_lvl)[i] = xi * c + yi * s;
-                    y.multipliers_constraints(at_lvl)[i] = yi * c - xi * s;
-                }
-            }
-        }
-    };
-
-    return FunctionProperties<Hubbard_matrix>(global_size_func, inner_prod_func, scale_func, copy_func, axpy_func,
-                                              rotate_func);
+    return FunctionProperties<Hubbard_matrix>(inner_prod_func, scale_func, copy_func, axpy_func, rotate_func);
 }
 } // namespace mixer
 

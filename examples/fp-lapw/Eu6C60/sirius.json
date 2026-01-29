@@ -1,30 +1,28 @@
 {
     "control" : {
-        "cyclic_block_size" : 16,
-        "processing_unit" : "cpu",
-        "std_evp_solver_name" : "lapack",
-        "gen_evp_solver_name" : "lapack"
+	"verbosity" : 1
     },
 
     "parameters" : {
         "electronic_structure_method" : "full_potential_lapwlo",
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
         "smearing_width" : 0.05,
-        "valence_relativity" : "none",
-        "core_relativity" : "none",
-        "aw_cutoff" : 7.0,
+        "valence_relativity" : "iora",
+        "core_relativity" : "dirac",
+        "aw_cutoff" : 6.2,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 1,
+        "num_mag_dims" : 1,
         "use_symmetry": true,
-        "ngridk" : [1, 1, 1],
+        "ngridk" : [2,2,2],
         "density_tol" : 1e-5,
         "energy_tol" : 1e-8,
-        "num_dft_iter" : 100
+        "num_dft_iter" : 10
     },
 
     "mixer" : {
-        "beta" : 0.95,
-        "type" : "anderson",
+        "beta" : 0.5,
+        "type" : "broyden2",
         "max_history" : 8
     },
 

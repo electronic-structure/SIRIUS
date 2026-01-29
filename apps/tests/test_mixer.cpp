@@ -85,7 +85,6 @@ test_mixer(cmd_args const& args)
         b[i] -= 1;
 
     auto mixer_function_prop = mixer::FunctionProperties<std::vector<double>>(
-            [](const std::vector<double>& x) -> std::size_t { return 1; },
             [](const std::vector<double>& x, const std::vector<double>& y) -> double {
                 double result = 0.0;
                 for (std::size_t i = 0; i < x.size(); ++i)

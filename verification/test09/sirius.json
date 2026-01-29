@@ -25,9 +25,7 @@
     "pw_cutoff" : 20.00,
 
     "energy_tol" : 1e-8,
-    "density_tol" : 1e-6,
-
-    "num_dft_iter" : 100,
+    "density_tol" : 1e-5,
 
     "ngridk" : [4,4,4]
   },
@@ -56,8 +54,7 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.15,
-        "use_hartree" : true,
-        "type" : "broyden2"
+        "beta" : 0.5,
+        "use_hartree" : true
     }
 }

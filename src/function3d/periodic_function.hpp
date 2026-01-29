@@ -328,6 +328,56 @@ copy(periodic_function_ptr_t<T> const src__, Periodic_function<T>& dest__)
     }
 }
 
+template <typename T>
+inline void
+copy(Periodic_function<T> const& src__, Periodic_function<T>& dest__)
+{
+    copy(src__.rg(), dest__.rg());
+    if (src__.ctx().full_potential()) {
+        copy(src__.mt(), dest__.mt());
+    }
+}
+
+template <typename T>
+inline void
+axpy(T alpha__, Periodic_function<T> const& x__, Periodic_function<T>& y__)
+{
+    axpy(alpha__, x__.rg(), y__.rg());
+    if (x__.ctx().full_potential()) {
+        axpy(alpha__, x__.mt(), y__.mt());
+    }
+}
+
+template <typename T>
+inline void
+rotate(T c__, T s__, Periodic_function<T>& x__, Periodic_function<T>& y__)
+{
+    #pragma omp parallel
+    {
+        #pragma omp for schedule(static) nowait
+        for (std::size_t i = 0; i < x__.rg().values().size(); ++i) {
+            auto xi           = x__.rg().value(i);
+            auto yi           = y__.rg().value(i);
+            x__.rg().value(i) = xi * c__ + yi * s__;
+            y__.rg().value(i) = xi * (-s__) + yi * c__;
+        }
+        if (x__.ctx().full_potential()) {
+            for (auto it : x__.ctx().unit_cell().spl_num_atoms()) {
+                int ia       = it.i;
+                auto& x_f_mt = x__.mt()[ia];
+                auto& y_f_mt = y__.mt()[ia];
+                #pragma omp for schedule(static) nowait
+                for (int i = 0; i < static_cast<int>(x__.mt()[ia].size()); i++) {
+                    auto xi   = x_f_mt[i];
+                    auto yi   = y_f_mt[i];
+                    x_f_mt[i] = xi * c__ + yi * s__;
+                    y_f_mt[i] = xi * (-s__) + yi * c__;
+                }
+            }
+        }
+    }
+}
+
 } // namespace sirius
 
 #endif // __PERIODIC_FUNCTION_HPP__

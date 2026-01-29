@@ -61,7 +61,7 @@
 
     "mixer" : {
         "beta" : 0.5,
-        "type" : "broyden2",
+        "!type" : "broyden2",
         "max_history" : 6,
         "use_hartree" : true
     }

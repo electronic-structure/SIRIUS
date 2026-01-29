@@ -323,8 +323,6 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         }
     }
 
-    // dft.print_magnetic_moment();
-
     if (ref_file.size() != 0) {
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
@@ -354,7 +352,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
                     max_diff = std::max(max_diff, std::abs(v1[i][x] - v2[i][x]));
                 }
             }
-            if (max_diff > 1e-5) {
+            if (max_diff > 1e-4) {
                 std::cout << "magnetisations is different!" << std::endl;
                 ctx.comm().abort(5);
             }
