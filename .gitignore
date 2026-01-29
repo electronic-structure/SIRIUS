@@ -18,6 +18,8 @@ __pycache__
 spack-build*
 spack-configure-args.txt
 /.cache/
+/spack-env-*/
+/spack-clang*/
 src/version.h
 timers.json
 .vscode
