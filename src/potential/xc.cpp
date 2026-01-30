@@ -113,7 +113,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__, const bo
 
             /* Energy and stress tensors are returned after mpi_allreduce */
             // if (num_points) {
-                /* Van der Walls correction */
+            /* Van der Walls correction */
             ixc.get_vdw(calculate_stress__, rho.data_rg(), grad_rho_grad_rho.data_rg(), vxc.at(memory_t::host),
                         vsigma.data_rg(), &vdw_energy_, stress_kernel);
             vdw_energy_ *= ixc.weight();
