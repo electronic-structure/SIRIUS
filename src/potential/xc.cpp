@@ -115,7 +115,7 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__, const bo
             // if (num_points) {
             /* Van der Walls correction */
             ixc.get_vdw(calculate_stress__, rho.data_rg(), grad_rho_grad_rho.data_rg(), vxc.at(memory_t::host),
-                        vsigma.data_rg(), &vdw_energy_, stress_kernel);
+                        vsigma.data_rg(), &vdw_energy_, stress_kernel, num_points);
             vdw_energy_ *= ixc.weight();
 #else
             RTE_THROW("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
@@ -356,7 +356,7 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__, const bool 
 #if defined(SIRIUS_USE_VDWXC)
             ixc.get_vdw(calculate_stress__, rho_up.data_rg(), rho_dn.data_rg(), grad_rho_up_grad_rho_up.data_rg(),
                         grad_rho_dn_grad_rho_dn.data_rg(), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
-                        vsigma_uu.data_rg(), vsigma_dd.data_rg(), &vdw_energy_, stress_kernel);
+                        vsigma_uu.data_rg(), vsigma_dd.data_rg(), &vdw_energy_, stress_kernel, num_points);
             vdw_energy_ *= ixc.weight();
 #else
             RTE_THROW("You should not be there since sirius is not compiled with libVDWXC\n");

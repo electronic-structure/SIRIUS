@@ -80,13 +80,13 @@ class XC_functional : public XC_functional_base
     /// get van der walls contribution for the exchange term
     void
     get_vdw(const bool calculate_vdw_stress__, double* rho, double* sigma, double* vrho, double* vsigma,
-            double* energy__, std::array<double, 9>& vdw_stress__);
+            double* energy__, std::array<double, 9>& vdw_stress__, int num_points);
 
     /// get van der walls contribution to the exchange term magnetic case
     void
     get_vdw(const bool calculate_vdw_stress__, double* rho_up, double* rho_down, double* sigma_up, double* sigma_down,
             double* vrho_up, double* vrho_down, double* vsigma_up, double* vsigma_down, double* energy__,
-            std::array<double, 9>& vdw_stress__);
+            std::array<double, 9>& vdw_stress__, int num_points);
 
     void
     vdw_calculate_stress_kernel(const double vdw_energy__, const double volume__,
@@ -273,13 +273,13 @@ XC_functional::kind() const
 #if defined(SIRIUS_USE_VDWXC)
 inline void
 XC_functional::get_vdw(const bool calculate_vdw_stress__, double* rho, double* sigma, double* vrho, double* vsigma,
-                       double* energy__, std::array<double, 9>& vdw_stress__)
+                       double* energy__, std::array<double, 9>& vdw_stress__, int num_points)
 {
     if (!is_vdw()) {
         RTE_THROW("Error wrong vdw XC");
     }
 
-    if (rho != nullptr) {
+    if (num_points > 0) {
         // vdwxc will raise an exception if any input is a nullpointer
         if (!calculate_vdw_stress__) {
             energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, vrho, vsigma);
@@ -300,19 +300,21 @@ XC_functional::get_vdw(const bool calculate_vdw_stress__, double* rho, double* s
 inline void
 XC_functional::get_vdw(const bool calculate_vdw_stress__, double* rho_up, double* rho_down, double* sigma_up,
                        double* sigma_down, double* vrho_up, double* vrho_down, double* vsigma_up, double* vsigma_down,
-                       double* energy__, std::array<double, 9>& vdw_stress__)
+                       double* energy__, std::array<double, 9>& vdw_stress__, int num_points)
 {
     if (!is_vdw()) {
         RTE_THROW("Error wrong XC");
     }
 
-    if (!calculate_vdw_stress__) {
-        energy__[0] = vdwxc_calculate_spin(handler_vdw_, rho_up, rho_down, sigma_up, sigma_down, vrho_up, vrho_down,
-                                           vsigma_up, vsigma_down);
-    } else {
-        std::fill(vdw_stress__.begin(), vdw_stress__.end(), 0.0);
-        energy__[0] = vdwxc_stress_spin(handler_vdw_, vdw_stress__.data(), rho_up, rho_down, sigma_up, sigma_down,
-                                        vrho_up, vrho_down, vsigma_up, vsigma_down);
+    if (num_points > 0) {
+        if (!calculate_vdw_stress__) {
+            energy__[0] = vdwxc_calculate_spin(handler_vdw_, rho_up, rho_down, sigma_up, sigma_down, vrho_up, vrho_down,
+                                               vsigma_up, vsigma_down);
+        } else {
+            std::fill(vdw_stress__.begin(), vdw_stress__.end(), 0.0);
+            energy__[0] = vdwxc_stress_spin(handler_vdw_, vdw_stress__.data(), rho_up, rho_down, sigma_up, sigma_down,
+                                            vrho_up, vrho_down, vsigma_up, vsigma_down);
+        }
     }
 
     auto comm = mpi::Communicator(this->comm_);
