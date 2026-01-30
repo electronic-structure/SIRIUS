@@ -112,14 +112,11 @@ Potential::xc_rg_nonmagnetic(Density const& density__, bool use_lapl__, const bo
             /* all ranks should make a call because VdW uses FFT internaly */
 
             /* Energy and stress tensors are returned after mpi_allreduce */
-            if (num_points) {
+            // if (num_points) {
                 /* Van der Walls correction */
-                ixc.get_vdw(calculate_stress__, &rho.value(0), &grad_rho_grad_rho.value(0), vxc.at(memory_t::host),
-                            &vsigma.value(0), &vdw_energy_, stress_kernel);
-                vdw_energy_ *= ixc.weight();
-            } else {
-                ixc.get_vdw(calculate_stress__, nullptr, nullptr, nullptr, nullptr, &vdw_energy_, stress_kernel);
-            }
+            ixc.get_vdw(calculate_stress__, rho.data_rg(), grad_rho_grad_rho.data_rg(), vxc.at(memory_t::host),
+                        vsigma.data_rg(), &vdw_energy_, stress_kernel);
+            vdw_energy_ *= ixc.weight();
 #else
             RTE_THROW("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
 #endif
@@ -357,15 +354,9 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__, const bool 
 
         if (ixc.is_vdw()) {
 #if defined(SIRIUS_USE_VDWXC)
-            /* all ranks should make a call because VdW uses FFT internaly */
-            if (num_points) {
-                ixc.get_vdw(calculate_stress__, &rho_up.value(0), &rho_dn.value(0), &grad_rho_up_grad_rho_up.value(0),
-                            &grad_rho_dn_grad_rho_dn.value(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
-                            &vsigma_uu.value(0), &vsigma_dd.value(0), &vdw_energy_, stress_kernel);
-            } else {
-                ixc.get_vdw(calculate_stress__, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-                            &vdw_energy_, stress_kernel);
-            }
+            ixc.get_vdw(calculate_stress__, rho_up.data_rg(), rho_dn.data_rg(), grad_rho_up_grad_rho_up.data_rg(),
+                        grad_rho_dn_grad_rho_dn.data_rg(), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
+                        vsigma_uu.data_rg(), vsigma_dd.data_rg(), &vdw_energy_, stress_kernel);
             vdw_energy_ *= ixc.weight();
 #else
             RTE_THROW("You should not be there since sirius is not compiled with libVDWXC\n");

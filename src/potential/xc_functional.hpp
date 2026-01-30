@@ -16,10 +16,12 @@
 
 #include <xc.h>
 #include <string>
-#include <string.h>
+// #include <string.h>
 #include "core/r3/r3.hpp"
 #include "xc_functional_base.hpp"
-#include "core/fft/fft.hpp"
+#include "core/mpi/communicator.hpp"
+#include <spfft/transform.hpp>
+// #include "core/fft/fft.hpp"
 #if defined(SIRIUS_USE_VDWXC)
 #include <vdwxc.h>
 #include <vdwxc_mpi.h>
