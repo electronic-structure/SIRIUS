@@ -54,10 +54,17 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     // Use R for residual, we modify the right-hand side B in-place.
     auto& R = B;
 
+    // something like: auto R = copy(B);
+    // auto&& R1 = (is_complex) ? copy(B) : R;
+
+    // TODO: create space for R and R1 (in case of complex frequency)
+
     // Use B effectively as the residual block-vector
     // R = B - A * X -- don't multiply when initial guess is zero.
     if (!initial_guess_is_zero) {
         A.multiply(-1.0, X, 1.0, R, n);
+
+        // TODO: R1=conj(R)
     }
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
@@ -86,10 +93,12 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         // C = P * R.
         P.apply(C, R);
+        // TODO: P1=P*R1
 
         rhos_old = rhos;
 
-        // rhos = dot(C, R)
+        // rhos = dot(C, R) -> <R | P | R>
+        // TODO: in generalized case this is <R1|R>
         C.block_dot(R, rhos, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
@@ -136,10 +145,12 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
             U.copy(C, num_unconverged);
         } else {
             for (size_t i = 0; i < num_unconverged; ++i) {
+                // TODO: rename to beta to align with CG notation (direction coefficients)
                 alphas[i] = rhos[i] / rhos_old[i];
             }
 
             // U[:, i] = C[:, i] + alpha[i] * U[:, i] for i < num_unconverged
+            // TODO: use beta here
             U.block_xpby(C, alphas, num_unconverged);
         }
 
@@ -148,9 +159,12 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         // compute the optimal distance for the search direction
         // sigmas = dot(U, C)
+        // C = A * U, then sigma = U * A * U
+        // U is a search direction
         U.block_dot(C, sigmas, num_unconverged);
 
         // Update the solution and the residual
+        // alpha is the step length
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
         }
@@ -289,11 +303,12 @@ struct Smoothed_diagonal_preconditioner
     }
 };
 
+// TODO: add complex frequency
 struct Linear_response_operator
 {
     sirius::Simulation_context& ctx;
     sirius::Hamiltonian_k<double>& Hk;
-    std::vector<double> min_eigenvals;
+    std::vector<double> min_eigenvals; // TODO: better name
     wf::Wave_functions<double>* Hphi;
     wf::Wave_functions<double>* Sphi;
     wf::Wave_functions<double>* evq;
@@ -344,6 +359,7 @@ struct Linear_response_operator
 
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
     // where SQ is S * eigenvectors.
+    // TODO: add a flag to apply energies or complex-conjugates
     void
     multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active)
     {

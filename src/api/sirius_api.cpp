@@ -6240,6 +6240,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 mg.emplace_back(Hphi_wf->memory_guard(mem, wf::copy_to::device));
                 mg.emplace_back(Sphi_wf->memory_guard(mem, wf::copy_to::device));
 
+                // TODO: pass complex frequency if it is provided by QE
                 sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk,
                                                                      eigvals_vec, Hphi_wf.get(), Sphi_wf.get(),
                                                                      psi_wf.get(), tmp_wf.get(),
