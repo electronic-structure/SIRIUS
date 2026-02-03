@@ -11,6 +11,7 @@
  *  \brief Contains implementation of sirius::Density class.
  */
 
+#include "core/power.hpp"
 #include "core/profiler.hpp"
 #include "core/serialize_mdarray.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
@@ -1202,6 +1203,7 @@ void
 Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
 {
     PROFILE("sirius::Density::generate");
+    power::Profile p1("generate_dens");
 
     generate_valence<T>(ks__);
 
