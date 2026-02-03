@@ -58,7 +58,7 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
 
     if (acc::num_devices() > 0) {
         size_t gpu_mem = acc::get_free_mem();
-        out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
+        out__ << ", free GPU memory: " << (gpu_mem >> 20) << " Mb";
     }
     out__ << std::endl;
 }
