@@ -256,6 +256,12 @@ class K_point_set
         return std::max(energy_fermi_[0], energy_fermi_[1]);
     }
 
+    inline double
+    energy_fermi_fixed_mag(int ispn) const
+    {
+        return energy_fermi_[ispn];
+    }
+
     inline void
     set_energy_fermi(double energy_fermi__)
     {
