@@ -202,7 +202,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
     mg.emplace_back(phi->memory_guard(mem));
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    std::unique_ptr<wf_t> hphi{nullptr};
+    std::shared_ptr<wf_t> hphi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
         hphi = wave_function_factory(ctx, kp__, wf::num_bands(num_phi), num_md, mt_part);
         mg.emplace_back(hphi->memory_guard(mem));
@@ -213,7 +213,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
     mg.emplace_back(sphi->memory_guard(mem));
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    std::unique_ptr<wf_t> hpsi{nullptr};
+    std::shared_ptr<wf_t> hpsi{nullptr};
     if (what == davidson_evp_t::hamiltonian) {
         hpsi = wave_function_factory(ctx, kp__, num_bands__, num_md, mt_part);
         mg.emplace_back(hpsi->memory_guard(mem));
@@ -229,8 +229,8 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
     auto res = wave_function_factory(ctx, kp__, wf::num_bands(num_bands__.get() + num_extra_phi), num_md, mt_part);
     mg.emplace_back(res->memory_guard(mem));
 
-    std::unique_ptr<wf_t> hphi_extra{nullptr};
-    std::unique_ptr<wf_t> sphi_extra{nullptr};
+    std::shared_ptr<wf_t> hphi_extra{nullptr};
+    std::shared_ptr<wf_t> sphi_extra{nullptr};
 
     if (phi_extra__) {
         hphi_extra = wave_function_factory(ctx, kp__, wf::num_bands(num_extra_phi), num_md, mt_part);

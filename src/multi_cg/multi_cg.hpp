@@ -52,7 +52,8 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     U.zero();
 
     // Use R for residual, we modify the right-hand side B in-place.
-    auto& R = B;
+    //auto& R = B;
+    auto R = B.deep_copy();
 
     // something like: auto R = copy(B);
     // auto&& R1 = (is_complex) ? copy(B) : R;
@@ -192,12 +193,16 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 /// Linear respone functions and objects.
 namespace lr {
 
+/// Wave-function wrapper for linear reponse solver.
 struct Wave_functions_wrap
 {
-    wf::Wave_functions<double>* x;
+    /// TODO: check if this can be replaced by a smart pointer.
+    std::shared_ptr<wf::Wave_functions<double>> x;
+    //Wave_functions<double>* x;
+    /// Location of the data.
     memory_t mem;
     /// In case of a deep copy this points to a new instance of wave-functions object.
-    std::shared_ptr<wf::Wave_functions<double>> wf_copy;
+    //std::shared_ptr<Wave_functions<double>> wf_copy;
 
     typedef std::complex<double> value_type;
 
@@ -243,30 +248,37 @@ struct Wave_functions_wrap
     block_xpby(Wave_functions_wrap const& y__, std::vector<value_type> const& alphas, int N__)
     {
         std::vector<value_type> ones(N__, 1.0);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), ones.data(), y__.x, alphas.data(), x);
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), ones.data(), y__.x.get(), alphas.data(), x.get());
     }
 
     void
     block_axpy_scatter(std::vector<value_type> const& alphas__, Wave_functions_wrap const& y__,
                        std::vector<int> const& idx__, int n__)
     {
-        wf::axpy_scatter<double, value_type>(mem, wf::spin_range(0), alphas__.data(), y__.x, idx__.data(), x, n__);
+        wf::axpy_scatter<double, value_type>(mem, wf::spin_range(0), alphas__.data(), y__.x.get(), idx__.data(), x.get(), n__);
     }
 
     void
     block_axpy(std::vector<value_type> const& alphas__, Wave_functions_wrap const& y__, int N__)
     {
         std::vector<value_type> ones(N__, 1.0);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), alphas__.data(), y__.x, ones.data(), x);
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), alphas__.data(), y__.x.get(), ones.data(), x.get());
+    }
+
+    /// Make deep copy of the wave-functions wrapper and underlying wave-functions object.
+    inline auto
+    deep_copy() const
+    {
+        /* allocate new wave-functions */
+        auto wf_out = std::make_shared<wf::Wave_functions<double>>(x->gkvec_sptr(), x->num_md(), x->num_wf(), mem);
+        /* band range to copy: all */
+        auto br = wf::band_range(0, x->num_wf().get());
+        /* copy from existing to new */
+        wf::copy(mem, *x, wf::spin_index(0), br, *wf_out, wf::spin_index(0), br);
+        /* return new wrapper */
+        return Wave_functions_wrap({wf_out, mem});
     }
 };
-
-//inline auto
-//deep_copy(Wave_functions_wrap const& wf_in__)
-//{
-//    auto wf_out = factorsWave_functions<double> wf_out;
-//
-//}
 
 struct Identity_preconditioner
 {
@@ -318,7 +330,7 @@ struct Linear_response_operator
     sirius::Simulation_context& ctx;
     sirius::Hamiltonian_k<double>& Hk;
     std::vector<double> min_eigenvals; // TODO: better name
-    wf::Wave_functions<double>* Hphi;
+    wf::Wave_functions<double>* Hphi; // TODO: use smart pointers
     wf::Wave_functions<double>* Sphi;
     wf::Wave_functions<double>* evq;
     wf::Wave_functions<double>* tmp;
@@ -372,6 +384,8 @@ struct Linear_response_operator
     void
     multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active)
     {
+        // TODO: check if tmp is really needed
+        //
         PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, num_active), *x.x, Hphi, Sphi);
@@ -401,7 +415,7 @@ struct Linear_response_operator
         // y[:, i] <- alpha * tmp + beta * y[:, i]
         std::vector<double> alphas(num_active, alpha);
         std::vector<double> betas(num_active, beta);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), tmp, betas.data(), y.x);
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), tmp, betas.data(), y.x.get());
     }
 };
 

@@ -84,6 +84,12 @@ struct BlockVector
             }
         }
     }
+
+    inline auto
+    deep_copy() const
+    {
+        return *this;
+    }
 };
 
 // This is a linear but special operator A(X)

@@ -6208,14 +6208,14 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                     }
                 }
 
-                /* check residuals H|psi> - e * S |psi> */
-                if (sctx.cfg().control().verification() >= 1) {
-                    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-                    kp.initialize();
-                    auto Hk = H0(kp);
-                    // sirius::check_wave_functions<double, std::complex<double>>(
-                    //         Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
-                }
+                ///* check residuals H|psi> - e * S |psi> */
+                //if (sctx.cfg().control().verification() >= 1) {
+                //    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
+                //    kp.initialize();
+                //    auto Hk = H0(kp);
+                //    // sirius::check_wave_functions<double, std::complex<double>>(
+                //    //         Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
+                //}
 
                 /* setup auxiliary state vectors for CG */
                 auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
@@ -6250,10 +6250,10 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
                                                                      wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
-                auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
-                auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
-                auto U_wrap = sirius::lr::Wave_functions_wrap{U.get(), mem};
-                auto C_wrap = sirius::lr::Wave_functions_wrap{C.get(), mem};
+                auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf, mem};
+                auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};
+                auto U_wrap = sirius::lr::Wave_functions_wrap{U, mem};
+                auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
 
                 /* set up the diagonal preconditioner */
                 auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
