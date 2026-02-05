@@ -250,6 +250,7 @@ class device_memory_guard
         , mem_{mem__}
         , copy_to_{copy_to__}
     {
+        /* on creation: copy to device if needed */
         if (is_device_memory(mem_)) {
             auto obj = static_cast<T*>(obj_);
             obj->allocate(mem_);
@@ -257,6 +258,8 @@ class device_memory_guard
                 obj->copy_to(mem_);
             }
         }
+        /* on destruction: copy to host if needed */
+        /* handler is called by destruction */
         handler_ = [](void* p__, memory_t mem__, wf::copy_to copy_to__) {
             if (p__) {
                 auto obj = static_cast<T*>(p__);

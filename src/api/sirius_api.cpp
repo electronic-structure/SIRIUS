@@ -6195,6 +6195,8 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                     }
                 }
 
+                // TODO: comment where nbnd_occ_k and nbnd_occ_kq are used and how
+
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                     for (int i = 0; i < nbnd_occ_k; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
@@ -6231,14 +6233,15 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 std::vector<wf::device_memory_guard> mg;
 
                 mg.emplace_back(psi_wf->memory_guard(mem, wf::copy_to::device));
+                /* this is X in LR notation: it is copied back to host at the end */
                 mg.emplace_back(dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host));
                 mg.emplace_back(dvpsi_wf->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(tmp_wf->memory_guard(mem, wf::copy_to::device));
+                mg.emplace_back(tmp_wf->memory_guard(mem));
 
-                mg.emplace_back(U->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(C->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(Hphi_wf->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(Sphi_wf->memory_guard(mem, wf::copy_to::device));
+                mg.emplace_back(U->memory_guard(mem));
+                mg.emplace_back(C->memory_guard(mem));
+                mg.emplace_back(Hphi_wf->memory_guard(mem));
+                mg.emplace_back(Sphi_wf->memory_guard(mem));
 
                 // TODO: pass complex frequency if it is provided by QE
                 sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk,

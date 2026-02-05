@@ -196,6 +196,8 @@ struct Wave_functions_wrap
 {
     wf::Wave_functions<double>* x;
     memory_t mem;
+    /// In case of a deep copy this points to a new instance of wave-functions object.
+    std::shared_ptr<wf::Wave_functions<double>> wf_copy;
 
     typedef std::complex<double> value_type;
 
@@ -258,6 +260,13 @@ struct Wave_functions_wrap
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, N__), alphas__.data(), y__.x, ones.data(), x);
     }
 };
+
+//inline auto
+//deep_copy(Wave_functions_wrap const& wf_in__)
+//{
+//    auto wf_out = factorsWave_functions<double> wf_out;
+//
+//}
 
 struct Identity_preconditioner
 {
