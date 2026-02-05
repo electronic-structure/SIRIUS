@@ -329,25 +329,32 @@ struct Linear_response_operator
 {
     sirius::Simulation_context& ctx;
     sirius::Hamiltonian_k<double>& Hk;
-    std::vector<double> min_eigenvals; // TODO: better name
-    wf::Wave_functions<double>* Hphi; // TODO: use smart pointers
-    wf::Wave_functions<double>* Sphi;
-    wf::Wave_functions<double>* evq;
-    wf::Wave_functions<double>* tmp;
+    std::vector<double> eigenvals;
+    /// Work array, stores H|x> and intermediate results
+    std::shared_ptr<wf::Wave_functions<double>> Hphi;
+    /// Work array, stores S|x> and intermediate results
+    std::shared_ptr<wf::Wave_functions<double>> Sphi;
+    /// |Psi_k> of the P projector
+    std::shared_ptr<wf::Wave_functions<double>> evq;
+    /// Work array
+    std::shared_ptr<wf::Wave_functions<double>> tmp;
     double alpha_pv;
+    /// Band range of the projectors |Psi_k><Psi_k|
     wf::band_range br;
+    /// Spin range: currently single up or dn spin is implemented
     wf::spin_range sr;
     memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
+    std::complex<double> omega;
 
     Linear_response_operator(sirius::Simulation_context& ctx, sirius::Hamiltonian_k<double>& Hk,
-                             std::vector<double> const& eigvals, wf::Wave_functions<double>* Hphi,
-                             wf::Wave_functions<double>* Sphi, wf::Wave_functions<double>* evq,
-                             wf::Wave_functions<double>* tmp, double alpha_pv, wf::band_range br, wf::spin_range sr,
+                             std::vector<double> const& eigvals, std::shared_ptr<wf::Wave_functions<double>> Hphi,
+                             std::shared_ptr<wf::Wave_functions<double>> Sphi, std::shared_ptr<wf::Wave_functions<double>> evq,
+                             std::shared_ptr<wf::Wave_functions<double>> tmp, double alpha_pv, wf::band_range br, wf::spin_range sr,
                              memory_t mem)
-        : ctx(ctx)
+        : ctx(ctx) // TODO: take ctx from Hk.H0().ctx()
         , Hk(Hk)
-        , min_eigenvals(eigvals)
+        , eigenvals(eigvals)
         , Hphi(Hphi)
         , Sphi(Sphi)
         , evq(evq)
@@ -358,6 +365,8 @@ struct Linear_response_operator
         , mem(mem)
         , overlap(br.size(), Hphi->num_wf())
     {
+        // TODO: allocate Hphi, Sphi, tmp in here
+
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
         // alpha_pv = 2 * min_eigenvals.back();
@@ -365,16 +374,17 @@ struct Linear_response_operator
         // there.;
 
         // flip the sign of the eigenvals so that the axpby works
-        for (auto& e : min_eigenvals) {
-            e *= -1;
-        }
+        //for (auto& e : min_eigenvals) {
+        //    e *= -1;
+        //}
+        omega = std::complex<double>(0, 0);
     }
 
     void
     repack(std::vector<int> const& ids)
     {
         for (size_t i = 0; i < ids.size(); ++i) {
-            min_eigenvals[i] = min_eigenvals[ids[i]];
+            eigenvals[i] = eigenvals[ids[i]];
         }
     }
 
@@ -382,40 +392,42 @@ struct Linear_response_operator
     // where SQ is S * eigenvectors.
     // TODO: add a flag to apply energies or complex-conjugates
     void
-    multiply(double alpha, Wave_functions_wrap x, double beta, Wave_functions_wrap y, int num_active)
+    multiply(double alpha, Wave_functions_wrap& x, double beta, Wave_functions_wrap& y, int num_active)
     {
-        // TODO: check if tmp is really needed
-        //
         PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
-        Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, num_active), *x.x, Hphi, Sphi);
+        Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, num_active), *x.x, Hphi.get(), Sphi.get());
 
-        std::vector<double> ones(num_active, 1.0);
-
-        // effectively tmp := (H - e * S) * x, as an axpy, modifying Hphi.
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), min_eigenvals.data(), Sphi, ones.data(), Hphi);
-        wf::copy(mem, *Hphi, wf::spin_index(0), wf::band_range(0, num_active), *tmp, wf::spin_index(0),
-                 wf::band_range(0, num_active));
-
-        // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
-
-        // overlap := evq' * (S * x)
+        // overlap := evq' * (S * x) = <Psi_k | S | X>
         wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active), overlap,
                   0, 0);
 
-        // Hphi := evq * overlap
-        wf::transform(ctx.spla_context(), mem, overlap, 0, 0, 1.0, *evq, wf::spin_index(0), br, 0.0, *Hphi,
+        std::vector<double> ones(num_active, 1.0);
+
+        std::vector<double> ev(num_active); // TODO: make complex, add omega, use function argument to control +/- omega
+        for (int i = 0; i < num_active; i++) {
+            ev[i] = -eigenvals[i];
+        }
+
+        // Hphi contains H|x> - e S|x>
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), ev.data(), Sphi.get(), ones.data(), Hphi.get());
+
+        // tmp := evq * overlap
+        wf::transform(ctx.spla_context(), mem, overlap, 0, 0, 1.0, *evq, wf::spin_index(0), br, 0.0, *tmp,
                       wf::spin_index(0), wf::band_range(0, num_active));
+        // Sphi contains S|Psi_k><Psi_k| S |X>
+        Hk.apply_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_active), *tmp, *Sphi);
 
-        Hk.apply_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_active), *Hphi, *Sphi);
+        // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
-        // tmp := alpha_pv * Sphi + tmp = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
+        // Hphi := alpha_pv * Sphi + Hphi = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
         std::vector<double> alpha_pvs(num_active, alpha_pv);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi, ones.data(), tmp);
-        // y[:, i] <- alpha * tmp + beta * y[:, i]
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi.get(), ones.data(), Hphi.get());
+
+        // y[:, i] <- alpha * Hphi + beta * y[:, i]
         std::vector<double> alphas(num_active, alpha);
         std::vector<double> betas(num_active, beta);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), tmp, betas.data(), y.x.get());
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), Hphi.get(), betas.data(), y.x.get());
     }
 };
 

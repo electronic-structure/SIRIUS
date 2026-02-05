@@ -6245,8 +6245,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
 
                 // TODO: pass complex frequency if it is provided by QE
                 sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk,
-                                                                     eigvals_vec, Hphi_wf.get(), Sphi_wf.get(),
-                                                                     psi_wf.get(), tmp_wf.get(),
+                                                                     eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
                                                                      wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */

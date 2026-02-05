@@ -117,7 +117,7 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     mg.emplace_back(Sphi_wf->memory_guard(mem));
 
     sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk, eigvals_vec,
-                                                         Hphi_wf.get(), Sphi_wf.get(), psi_wf.get(), tmp_wf.get(),
+                                                         Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                          *alpha_pv__ / 2, // rydberg/hartree factor
                                                          wf::band_range(0, nbnd_occ), sr, mem);
     /* CG state vectors */
