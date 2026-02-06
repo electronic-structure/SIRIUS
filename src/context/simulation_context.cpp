@@ -11,6 +11,7 @@
  *  \brief Implementation of Simulation_context class.
  */
 
+#include <sched.h>
 #include <gsl/gsl_sf_bessel.h>
 #include "core/profiler.hpp"
 #include "core/env/env.hpp"
@@ -245,6 +246,8 @@ Simulation_context::initialize()
     if (pw_cutoff() <= 0) {
         pw_cutoff(full_potential() ? 12 : 20);
     }
+
+    print_memory_usage(this->out(), FILE_LINE);
 
     /* initialize variables related to the unit cell */
     unit_cell().initialize();
@@ -483,6 +486,8 @@ Simulation_context::initialize()
     /* set the smearing */
     smearing(cfg().parameters().smearing());
 
+    print_memory_usage(this->out(), FILE_LINE);
+
     /* create G-vectors on the first call to update() */
     update();
 
@@ -496,6 +501,9 @@ Simulation_context::initialize()
 
     if (verbosity() >= 3 || print_mpi_layout) {
         mpi::pstdout pout(comm());
+        unsigned int cpu_id, numa_id;
+        getcpu(&cpu_id, &numa_id);
+
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << hbar(136, '-') << std::endl;
@@ -510,7 +518,7 @@ Simulation_context::initialize()
              << mpi_grid_->communicator(1 << 0).rank() << std::setw(6) << mpi_grid_->communicator(1 << 1).rank()
              << "   | " << std::setw(6) << blacs_grid().comm().rank() << std::setw(6) << blacs_grid().comm_row().rank()
              << std::setw(6) << blacs_grid().comm_col().rank() << "  |  " << acc::get_uuid(acc::get_device_id())
-             << std::endl;
+             << " | " << cpu_id << " " << numa_id << std::endl;
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
 
