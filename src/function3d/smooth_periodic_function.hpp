@@ -12,6 +12,7 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
+#include "core/memory.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
 #include "core/fft/gvec.hpp"
@@ -169,6 +170,18 @@ class Smooth_periodic_function
     value(int ir__) const
     {
         return f_rg_(ir__);
+    }
+
+    T const*
+    data_rg() const
+    {
+        return f_rg_.at(memory_t::host);
+    }
+
+    T*
+    data_rg()
+    {
+        return f_rg_.at(memory_t::host);
     }
 
     inline T&
