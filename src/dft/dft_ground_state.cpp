@@ -527,7 +527,12 @@ DFT_ground_state::print_info(std::ostream& out__) const
     write_energy2("Free energy (E-TS)", etot + s_sum);
     out__ << std::endl;
     write_energy("band gap (eV)", gap);
-    write_energy("Efermi", ef);
+    if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-8) {
+        write_energy("Efermi_up", kset_.energy_fermi_fixed_mag(0));
+        write_energy("Efermi_dn", kset_.energy_fermi_fixed_mag(1));
+    } else {
+        write_energy("Efermi", ef);
+    }
 }
 
 } // namespace sirius
