@@ -102,6 +102,12 @@ struct PosDefMatrixShifted
     DiagonalMatrix<double, Dynamic, Dynamic> A;
     VectorXd shifts;
 
+    inline bool
+    is_hermitian() const
+    {
+        return true;
+    }
+
     void
     multiply(double alpha, BlockVector const& u, double beta, BlockVector& v, size_t num)
     {

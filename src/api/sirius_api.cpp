@@ -6249,7 +6249,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
 
                 auto omega = get_value(omega__, std::complex<double>(0, 0)); // TODO: what are the units of omega? Ry?
 
-                sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk,
+                sirius::lr::Linear_response_operator linear_operator(Hk,
                                                                      eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
                                                                      omega, wf::band_range(0, nbnd_occ_kq), sr, mem);

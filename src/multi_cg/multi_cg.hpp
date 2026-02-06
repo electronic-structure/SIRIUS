@@ -54,19 +54,16 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     //auto& R = B;
     auto R = B.deep_copy();
 
-    auto&& R1 = B.deep_copy();
-
-    // something like: auto R = copy(B);
-    // auto&& R1 = (is_complex) ? copy(B) : R;
-
-    // TODO: create space for R and R1 (in case of complex frequency)
+    auto&& R1 = A.is_hermitian() ? R : B.deep_copy();
 
     // Use B effectively as the residual block-vector
     // R = B - A * X -- don't multiply when initial guess is zero.
     if (!initial_guess_is_zero) {
         A.multiply(-1.0, X, 1.0, R, n);
-
         // TODO: R1=conj(R)
+        if (!A.is_hermitian()) {
+            A.multiply(-1.0, X, 1.0, R1, n);
+        }
     }
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
@@ -344,13 +341,13 @@ struct Linear_response_operator
     memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
 
-    Linear_response_operator(sirius::Simulation_context& ctx, sirius::Hamiltonian_k<double>& Hk,
+    Linear_response_operator(sirius::Hamiltonian_k<double>& Hk,
                              std::vector<double> const& eigvals, std::shared_ptr<wf::Wave_functions<double>> Hphi,
                              std::shared_ptr<wf::Wave_functions<double>> Sphi, std::shared_ptr<wf::Wave_functions<double>> evq,
                              std::shared_ptr<wf::Wave_functions<double>> tmp, double alpha_pv,
                              std::complex<double> omega, wf::band_range br, wf::spin_range sr,
                              memory_t mem)
-        : ctx(ctx) // TODO: take ctx from Hk.H0().ctx()
+        : ctx(Hk.H0().ctx())
         , Hk(Hk)
         , eigenvals(eigvals)
         , Hphi(Hphi)
@@ -378,9 +375,9 @@ struct Linear_response_operator
         //}
     }
 
-    inline bool is_complex() const
+    inline bool is_hermitian() const
     {
-        return std::abs(std::imag(omega)) > 1e-12;
+        return std::abs(std::imag(omega)) < 1e-12;
     }
 
     void

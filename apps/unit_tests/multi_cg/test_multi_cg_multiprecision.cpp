@@ -135,6 +135,12 @@ struct PosDefMatrixShifted
     {
     }
 
+    inline bool
+    is_hermitian() const
+    {
+        return true;
+    }
+
     void
     multiply(T alpha, BlockVector<T> const& u, T beta, BlockVector<T>& v, size_t num)
     {
