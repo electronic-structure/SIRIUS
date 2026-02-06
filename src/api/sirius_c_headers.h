@@ -279,6 +279,10 @@ sirius_set_parameters:
       type: string
       attr: in, optional
       doc: Type of localized orbitals.
+    dftd3_correction:
+      type: bool
+      attr: optional
+      doc: Enable the dftd3 correction
     sht_coverage:
       type: int
       attr: in, optional
@@ -317,9 +321,9 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                       double const* iter_solver_tol_empty__, char const* iter_solver_type__, int const* verbosity__,
                       bool const* hubbard_correction__, int const* hubbard_correction_kind__,
                       bool const* hubbard_full_orthogonalization__, bool const* hubbard_constrained_calculation__,
-                      char const* hubbard_orbitals__, int const* sht_coverage__, double const* min_occupancy__,
-                      char const* smearing__, double const* smearing_width__, double const* spglib_tol__,
-                      char const* electronic_structure_method__, int* error_code__);
+                      char const* hubbard_orbitals__, bool const* dftd3_correction__, int const* sht_coverage__,
+                      double const* min_occupancy__, char const* smearing__, double const* smearing_width__,
+                      double const* spglib_tol__, char const* electronic_structure_method__, int* error_code__);
 
 /*
 sirius_get_parameters:
@@ -1453,7 +1457,11 @@ sirius_generate_density:
     paw_only:
       type: bool
       attr: in, optional
-      doc: it true, only local PAW density is generated
+      doc: if true, only local PAW density is generated
+    efermi:
+      type: bool
+      attr: in, optional
+      doc: if true, Fermi energy level is also computed
     error_code:
       type: int
       attr: out, optional
@@ -1461,7 +1469,7 @@ sirius_generate_density:
 */
 void
 sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool const* transform_to_rg__,
-                        bool const* paw_only__, int* error_code__);
+                        bool const* paw_only__, bool const* efermi__, int* error_code__);
 
 /*
 sirius_set_band_occupancies:
@@ -3096,6 +3104,10 @@ sirius_linear_solver:
       type: double
       attr: in, optional
       doc: Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+    omega:
+      type: complex
+      attr: in, optional
+      doc: Complex frequency
     niter:
       type: int
       attr: out, optional
@@ -3110,7 +3122,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                      int const* gvec_kq_loc__, double complex* dpsi__, double complex* psi__,
                      double* eigvals__, double complex* dvpsi__, int const* ld__, int const* num_spin_comp__,
                      double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
-                     double const* tol__, int* niter__, int* error_code__);
+                     double const* tol__, double complex const* omega__, int* niter__, int* error_code__);
 
 /*
 sirius_generate_rhoaug_q:
@@ -3749,4 +3761,121 @@ sirius_set_atom_vector_field:
 */
 void
 sirius_set_atom_vector_field(void* const* handler__, int const* ia__, double const* vector_field__, int* error_code__);
+
+/*
+sirius_set_dftd3_correction:
+    doc: Set the parameters controlling the dftd3 correction.
+    arguments:
+      handler:
+        type: ctx_handler
+        attr: in, required
+        doc: Simulation context handler.
+      method:
+        type: string
+        attr: in, required
+        doc: family of predefined parameters. Linked to the functional
+      damping:
+        type: string
+        attr: in, optional
+        doc: damping correction, auto, manual.
+      atm:
+        type: bool
+        attr: in, optional
+        doc: Include the three body correction
+      damping_term:
+        type: string
+        attr: in, optional
+        doc: type of damping correction, rational, mrational, zero, mzero, ...
+      s6:
+        type: double
+        attr: in, optional
+        doc: s6 parameter for dftd3 model.
+      s8:
+        type: double
+        attr: in, optional
+        doc: s8 parameter for dftd3 model.
+      s9:
+        type: double
+        attr: in, optional
+        doc: s9 parameter for dftd3 model.
+      rs8:
+        type: double
+        attr: in, optional
+        doc: rs8 parameter for dftd3 model.
+      alp:
+        type: double
+        attr: in, optional
+        doc: alp parameter for dftd3 model.
+      beta:
+        type: double
+        attr: in, optional
+        doc: beta parameter for dftd3 model.
+      error_code:
+        type: int
+        attr: out, optional
+        doc: Error code.
+*/
+void
+sirius_set_dftd3_correction(void* const* handler__, char const* method__, char const* damping__, bool const* atm__,
+                            char* const damping_term__, double const* s6__, double const* s8__, double const* s9__,
+                            double const* rs6__, double const* rs8__, double const* alp__, double const* beta__,
+                            int* error_code__);
+
+/*
+sirius_set_dftd4_correction:
+    doc: Set the parameters controlling the dftd3 correction.
+    arguments:
+      handler:
+        type: ctx_handler
+        attr: in, required
+        doc: Simulation context handler.
+      method:
+        type: string
+        attr: in, required
+        doc: family of predefined parameters. Linked to the functional
+      damping:
+        type: string
+        attr: in, optional
+        doc: damping correction, auto, manual.
+      atm:
+        type: bool
+        attr: in, optional
+        doc: Include the three body correction
+      damping_term:
+        type: string
+        attr: in, optional
+        doc: type of damping correction, rational, mrational
+      s6:
+        type: double
+        attr: in, optional
+        doc: s6 parameter for dftd4 model.
+      s8:
+        type: double
+        attr: in, optional
+        doc: s8 parameter for dftd4 model.
+      s9:
+        type: double
+        attr: in, optional
+        doc: s9 parameter for dftd4 model.
+      a1:
+        type: double
+        attr: in, optional
+        doc: a1 parameter for dftd4 model.
+      a2:
+        type: double
+        attr: in, optional
+        doc: a2 parameter for dftd4 model.
+      alp:
+        type: double
+        attr: in, optional
+        doc: alp parameter for dftd4 model.
+      error_code:
+        type: int
+        attr: out, optional
+        doc: Error code.
+*/
+void
+sirius_set_dftd4_correction(void* const* handler__, char const* method__, char const* damping__, bool const* atm__,
+                            char* const damping_term__, double const* s6__, double const* s8__, double const* s9__,
+                            double const* a1__, double const* a2__, double const* alp__, int* error_code__);
 

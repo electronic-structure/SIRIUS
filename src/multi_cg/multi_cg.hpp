@@ -44,7 +44,6 @@ auto
 multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
          bool initial_guess_is_zero = false)
 {
-
     PROFILE("sirius::multi_cg");
 
     auto const n = X.cols();
@@ -54,6 +53,8 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     // Use R for residual, we modify the right-hand side B in-place.
     //auto& R = B;
     auto R = B.deep_copy();
+
+    auto&& R1 = B.deep_copy();
 
     // something like: auto R = copy(B);
     // auto&& R1 = (is_complex) ? copy(B) : R;
@@ -94,7 +95,7 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         // C = P * R.
         P.apply(C, R);
-        // TODO: P1=P*R1
+        // TODO: C1=P*R1
 
         rhos_old = rhos;
 
@@ -196,13 +197,9 @@ namespace lr {
 /// Wave-function wrapper for linear reponse solver.
 struct Wave_functions_wrap
 {
-    /// TODO: check if this can be replaced by a smart pointer.
     std::shared_ptr<wf::Wave_functions<double>> x;
-    //Wave_functions<double>* x;
     /// Location of the data.
     memory_t mem;
-    /// In case of a deep copy this points to a new instance of wave-functions object.
-    //std::shared_ptr<Wave_functions<double>> wf_copy;
 
     typedef std::complex<double> value_type;
 
@@ -339,18 +336,19 @@ struct Linear_response_operator
     /// Work array
     std::shared_ptr<wf::Wave_functions<double>> tmp;
     double alpha_pv;
+    std::complex<double> omega;
     /// Band range of the projectors |Psi_k><Psi_k|
     wf::band_range br;
     /// Spin range: currently single up or dn spin is implemented
     wf::spin_range sr;
     memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
-    std::complex<double> omega;
 
     Linear_response_operator(sirius::Simulation_context& ctx, sirius::Hamiltonian_k<double>& Hk,
                              std::vector<double> const& eigvals, std::shared_ptr<wf::Wave_functions<double>> Hphi,
                              std::shared_ptr<wf::Wave_functions<double>> Sphi, std::shared_ptr<wf::Wave_functions<double>> evq,
-                             std::shared_ptr<wf::Wave_functions<double>> tmp, double alpha_pv, wf::band_range br, wf::spin_range sr,
+                             std::shared_ptr<wf::Wave_functions<double>> tmp, double alpha_pv,
+                             std::complex<double> omega, wf::band_range br, wf::spin_range sr,
                              memory_t mem)
         : ctx(ctx) // TODO: take ctx from Hk.H0().ctx()
         , Hk(Hk)
@@ -360,6 +358,7 @@ struct Linear_response_operator
         , evq(evq)
         , tmp(tmp)
         , alpha_pv(alpha_pv)
+        , omega(omega)
         , br(br)
         , sr(sr)
         , mem(mem)
@@ -377,7 +376,11 @@ struct Linear_response_operator
         //for (auto& e : min_eigenvals) {
         //    e *= -1;
         //}
-        omega = std::complex<double>(0, 0);
+    }
+
+    inline bool is_complex() const
+    {
+        return std::abs(std::imag(omega)) > 1e-12;
     }
 
     void

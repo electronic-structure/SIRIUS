@@ -6105,6 +6105,10 @@ sirius_linear_solver:
       type: double
       attr: in, optional
       doc: Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+    omega:
+      type: complex
+      attr: in, optional
+      doc: Complex frequency
     niter:
       type: int
       attr: out, optional
@@ -6120,7 +6124,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
                      double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
-                     double const* tol__, int* niter__, int* error_code__)
+                     double const* tol__, std::complex<double> const* omega__, int* niter__, int* error_code__)
 {
     using namespace sirius;
     PROFILE("api::sirius::linear_solver");
@@ -6243,11 +6247,12 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 mg.emplace_back(Hphi_wf->memory_guard(mem));
                 mg.emplace_back(Sphi_wf->memory_guard(mem));
 
-                // TODO: pass complex frequency if it is provided by QE
+                auto omega = get_value(omega__, std::complex<double>(0, 0)); // TODO: what are the units of omega? Ry?
+
                 sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk,
                                                                      eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
-                                                                     wf::band_range(0, nbnd_occ_kq), sr, mem);
+                                                                     omega, wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
                 auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf, mem};
                 auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};
