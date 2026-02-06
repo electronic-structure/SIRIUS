@@ -1332,9 +1332,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                     for (int is = 0; is < ctx_.num_spins(); is++) {
                         for (int m3 = -l1; m3 <= l1; m3++) {
                             for (int m4 = -l2; m4 <= l2; m4++) {
-                                tmp[ia](xi1, xi2, is) += std::conj(SHT::ylm_dot_rlm(l1, m3, m1)) * SHT::ylm_dot_rlm(l2, m4, m2) *
-                                    (*density_matrix_)[ia](type.indexb_by_l_m_order(l1, m3, o1),
-                                            type.indexb_by_l_m_order(l2, m4, o2), is);
+                                tmp[ia](xi1, xi2, is) +=
+                                        std::conj(SHT::ylm_dot_rlm(l1, m3, m1)) * SHT::ylm_dot_rlm(l2, m4, m2) *
+                                        (*density_matrix_)[ia](type.indexb_by_l_m_order(l1, m3, o1),
+                                                               type.indexb_by_l_m_order(l2, m4, o2), is);
                             }
                         }
                     }
@@ -1353,15 +1354,16 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                     out << "    spin : " << is << std::endl;
                     dm.zero();
                     for (int m1 = -l; m1 <= l; m1++) {
-                    for (int m2 = -l; m2 <= l; m2++) {
-                        for (int order1 = 0; order1 < nrf; order1++) {
-                        for (int order2 = 0; order2 < nrf; order2++) {
-                            dm(l + m1, l + m2) += tmp[ia](type.indexb_by_l_m_order(l, m1, order1),
-                                    type.indexb_by_l_m_order(l, m2, order2), is) *
-                                    ctx_.unit_cell().atom(ia).symmetry_class().o_radial_integral(l, order1, order2);
+                        for (int m2 = -l; m2 <= l; m2++) {
+                            for (int order1 = 0; order1 < nrf; order1++) {
+                                for (int order2 = 0; order2 < nrf; order2++) {
+                                    dm(l + m1, l + m2) += tmp[ia](type.indexb_by_l_m_order(l, m1, order1),
+                                                                  type.indexb_by_l_m_order(l, m2, order2), is) *
+                                                          ctx_.unit_cell().atom(ia).symmetry_class().o_radial_integral(
+                                                                  l, order1, order2);
+                                }
+                            }
                         }
-                        }
-                    }
                     }
                     for (int m1 = 0; m1 < 2 * l + 1; m1++) {
                         out << "      ";
