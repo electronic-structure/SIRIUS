@@ -66,6 +66,10 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         }
     }
 
+   // TODO: Move definition of R1 to after the application of A*X
+   // if(!A.is germitian()) A.multply(R1) no longer required
+   // auto&& R1 = A.is_hermitian() ? R : conjg(R);
+
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
     auto sigmas   = rhos;
@@ -92,13 +96,14 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         // C = P * R.
         P.apply(C, R);
-        // TODO: C1=P*R1
+        // TODO: C1=conjg(P)*R1
 
         rhos_old = rhos;
 
         // rhos = dot(C, R) -> <R | P | R>
         // TODO: in generalized case this is <R1|R>
         C.block_dot(R, rhos, num_unconverged);
+	// TODO: C1.block_dot(R, rhos, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             residual_history[ids[i]].push_back(std::sqrt(std::abs(rhos[i])));
@@ -142,30 +147,39 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // In the first iteration we have U == 0, so no need for an axpy.
         if (iter == 0) {
             U.copy(C, num_unconverged);
+	    // TODO : U1.copy(C1, num_unconverged);
         } else {
             for (size_t i = 0; i < num_unconverged; ++i) {
                 // TODO: rename to beta to align with CG notation (direction coefficients)
                 alphas[i] = rhos[i] / rhos_old[i];
+		// step size for dual system alphas1[i] = conjg(alphas[i])
             }
 
             // U[:, i] = C[:, i] + alpha[i] * U[:, i] for i < num_unconverged
             // TODO: use beta here
             U.block_xpby(C, alphas, num_unconverged);
+	    // TODO: U1.block_xpby(C1, alphas1, num_unconverged);
+	    // U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
         }
 
         // C = A * U.
         A.multiply(1.0, U, 0.0, C, num_unconverged);
+ 	// TODO : conjg(A).multiply(1.0, U1, 0.0, C1, num_unconverged);
+
 
         // compute the optimal distance for the search direction
         // sigmas = dot(U, C)
         // C = A * U, then sigma = U * A * U
         // U is a search direction
         U.block_dot(C, sigmas, num_unconverged);
+	// TODO : BiCG simga= U1^+ AU = (U1,C)
+	// U1.block_dot(C, sigmas, num_unconverged);
 
         // Update the solution and the residual
         // alpha is the step length
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
+	    // TODO : alphas1[i]=conjg(alphas[i])
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
@@ -173,10 +187,12 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;
+	    // TODO : alphas1[i] *= -1
         }
 
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
+	// TODO :  R1.block_axpy(alphas1, C1, num_unconverged);
     }
     struct
     {
