@@ -336,25 +336,21 @@ get_uuid(int device_id__)
 {
 #if defined(SIRIUS_CUDA)
     cudaDeviceProp devprop;
+    CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
+    auto const& uuid_bytes = devprop.uuid.bytes;
 #elif defined(SIRIUS_ROCM)
-    hipDeviceProp_t devprop;
+    hipUUID uuid;
+    CALL_DEVICE_API(DeviceGetUuid, (&uuid, device_id__));
+    auto const& uuid_bytes = uuid.bytes;
 #endif
 
-    CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
-
     std::stringstream s;
-#if defined(SIRIUS_CUDA)
     for (int i = 0; i < 16; i++) {
         if (i == 4 || i == 6 || i == 8 || i == 10) {
             s << '-';
         }
-        s << std::hex << std::setw(2) << std::setfill('0') << (int)devprop.uuid.bytes[i];
+        s << std::hex << std::setw(2) << std::setfill('0') << (int)uuid_bytes[i];
     }
-#elif defined(SIRIUS_ROCM)
-    for (int i = 0; i < 16; ++i) {
-        s << std::hex << devprop.uuid.bytes[i];
-    }
-#endif
     return s.str();
 }
 
