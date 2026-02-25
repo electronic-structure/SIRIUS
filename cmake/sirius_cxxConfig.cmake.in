@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.23)
 
 if(NOT TARGET sirius::sirius_cxx)
   # Find bundled modules first
-  set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules" ${CMAKE_MODULE_PATH})
+  set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules"
+                        ${CMAKE_MODULE_PATH})
 
   # store CXX compiler id. Used in MKL package.
   set(SIRIUS_CXX_COMPILER_ID @CMAKE_CXX_COMPILER_ID@)
@@ -11,7 +12,7 @@ if(NOT TARGET sirius::sirius_cxx)
   endif()
 
   # if not relocatable
-  if (NOT @CMAKE_SKIP_INSTALL_RPATH@)
+  if(NOT @CMAKE_SKIP_INSTALL_RPATH@)
     set(MPI_ROOT @MPI_ROOT@)
     set(ENV{SPG_DIR} @SIRIUS_SPG_DIR@)
     set(ENV{LIBXCROOT} @SIRIUS_LIBXCROOT@)
@@ -24,7 +25,7 @@ if(NOT TARGET sirius::sirius_cxx)
   endif()
 
   # pass REQUIRED or QUIET depending on top Config call
-  if (sirius_cxx_FIND_REQUIRED)
+  if(sirius_cxx_FIND_REQUIRED)
     set(mode REQUIRED)
   else()
     set(mode QUIET)
@@ -41,14 +42,17 @@ if(NOT TARGET sirius::sirius_cxx)
   find_dependency(costa CONFIG ${mode})
 
   if(@SIRIUS_USE_OPENMP@)
+    set(SIRIUS_USE_OPENMP @SIRIUS_USE_OPENMP@)
     find_dependency(OpenMP ${mode})
   endif()
 
-  if (@SIRIUS_USE_DFTD3@)
+  if(@SIRIUS_USE_DFTD3@)
+    set(SIRIUS_USE_DFTD3 @SIRIUS_USE_DFTD3@)
     find_dependency(DFTD3 ${mode})
   endif()
 
-  if (@SIRIUS_USE_DFTD4@)
+  if(@SIRIUS_USE_DFTD4@)
+    set(SIRIUS_USE_DFTD3 @SIRIUS_USE_DFTD4@)
     find_dependency(DFTD4 ${mode})
   endif()
 
@@ -62,33 +66,40 @@ if(NOT TARGET sirius::sirius_cxx)
   else()
     find_dependency(LAPACK ${mode})
     if(@SIRIUS_USE_SCALAPACK@)
+      set(SIRIUS_USE_SCALAPACK @SIRIUS_USE_SCALAPACK@)
       find_dependency(SCALAPACK ${mode}) # just sets scalapack_DIR
     endif()
   endif()
 
   if(@SIRIUS_USE_ELPA@)
+    set(SIRIUS_USE_ELPA @SIRIUS_USE_ELPA@)
     find_dependency(Elpa ${mode})
   endif()
 
   if(@SIRIUS_USE_DLAF@)
+    set(SIRIUS_USE_DLAF @SIRIUS_USE_DLAF@)
     find_dependency(DLAF ${mode})
   endif()
 
   if(@SIRIUS_USE_MAGMA@)
+    set(SIRIUS_USE_MAGMA @SIRIUS_USE_MAGMA@)
     find_dependency(MAGMA ${mode})
   endif()
 
   if(@SIRIUS_USE_VDWXC@)
-    find_dependency(LibVDWXC 0.3.0 ${mode})
+    set(SIRIUS_USE_VDWXC @SIRIUS_USE_VDWXC@)
+    find_dependency(LibVDWXC 0.5.0 ${mode})
   endif()
 
   if(@SIRIUS_USE_CUDA@)
-    # TODO: propagate the passed `sm` flag
+    set(SIRIUS_USE_VDWXC @SIRIUS_USE_CUDA@)
+    set(SIRIUS_SM_FLAG @CMAKE_CUDA_ARCHITECTURES@)
     find_dependency(CUDA ${mode})
     include("${CMAKE_CURRENT_LIST_DIR}/cudalibs_target.cmake")
   endif()
 
   if(@SIRIUS_USE_ROCM@)
+    set(SIRIUS_USE_ROCM @SIRIUS_USE_ROCM@)
     find_dependency(hip CONFIG ${mode})
     find_dependency(rocblas CONFIG ${mode})
     find_dependency(rocsolver CONFIG ${mode})
@@ -99,6 +110,7 @@ if(NOT TARGET sirius::sirius_cxx)
   endif()
 
   if(@SIRIUS_USE_PUGIXML@)
+    set(SIRIUS_USE_PUGIXML @SIRIUS_USE_PUGIXML@)
     find_dependency(pugixml ${mode})
   endif()
 
