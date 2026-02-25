@@ -842,12 +842,15 @@ Simulation_context::update()
         /* cache rotation symmetry matrices */
         int lmax = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho())
                                           : std::max(2 * this->unit_cell().lmax(), 4);
-        rotm_.resize(this->unit_cell().symmetry().size());
+        rotm_rlm_.resize(this->unit_cell().symmetry().size());
+        rotm_ylm_.resize(this->unit_cell().symmetry().size());
         /* loop over crystal symmetries */
         #pragma omp parallel for
         for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
             /* compute Rlm rotation matrix */
-            rotm_[i] = sht::rotation_matrix<double>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+            rotm_rlm_[i] = sht::rotation_matrix<double>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                                                    this->unit_cell().symmetry()[i].spg_op.proper);
+            rotm_ylm_[i] = sht::rotation_matrix<std::complex<double>>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
                                                     this->unit_cell().symmetry()[i].spg_op.proper);
         }
     }

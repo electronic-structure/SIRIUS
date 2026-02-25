@@ -18,9 +18,10 @@
 
 namespace sirius {
 
+template <typename T>
 inline void
 apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__, basis_functions_index const& indexb__,
-                                 const int num_mag_comp__, std::vector<mdarray<double, 2>> const& rotm__,
+                                 const int num_mag_comp__, std::vector<mdarray<T, 2>> const& rotm__,
                                  mdarray<std::complex<double>, 2> const& spin_rot_su2__,
                                  mdarray<std::complex<double>, 3>& dm_ja__)
 {
@@ -243,8 +244,9 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \f]
  *
  */
+template <typename T>
 inline void
-symmetrize_density_matrix(Unit_cell const& uc__, std::vector<std::vector<mdarray<double, 2>>> const& rotm__,
+symmetrize_density_matrix(Unit_cell const& uc__, std::vector<std::vector<mdarray<T, 2>>> const& rotm__,
                           density_matrix_t& dm__, int num_mag_comp__)
 {
     PROFILE("sirius::symmetrize_density_matrix");
