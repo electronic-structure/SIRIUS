@@ -46,7 +46,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
                     for (int j = 0; j < num_mag_comp__; j++) {
                         for (int m1p = 0; m1p < ss1; m1p++) {
                             for (int m2p = 0; m2p < ss2; m2p++) {
-                                dm_rot_spatial[j] += rotm__[am1.l()](m1, m1p) *
+                                dm_rot_spatial[j] += std::conj(rotm__[am1.l()](m1, m1p)) *
                                                      dm_ia__(offset1 + m1p, offset2 + m2p, j) *
                                                      rotm__[am2.l()](m2, m2p);
                             }

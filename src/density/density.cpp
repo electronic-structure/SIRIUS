@@ -1314,7 +1314,13 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
     auto v = env::get_value_ptr<int>("SIRIUS_PRINT_DENSITY_MATRIX");
     if (v && *v && ctx_.full_potential()) {
         auto out = RTE_OUT(ctx_.out());
-        out << "density matrix" << std::endl;
+        out << "density matrix in ";
+        if (*v == 1) {
+            out << "complex spherical harmonics Ylm" << std::endl;
+        }
+        if (*v == 2) {
+            out << "real spherical harmonics Rlm" << std::endl;
+        }
         //density_matrix_t tmp(unit_cell_, ctx_.num_mag_comp());
         //tmp.zero();
         ///* need to convert densty matrix from Ylm to Rlm representation */
@@ -1349,15 +1355,16 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
             for (int l = 0; l < 4; l++) {
                 int nrf = type.indexr().max_order(l);
                 out << "  l : " << l << std::endl;
-                mdarray<std::complex<double>, 2> dm({2 * l + 1, 2 * l + 1});
+                mdarray<std::complex<double>, 2> dm_ylm({2 * l + 1, 2 * l + 1});
+                mdarray<std::complex<double>, 2> dm_rlm({2 * l + 1, 2 * l + 1});
                 for (int is = 0; is < ctx_.num_spins(); is++) {
                     out << "    spin : " << is << std::endl;
-                    dm.zero();
+                    dm_ylm.zero();
                     for (int m1 = -l; m1 <= l; m1++) {
                         for (int m2 = -l; m2 <= l; m2++) {
                             for (int order1 = 0; order1 < nrf; order1++) {
                                 for (int order2 = 0; order2 < nrf; order2++) {
-                                    dm(l + m1, l + m2) += (*density_matrix_)[ia](type.indexb_by_l_m_order(l, m1, order1),
+                                    dm_ylm(l + m1, l + m2) += (*density_matrix_)[ia](type.indexb_by_l_m_order(l, m1, order1),
                                                                   type.indexb_by_l_m_order(l, m2, order2), is) *
                                                           ctx_.unit_cell().atom(ia).symmetry_class().o_radial_integral(
                                                                   l, order1, order2);
@@ -1365,21 +1372,54 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                             }
                         }
                     }
-                    out << "    real part" << std::endl;
-                    for (int m1 = 0; m1 < 2 * l + 1; m1++) {
-                        out << "      ";
-                        for (int m2 = 0; m2 < 2 * l + 1; m2++) {
-                            out << ffmt(8, 4) << std::real(dm(m1, m2));
+                    /* convert to Rlm */
+                    dm_rlm.zero();
+                    for (int m1 = -l; m1 <= l; m1++) {
+                        for (int m2 = -l; m2 <= l; m2++) {
+                            for (int m3 = -l; m3 <= l; m3++) {
+                                for (int m4 = -l; m4 <= l; m4++) {
+                                    dm_rlm(l + m1, l + m2) += 
+                                        std::conj(SHT::ylm_dot_rlm(l, m3, m1)) * SHT::ylm_dot_rlm(l, m4, m2) *
+                                        dm_ylm(l + m3, l + m4);
+                                }
+                            }
                         }
-                        out << std::endl;
                     }
-                    out << "    imaginary part" << std::endl;
-                    for (int m1 = 0; m1 < 2 * l + 1; m1++) {
-                        out << "      ";
-                        for (int m2 = 0; m2 < 2 * l + 1; m2++) {
-                            out << ffmt(8, 4) << std::imag(dm(m1, m2));
+                    if (*v == 1) {
+                        out << "    real part" << std::endl;
+                        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+                            out << "      ";
+                            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                                out << ffmt(8, 4) << std::real(dm_ylm(m1, m2));
+                            }
+                            out << std::endl;
                         }
-                        out << std::endl;
+                        out << "    imaginary part" << std::endl;
+                        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+                            out << "      ";
+                            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                                out << ffmt(8, 4) << std::imag(dm_ylm(m1, m2));
+                            }
+                            out << std::endl;
+                        }
+                    }
+                    if (*v == 2) {
+                        out << "    real part" << std::endl;
+                        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+                            out << "      ";
+                            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                                out << ffmt(8, 4) << std::real(dm_rlm(m1, m2));
+                            }
+                            out << std::endl;
+                        }
+                        out << "    imaginary part" << std::endl;
+                        for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+                            out << "      ";
+                            for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                                out << ffmt(8, 4) << std::imag(dm_rlm(m1, m2));
+                            }
+                            out << std::endl;
+                        }
                     }
                 }
             }
