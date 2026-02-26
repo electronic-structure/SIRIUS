@@ -849,9 +849,10 @@ Simulation_context::update()
         for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
             /* compute Rlm rotation matrix */
             rotm_rlm_[i] = sht::rotation_matrix<double>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
-                                                    this->unit_cell().symmetry()[i].spg_op.proper);
-            rotm_ylm_[i] = sht::rotation_matrix<std::complex<double>>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
-                                                    this->unit_cell().symmetry()[i].spg_op.proper);
+                                                        this->unit_cell().symmetry()[i].spg_op.proper);
+            rotm_ylm_[i] = sht::rotation_matrix<std::complex<double>>(
+                    lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                    this->unit_cell().symmetry()[i].spg_op.proper);
         }
     }
 
