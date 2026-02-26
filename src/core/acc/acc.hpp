@@ -345,12 +345,14 @@ get_uuid(int device_id__)
 #endif
 
     std::stringstream s;
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     for (int i = 0; i < 16; i++) {
         if (i == 4 || i == 6 || i == 8 || i == 10) {
             s << '-';
         }
         s << std::hex << std::setw(2) << std::setfill('0') << (int)uuid_bytes[i];
     }
+#endif
     return s.str();
 }
 
