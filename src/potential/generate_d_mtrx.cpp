@@ -123,7 +123,8 @@ Potential::generate_d_mtrx()
                                 ctx_.augmentation_op(iat).q_pw().at(memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
 #if defined(SIRIUS_GPU)
-                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(memory_t::device, g_begin, iv),
+                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng,
+                                                        veff.at(memory_t::device, g_begin, iv),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
@@ -161,8 +162,8 @@ Potential::generate_d_mtrx()
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nqlm; j++) {
-                            d_tmp(j, i, iv) -= component(iv).rg().f_pw_local(0).real() *
-                                               ctx_.augmentation_op(iat).q_pw(j, 0);
+                            d_tmp(j, i, iv) -=
+                                    component(iv).rg().f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 }

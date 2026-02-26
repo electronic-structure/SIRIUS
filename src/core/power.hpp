@@ -56,7 +56,8 @@ cpu_energy()
     return read_pm_file("/sys/cray/pm_counters/cpu_energy");
 }
 
-struct Event {
+struct Event
+{
     double node_energy_;
     double accel_energy_;
     double cpu_energy_;
@@ -79,6 +80,7 @@ class Profile
 {
   private:
     const char* label_;
+
   public:
     Profile(const char* label)
         : label_{label}
@@ -93,8 +95,9 @@ class Profile
 };
 
 inline std::string
-format_energy(double energy) {
-    const char* units[] = {"J", "kJ", "MJ", "GJ"};
+format_energy(double energy)
+{
+    const char* units[]   = {"J", "kJ", "MJ", "GJ"};
     const double scales[] = {1.0, 1e3, 1e6, 1e9};
 
     int idx = 0;
@@ -122,7 +125,7 @@ report(mpi::Communicator const& comm__)
                 auto const& e1 = Profile::events_[j];
                 if (e1.id == 0 && std::string(e1.label) == label) {
                     std::array<double, 3> d({e1.node_energy_ - e.node_energy_, e1.accel_energy_ - e.accel_energy_,
-                            e1.cpu_energy_ - e.cpu_energy_});
+                                             e1.cpu_energy_ - e.cpu_energy_});
                     results[label].push_back(d);
                     break;
                 }
@@ -130,44 +133,41 @@ report(mpi::Communicator const& comm__)
         }
     }
     size_t len{0};
-    for (auto& e: results) {
+    for (auto& e : results) {
         len = std::max(len, e.first.length());
     }
     if (comm__.rank() == 0) {
         std::cout << "=== Energy consumption report ===" << std::endl;
         std::fill_n(std::ostream_iterator<char>(std::cout), len + 57, '-');
         std::cout << std::endl
-                  << std::right << std::setw(len) << "name" << " : "
-                  << std::right << std::setw(6) << "count"
-                  << std::right << std::setw(12) << "nodes"
-                  << std::right << std::setw(12) << "GPUs"
-                  << std::right << std::setw(12) << "CPUs"
-                  << std::right << std::setw(12) << "nodes avg." << std::endl;
+                  << std::right << std::setw(len) << "name" << " : " << std::right << std::setw(6) << "count"
+                  << std::right << std::setw(12) << "nodes" << std::right << std::setw(12) << "GPUs" << std::right
+                  << std::setw(12) << "CPUs" << std::right << std::setw(12) << "nodes avg." << std::endl;
         std::fill_n(std::ostream_iterator<char>(std::cout), len + 57, '-');
         std::cout << std::endl;
     }
 
-    for (auto& e: results) {
+    for (auto& e : results) {
         //auto [minIt, maxIt] = std::minmax_element(e.second.begin(), e.second.end());
         //double sum = std::accumulate(e.second.begin(), e.second.end(), 0.0);
         double total_node_energy{0};
         double total_accel_energy{0};
         double total_cpu_energy{0};
         for (auto& d : e.second) {
-            total_node_energy  += d[0];
+            total_node_energy += d[0];
             total_accel_energy += d[1];
-            total_cpu_energy   += d[2];
+            total_cpu_energy += d[2];
         }
         comm__.allreduce(&total_node_energy, 1);
         comm__.allreduce(&total_accel_energy, 1);
         comm__.allreduce(&total_cpu_energy, 1);
         if (comm__.rank() == 0) {
-            std::cout << std::setfill(' ') << std::right << std::setw(len) << e.first << " : "
-                      << std::right << std::setw(6) << e.second.size()
-                      << std::right << std::setw(12) << format_energy(total_node_energy)
-                      << std::right << std::setw(12) << format_energy(total_accel_energy)
-                      << std::right << std::setw(12) << format_energy(total_cpu_energy)
-                      << std::right << std::setw(12) << format_energy(total_node_energy / e.second.size()) << std::endl;
+            std::cout << std::setfill(' ') << std::right << std::setw(len) << e.first << " : " << std::right
+                      << std::setw(6) << e.second.size() << std::right << std::setw(12)
+                      << format_energy(total_node_energy) << std::right << std::setw(12)
+                      << format_energy(total_accel_energy) << std::right << std::setw(12)
+                      << format_energy(total_cpu_energy) << std::right << std::setw(12)
+                      << format_energy(total_node_energy / e.second.size()) << std::endl;
         }
     }
 }

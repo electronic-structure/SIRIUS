@@ -1,12 +1,6 @@
 {
     "control" : {
-        "!processing_unit" : "gpu",
-        "!std_evp_solver_name" : "scalapack",
-        "!gen_evp_solver_name" : "scalapack",
-        "verbosity" : 2,
-        "verification" : 0,
-        "print_memory_usage" : false,
-        "print_checksum" : false
+        "verbosity" : 1
     },
 
     "parameters" : {
@@ -18,33 +12,23 @@
 
         "use_symmetry" : true,
 
-        "num_mag_dims" : 0,
+        "num_mag_dims" : 1,
 
         "gk_cutoff" : 7,
         "pw_cutoff" : 20,
 
-        "energy_tol" : 1e-8,
-        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-6,
+        "density_tol" : 1e-5,
 
         "num_dft_iter" : 100,
+        "fixed_mag" : 2.0,
 
-        "ngridk" : [1,1,1],
-        "gamma_point" : true
+        "ngridk" : [6,6,6]
     },
 
-    "!iterative_solver" : {
-        "!energy_tolerance" : 1e-12,
-        "!residual_tolerance" : 1e-8,
-        "!num_steps" : 40,
-        "!subspace_size" : 4,
-        "!type" : "davidson",
-        "!converge_by_energy" : 1,
-        "!orthogonalize" : false,
-        "!init_subspace" : "lcao"
-    },
 
     "mixer" : {
-      "beta" : 0.8,
+      "beta" : 0.5,
       "type" : "anderson",
       "max_history" : 8
     },
@@ -171,7 +155,7 @@
                 [0.5,0.5,0.5]
             ],
             "Cr" : [
-                [0, 0, 0]
+                [0, 0, 0, 0, 0, 3]
             ],
             "Ti": [
                 [0.6666666667,0.6666666667,0.6666666667],
