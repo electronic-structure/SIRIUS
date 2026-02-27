@@ -6247,12 +6247,12 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 mg.emplace_back(Hphi_wf->memory_guard(mem));
                 mg.emplace_back(Sphi_wf->memory_guard(mem));
 
-                auto omega = get_value(omega__, std::complex<double>(0, 0)); // TODO: what are the units of omega? Ry?
+                auto omega = get_value(omega__ , std::complex<double>(0, 0)) / 2.0;
 
                 sirius::lr::Linear_response_operator linear_operator(Hk,
                                                                      eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
-                                                                     omega, wf::band_range(0, nbnd_occ_kq), sr, mem);
+                                                                     omega , wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
                 auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf, mem};
                 auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};

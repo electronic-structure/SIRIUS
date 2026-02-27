@@ -109,7 +109,7 @@ struct PosDefMatrixShifted
     }
 
     void
-    multiply(double alpha, BlockVector const& u, double beta, BlockVector& v, size_t num)
+    multiply(double alpha, BlockVector const& u, double beta, BlockVector& v, size_t num, bool adjoint = false)
     {
         v.vec.leftCols(num) = alpha * A * u.vec.leftCols(num) +
                               alpha * u.vec.leftCols(num) * shifts.head(num).asDiagonal() + beta * v.vec.leftCols(num);

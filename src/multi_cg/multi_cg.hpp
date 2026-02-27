@@ -39,6 +39,17 @@ repack(std::vector<T>& data, std::vector<int> const& ids)
     }
 }
 
+template <typename T>
+inline T safe_conj(T const& val) {
+    return val; 
+}
+
+template <typename T>
+inline std::complex<T> safe_conj(std::complex<T> const& val) {
+    return std::conj(val);
+}
+
+
 template <typename Matrix, typename Prec, typename StateVec>
 auto
 multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
@@ -50,30 +61,32 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
     U.zero();
 
-    // Use R for residual, we modify the right-hand side B in-place.
-    //auto& R = B;
-    auto R = B.deep_copy();
+    bool is_herm = A.is_hermitian();
 
-    auto&& R1 = A.is_hermitian() ? R : B.deep_copy();
+    auto C1 = is_herm ? C : C.deep_copy();
+    auto U1 = is_herm ? U : U.deep_copy();
+
+    //auto R = B.deep_copy();
+    // Use R for residual, we modify the right-hand side B in-place.
+    auto& R = B;
+    auto&& R1 = is_herm ? R : R.deep_copy();
 
     // Use B effectively as the residual block-vector
     // R = B - A * X -- don't multiply when initial guess is zero.
     if (!initial_guess_is_zero) {
         A.multiply(-1.0, X, 1.0, R, n);
-        // TODO: R1=conj(R)
-        if (!A.is_hermitian()) {
-            A.multiply(-1.0, X, 1.0, R1, n);
-        }
     }
-
-   // TODO: Move definition of R1 to after the application of A*X
-   // if(!A.is germitian()) A.multply(R1) no longer required
-   // auto&& R1 = A.is_hermitian() ? R : conjg(R);
+    
+    //if (!is_herm) {
+        //R1.conjugate(num_active);
+	// TODO: define conjugate
+    //}    
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
     auto sigmas   = rhos;
     auto alphas   = rhos;
+    auto alphas1  = rhos;
 
     // When vectors converge we move them to the front, but we can't really do
     // that with X, so we have to keep track of where is what.
@@ -96,14 +109,21 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         // C = P * R.
         P.apply(C, R);
+	// BiCG C1 = P^+ * R1
+	if (!is_herm) {
+	    P.apply(C1, R1);
         // TODO: C1=conjg(P)*R1
+	}
 
         rhos_old = rhos;
 
-        // rhos = dot(C, R) -> <R | P | R>
-        // TODO: in generalized case this is <R1|R>
-        C.block_dot(R, rhos, num_unconverged);
-	// TODO: C1.block_dot(R, rhos, num_unconverged);
+        // CG rhos = dot(C, R) -> <R | P | R>
+	// BiCG rhos = dot(C1, R) -> <R1 | P | R>
+	if (is_herm) {
+            C.block_dot(R, rhos, num_unconverged);
+        }  else  {
+	    C1.block_dot(R, rhos, num_unconverged);
+	}
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             residual_history[ids[i]].push_back(std::sqrt(std::abs(rhos[i])));
@@ -133,6 +153,11 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         U.repack(not_converged); // use repack from the Wave_functions_wrap
         C.repack(not_converged);
         R.repack(not_converged);
+	if (!is_herm) {
+		U1.repack(not_converged);
+		C1.repack(not_converged);
+		R1.repack(not_converged);
+	}
 
         A.repack(not_converged); // use repack from the Linear_response_operator
         P.repack(not_converged); // use repack from the preconditioner
@@ -147,39 +172,42 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // In the first iteration we have U == 0, so no need for an axpy.
         if (iter == 0) {
             U.copy(C, num_unconverged);
-	    // TODO : U1.copy(C1, num_unconverged);
+	    if (!is_herm) {
+	        U1.copy(C1, num_unconverged);
+	    }
         } else {
             for (size_t i = 0; i < num_unconverged; ++i) {
-                // TODO: rename to beta to align with CG notation (direction coefficients)
                 alphas[i] = rhos[i] / rhos_old[i];
-		// step size for dual system alphas1[i] = conjg(alphas[i])
+		if (!is_herm) alphas1[i] = safe_conj(alphas[i]);
             }
 
             // U[:, i] = C[:, i] + alpha[i] * U[:, i] for i < num_unconverged
-            // TODO: use beta here
             U.block_xpby(C, alphas, num_unconverged);
-	    // TODO: U1.block_xpby(C1, alphas1, num_unconverged);
-	    // U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
+	    // BiCG U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
+	    if (!is_herm)  U1.block_xpby(C1, alphas1, num_unconverged);
         }
 
         // C = A * U.
         A.multiply(1.0, U, 0.0, C, num_unconverged);
- 	// TODO : conjg(A).multiply(1.0, U1, 0.0, C1, num_unconverged);
-
-
+	// BiCG C1 = A^+ * U1
+	if (!is_herm)  A.multiply(1.0, U1, 0.0, C1, num_unconverged, true);
+	
         // compute the optimal distance for the search direction
         // sigmas = dot(U, C)
         // C = A * U, then sigma = U * A * U
         // U is a search direction
-        U.block_dot(C, sigmas, num_unconverged);
-	// TODO : BiCG simga= U1^+ AU = (U1,C)
-	// U1.block_dot(C, sigmas, num_unconverged);
+	if (is_herm) {
+            U.block_dot(C, sigmas, num_unconverged);
+	}  else  {
+	    // BiCG sigma = dot(U1,C) = U1 * A * U
+	    U1.block_dot(C, sigmas, num_unconverged);
+	}
 
         // Update the solution and the residual
         // alpha is the step length
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
-	    // TODO : alphas1[i]=conjg(alphas[i])
+	    if (!is_herm)  alphas1[i] = safe_conj(alphas[i]);
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
@@ -187,12 +215,13 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;
-	    // TODO : alphas1[i] *= -1
+	    if (!is_herm)  alphas1[i] *= -1;
         }
 
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
-	// TODO :  R1.block_axpy(alphas1, C1, num_unconverged);
+        // BiCG R1.block_axpy(alphas1, C1, num_unconverged);
+	if (!is_herm)  R1.block_axpy(alphas1, C1, num_unconverged);
     }
     struct
     {
@@ -320,6 +349,7 @@ struct Smoothed_diagonal_preconditioner
     apply(Wave_functions_wrap& x, Wave_functions_wrap const& y)
     {
         // Could avoid a copy here, but apply_precondition is in-place.
+	// TODO: generalize to complex preconditioner and define its conjugate
         x.copy(y, num_active);
         sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
     }
@@ -334,7 +364,6 @@ struct Smoothed_diagonal_preconditioner
     }
 };
 
-// TODO: add complex frequency
 struct Linear_response_operator
 {
     sirius::Simulation_context& ctx;
@@ -404,11 +433,10 @@ struct Linear_response_operator
         }
     }
 
-    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - e_j S + constant   * SQ * SQ')
+    // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - (e_j + w) S + constant   * SQ * SQ')
     // where SQ is S * eigenvectors.
-    // TODO: add a flag to apply energies or complex-conjugates
     void
-    multiply(double alpha, Wave_functions_wrap& x, double beta, Wave_functions_wrap& y, int num_active)
+    multiply(double alpha, Wave_functions_wrap& x, double beta, Wave_functions_wrap& y, int num_active, bool adjoint = false)
     {
         PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
@@ -418,11 +446,17 @@ struct Linear_response_operator
         wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active), overlap,
                   0, 0);
 
-        std::vector<double> ones(num_active, 1.0);
+	std::vector<std::complex<double>> ones(num_active, 1.0);
+        std::vector<std::complex<double>> ev(num_active);
 
-        std::vector<double> ev(num_active); // TODO: make complex, add omega, use function argument to control +/- omega
-        for (int i = 0; i < num_active; i++) {
-            ev[i] = -eigenvals[i];
+	for (int i = 0; i < num_active; i++) {
+            if (!adjoint) {
+                // Multiply A * x
+                ev[i] = -(eigenvals[i] + omega);
+            } else {
+                // Multiply A^+ * |x>
+                ev[i] = -(eigenvals[i] + std::conj(omega));
+            }
         }
 
         // Hphi contains H|x> - e S|x>
@@ -437,12 +471,12 @@ struct Linear_response_operator
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
         // Hphi := alpha_pv * Sphi + Hphi = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
-        std::vector<double> alpha_pvs(num_active, alpha_pv);
+	std::vector<std::complex<double>> alpha_pvs(num_active, alpha_pv);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi.get(), ones.data(), Hphi.get());
 
         // y[:, i] <- alpha * Hphi + beta * y[:, i]
-        std::vector<double> alphas(num_active, alpha);
-        std::vector<double> betas(num_active, beta);
+	std::vector<std::complex<double>> alphas(num_active, alpha);
+        std::vector<std::complex<double>> betas(num_active, beta);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), Hphi.get(), betas.data(), y.x.get());
     }
 };
