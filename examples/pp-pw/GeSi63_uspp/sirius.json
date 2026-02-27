@@ -1,6 +1,8 @@
 {
   "control" : {
-    "verbosity" : 1
+    "verbosity" : 2,
+    "processing_unit" : "gpu",
+    "gvec_chunk_size" : 10000000
   },
   "parameters": {
     "electronic_structure_method": "pseudopotential",
@@ -9,10 +11,13 @@
       "XC_LDA_C_PZ"
     ],
     "smearing_width": 0.025,
-    "gk_cutoff": 6.33,
-    "pw_cutoff": 17.33,
-    "energy_tol": 1e-8,
-    "ngridk": [ 2, 2, 2 ]
+    "gk_cutoff": 10,
+    "pw_cutoff": 30,
+    "energy_tol": 1e-6,
+    "density_tol" : 1e-5,
+    "ngridk": [10, 10, 10],
+    "use_symmetry" : true,
+    "num_dft_iter" : 100
   },
   "mixer": {
     "beta": 0.95,

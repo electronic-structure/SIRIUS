@@ -26,7 +26,9 @@
 #endif
 
 namespace sirius {
+#if defined(SIRIUS_USE_VDWXC)
 static bool has_c_lda_term_{false};
+#endif
 
 /// Interface class to Libxc.
 class XC_functional : public XC_functional_base

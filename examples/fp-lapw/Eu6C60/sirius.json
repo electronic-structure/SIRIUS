@@ -1,6 +1,7 @@
 {
     "control" : {
-	"verbosity" : 1
+	"verbosity" : 1,
+	"cyclic_block_size" : 512
     },
 
     "parameters" : {
@@ -9,7 +10,7 @@
         "smearing_width" : 0.05,
         "valence_relativity" : "iora",
         "core_relativity" : "dirac",
-        "aw_cutoff" : 6.2,
+        "aw_cutoff" : 6.6,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 1,
         "num_mag_dims" : 1,
@@ -17,7 +18,7 @@
         "ngridk" : [2,2,2],
         "density_tol" : 1e-5,
         "energy_tol" : 1e-8,
-        "num_dft_iter" : 10
+        "num_dft_iter" : 1
     },
 
     "mixer" : {

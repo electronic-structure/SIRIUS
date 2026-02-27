@@ -17,6 +17,7 @@
 #include "diagonalize_fp.hpp"
 #include "diagonalize_pp.hpp"
 #include "k_point/k_point_set.hpp"
+#include "core/power.hpp"
 
 namespace sirius {
 
@@ -36,6 +37,7 @@ inline auto
 diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__, int itsol_num_steps__)
 {
     PROFILE("sirius::diagonalize");
+    power::Profile p1("diagonalize");
 
     auto& ctx = H0__.ctx();
     print_memory_usage(ctx.out(), FILE_LINE);
