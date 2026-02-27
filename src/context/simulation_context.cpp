@@ -12,6 +12,7 @@
  */
 
 #include <gsl/gsl_sf_bessel.h>
+#include <xc.h>
 #include "core/profiler.hpp"
 #include "core/env/env.hpp"
 #include "core/omp.hpp"
@@ -686,6 +687,8 @@ Simulation_context::print_info(std::ostream& out__) const
         int vmajor, vminor, vmicro;
         xc_version(&vmajor, &vminor, &vmicro);
         os << "Libxc version: " << vmajor << "." << vminor << "." << vmicro << std::endl;
+        os << xc_reference() << std::endl;
+        os << xc_reference_doi() << std::endl;
     }
     {
         rte::ostream os(out__, "info");
