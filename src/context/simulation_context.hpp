@@ -280,7 +280,10 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::shared_ptr<mpi::Grid>> mpi_grid_mt_sym_;
 
     /// Rotation matrices for real spherical harmonics.
-    std::vector<std::vector<mdarray<double, 2>>> rotm_;
+    std::vector<std::vector<mdarray<double, 2>>> rotm_rlm_;
+
+    /// Rotation matrices for complex spherical harmonics.
+    std::vector<std::vector<mdarray<std::complex<double>, 2>>> rotm_ylm_;
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
@@ -853,9 +856,15 @@ class Simulation_context : public Simulation_parameters
     }
 
     inline auto const&
-    rotm() const
+    rotm_rlm() const
     {
-        return rotm_;
+        return rotm_rlm_;
+    }
+
+    inline auto const&
+    rotm_ylm() const
+    {
+        return rotm_ylm_;
     }
 };
 
