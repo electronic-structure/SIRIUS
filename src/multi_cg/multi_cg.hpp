@@ -49,7 +49,6 @@ inline std::complex<T> safe_conj(std::complex<T> const& val) {
     return std::conj(val);
 }
 
-
 template <typename Matrix, typename Prec, typename StateVec>
 auto
 multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
@@ -69,7 +68,6 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     //auto R = B.deep_copy();
     // Use R for residual, we modify the right-hand side B in-place.
     auto& R = B;
-    auto&& R1 = is_herm ? R : R.deep_copy();
 
     // Use B effectively as the residual block-vector
     // R = B - A * X -- don't multiply when initial guess is zero.
@@ -77,6 +75,9 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         A.multiply(-1.0, X, 1.0, R, n);
     }
     
+    auto R1 = is_herm ? R : R.deep_copy_conj();
+
+
     //if (!is_herm) {
         //R1.conjugate(num_active);
 	// TODO: define conjugate
@@ -108,10 +109,12 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // When P = I, we just check the residual norm.
 
         // C = P * R.
+//	std::cout << "Calling first preconditioner" << std::endl;
         P.apply(C, R);
 	// BiCG C1 = P^+ * R1
 	if (!is_herm) {
-	    P.apply(C1, R1);
+//	    std::cout << "Calling second preconditioner" << std::endl;
+	    P.apply(C1, R1, true);
         // TODO: C1=conjg(P)*R1
 	}
 
@@ -317,6 +320,40 @@ struct Wave_functions_wrap
         /* return new wrapper */
         return Wave_functions_wrap({wf_out, mem});
     }
+
+    inline auto
+    deep_copy_conj() const
+    {
+	//std::cout << "DEBUG: Inside deep_copy_conj! Allocating shadow residual..." << std::endl;
+        /* deduce wave-functions type*/
+	using wf_type = std::remove_pointer_t<decltype(x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
+        /* allocate new wave-functions */
+	auto wf_out = std::make_shared<wf::Wave_functions<double>>(x->gkvec_sptr(), x->num_md(), x->num_wf(), mem);
+        /* band range to copy: all */
+        auto br = wf::band_range(0, x->num_wf().get());
+        /* copy from existing to new */
+        wf::copy(mem, *x, wf::spin_index(0), br, *wf_out, wf::spin_index(0), br);
+        /* Conjugate in-place (Only compiles/runs if the wavefunctions are complex) */
+        if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
+	    //std::cout << "DEBUG: deep_copy_conj is actually conjugating!" << std::endl;		
+            if (sirius::is_host_memory(mem)) {
+                // Loop over all bands
+		#pragma omp parallel for schedule(static)
+                for (int i = 0; i < x->num_wf().get(); i++) {
+                    auto ptr = wf_out->at(mem, 0, wf::spin_index(0), wf::band_index(i));
+                    // Multithread the G-vector loop
+                    for (int j = 0; j < wf_out->ld(); j++) {
+                        ptr[j] = std::conj(ptr[j]);
+                    }
+                }
+            } else {
+                // TODO: GPU kernel for conjugation
+            }
+        } 
+        /* return new wrapper */
+        return Wave_functions_wrap({wf_out, mem});
+    }
+
 };
 
 struct Identity_preconditioner
@@ -324,7 +361,7 @@ struct Identity_preconditioner
     size_t num_active;
 
     void
-    apply(Wave_functions_wrap& x, Wave_functions_wrap const& y)
+    apply(Wave_functions_wrap& x, Wave_functions_wrap const& y, bool adjoint = false)
     {
         x.copy(y, num_active);
     }
@@ -336,6 +373,7 @@ struct Identity_preconditioner
     }
 };
 
+
 struct Smoothed_diagonal_preconditioner
 {
     mdarray<double, 2> H_diag;
@@ -345,13 +383,74 @@ struct Smoothed_diagonal_preconditioner
     memory_t mem;
     wf::spin_range sr;
 
+    //Test
+    mdarray<double, 1> ev_real;
+    mdarray<std::complex<double>, 1> ev_complex;
+    std::complex<double> omega; 
+
+    template <typename T_WF, typename T_EIG>
     void
-    apply(Wave_functions_wrap& x, Wave_functions_wrap const& y)
+    apply_preconditioner_unified(wf::Wave_functions<T_WF>& res__, sirius::mdarray<T_EIG, 1> const& evals__)
+    {
+        PROFILE("sirius::apply_preconditioner_unified");
+        for (auto s = sr.begin(); s != sr.end(); s++) {
+            auto sp = res__.actual_spin_index(s);
+            if (is_host_memory(mem)) {
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < num_active; i++) {
+                    auto res_ptr = res__.at(mem, 0, sp, wf::band_index(i));
+                    for (int j = 0; j < res__.ld(); j++) {
+                        auto p = H_diag(j, s.get()) - S_diag(j, s.get()) * evals__[i];
+                        //p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                        res_ptr[j] /= p;
+                    }
+                }
+            } else {
+		    // TODO: GPU Kernel
+//#if defined(SIRIUS_GPU)
+//                // GPU stub updated to use correct struct member variables
+//                apply_preconditioner_gpu(res__.at(mem, 0, sp, wf::band_index(0)),
+//                                         res__.ld(),
+//                                         num_active,
+//                                         evals__.at(mem),
+//                                         H_diag.at(mem, 0, s.get()),
+//                                         S_diag.at(mem, 0, s.get()));
+//#endif
+            }
+        }
+    }
+
+
+    void
+    apply(Wave_functions_wrap& x, Wave_functions_wrap const& y, bool adjoint = false)
     {
         // Could avoid a copy here, but apply_precondition is in-place.
 	// TODO: generalize to complex preconditioner and define its conjugate
         x.copy(y, num_active);
-        sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
+        //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
+	
+	//std::cout << "DEBUG: Inside preconditioning function" << std::endl;
+
+	using wf_type = std::remove_pointer_t<decltype(x.x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
+	bool is_herm  = (std::abs(std::imag(omega)) < 1e-12);
+
+        if constexpr (std::is_same_v<wf_type, double>) {
+	    //std::cout << "DEBUG: Entering Real preconditioner! Omega = " << omega << std::endl;
+            for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
+	    	apply_preconditioner_unified(*x.x, ev_real);
+	    }
+	else if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
+	    //std::cout << "DEBUG: Entering COMPLEX preconditioner! Omega = " << omega << std::endl;
+	    if (is_herm) {
+		for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
+	 	    //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, ev_real);
+		    apply_preconditioner_unified(*x.x, ev_real);
+	    } else {
+	        for (int i = 0; i < num_active; i++) { ev_complex[i] = eigvals[i] + (adjoint ? std::conj(omega) : omega); }
+		    apply_preconditioner_unified(*x.x, ev_complex);
+	    }
+        }
+
     }
 
     void

@@ -108,6 +108,13 @@ struct BlockVector
     {
         return *this;
     }
+
+    inline auto
+    deep_copy_conj() const
+    {
+        return *this;
+    }
+
 };
 
 // This is a linear but special operator A(X)
@@ -166,7 +173,7 @@ struct IdentityPreconditioner
     mdarray<double, 1> eigvals;
     template <typename T>
     void
-    apply(BlockVector<T>& C, BlockVector<T> const& B)
+    apply(BlockVector<T>& C, BlockVector<T> const& B, bool adjoint = false)
     {
         C = B;
     }

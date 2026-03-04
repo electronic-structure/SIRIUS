@@ -6275,6 +6275,13 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                                                                             mem,
                                                                             sr};
 
+		preconditioner.omega = omega;
+		preconditioner.ev_real = sirius::mdarray<double, 1>({eigvals_vec.size()});
+		preconditioner.ev_real.allocate(mem);
+		preconditioner.ev_complex = sirius::mdarray<std::complex<double>, 1>({eigvals_vec.size()});
+		preconditioner.ev_complex.allocate(mem);
+
+
                 // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
                 auto tol = get_value(tol__, 1e-13);
