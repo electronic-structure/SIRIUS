@@ -335,33 +335,19 @@ struct Wave_functions_wrap
     deep_copy_conj() const
     {
         //std::cout << "DEBUG: Inside deep_copy_conj! Allocating shadow residual..." << std::endl;
-        /* deduce wave-functions type*/
-        using wf_type = std::remove_pointer_t<decltype(x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
-        /* allocate new wave-functions */
-        auto wf_out = std::make_shared<wf::Wave_functions<double>>(x->gkvec_sptr(), x->num_md(), x->num_wf(), mem);
-        /* band range to copy: all */
-        auto br = wf::band_range(0, x->num_wf().get());
-        /* copy from existing to new */
-        wf::copy(mem, *x, wf::spin_index(0), br, *wf_out, wf::spin_index(0), br);
-        /* Conjugate in-place (Only compiles/runs if the wavefunctions are complex) */
-        if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
-            //std::cout << "DEBUG: deep_copy_conj is actually conjugating!" << std::endl;
-            if (sirius::is_host_memory(mem)) {
-                // Loop over all bands
-                #pragma omp parallel for schedule(static)
-                for (int i = 0; i < x->num_wf().get(); i++) {
-                    auto ptr = wf_out->at(mem, 0, wf::spin_index(0), wf::band_index(i));
-                    // Multithread the G-vector loop
-                    for (int j = 0; j < wf_out->ld(); j++) {
-                        ptr[j] = std::conj(ptr[j]);
-                    }
+        auto out = this->deep_copy();
+        if (sirius::is_host_memory(mem)) {
+            #pragma omp parallel for
+            for (int i = 0; i < x->num_wf().get(); i++) {
+                auto ptr = out.x->at(mem, 0, wf::spin_index(0), wf::band_index(i));
+                for (int j = 0; j < x->ld(); j++) {
+                    ptr[j] = std::conj(ptr[j]);
                 }
-            } else {
-                // TODO: GPU kernel for conjugation
             }
+        } else {
+                // TODO: GPU kernel for conjugation
         }
-        /* return new wrapper */
-        return Wave_functions_wrap({wf_out, mem});
+        return out;
     }
 };
 
