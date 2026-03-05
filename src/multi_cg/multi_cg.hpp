@@ -382,15 +382,11 @@ struct Smoothed_diagonal_preconditioner
     int num_active;
     memory_t mem;
     wf::spin_range sr;
-
-    //Test
-    mdarray<double, 1> ev_real;
-    mdarray<std::complex<double>, 1> ev_complex;
     std::complex<double> omega; 
 
-    template <typename T_WF, typename T_EIG>
+    template <typename T>
     void
-    apply_preconditioner_unified(wf::Wave_functions<T_WF>& res__, sirius::mdarray<T_EIG, 1> const& evals__)
+    apply_preconditioner_unified(wf::Wave_functions<T>& res__, bool adjoint__)
     {
         PROFILE("sirius::apply_preconditioner_unified");
         for (auto s = sr.begin(); s != sr.end(); s++) {
@@ -400,9 +396,13 @@ struct Smoothed_diagonal_preconditioner
                 for (int i = 0; i < num_active; i++) {
                     auto res_ptr = res__.at(mem, 0, sp, wf::band_index(i));
                     for (int j = 0; j < res__.ld(); j++) {
-                        auto p = H_diag(j, s.get()) - S_diag(j, s.get()) * evals__[i];
-                        //p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                        res_ptr[j] /= p;
+                        auto p = H_diag(j, s.get()) - S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
+                        if (std::abs(p) < 1.0) {
+                            p = 1.0;
+                        } else {
+                            p = 1.0 / p;
+                        }
+                        res_ptr[j] *= p;
                     }
                 }
             } else {
@@ -430,26 +430,27 @@ struct Smoothed_diagonal_preconditioner
         //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
 	
 	//std::cout << "DEBUG: Inside preconditioning function" << std::endl;
+        apply_preconditioner_unified(*x.x, adjoint);
 
-	using wf_type = std::remove_pointer_t<decltype(x.x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
-	bool is_herm  = (std::abs(std::imag(omega)) < 1e-12);
+	//using wf_type = std::remove_pointer_t<decltype(x.x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
+	//bool is_herm  = (std::abs(std::imag(omega)) < 1e-12);
 
-        if constexpr (std::is_same_v<wf_type, double>) {
-	    //std::cout << "DEBUG: Entering Real preconditioner! Omega = " << omega << std::endl;
-            for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
-	    	apply_preconditioner_unified(*x.x, ev_real);
-	    }
-	else if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
-	    //std::cout << "DEBUG: Entering COMPLEX preconditioner! Omega = " << omega << std::endl;
-	    if (is_herm) {
-		for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
-	 	    //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, ev_real);
-		    apply_preconditioner_unified(*x.x, ev_real);
-	    } else {
-	        for (int i = 0; i < num_active; i++) { ev_complex[i] = eigvals[i] + (adjoint ? std::conj(omega) : omega); }
-		    apply_preconditioner_unified(*x.x, ev_complex);
-	    }
-        }
+    //    if constexpr (std::is_same_v<wf_type, double>) {
+	//    //std::cout << "DEBUG: Entering Real preconditioner! Omega = " << omega << std::endl;
+    //        for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
+	//    	apply_preconditioner_unified(*x.x, ev_real);
+	//    }
+	//else if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
+	//    //std::cout << "DEBUG: Entering COMPLEX preconditioner! Omega = " << omega << std::endl;
+	//    if (is_herm) {
+	//	for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
+	// 	    //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, ev_real);
+	//	    apply_preconditioner_unified(*x.x, ev_real);
+	//    } else {
+	//        for (int i = 0; i < num_active; i++) { ev_complex[i] = eigvals[i] + (adjoint ? std::conj(omega) : omega); }
+	//	    apply_preconditioner_unified(*x.x, ev_complex);
+	//    }
+    //    }
 
     }
 
