@@ -6272,15 +6272,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                                                                             std::move(h_o_diag.second),
                                                                             std::move(eigvals_mdarray),
                                                                             nbnd_occ_k,
-                                                                            mem,
-                                                                            sr};
-
-		preconditioner.omega = omega;
-		preconditioner.ev_real = sirius::mdarray<double, 1>({eigvals_vec.size()});
-		preconditioner.ev_real.allocate(mem);
-		preconditioner.ev_complex = sirius::mdarray<std::complex<double>, 1>({eigvals_vec.size()});
-		preconditioner.ev_complex.allocate(mem);
-
+                                                                            mem, sr, omega};
 
                 // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
