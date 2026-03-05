@@ -116,11 +116,10 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     mg.emplace_back(Hphi_wf->memory_guard(mem));
     mg.emplace_back(Sphi_wf->memory_guard(mem));
 
-    sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec,
-                                                         Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
+    sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                          *alpha_pv__ / 2, // rydberg/hartree factor
-                                                         std::complex<double>(0, 0),
-                                                         wf::band_range(0, nbnd_occ), sr, mem);
+                                                         std::complex<double>(0, 0), wf::band_range(0, nbnd_occ), sr,
+                                                         mem);
     /* CG state vectors */
     auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf, mem};
     auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};

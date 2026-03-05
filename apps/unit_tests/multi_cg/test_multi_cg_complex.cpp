@@ -94,7 +94,6 @@ struct BlockVector
     {
         return *this;
     }
-
 };
 
 // This is a linear but special operator A(X)

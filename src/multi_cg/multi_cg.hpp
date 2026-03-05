@@ -40,12 +40,16 @@ repack(std::vector<T>& data, std::vector<int> const& ids)
 }
 
 template <typename T>
-inline T safe_conj(T const& val) {
-    return val; 
+inline T
+safe_conj(T const& val)
+{
+    return val;
 }
 
 template <typename T>
-inline std::complex<T> safe_conj(std::complex<T> const& val) {
+inline std::complex<T>
+safe_conj(std::complex<T> const& val)
+{
     return std::conj(val);
 }
 
@@ -74,14 +78,13 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
     if (!initial_guess_is_zero) {
         A.multiply(-1.0, X, 1.0, R, n);
     }
-    
+
     auto R1 = is_herm ? R : R.deep_copy_conj();
 
-
     //if (!is_herm) {
-        //R1.conjugate(num_active);
-	// TODO: define conjugate
-    //}    
+    //R1.conjugate(num_active);
+    // TODO: define conjugate
+    //}
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
@@ -109,24 +112,24 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // When P = I, we just check the residual norm.
 
         // C = P * R.
-//	std::cout << "Calling first preconditioner" << std::endl;
+        //	std::cout << "Calling first preconditioner" << std::endl;
         P.apply(C, R);
-	// BiCG C1 = P^+ * R1
-	if (!is_herm) {
-//	    std::cout << "Calling second preconditioner" << std::endl;
-	    P.apply(C1, R1, true);
-        // TODO: C1=conjg(P)*R1
-	}
+        // BiCG C1 = P^+ * R1
+        if (!is_herm) {
+            //	    std::cout << "Calling second preconditioner" << std::endl;
+            P.apply(C1, R1, true);
+            // TODO: C1=conjg(P)*R1
+        }
 
         rhos_old = rhos;
 
         // CG rhos = dot(C, R) -> <R | P | R>
-	// BiCG rhos = dot(C1, R) -> <R1 | P | R>
-	if (is_herm) {
+        // BiCG rhos = dot(C1, R) -> <R1 | P | R>
+        if (is_herm) {
             C.block_dot(R, rhos, num_unconverged);
-        }  else  {
-	    C1.block_dot(R, rhos, num_unconverged);
-	}
+        } else {
+            C1.block_dot(R, rhos, num_unconverged);
+        }
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             residual_history[ids[i]].push_back(std::sqrt(std::abs(rhos[i])));
@@ -156,11 +159,11 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         U.repack(not_converged); // use repack from the Wave_functions_wrap
         C.repack(not_converged);
         R.repack(not_converged);
-	if (!is_herm) {
-		U1.repack(not_converged);
-		C1.repack(not_converged);
-		R1.repack(not_converged);
-	}
+        if (!is_herm) {
+            U1.repack(not_converged);
+            C1.repack(not_converged);
+            R1.repack(not_converged);
+        }
 
         A.repack(not_converged); // use repack from the Linear_response_operator
         P.repack(not_converged); // use repack from the preconditioner
@@ -175,42 +178,46 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // In the first iteration we have U == 0, so no need for an axpy.
         if (iter == 0) {
             U.copy(C, num_unconverged);
-	    if (!is_herm) {
-	        U1.copy(C1, num_unconverged);
-	    }
+            if (!is_herm) {
+                U1.copy(C1, num_unconverged);
+            }
         } else {
             for (size_t i = 0; i < num_unconverged; ++i) {
                 alphas[i] = rhos[i] / rhos_old[i];
-		if (!is_herm) alphas1[i] = safe_conj(alphas[i]);
+                if (!is_herm)
+                    alphas1[i] = safe_conj(alphas[i]);
             }
 
             // U[:, i] = C[:, i] + alpha[i] * U[:, i] for i < num_unconverged
             U.block_xpby(C, alphas, num_unconverged);
-	    // BiCG U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
-	    if (!is_herm)  U1.block_xpby(C1, alphas1, num_unconverged);
+            // BiCG U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
+            if (!is_herm)
+                U1.block_xpby(C1, alphas1, num_unconverged);
         }
 
         // C = A * U.
         A.multiply(1.0, U, 0.0, C, num_unconverged);
-	// BiCG C1 = A^+ * U1
-	if (!is_herm)  A.multiply(1.0, U1, 0.0, C1, num_unconverged, true);
-	
+        // BiCG C1 = A^+ * U1
+        if (!is_herm)
+            A.multiply(1.0, U1, 0.0, C1, num_unconverged, true);
+
         // compute the optimal distance for the search direction
         // sigmas = dot(U, C)
         // C = A * U, then sigma = U * A * U
         // U is a search direction
-	if (is_herm) {
+        if (is_herm) {
             U.block_dot(C, sigmas, num_unconverged);
-	}  else  {
-	    // BiCG sigma = dot(U1,C) = U1 * A * U
-	    U1.block_dot(C, sigmas, num_unconverged);
-	}
+        } else {
+            // BiCG sigma = dot(U1,C) = U1 * A * U
+            U1.block_dot(C, sigmas, num_unconverged);
+        }
 
         // Update the solution and the residual
         // alpha is the step length
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
-	    if (!is_herm)  alphas1[i] = safe_conj(alphas[i]);
+            if (!is_herm)
+                alphas1[i] = safe_conj(alphas[i]);
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
@@ -218,13 +225,15 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;
-	    if (!is_herm)  alphas1[i] *= -1;
+            if (!is_herm)
+                alphas1[i] *= -1;
         }
 
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
         // BiCG R1.block_axpy(alphas1, C1, num_unconverged);
-	if (!is_herm)  R1.block_axpy(alphas1, C1, num_unconverged);
+        if (!is_herm)
+            R1.block_axpy(alphas1, C1, num_unconverged);
     }
     struct
     {
@@ -297,7 +306,8 @@ struct Wave_functions_wrap
     block_axpy_scatter(std::vector<value_type> const& alphas__, Wave_functions_wrap const& y__,
                        std::vector<int> const& idx__, int n__)
     {
-        wf::axpy_scatter<double, value_type>(mem, wf::spin_range(0), alphas__.data(), y__.x.get(), idx__.data(), x.get(), n__);
+        wf::axpy_scatter<double, value_type>(mem, wf::spin_range(0), alphas__.data(), y__.x.get(), idx__.data(),
+                                             x.get(), n__);
     }
 
     void
@@ -324,21 +334,21 @@ struct Wave_functions_wrap
     inline auto
     deep_copy_conj() const
     {
-	//std::cout << "DEBUG: Inside deep_copy_conj! Allocating shadow residual..." << std::endl;
+        //std::cout << "DEBUG: Inside deep_copy_conj! Allocating shadow residual..." << std::endl;
         /* deduce wave-functions type*/
-	using wf_type = std::remove_pointer_t<decltype(x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
+        using wf_type = std::remove_pointer_t<decltype(x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
         /* allocate new wave-functions */
-	auto wf_out = std::make_shared<wf::Wave_functions<double>>(x->gkvec_sptr(), x->num_md(), x->num_wf(), mem);
+        auto wf_out = std::make_shared<wf::Wave_functions<double>>(x->gkvec_sptr(), x->num_md(), x->num_wf(), mem);
         /* band range to copy: all */
         auto br = wf::band_range(0, x->num_wf().get());
         /* copy from existing to new */
         wf::copy(mem, *x, wf::spin_index(0), br, *wf_out, wf::spin_index(0), br);
         /* Conjugate in-place (Only compiles/runs if the wavefunctions are complex) */
         if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
-	    //std::cout << "DEBUG: deep_copy_conj is actually conjugating!" << std::endl;		
+            //std::cout << "DEBUG: deep_copy_conj is actually conjugating!" << std::endl;
             if (sirius::is_host_memory(mem)) {
                 // Loop over all bands
-		#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < x->num_wf().get(); i++) {
                     auto ptr = wf_out->at(mem, 0, wf::spin_index(0), wf::band_index(i));
                     // Multithread the G-vector loop
@@ -349,11 +359,10 @@ struct Wave_functions_wrap
             } else {
                 // TODO: GPU kernel for conjugation
             }
-        } 
+        }
         /* return new wrapper */
         return Wave_functions_wrap({wf_out, mem});
     }
-
 };
 
 struct Identity_preconditioner
@@ -373,7 +382,6 @@ struct Identity_preconditioner
     }
 };
 
-
 struct Smoothed_diagonal_preconditioner
 {
     mdarray<double, 2> H_diag;
@@ -382,7 +390,7 @@ struct Smoothed_diagonal_preconditioner
     int num_active;
     memory_t mem;
     wf::spin_range sr;
-    std::complex<double> omega; 
+    std::complex<double> omega;
 
     template <typename T>
     void
@@ -396,7 +404,8 @@ struct Smoothed_diagonal_preconditioner
                 for (int i = 0; i < num_active; i++) {
                     auto res_ptr = res__.at(mem, 0, sp, wf::band_index(i));
                     for (int j = 0; j < res__.ld(); j++) {
-                        auto p = H_diag(j, s.get()) - S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
+                        auto p = H_diag(j, s.get()) -
+                                 S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
                         if (std::abs(p) < 1.0) {
                             p = 1.0;
                         } else {
@@ -406,52 +415,50 @@ struct Smoothed_diagonal_preconditioner
                     }
                 }
             } else {
-		    // TODO: GPU Kernel
-//#if defined(SIRIUS_GPU)
-//                // GPU stub updated to use correct struct member variables
-//                apply_preconditioner_gpu(res__.at(mem, 0, sp, wf::band_index(0)),
-//                                         res__.ld(),
-//                                         num_active,
-//                                         evals__.at(mem),
-//                                         H_diag.at(mem, 0, s.get()),
-//                                         S_diag.at(mem, 0, s.get()));
-//#endif
+                // TODO: GPU Kernel
+                //#if defined(SIRIUS_GPU)
+                //                // GPU stub updated to use correct struct member variables
+                //                apply_preconditioner_gpu(res__.at(mem, 0, sp, wf::band_index(0)),
+                //                                         res__.ld(),
+                //                                         num_active,
+                //                                         evals__.at(mem),
+                //                                         H_diag.at(mem, 0, s.get()),
+                //                                         S_diag.at(mem, 0, s.get()));
+                //#endif
             }
         }
     }
-
 
     void
     apply(Wave_functions_wrap& x, Wave_functions_wrap const& y, bool adjoint = false)
     {
         // Could avoid a copy here, but apply_precondition is in-place.
-	// TODO: generalize to complex preconditioner and define its conjugate
+        // TODO: generalize to complex preconditioner and define its conjugate
         x.copy(y, num_active);
         //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
-	
-	//std::cout << "DEBUG: Inside preconditioning function" << std::endl;
+
+        //std::cout << "DEBUG: Inside preconditioning function" << std::endl;
         apply_preconditioner_unified(*x.x, adjoint);
 
-	//using wf_type = std::remove_pointer_t<decltype(x.x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
-	//bool is_herm  = (std::abs(std::imag(omega)) < 1e-12);
+        //using wf_type = std::remove_pointer_t<decltype(x.x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
+        //bool is_herm  = (std::abs(std::imag(omega)) < 1e-12);
 
-    //    if constexpr (std::is_same_v<wf_type, double>) {
-	//    //std::cout << "DEBUG: Entering Real preconditioner! Omega = " << omega << std::endl;
-    //        for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
-	//    	apply_preconditioner_unified(*x.x, ev_real);
-	//    }
-	//else if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
-	//    //std::cout << "DEBUG: Entering COMPLEX preconditioner! Omega = " << omega << std::endl;
-	//    if (is_herm) {
-	//	for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
-	// 	    //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, ev_real);
-	//	    apply_preconditioner_unified(*x.x, ev_real);
-	//    } else {
-	//        for (int i = 0; i < num_active; i++) { ev_complex[i] = eigvals[i] + (adjoint ? std::conj(omega) : omega); }
-	//	    apply_preconditioner_unified(*x.x, ev_complex);
-	//    }
-    //    }
-
+        //    if constexpr (std::is_same_v<wf_type, double>) {
+        //    //std::cout << "DEBUG: Entering Real preconditioner! Omega = " << omega << std::endl;
+        //        for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
+        //    	apply_preconditioner_unified(*x.x, ev_real);
+        //    }
+        //else if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
+        //    //std::cout << "DEBUG: Entering COMPLEX preconditioner! Omega = " << omega << std::endl;
+        //    if (is_herm) {
+        //	for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
+        // 	    //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, ev_real);
+        //	    apply_preconditioner_unified(*x.x, ev_real);
+        //    } else {
+        //        for (int i = 0; i < num_active; i++) { ev_complex[i] = eigvals[i] + (adjoint ? std::conj(omega) : omega); }
+        //	    apply_preconditioner_unified(*x.x, ev_complex);
+        //    }
+        //    }
     }
 
     void
@@ -486,12 +493,12 @@ struct Linear_response_operator
     memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
 
-    Linear_response_operator(sirius::Hamiltonian_k<double>& Hk,
-                             std::vector<double> const& eigvals, std::shared_ptr<wf::Wave_functions<double>> Hphi,
-                             std::shared_ptr<wf::Wave_functions<double>> Sphi, std::shared_ptr<wf::Wave_functions<double>> evq,
+    Linear_response_operator(sirius::Hamiltonian_k<double>& Hk, std::vector<double> const& eigvals,
+                             std::shared_ptr<wf::Wave_functions<double>> Hphi,
+                             std::shared_ptr<wf::Wave_functions<double>> Sphi,
+                             std::shared_ptr<wf::Wave_functions<double>> evq,
                              std::shared_ptr<wf::Wave_functions<double>> tmp, double alpha_pv,
-                             std::complex<double> omega, wf::band_range br, wf::spin_range sr,
-                             memory_t mem)
+                             std::complex<double> omega, wf::band_range br, wf::spin_range sr, memory_t mem)
         : ctx(Hk.H0().ctx())
         , Hk(Hk)
         , eigenvals(eigvals)
@@ -520,7 +527,8 @@ struct Linear_response_operator
         //}
     }
 
-    inline bool is_hermitian() const
+    inline bool
+    is_hermitian() const
     {
         return std::abs(std::imag(omega)) < 1e-12;
     }
@@ -536,7 +544,8 @@ struct Linear_response_operator
     // y[:, i] <- alpha * A * x[:, i] + beta * y[:, i] where A = (H - (e_j + w) S + constant   * SQ * SQ')
     // where SQ is S * eigenvectors.
     void
-    multiply(double alpha, Wave_functions_wrap& x, double beta, Wave_functions_wrap& y, int num_active, bool adjoint = false)
+    multiply(double alpha, Wave_functions_wrap& x, double beta, Wave_functions_wrap& y, int num_active,
+             bool adjoint = false)
     {
         PROFILE("sirius::Linear_response_operator::multiply");
         // Hphi = H * x, Sphi = S * x
@@ -546,10 +555,10 @@ struct Linear_response_operator
         wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active), overlap,
                   0, 0);
 
-	std::vector<std::complex<double>> ones(num_active, 1.0);
+        std::vector<std::complex<double>> ones(num_active, 1.0);
         std::vector<std::complex<double>> ev(num_active);
 
-	for (int i = 0; i < num_active; i++) {
+        for (int i = 0; i < num_active; i++) {
             if (!adjoint) {
                 // Multiply A * x
                 ev[i] = -(eigenvals[i] + omega);
@@ -560,7 +569,8 @@ struct Linear_response_operator
         }
 
         // Hphi contains H|x> - e S|x>
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), ev.data(), Sphi.get(), ones.data(), Hphi.get());
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), ev.data(), Sphi.get(), ones.data(),
+                  Hphi.get());
 
         // tmp := evq * overlap
         wf::transform(ctx.spla_context(), mem, overlap, 0, 0, 1.0, *evq, wf::spin_index(0), br, 0.0, *tmp,
@@ -571,13 +581,15 @@ struct Linear_response_operator
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
         // Hphi := alpha_pv * Sphi + Hphi = (H - e * S) * x + alpha_pv * (S * (evq * (evq' * (S * x))))
-	std::vector<std::complex<double>> alpha_pvs(num_active, alpha_pv);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi.get(), ones.data(), Hphi.get());
+        std::vector<std::complex<double>> alpha_pvs(num_active, alpha_pv);
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi.get(), ones.data(),
+                  Hphi.get());
 
         // y[:, i] <- alpha * Hphi + beta * y[:, i]
-	std::vector<std::complex<double>> alphas(num_active, alpha);
+        std::vector<std::complex<double>> alphas(num_active, alpha);
         std::vector<std::complex<double>> betas(num_active, beta);
-        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), Hphi.get(), betas.data(), y.x.get());
+        wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), Hphi.get(), betas.data(),
+                  y.x.get());
     }
 };
 

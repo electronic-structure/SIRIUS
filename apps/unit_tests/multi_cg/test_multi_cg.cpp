@@ -96,7 +96,6 @@ struct BlockVector
     {
         return *this;
     }
-
 };
 
 // This is a linear but special operator A(X)
@@ -139,7 +138,7 @@ struct IdentityPreconditioner
     memory_t mem;
     mdarray<double, 1> eigvals;
     void
-    apply(BlockVector& C, BlockVector const& B,  bool adjoint = false)
+    apply(BlockVector& C, BlockVector const& B, bool adjoint = false)
     {
         C = B;
     }
