@@ -26,6 +26,18 @@
 #include "hamiltonian/non_local_operator.hpp"
 #include "k_point/k_point.hpp"
 
+
+#if defined(SIRIUS_GPU)
+extern "C" {
+
+void 
+apply_preconditioner_gpu_complex_double(std::complex<double>* res__, int num_rows_loc__, int num_bands__, 
+                                        const double* eval__, const double* h_diag__, const double* o_diag__, 
+                                        double omega_real, double omega_imag);
+
+}
+#endif
+
 namespace sirius {
 /// Conjugate-gradient solver.
 namespace cg {
@@ -81,11 +93,6 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
     auto R1 = is_herm ? R : R.deep_copy_conj();
 
-    //if (!is_herm) {
-    //R1.conjugate(num_active);
-    // TODO: define conjugate
-    //}
-
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
     auto sigmas   = rhos;
@@ -112,13 +119,10 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // When P = I, we just check the residual norm.
 
         // C = P * R.
-        //	std::cout << "Calling first preconditioner" << std::endl;
         P.apply(C, R);
         // BiCG C1 = P^+ * R1
         if (!is_herm) {
-            //	    std::cout << "Calling second preconditioner" << std::endl;
             P.apply(C1, R1, true);
-            // TODO: C1=conjg(P)*R1
         }
 
         rhos_old = rhos;
@@ -334,7 +338,6 @@ struct Wave_functions_wrap
     inline auto
     deep_copy_conj() const
     {
-        //std::cout << "DEBUG: Inside deep_copy_conj! Allocating shadow residual..." << std::endl;
         auto out = this->deep_copy();
         if (sirius::is_host_memory(mem)) {
             #pragma omp parallel for
@@ -392,25 +395,24 @@ struct Smoothed_diagonal_preconditioner
                     for (int j = 0; j < res__.ld(); j++) {
                         auto p = H_diag(j, s.get()) -
                                  S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
-                        if (std::abs(p) < 1.0) {
-                            p = 1.0;
-                        } else {
+			// Step preconditioner
+                        if (std::abs(p) > 1.0) {
                             p = 1.0 / p;
+			    res_ptr[j] *= p;
                         }
-                        res_ptr[j] *= p;
+			// Smoothed preconditioner
+			// p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                    	// res_ptr[j] /= p;
                     }
                 }
             } else {
-                // TODO: GPU Kernel
-                //#if defined(SIRIUS_GPU)
-                //                // GPU stub updated to use correct struct member variables
-                //                apply_preconditioner_gpu(res__.at(mem, 0, sp, wf::band_index(0)),
-                //                                         res__.ld(),
-                //                                         num_active,
-                //                                         evals__.at(mem),
-                //                                         H_diag.at(mem, 0, s.get()),
-                //                                         S_diag.at(mem, 0, s.get()));
-                //#endif
+#if defined(SIRIUS_GPU)
+		double om_r = std::real(omega);
+		double om_i = adjoint__ ? -std::imag(omega) : std::imag(omega);
+	        apply_preconditioner_gpu_complex_double(res__.at(mem, 0, sp, wf::band_index(0)), res__.ld(),
+			       	 	num_active, eigvals.at(mem), H_diag.at(mem, 0, s.get()),
+					S_diag.at(mem, 0, s.get()), om_r, om_i);
+#endif
             }
         }
     }
@@ -419,32 +421,9 @@ struct Smoothed_diagonal_preconditioner
     apply(Wave_functions_wrap& x, Wave_functions_wrap const& y, bool adjoint = false)
     {
         // Could avoid a copy here, but apply_precondition is in-place.
-        // TODO: generalize to complex preconditioner and define its conjugate
         x.copy(y, num_active);
         //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
-
-        //std::cout << "DEBUG: Inside preconditioning function" << std::endl;
         apply_preconditioner_unified(*x.x, adjoint);
-
-        //using wf_type = std::remove_pointer_t<decltype(x.x->at(mem, 0, wf::spin_index(0), wf::band_index(0)))>;
-        //bool is_herm  = (std::abs(std::imag(omega)) < 1e-12);
-
-        //    if constexpr (std::is_same_v<wf_type, double>) {
-        //    //std::cout << "DEBUG: Entering Real preconditioner! Omega = " << omega << std::endl;
-        //        for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
-        //    	apply_preconditioner_unified(*x.x, ev_real);
-        //    }
-        //else if constexpr (std::is_same_v<wf_type, std::complex<double>>) {
-        //    //std::cout << "DEBUG: Entering COMPLEX preconditioner! Omega = " << omega << std::endl;
-        //    if (is_herm) {
-        //	for (int i = 0; i < num_active; i++) { ev_real[i] = eigvals[i] + std::real(omega); }
-        // 	    //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, ev_real);
-        //	    apply_preconditioner_unified(*x.x, ev_real);
-        //    } else {
-        //        for (int i = 0; i < num_active; i++) { ev_complex[i] = eigvals[i] + (adjoint ? std::conj(omega) : omega); }
-        //	    apply_preconditioner_unified(*x.x, ev_complex);
-        //    }
-        //    }
     }
 
     void
