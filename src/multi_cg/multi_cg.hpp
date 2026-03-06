@@ -35,6 +35,9 @@ apply_preconditioner_gpu_complex_double(std::complex<double>* res__, int num_row
                                         const double* eval__, const double* h_diag__, const double* o_diag__, 
                                         double omega_real, double omega_imag);
 
+void 
+conjugate_gpu_complex_double(std::complex<double>* ptr__, int ld__, int num_wf__);
+
 }
 #endif
 
@@ -348,7 +351,10 @@ struct Wave_functions_wrap
                 }
             }
         } else {
-                // TODO: GPU kernel for conjugation
+#if defined(SIRIUS_GPU)
+            auto base_ptr = out.x->at(mem, 0, wf::spin_index(0), wf::band_index(0));
+	    conjugate_gpu_complex_double(base_ptr, out.x->ld(), x->num_wf().get());
+#endif
         }
         return out;
     }

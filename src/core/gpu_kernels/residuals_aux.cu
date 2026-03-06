@@ -354,9 +354,31 @@ __global__ void apply_preconditioner_gpu_complex_double_kernel(
     }
 }
 
+__global__ void conjugate_gpu_complex_double_kernel(acc_complex_double_t* ptr__,
+                                            	    int const ld__,
+                                            	    int const num_wf__)
+{
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int ibnd = blockIdx.y;
 
+    if (j < ld__) {
+        int k = array2D_offset(j, ibnd, ld__);
+        ptr__[k] = accConj(ptr__[k]);
+    }
+}
 
 extern "C" {
+void conjugate_gpu_complex_double(acc_complex_double_t* ptr__,
+                                  int ld__,
+                                  int num_wf__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(ld__, grid_t.x), num_wf__);
+
+    accLaunchKernel((conjugate_gpu_complex_double_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
+                    ptr__, ld__, num_wf__);
+}
+
 void
 apply_preconditioner_gpu_complex_double(acc_complex_double_t* res__, 
 					int num_rows_loc__, 
