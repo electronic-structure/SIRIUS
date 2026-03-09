@@ -345,9 +345,9 @@ __global__ void apply_preconditioner_gpu_complex_double_kernel(
 
     if (j < num_rows_loc__) {
 	acc_complex_double_t p = make_accDoubleComplex(h_diag__[j] - (eval__[ibnd] + omega.x) * o_diag__[j], -omega.y * o_diag__[j]);
-	double p_mag_sq = p.x * p.x + p.y * p.y
+	double p_mag_sq = p.x * p.x + p.y * p.y;
 	if (p_mag_sq > 1.0) {
-        p = accCdiv(make_accDoubleComplex(1.0, 0.0), p);
+            p = accCdiv(make_accDoubleComplex(1.0, 0.0), p);
             int k = array2D_offset(j, ibnd, num_rows_loc__);
 	    res__[k] = accCmul(res__[k], p);
         }

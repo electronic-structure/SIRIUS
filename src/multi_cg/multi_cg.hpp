@@ -26,18 +26,16 @@
 #include "hamiltonian/non_local_operator.hpp"
 #include "k_point/k_point.hpp"
 
-
 #if defined(SIRIUS_GPU)
 extern "C" {
 
-void 
-apply_preconditioner_gpu_complex_double(std::complex<double>* res__, int num_rows_loc__, int num_bands__, 
-                                        const double* eval__, const double* h_diag__, const double* o_diag__, 
+void
+apply_preconditioner_gpu_complex_double(std::complex<double>* res__, int num_rows_loc__, int num_bands__,
+                                        const double* eval__, const double* h_diag__, const double* o_diag__,
                                         double omega_real, double omega_imag);
 
-void 
+void
 conjugate_gpu_complex_double(std::complex<double>* ptr__, int ld__, int num_wf__);
-
 }
 #endif
 
@@ -353,7 +351,7 @@ struct Wave_functions_wrap
         } else {
 #if defined(SIRIUS_GPU)
             auto base_ptr = out.x->at(mem, 0, wf::spin_index(0), wf::band_index(0));
-	    conjugate_gpu_complex_double(base_ptr, out.x->ld(), x->num_wf().get());
+            conjugate_gpu_complex_double(base_ptr, out.x->ld(), x->num_wf().get());
 #endif
         }
         return out;
@@ -401,23 +399,23 @@ struct Smoothed_diagonal_preconditioner
                     for (int j = 0; j < res__.ld(); j++) {
                         auto p = H_diag(j, s.get()) -
                                  S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
-			// Step preconditioner
+                        // Step preconditioner
                         if (std::abs(p) > 1.0) {
                             p = 1.0 / p;
-			    res_ptr[j] *= p;
+                            res_ptr[j] *= p;
                         }
-			// Smoothed preconditioner
-			// p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                    	// res_ptr[j] /= p;
+                        // Smoothed preconditioner
+                        // p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                        // res_ptr[j] /= p;
                     }
                 }
             } else {
 #if defined(SIRIUS_GPU)
-		double om_r = std::real(omega);
-		double om_i = adjoint__ ? -std::imag(omega) : std::imag(omega);
-	        apply_preconditioner_gpu_complex_double(res__.at(mem, 0, sp, wf::band_index(0)), res__.ld(),
-			       	 	num_active, eigvals.at(mem), H_diag.at(mem, 0, s.get()),
-					S_diag.at(mem, 0, s.get()), om_r, om_i);
+                double om_r = std::real(omega);
+                double om_i = adjoint__ ? -std::imag(omega) : std::imag(omega);
+                apply_preconditioner_gpu_complex_double(res__.at(mem, 0, sp, wf::band_index(0)), res__.ld(), num_active,
+                                                        eigvals.at(mem), H_diag.at(mem, 0, s.get()),
+                                                        S_diag.at(mem, 0, s.get()), om_r, om_i);
 #endif
             }
         }
