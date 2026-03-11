@@ -177,7 +177,7 @@ main()
 
     auto tol = 1e-10;
 
-    auto resnorms = sirius::cg::multi_cg(A, P, X, R, U, C, 100, tol, false);
+    auto resnorms = sirius::cg::multi_cg(A, P, X, R, U, C, U, C, 100, tol, false);
 
     // check the residual norms according to the algorithm
     for (size_t i = 0; i < resnorms.residual_history.size(); ++i) {

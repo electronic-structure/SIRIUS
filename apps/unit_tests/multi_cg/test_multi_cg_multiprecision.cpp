@@ -231,7 +231,7 @@ main(int argc, char** argv)
 
         E_lo.zero();
         R_lo               = R_hi;
-        auto iter_resnorms = sirius::cg::multi_cg(A_lo, P, E_lo, R_lo, U_lo, C_lo, inner_iter, tol, true);
+        auto iter_resnorms = sirius::cg::multi_cg(A_lo, P, E_lo, R_lo, U_lo, C_lo, U_lo, C_lo, inner_iter, tol, true);
         X_hi.block_add(E_lo, n);
 
         // Save all the resnorms
@@ -252,7 +252,7 @@ main(int argc, char** argv)
     // Compare to a f64-only run.
     X_hi.zero();
     R_hi             = B_hi;
-    auto resnorms_64 = sirius::cg::multi_cg(A_hi, P, X_hi, R_hi, U_hi, C_hi, m * n, tol, true);
+    auto resnorms_64 = sirius::cg::multi_cg(A_hi, P, X_hi, R_hi, U_hi, C_hi, U_hi, C_hi, m * n, tol, true);
 
     for (auto r : resnorms_64.residual_history[0])
         std::cout << r << '\n';
