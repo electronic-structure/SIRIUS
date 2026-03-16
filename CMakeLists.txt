@@ -131,6 +131,7 @@ if(SIRIUS_USE_NLCGLIB)
 endif()
 
 find_package(MPI REQUIRED)
+set(GSL_CBLAS_LIBRARY ${BLAS_LIBRARIES} CACHE STRING "" FORCE)
 find_package(GSL REQUIRED)
 find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
