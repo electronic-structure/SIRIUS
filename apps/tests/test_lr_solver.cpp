@@ -99,9 +99,6 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
     auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
-    auto U1 = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-    auto C1 = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-
     auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
     auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
@@ -119,9 +116,6 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     mg.emplace_back(Hphi_wf->memory_guard(mem));
     mg.emplace_back(Sphi_wf->memory_guard(mem));
 
-    mg.emplace_back(U1->memory_guard(mem));
-    mg.emplace_back(C1->memory_guard(mem));
-
     sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
                                                          *alpha_pv__ / 2, // rydberg/hartree factor
                                                          std::complex<double>(0, 0), wf::band_range(0, nbnd_occ), sr,
@@ -131,9 +125,6 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};
     auto U_wrap = sirius::lr::Wave_functions_wrap{U, mem};
     auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
-
-    auto U1_wrap = sirius::lr::Wave_functions_wrap{U1, mem};
-    auto C1_wrap = sirius::lr::Wave_functions_wrap{C1, mem};    
 
     /* set up the diagonal preconditioner */
     auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
@@ -149,7 +140,7 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
 
     // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 
-    auto result = sirius::cg::multi_cg(linear_operator, preconditioner, X_wrap, B_wrap, U_wrap, C_wrap, U1_wrap, C1_wrap, // state vectors
+    auto result = sirius::cg::multi_cg(linear_operator, preconditioner, X_wrap, B_wrap, U_wrap, C_wrap, // state vectors
                                        20,                                                              // iters
                                        tol                                                              // tol
     );

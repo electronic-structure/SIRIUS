@@ -68,20 +68,19 @@ safe_conj(std::complex<T> const& val)
 
 template <typename Matrix, typename Prec, typename StateVec>
 auto
-multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, StateVec& U1, StateVec& C1, int maxiters = 10, double tol = 1e-3,
+multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
          bool initial_guess_is_zero = false)
 {
     PROFILE("sirius::multi_cg");
 
-    // std::cout << "Entering multi_cg" << std::endl;
+    bool is_herm = A.is_hermitian();
 
     auto const n = X.cols();
 
     U.zero();
-    U1.zero();
 
+    auto U1 = is_herm ? U : U.deep_copy();
 
-    //auto R = B.deep_copy();
     // Use R for residual, we modify the right-hand side B in-place.
     auto& R = B;
 
@@ -91,12 +90,9 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         A.multiply(-1.0, X, 1.0, R, n);
     }
 
-    bool is_herm = A.is_hermitian();
-
     auto R1 = is_herm ? R : R.deep_copy_conj();
-    
-    //auto C1 = is_herm ? C : C.deep_copy();
-    //auto U1 = is_herm ? U : U.deep_copy();
+
+    auto C1 = is_herm ? C : C.deep_copy();
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
@@ -431,13 +427,10 @@ struct Smoothed_diagonal_preconditioner
                         auto p = H_diag(j, s.get()) -
                                  S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
                         // Step preconditioner
-                        if (std::abs(p) > 1.0) {
+                        if (std::abs(p) > 1.0) { // TODO: what if |p|<=1
                             p = 1.0 / p;
                             res_ptr[j] *= p;
                         }
-                        // Smoothed preconditioner
-                        // p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                        // res_ptr[j] /= p;
                     }
                 }
             } else {
