@@ -18,9 +18,10 @@
 
 namespace sirius {
 
+template <typename T>
 inline void
 apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__, basis_functions_index const& indexb__,
-                                 const int num_mag_comp__, std::vector<mdarray<double, 2>> const& rotm__,
+                                 const int num_mag_comp__, std::vector<mdarray<T, 2>> const& rotm__,
                                  mdarray<std::complex<double>, 2> const& spin_rot_su2__,
                                  mdarray<std::complex<double>, 3>& dm_ja__)
 {
@@ -45,7 +46,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
                     for (int j = 0; j < num_mag_comp__; j++) {
                         for (int m1p = 0; m1p < ss1; m1p++) {
                             for (int m2p = 0; m2p < ss2; m2p++) {
-                                dm_rot_spatial[j] += rotm__[am1.l()](m1, m1p) *
+                                dm_rot_spatial[j] += std::conj(rotm__[am1.l()](m1, m1p)) *
                                                      dm_ia__(offset1 + m1p, offset2 + m2p, j) *
                                                      rotm__[am2.l()](m2, m2p);
                             }
@@ -243,8 +244,9 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
  *  \f]
  *
  */
+template <typename T>
 inline void
-symmetrize_density_matrix(Unit_cell const& uc__, std::vector<std::vector<mdarray<double, 2>>> const& rotm__,
+symmetrize_density_matrix(Unit_cell const& uc__, std::vector<std::vector<mdarray<T, 2>>> const& rotm__,
                           density_matrix_t& dm__, int num_mag_comp__)
 {
     PROFILE("sirius::symmetrize_density_matrix");

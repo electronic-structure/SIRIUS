@@ -17,6 +17,7 @@
 #include "lapw/generate_sbessel_mt.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
 #include "dft/energy.hpp"
+#include "core/power.hpp"
 
 namespace sirius {
 
@@ -284,6 +285,7 @@ void
 Potential::generate(Density const& density__, bool use_symmetry__, bool transform_to_rg__)
 {
     PROFILE("sirius::Potential::generate");
+    power::Profile p1("generate_pot");
 
     if (!ctx_.full_potential()) {
         /* save current effective potential */

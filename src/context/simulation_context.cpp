@@ -11,7 +11,11 @@
  *  \brief Implementation of Simulation_context class.
  */
 
+#if defined(SIRIUS_CPU_INFO)
+#include <sched.h>
+#endif
 #include <gsl/gsl_sf_bessel.h>
+#include <xc.h>
 #include "core/profiler.hpp"
 #include "core/env/env.hpp"
 #include "core/omp.hpp"
@@ -245,6 +249,8 @@ Simulation_context::initialize()
     if (pw_cutoff() <= 0) {
         pw_cutoff(full_potential() ? 12 : 20);
     }
+
+    print_memory_usage(this->out(), FILE_LINE);
 
     /* initialize variables related to the unit cell */
     unit_cell().initialize();
@@ -483,6 +489,8 @@ Simulation_context::initialize()
     /* set the smearing */
     smearing(cfg().parameters().smearing());
 
+    print_memory_usage(this->out(), FILE_LINE);
+
     /* create G-vectors on the first call to update() */
     update();
 
@@ -496,12 +504,20 @@ Simulation_context::initialize()
 
     if (verbosity() >= 3 || print_mpi_layout) {
         mpi::pstdout pout(comm());
+#if defined(SIRIUS_CPU_INFO)
+        unsigned int cpu_id, numa_id;
+        getcpu(&cpu_id, &numa_id);
+#endif
+
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << hbar(136, '-') << std::endl;
             pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, "
-                    "col |     UUID"
-                 << std::endl;
+                    "col |     UUID";
+#if defined(SIRIUS_CPU_INFO)
+            pout << "                              | " << " cpu | socket";
+#endif
+            pout << std::endl;
         }
         pout << std::setw(12) << hostname() << " | " << std::setw(6) << comm().rank() << std::setw(6)
              << comm_band().rank() << std::setw(6) << comm_k().rank() << " | " << std::setw(6)
@@ -509,8 +525,11 @@ Simulation_context::initialize()
              << std::setw(6) << mpi_grid_->communicator(3).rank() << std::setw(6)
              << mpi_grid_->communicator(1 << 0).rank() << std::setw(6) << mpi_grid_->communicator(1 << 1).rank()
              << "   | " << std::setw(6) << blacs_grid().comm().rank() << std::setw(6) << blacs_grid().comm_row().rank()
-             << std::setw(6) << blacs_grid().comm_col().rank() << "  |  " << acc::get_uuid(acc::get_device_id())
-             << std::endl;
+             << std::setw(6) << blacs_grid().comm_col().rank() << "  |  " << acc::get_uuid(acc::get_device_id());
+#if defined(SIRIUS_CPU_INFO)
+        pout << " | " << std::setw(4) << cpu_id << std::setw(4) << numa_id;
+#endif
+        pout << std::endl;
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
 
@@ -686,6 +705,8 @@ Simulation_context::print_info(std::ostream& out__) const
         int vmajor, vminor, vmicro;
         xc_version(&vmajor, &vminor, &vmicro);
         os << "Libxc version: " << vmajor << "." << vminor << "." << vmicro << std::endl;
+        os << xc_reference() << std::endl;
+        os << xc_reference_doi() << std::endl;
     }
     {
         rte::ostream os(out__, "info");
@@ -842,13 +863,17 @@ Simulation_context::update()
         /* cache rotation symmetry matrices */
         int lmax = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho())
                                           : std::max(2 * this->unit_cell().lmax(), 4);
-        rotm_.resize(this->unit_cell().symmetry().size());
+        rotm_rlm_.resize(this->unit_cell().symmetry().size());
+        rotm_ylm_.resize(this->unit_cell().symmetry().size());
         /* loop over crystal symmetries */
         #pragma omp parallel for
         for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
             /* compute Rlm rotation matrix */
-            rotm_[i] = sht::rotation_matrix<double>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
-                                                    this->unit_cell().symmetry()[i].spg_op.proper);
+            rotm_rlm_[i] = sht::rotation_matrix<double>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                                                        this->unit_cell().symmetry()[i].spg_op.proper);
+            rotm_ylm_[i] = sht::rotation_matrix<std::complex<double>>(
+                    lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                    this->unit_cell().symmetry()[i].spg_op.proper);
         }
     }
 
@@ -1134,6 +1159,9 @@ Simulation_context::update()
         if (!ri_.beta_ || ri_.beta_->qmax() < new_gk_cutoff) {
             ri_.beta_ = std::make_unique<Radial_integrals_beta<false>>(unit_cell(), new_gk_cutoff,
                                                                        cfg().settings().nprii_beta(), cb_.beta_ri_);
+            if (env::print_checksum()) {
+                print_checksum("beta_ri", ri_.beta_->checksum(), RTE_OUT(this->out()));
+            }
         }
 
         if (!ri_.beta_djl_ || ri_.beta_djl_->qmax() < new_gk_cutoff) {

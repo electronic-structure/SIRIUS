@@ -6,30 +6,28 @@
     "parameters" : {
         "electronic_structure_method" : "pseudopotential",
 
-        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+        "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
-        "smearing_width" : 0.025,
+        "smearing_width" : 0.1,
 
         "use_symmetry" : true,
 
-        "num_mag_dims" : 0,
+        "num_mag_dims" : 1,
 
-        "gk_cutoff" : 7,
-        "pw_cutoff" : 20,
+        "gk_cutoff" : 10,
+        "pw_cutoff" : 30,
 
-        "energy_tol" : 1e-8,
-        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-7,
+        "density_tol" : 1e-5,
 
         "num_dft_iter" : 100,
 
-        "ngridk" : [1,1,1],
-        "gamma_point" : true
+        "ngridk" : [8,8,8]
     },
 
     "mixer" : {
       "beta" : 0.8,
-      "type" : "anderson",
-      "max_history" : 8
+      "type" : "anderson"
     },
 
     "unit_cell": {
@@ -78,7 +76,7 @@
                 [0.75,0.75,0.75]
             ],
             "Cr": [
-                [0, 0, 0]
+                [0, 0, 0, 0, 0, 2]
             ],
             "Ti": [
                 [0.0,0.0,0.5],

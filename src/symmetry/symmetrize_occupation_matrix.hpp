@@ -50,7 +50,7 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
         }
     }
 
-    auto const& rotms = ctx.rotm();
+    auto const& rotms = ctx.rotm_rlm();
 
     for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
         int const ia     = om__.atomic_orbitals(at_lvl).first;
