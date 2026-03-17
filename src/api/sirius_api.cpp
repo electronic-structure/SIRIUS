@@ -6230,14 +6230,6 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
                                                                false);
 
-		auto U1 = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
-                                                               false);
-                auto C1 = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
-                                                               false);
-
-
-
-
                 auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                      wf::num_mag_dims(0), false);
                 auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
@@ -6256,9 +6248,6 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 mg.emplace_back(U->memory_guard(mem));
                 mg.emplace_back(C->memory_guard(mem));
 
-		mg.emplace_back(U1->memory_guard(mem));
-                mg.emplace_back(C1->memory_guard(mem));
-
                 mg.emplace_back(Hphi_wf->memory_guard(mem));
                 mg.emplace_back(Sphi_wf->memory_guard(mem));
 
@@ -6272,9 +6261,6 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};
                 auto U_wrap = sirius::lr::Wave_functions_wrap{U, mem};
                 auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
-
-		auto U1_wrap = sirius::lr::Wave_functions_wrap{U1, mem};
-                auto C1_wrap = sirius::lr::Wave_functions_wrap{C1, mem};
 
                 /* set up the diagonal preconditioner */
                 auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
@@ -6298,7 +6284,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 auto tol = get_value(tol__, 1e-13);
 
                 auto result = sirius::cg::multi_cg(linear_operator, preconditioner, X_wrap, B_wrap, U_wrap,
-                                                   C_wrap, U1_wrap, C1_wrap, // state vectors
+                                                   C_wrap, // state vectors
                                                    100,    // iters
                                                    tol);
                 if (niter__) {

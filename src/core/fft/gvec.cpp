@@ -88,7 +88,6 @@ Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
         }
     };
 
-    PROFILE_START("fft::Gvec::find_z_columns|add");
     /* copy column order from previous G-vector set */
     if (gvec_base_) {
         for (int icol = 0; icol < gvec_base_->num_zcol(); icol++) {
@@ -104,7 +103,6 @@ Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
             add_new_column(i, j);
         }
     }
-    PROFILE_STOP("fft::Gvec::find_z_columns|add");
 
     if (!gvec_base_) {
         /* put column with {x, y} = {0, 0} to the beginning */
@@ -116,7 +114,6 @@ Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
         }
     }
 
-    PROFILE_START("fft::Gvec::find_z_columns|sym");
     /* now we have to remove edge G-vectors that don't form a complete shell */
     if (bare_gvec_) {
         auto lat_sym = sirius::find_lat_sym(this->unit_cell_lattice_vectors(), this->sym_tol_);
@@ -188,14 +185,11 @@ Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
             num_gvec_ += static_cast<int>(zc.z.size());
         }
     }
-    PROFILE_STOP("fft::Gvec::find_z_columns|sym");
 
-    PROFILE_START("fft::Gvec::find_z_columns|sort");
     /* sort z-columns starting from the second or skip num_zcol of base distribution */
     int n = (gvec_base_) ? gvec_base_->num_zcol() : 1;
     std::sort(z_columns_.begin() + n, z_columns_.end(),
               [](z_column_descriptor const& a, z_column_descriptor const& b) { return a.z.size() > b.z.size(); });
-    PROFILE_STOP("fft::Gvec::find_z_columns|sort");
 }
 
 void

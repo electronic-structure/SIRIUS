@@ -68,20 +68,19 @@ safe_conj(std::complex<T> const& val)
 
 template <typename Matrix, typename Prec, typename StateVec>
 auto
-multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, StateVec& U1, StateVec& C1, int maxiters = 10, double tol = 1e-3,
+multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
          bool initial_guess_is_zero = false)
 {
     PROFILE("sirius::multi_cg");
 
-    // std::cout << "Entering multi_cg" << std::endl;
+    bool is_herm = A.is_hermitian();
 
     auto const n = X.cols();
 
     U.zero();
-    U1.zero();
 
+    auto U1 = is_herm ? U : U.deep_copy();
 
-    //auto R = B.deep_copy();
     // Use R for residual, we modify the right-hand side B in-place.
     auto& R = B;
 
@@ -91,12 +90,9 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         A.multiply(-1.0, X, 1.0, R, n);
     }
 
-    bool is_herm = A.is_hermitian();
-
     auto R1 = is_herm ? R : R.deep_copy_conj();
-    
-    //auto C1 = is_herm ? C : C.deep_copy();
-    //auto U1 = is_herm ? U : U.deep_copy();
+
+    auto C1 = is_herm ? C : C.deep_copy();
 
     auto rhos     = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
@@ -198,15 +194,17 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         } else {
             for (size_t i = 0; i < num_unconverged; ++i) {
                 alphas[i] = rhos[i] / rhos_old[i];
-                if (!is_herm)
+                if (!is_herm) {
                     alphas1[i] = safe_conj(alphas[i]);
+                }
             }
 
             // U[:, i] = C[:, i] + alpha[i] * U[:, i] for i < num_unconverged
             U.block_xpby(C, alphas, num_unconverged);
             // BiCG U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
-            if (!is_herm)
+            if (!is_herm) {
                 U1.block_xpby(C1, alphas1, num_unconverged);
+            }
         }
 
 
@@ -242,8 +240,9 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // alpha is the step length
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
-            if (!is_herm)
+            if (!is_herm) {
                 alphas1[i] = safe_conj(alphas[i]);
+            }
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
@@ -251,15 +250,17 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;
-            if (!is_herm)
+            if (!is_herm) {
                 alphas1[i] *= -1;
+            }
         }
 
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
         // BiCG R1.block_axpy(alphas1, C1, num_unconverged);
-        if (!is_herm) 
+        if (!is_herm) {
             R1.block_axpy(alphas1, C1, num_unconverged);
+        }
 
 //	std::cout << "End of iteration" << std::endl;
 
@@ -435,9 +436,6 @@ struct Smoothed_diagonal_preconditioner
                             p = 1.0 / p;
                             res_ptr[j] *= p;
                         }
-                        // Smoothed preconditioner
-                        // p   = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
-                        // res_ptr[j] /= p;
                     }
                 }
             } else {
@@ -458,7 +456,6 @@ struct Smoothed_diagonal_preconditioner
     {
         // Could avoid a copy here, but apply_precondition is in-place.
         x.copy(y, num_active);
-        //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
         apply_preconditioner_unified(*x.x, adjoint);
     }
 
