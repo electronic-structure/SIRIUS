@@ -194,15 +194,17 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         } else {
             for (size_t i = 0; i < num_unconverged; ++i) {
                 alphas[i] = rhos[i] / rhos_old[i];
-                if (!is_herm)
+                if (!is_herm) {
                     alphas1[i] = safe_conj(alphas[i]);
+                }
             }
 
             // U[:, i] = C[:, i] + alpha[i] * U[:, i] for i < num_unconverged
             U.block_xpby(C, alphas, num_unconverged);
             // BiCG U1[:, i] = C1[:, i] + alpha1[i] * U1[:, i] for i < num_unconverged
-            if (!is_herm)
+            if (!is_herm) {
                 U1.block_xpby(C1, alphas1, num_unconverged);
+            }
         }
 
 
@@ -238,8 +240,9 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         // alpha is the step length
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
-            if (!is_herm)
+            if (!is_herm) {
                 alphas1[i] = safe_conj(alphas[i]);
+            }
         }
 
         // X[:, ids[i]] += alpha[i] * U[:, i]
@@ -247,15 +250,17 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;
-            if (!is_herm)
+            if (!is_herm) {
                 alphas1[i] *= -1;
+            }
         }
 
         // R[:, i] += alpha[i] * C[:, i] for i < num_unconverged
         R.block_axpy(alphas, C, num_unconverged);
         // BiCG R1.block_axpy(alphas1, C1, num_unconverged);
-        if (!is_herm) 
+        if (!is_herm) {
             R1.block_axpy(alphas1, C1, num_unconverged);
+        }
 
 //	std::cout << "End of iteration" << std::endl;
 
@@ -427,7 +432,7 @@ struct Smoothed_diagonal_preconditioner
                         auto p = H_diag(j, s.get()) -
                                  S_diag(j, s.get()) * (eigvals[i] + (adjoint__ ? std::conj(omega) : omega));
                         // Step preconditioner
-                        if (std::abs(p) > 1.0) { // TODO: what if |p|<=1
+                        if (std::abs(p) > 1.0) {
                             p = 1.0 / p;
                             res_ptr[j] *= p;
                         }
@@ -451,7 +456,6 @@ struct Smoothed_diagonal_preconditioner
     {
         // Could avoid a copy here, but apply_precondition is in-place.
         x.copy(y, num_active);
-        //sirius::apply_preconditioner(mem, sr, wf::num_bands(num_active), *x.x, H_diag, S_diag, eigvals);
         apply_preconditioner_unified(*x.x, adjoint);
     }
 

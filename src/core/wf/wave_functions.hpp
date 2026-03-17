@@ -885,8 +885,6 @@ class Wave_functions_fft : public Wave_functions_base<T>
     band_range br_{0};
     /// Direction of the reshuffling: to FFT layout or back to WF layout or both.
     unsigned int shuffle_flag_{0};
-    /// True if the FFT wave-functions are also available on the device.
-    //bool on_device_{false};
 
     /// Return COSTA grd layout description.
     auto
@@ -1125,9 +1123,6 @@ class Wave_functions_fft : public Wave_functions_base<T>
             auto i       = wf::band_index(br__.begin());
             auto ptr     = wf__.data_[sp.get()].on_host() ? wf__.at(memory_t::host, 0, sp, i) : nullptr;
             auto ptr_gpu = wf__.data_[sp.get()].on_device() ? wf__.at(memory_t::device, 0, sp, i) : nullptr;
-            //if (ptr_gpu) {
-            //    on_device_ = true;
-            //}
             /* make alias to the fraction of the wave-functions */
             this->data_[0] = mdarray<std::complex<T>, 2>({wf__.ld(), this->num_wf_.get()}, ptr, ptr_gpu);
             this->num_pw_  = wf_->num_pw_;
@@ -1162,7 +1157,6 @@ class Wave_functions_fft : public Wave_functions_base<T>
             s_            = src__.s_;
             br_           = src__.br_;
             shuffle_flag_ = src__.shuffle_flag_;
-            //on_device_    = src__.on_device_;
             this->num_pw_ = src__.num_pw_;
             this->num_mt_ = src__.num_mt_;
             this->num_md_ = src__.num_md_;
@@ -1234,7 +1228,7 @@ class Wave_functions_fft : public Wave_functions_base<T>
     inline auto
     on_device() const
     {
-        return this->data_[0].on_device(); //on_device_;
+        return this->data_[0].on_device();
     }
 
     /// Return const pointer to the data for a given plane-wave and band indices.
