@@ -12,6 +12,7 @@
  *
  */
 #include "dmatrix.hpp"
+#include "core/hdf5_tree.hpp"
 
 namespace sirius {
 

@@ -19,6 +19,7 @@
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
+#include "core/hdf5_tree.hpp"
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/acc/acc.hpp"
