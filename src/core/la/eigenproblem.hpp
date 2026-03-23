@@ -2028,19 +2028,20 @@ class Eigensolver_cuda : public Eigensolver
 };
 #elif defined(SIRIUS_ROCM)
 /// rocsolver
-class Eigensolver_cuda: public Eigensolver
+class Eigensolver_cuda : public Eigensolver
 {
   private:
     template <class T>
-    int genevp(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__)
+    int
+    genevp(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
         auto itype   = rocblas_eform::rocblas_eform_ax; // A*x = (lambda)*B*x
         auto jobz    = rocblas_evect::rocblas_evect_original;
         auto uplo    = rocblas_fill::rocblas_fill_lower;
         auto& handle = acc::rocsolver::rocsolver_handle();
 
-        auto & mpd = get_memory_pool(memory_t::device);
-        auto w = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd = get_memory_pool(memory_t::device);
+        auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         auto work = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
@@ -2049,27 +2050,26 @@ class Eigensolver_cuda: public Eigensolver
         auto dinfo = mpd.get_unique_ptr<int>(1);
 
         acc::rocsolver::syhegvd(handle, itype, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(),
-                           B__.at(memory_t::device), B__.ld(), w.get(), work.get(), dinfo.get()
-                          );
+                                B__.at(memory_t::device), B__.ld(), w.get(), work.get(), dinfo.get());
 
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(),
-                         matrix_size__, nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
         }
         return info;
     }
 
     template <class T>
-    int stdevp(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
+    int
+    stdevp(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, real_type<T>* eval__, dmatrix<T>& Z__)
     {
         auto jobz    = rocblas_evect::rocblas_evect_original;
         auto uplo    = rocblas_fill::rocblas_fill_lower;
         auto& handle = acc::rocsolver::rocsolver_handle();
 
-        auto & mpd = get_memory_pool(memory_t::device);
-        auto w = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd = get_memory_pool(memory_t::device);
+        auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
@@ -2079,7 +2079,8 @@ class Eigensolver_cuda: public Eigensolver
         int info;
         auto dinfo = mpd.get_unique_ptr<int>(1);
 
-        acc::rocsolver::syheevd(handle, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(), w.get(), work.get(), dinfo.get());
+        acc::rocsolver::syheevd(handle, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(), w.get(),
+                                work.get(), dinfo.get());
 
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
@@ -2095,76 +2096,92 @@ class Eigensolver_cuda: public Eigensolver
     {
     }
     /// wrapper for dynamic binding
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
         PROFILE("Eigensolver_rocm|dsyevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
         PROFILE("Eigensolver_rocm|ssyevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__, dmatrix<std::complex<float>>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__,
+          dmatrix<std::complex<float>>& Z__)
     {
         PROFILE("Eigensolver_rocm|cheevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__, dmatrix<std::complex<double>>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__,
+          dmatrix<std::complex<double>>& Z__)
     {
         PROFILE("Eigensolver_rocm|zheevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     /// wrapper for dynamic binding
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__,  double* eval__, dmatrix<double>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+          dmatrix<double>& Z__)
     {
         PROFILE("Eigensolver_rocm|dsygvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__,  float* eval__, dmatrix<float>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
+          dmatrix<float>& Z__)
     {
         PROFILE("Eigensolver_rocm|ssygvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
-              double* eval__, dmatrix<std::complex<double>>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
+          double* eval__, dmatrix<std::complex<double>>& Z__)
     {
         PROFILE("Eigensolver_rocm|zhegvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
-              float* eval__, dmatrix<std::complex<float>>& Z__)
+    int
+    solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
+          float* eval__, dmatrix<std::complex<float>>& Z__)
     {
         PROFILE("Eigensolver_rocm|chegvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
+    int
+    solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__)
+    int
+    solve(ftn_int matrix_size__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__, dmatrix<float>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__,
-              dmatrix<std::complex<double>>& Z__)
+    int
+    solve(ftn_int matrix_size__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__, double* eval__,
+          dmatrix<std::complex<double>>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__,
-              dmatrix<std::complex<float>>& Z__)
+    int
+    solve(ftn_int matrix_size__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__, float* eval__,
+          dmatrix<std::complex<float>>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
