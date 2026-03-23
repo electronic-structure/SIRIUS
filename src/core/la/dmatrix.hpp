@@ -23,7 +23,7 @@
 #include "core/typedefs.hpp"
 #include "core/rte/rte.hpp"
 #include "core/memory.hpp"
-#include <nlohmann/json.hpp>
+#include "core/json.hpp"
 
 namespace sirius {
 
