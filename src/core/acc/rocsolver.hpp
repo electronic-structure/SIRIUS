@@ -10,7 +10,7 @@
  *
  *  \brief Contains implementation of rocsolver wrappers
  */
-
+#ifdef SIRIUS_ROCM
 #ifndef __ROCSOLVER_HPP__
 #define __ROCSOLVER_HPP__
 
@@ -62,7 +62,7 @@ get_rocblas_operation(char trans)
             op = rocblas_operation::rocblas_operation_conjugate_transpose;
             break;
         default:
-            RTE_THROW("invalid tranpose op.")
+            RTE_THROW("invalid transpose op.")
     }
 
     return op;
@@ -255,4 +255,5 @@ zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpi
 
 } // namespace sirius
 
+#endif
 #endif
