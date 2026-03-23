@@ -25,7 +25,6 @@
 #include <complex>
 #include <cassert>
 #include <stdexcept>
-#include <cstdint>
 
 #ifdef SIRIUS_USE_MEMORY_POOL
 #include <umpire/ResourceManager.hpp>
