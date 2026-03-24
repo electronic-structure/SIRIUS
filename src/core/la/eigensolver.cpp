@@ -61,7 +61,7 @@ Eigensolver_factory(std::string name__)
             break;
         }
 #endif
-#if defined(SIRIUS_CUDA)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
         case ev_solver_t::cusolver: {
             ptr = new Eigensolver_cuda();
             break;
