@@ -100,15 +100,14 @@ beverin test gpu band parallel:
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_band_parallel --timeout 3600
 
-# skip this, it wants to use cusolver
-# beverin test gpu k-point parallel:
-#   extends: [.run_tests_beverin]
-#   variables:
-#     SLURM_NTASKS: 12
-#     SLURM_GPUS_PER_TASK: 1
-#     SLURM_CPU_BIND: 'verbose'
-#     USE_MPI: 'YES'
-#     TEST_COMMAND: ctest -L gpu_k_point_parallel
+beverin test gpu k-point parallel:
+  extends: [.run_tests_beverin]
+  variables:
+    SLURM_NTASKS: 12
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_CPU_BIND: 'verbose'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L gpu_k_point_parallel
 
 # eiger test cpu serial:
 #   extends: [.run_tests_eiger]
