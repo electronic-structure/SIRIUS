@@ -2072,9 +2072,7 @@ class Eigensolver_cuda : public Eigensolver
         auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
-        int lwork;
-
-        auto work = mpd.get_unique_ptr<real_type<T>>(lwork);
+        auto work = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
 
         int info;
         auto dinfo = mpd.get_unique_ptr<int>(1);
