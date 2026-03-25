@@ -1,0 +1,19 @@
+diff --git a/clients/CMakeLists.txt b/clients/CMakeLists.txt
+index 0f32675..65e458d 100644
+--- a/clients/CMakeLists.txt
++++ b/clients/CMakeLists.txt
+@@ -163,14 +163,6 @@ if( BUILD_CLIENTS_BENCHMARKS OR BUILD_CLIENTS_TESTS)
+         find_package(PkgConfig)
+         if(NOT PKG_CONFIG_FOUND)
+           message( FATAL_ERROR "Could not find libblis and pkgconfig is not available" )
+-        else()
+-          pkg_search_module(PKGBLAS cblas)
+-          if(PKGBLAS_FOUND)
+-            set( BLAS_LIBRARY ${PKGBLAS_LIBRARIES} )
+-            set( BLAS_INCLUDE_DIR ${PKGBLAS_INCLUDE_DIRS} )
+-          else()
+-            message( FATAL_ERROR "Could not find libblis and pkgconfig can not find any other implementation of cblas" )
+-          endif()
+         endif()
+       endif()
+     else()
