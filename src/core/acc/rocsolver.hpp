@@ -239,7 +239,101 @@ syhegvx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect ev
                      reinterpret_cast<rocblas_float_complex*>(A), lda, reinterpret_cast<rocblas_float_complex*>(B), ldb,
                      vl, vu, il, iu, abstol, nev, D, reinterpret_cast<rocblas_float_complex*>(Z), ldz, ifail, info);
 }
-#endif // rocsolver >=5.3.0
+#endif // rocsolver >=3.19.0
+
+// rocm 7.2.0
+#if (ROCSOLVER_VERSION_MAJOR > 3) || ((ROCSOLVER_VERSION_MAJOR == 3) && (ROCSOLVER_VERSION_MINOR >= 30))
+/// dx versions (divide-and-conquer + subset selection)
+/// -----------------------------------------------------------------------------------------------------------------
+template <class T>
+std::enable_if_t<std::is_same<T, double>::value>
+syheevdx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, T* A, int lda, int il,
+         int iu, double abstol, int* nev, T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_dsyevdx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, vl, vu, il, iu, abstol,
+                      nev, D, E, info);
+}
+
+template <class T>
+std::enable_if_t<std::is_same<T, float>::value>
+syheevdx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, T* A, int lda, int il,
+         int iu, double abstol, int* nev, T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_ssyevdx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, vl, vu, il, iu, abstol,
+                      nev, D, E, info);
+}
+
+/// Hermitian | complex double
+template <class T>
+std::enable_if_t<std::is_same<T, double>::value>
+syheevdx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<double>* A,
+         int lda, int il, int iu, double abstol, int* nev, T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_zheevdx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                      reinterpret_cast<rocblas_double_complex*>(A), lda, vl, vu, il, iu, abstol, nev, D, E, info);
+}
+
+template <class T>
+std::enable_if_t<std::is_same<T, float>::value>
+syheevdx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<float>* A,
+         int lda, int il, int iu, double abstol, int* nev, T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_cheevdx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                      reinterpret_cast<rocblas_float_complex*>(A), lda, vl, vu, il, iu, abstol, nev, D, E, info);
+}
+
+/// dx versions
+/// -----------------------------------------------------------------------------------------------------------------
+template <class T>
+std::enable_if_t<std::is_same<T, double>::value>
+syhegvdx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
+         T* A, int lda, T* B, int ldb, int il, int iu, double abstol, int* nev, T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_dsygvdx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, B, ldb, vl, vu, il,
+                      iu, abstol, nev, D, E, info);
+}
+
+template <class T>
+std::enable_if_t<std::is_same<T, float>::value>
+syhegvdx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
+         T* A, int lda, T* B, int ldb, int il, int iu, double abstol, int* nev, T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_ssygvdx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, B, ldb, vl, vu, il,
+                      iu, abstol, nev, D, E, info);
+}
+
+/// Hermitian | complex double
+template <class T>
+std::enable_if_t<std::is_same<T, double>::value>
+syhegvdx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
+         std::complex<double>* A, int lda, std::complex<double>* B, int ldb, int il, int iu, double abstol, int* nev,
+         T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_zhegvdx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                      reinterpret_cast<rocblas_double_complex*>(A), lda, reinterpret_cast<rocblas_double_complex*>(B),
+                      ldb, vl, vu, il, iu, abstol, nev, D, E, info);
+}
+
+template <class T>
+std::enable_if_t<std::is_same<T, float>::value>
+syhegvdx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
+         std::complex<float>* A, int lda, std::complex<float>* B, int ldb, int il, int iu, double abstol, int* nev,
+         T* D, T* E, int* info)
+{
+    double vl, vu{0}; // ignored if erange = erange_index
+    rocsolver_chegvdx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                      reinterpret_cast<rocblas_float_complex*>(A), lda, reinterpret_cast<rocblas_float_complex*>(B),
+                      ldb, vl, vu, il, iu, abstol, nev, D, E, info);
+}
+#endif // rocsolver >= 3.30.0 (aka rocm 7.0.1)
+
 
 /// Linear Solvers
 void
