@@ -2040,24 +2040,22 @@ class Eigensolver_cuda : public Eigensolver
         auto uplo    = rocblas_fill::rocblas_fill_lower;
         auto& handle = acc::rocsolver::rocsolver_handle();
 
-        auto& mpd = get_memory_pool(memory_t::device);
-        auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
-        auto work = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd  = get_memory_pool(memory_t::device);
+        auto evals = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
-        int info;
-        auto dinfo = mpd.get_unique_ptr<int>(1);
+        auto ret = acc::rocsolver::syhegvdx(handle, itype, jobz, rocblas_erange::rocblas_erange_index, uplo,
+                                            matrix_size__, A__.at(memory_t::device), A__.ld(), B__.at(memory_t::device),
+                                            B__.ld(), real_type<T>{0}, real_type<T>(0), 1, nev__, evals.get(),
+                                            Z__.at(memory_t::device), Z__.ld());
 
-        acc::rocsolver::syhegvd(handle, itype, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(),
-                                B__.at(memory_t::device), B__.ld(), w.get(), work.get(), dinfo.get());
-
-        acc::copyout(&info, dinfo.get(), 1);
-        if (!info) {
-            acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        if (ret.info == rocblas_status::rocblas_status_success) {
+            acc::copyout(eval__, evals.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), Z__.at(memory_t::device), Z__.ld(), matrix_size__, nev__);
         }
-        return info;
+
+        return ret.info;
     }
 
     template <class T>
@@ -2069,23 +2067,19 @@ class Eigensolver_cuda : public Eigensolver
         auto& handle = acc::rocsolver::rocsolver_handle();
 
         auto& mpd = get_memory_pool(memory_t::device);
-        auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto evals    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
-        auto work = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto ret = acc::rocsolver::syheevdx(handle, jobz, rocblas_erange::rocblas_erange_index, uplo, matrix_size__,
+                                            A__.at(memory_t::device), A__.ld(), real_type<T>{0}, real_type<T>{0}, 1,
+                                            nev__, evals.get(), Z__.at(memory_t::device), Z__.ld());
 
-        int info;
-        auto dinfo = mpd.get_unique_ptr<int>(1);
-
-        acc::rocsolver::syheevd(handle, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(), w.get(),
-                                work.get(), dinfo.get());
-
-        acc::copyout(&info, dinfo.get(), 1);
-        if (!info) {
-            acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        if (ret.info == rocblas_status::rocblas_status_success) {
+            acc::copyout(eval__, evals.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), Z__.at(memory_t::device), Z__.ld(), matrix_size__, nev__);
         }
-        return info;
+
+        return ret.info;
     }
 
   public:
