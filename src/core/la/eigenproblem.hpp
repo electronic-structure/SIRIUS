@@ -2066,8 +2066,8 @@ class Eigensolver_cuda : public Eigensolver
         auto uplo    = rocblas_fill::rocblas_fill_lower;
         auto& handle = acc::rocsolver::rocsolver_handle();
 
-        auto& mpd = get_memory_pool(memory_t::device);
-        auto evals    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd  = get_memory_pool(memory_t::device);
+        auto evals = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         auto ret = acc::rocsolver::syheevdx(handle, jobz, rocblas_erange::rocblas_erange_index, uplo, matrix_size__,
