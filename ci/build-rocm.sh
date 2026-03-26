@@ -14,6 +14,8 @@ spack env create -d ./spack-env
 spack -e ./spack-env repo add $REPO
 
 spack -e ./spack-env config add "packages:all:variants:[amdgpu_target=${ROCM_ARCH},amdgpu_target_sram_ecc=${ROCM_ARCH},+rocm]"
+# TODO: update once this is has changed upstream
+spack -e ./spack-env config add "packages:all:providers:mpi:[cray-mpich@9.1.0+rocm]"
 
 spack -e ./spack-env add $SPEC
 
