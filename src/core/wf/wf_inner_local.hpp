@@ -27,7 +27,7 @@ inner_product_local_gpu(T const* wf1, int ld1, T const* wf2, int ld2, int n, int
     auto mem_pool = get_memory_pool(memory_t::device);
     auto d_work   = mem_pool.get_unique_ptr<T>(num_bands);
     auto stream   = acc::blas::stream_handle(0);
-    std::vector<T> result_local;
+    std::vector<T> result_local(num_bands);
 
 #if defined(SIRIUS_ROCM)
     CALL_GPU_BLAS(rocblas_zdotc_strided_batched, (stream, n, reinterpret_cast<const rocblas_double_complex*>(wf1), 1,
