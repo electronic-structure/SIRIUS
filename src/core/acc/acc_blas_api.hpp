@@ -22,8 +22,8 @@
 #elif defined(SIRIUS_ROCM)
 #include <rocblas/rocblas.h>
 
-#else
-#error Either SIRIUS_CUDA or SIRIUS_ROCM must be defined!
+// #else
+// #error Either SIRIUS_CUDA or SIRIUS_ROCM must be defined!
 #endif
 
 namespace sirius {
