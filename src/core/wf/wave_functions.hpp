@@ -1313,13 +1313,12 @@ inner_diag_local(memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_fu
         }
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-            auto s1   = lhs__.actual_spin_index(s);
-            auto s2   = rhs__.actual_spin_index(s);
-            auto ptr1 = lhs__.at(mem__, 0, s1, wf::band_index(0));
-            auto ptr2 = rhs__.at(mem__, 0, s2, wf::band_index(0));
+            auto s1     = lhs__.actual_spin_index(s);
+            auto s2     = rhs__.actual_spin_index(s);
+            auto ptr1   = lhs__.at(mem__, 0, s1, wf::band_index(0));
+            auto ptr2   = rhs__.at(mem__, 0, s2, wf::band_index(0));
             int ngv_loc = lhs__.ld();
 
-            // inner_product_local_gpu(ptr1, rhs__.ld(), ptr2, lhs__.ld(), ngv_loc, num_wf__.get(), result, reduced);
             inner_product_local_gpu(ptr1, rhs__.ld(), ptr2, lhs__.ld(), ngv_loc, num_wf__.get(), reduced, result);
         }
 #endif
