@@ -70,10 +70,10 @@ inner_product_local_gpu(T const* wf1, int ld1, T const* wf2, int ld2, int n, int
             std::vector<std::complex<double>> wf1_h_g0(num_bands);
             std::vector<std::complex<double>> wf2_h_g0(num_bands);
             // copy G=0 to host
-            acc::copyout(wf1_h_g0.data(), num_bands, wf1, ld1, 1, num_bands);
-            acc::copyout(wf2_h_g0.data(), num_bands, wf2, ld2, 1, num_bands);
+            acc::copyout(wf1_h_g0.data(), 1, wf1, ld1, 1, num_bands);
+            acc::copyout(wf2_h_g0.data(), 1, wf2, ld2, 1, num_bands);
             for (int i = 0; i < num_bands; ++i) {
-                result_local[i] -= wf1_h_g0[i] * wf2_h_g0[i];
+                result_local[i] -= std::conj(wf1_h_g0[i]) * wf2_h_g0[i];
             }
         } else if (reduced == 2) {
             /* rank doesn't own G=0  */
