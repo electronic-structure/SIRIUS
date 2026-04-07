@@ -7495,7 +7495,7 @@ sirius_set_dftd3_correction(void* const* handler__, char const* method__, char c
 /*
   @api begin
   sirius_set_dftd4_correction:
-    doc: Set the parameters controlling the dftd3 correction.
+    doc: Set the parameters controlling the dftd4 correction.
     arguments:
       handler:
         type: ctx_handler
@@ -7555,7 +7555,7 @@ sirius_set_dftd4_correction(void* const* handler__, char const* method__, char c
     call_sirius(
             [&]() {
                 auto& sim_ctx = get_sim_ctx(handler__);
-                sim_ctx.cfg().dftd3().method(method__);
+                sim_ctx.cfg().dftd4().method(method__);
                 if (damping__ != nullptr) {
                     sim_ctx.cfg().dftd4().damping(damping__);
                 }
