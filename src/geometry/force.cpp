@@ -846,6 +846,10 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         }
 
         for (int x = 0; x < 3; x++) {
+
+            o1.zero();
+            h1.zero();
+            
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
                 auto gvec_col = kp__->gkvec_col().gvec(gvec_index_t::local(igk_col));
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // loop over rows
