@@ -124,7 +124,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
-  $<$<BOOL:${SIRIUS_USE_NVTX}>:CUDA::nvtx3>
+  $<TARGET_NAME_IF_EXISTS:CUDA::nvtx3>
   $<TARGET_NAME_IF_EXISTS:rocprofiler-sdk-roctx::rocprofiler-sdk-roctx>
   $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocsolver>
