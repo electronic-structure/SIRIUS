@@ -10,7 +10,7 @@
 #endif
 
 #if defined(SIRIUS_ROCM)
-#include "roctx.h"
+#include <roctracer/roctx.h>
 #endif
 
 namespace sirius {
