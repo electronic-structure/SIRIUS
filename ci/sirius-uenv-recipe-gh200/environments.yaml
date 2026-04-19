@@ -6,7 +6,6 @@ gcc-env:
   unify: true
   specs:
   - sirius@develop +python +vdwxc +elpa +apps +tests +scalapack +nlcglib +dftd3 +dftd4 +memory_pool
-  - dftd4 build_system=meson default_library=shared
   # - umpire+fortran # +fortran works around a bug in spack/umpire recipe
   - cuda@13
   - umpire~mpi # umpire+mpi~fortran fails during package.py processing
