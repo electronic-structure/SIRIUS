@@ -5,7 +5,7 @@ gcc-env:
       specs: ['libfabric@2.4.0+cuda']
   unify: true
   specs:
-  - sirius@develop +python +vdwxc +elpa +apps +tests +scalapack +nlcglib +dftd3 +dftd4 +memory_pool
+  - sirius@develop +python +vdwxc +elpa +apps +tests +scalapack +nlcglib +dftd3 ~dftd4 +memory_pool
   # - umpire+fortran # +fortran works around a bug in spack/umpire recipe
   - cuda@13
   - umpire~mpi # umpire+mpi~fortran fails during package.py processing

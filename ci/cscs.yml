@@ -35,7 +35,7 @@ build sirius cuda:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@=develop +nlcglib +cuda +apps +tests +scalapack +dftd3 +dftd4 +vdwxc ~python ^nlcglib@1.3 ^kokkos+serial
+    SPEC: sirius@=develop +nlcglib +cuda +apps +tests +scalapack +dftd3 ~dftd4 +vdwxc ~python ^nlcglib@1.3 ^kokkos+serial
     CUDA_ARCH: 90
   script:
     - |
