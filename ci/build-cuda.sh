@@ -10,8 +10,7 @@ spack config --scope=spack add config:build_stage:/dev/shm/spack-stage
 spack config --scope=spack add config:install_tree:root:/dev/shm/spack-stage
 
 spack env create -d ./spack-env
-# add local repository with current sirius recipe
-spack -e ./spack-env repo add $REPO
+spack -e ./spack-env add cray-mpich@9.1.0+cuda
 
 spack -e ./spack-env config add "packages:all:variants:[cuda_arch=${CUDA_ARCH},+cuda]"
 
