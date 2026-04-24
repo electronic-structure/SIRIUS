@@ -43,6 +43,7 @@ if(NOT TARGET sirius::sirius_cxx)
   find_dependency(SpFFT 0.9.6 CONFIG ${mode})
   find_dependency(SPLA 1.1.0 CONFIG ${mode})
   find_dependency(costa CONFIG ${mode})
+  find_dependency(fmt ${mode})
 
   if(@SIRIUS_USE_OPENMP@)
     set(SIRIUS_USE_OPENMP @SIRIUS_USE_OPENMP@)
