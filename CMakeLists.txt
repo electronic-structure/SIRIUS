@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.11.0
+  VERSION 7.11.1
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
