@@ -7555,7 +7555,7 @@ sirius_set_dftd4_correction(void* const* handler__, char const* method__, char c
     call_sirius(
             [&]() {
                 auto& sim_ctx = get_sim_ctx(handler__);
-                sim_ctx.cfg().dftd3().method(method__);
+                sim_ctx.cfg().dftd4().method(method__);
                 if (damping__ != nullptr) {
                     sim_ctx.cfg().dftd4().damping(damping__);
                 }

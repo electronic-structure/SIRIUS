@@ -56,7 +56,7 @@ if(NOT TARGET sirius::sirius_cxx)
   endif()
 
   if(@SIRIUS_USE_DFTD4@)
-    set(SIRIUS_USE_DFTD3 @SIRIUS_USE_DFTD4@)
+    set(SIRIUS_USE_DFTD4 @SIRIUS_USE_DFTD4@)
     find_dependency(DFTD4 ${mode})
   endif()
 
