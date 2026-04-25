@@ -7495,7 +7495,7 @@ sirius_set_dftd3_correction(void* const* handler__, char const* method__, char c
 /*
   @api begin
   sirius_set_dftd4_correction:
-    doc: Set the parameters controlling the dftd3 correction.
+    doc: Set the parameters controlling the dftd4 correction.
     arguments:
       handler:
         type: ctx_handler
