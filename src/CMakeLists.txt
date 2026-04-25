@@ -111,6 +111,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   sirius::hdf5
   costa::costa
   $<TARGET_NAME_IF_EXISTS:sirius::elpa>
+  $<TARGET_NAME_IF_EXISTS:sirius::scalapack>
   $<$<BOOL:${SIRIUS_USE_DLAF}>:DLAF::DLAF>
   $<TARGET_NAME_IF_EXISTS:sirius::magma>
   $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
