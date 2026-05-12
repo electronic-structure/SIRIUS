@@ -168,7 +168,7 @@ template <typename T, typename OUT>
 inline void
 print_checksum(std::string label__, T value__, OUT&& out__)
 {
-    out__ << "checksum(" << label__ << ") : " << ffmt(16, 8) << value__ << std::endl;
+    out__ << "checksum(" << label__ << ") : " << ffmt(20, 12) << value__ << std::endl;
 }
 
 template <typename OUT>

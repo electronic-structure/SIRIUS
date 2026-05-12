@@ -14,7 +14,6 @@
 #ifndef __MEMORY_HPP__
 #define __MEMORY_HPP__
 
-#include <list>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -25,6 +24,7 @@
 #include <complex>
 #include <cassert>
 #include <stdexcept>
+#include <cstdint>
 
 #ifdef SIRIUS_USE_MEMORY_POOL
 #include <umpire/ResourceManager.hpp>

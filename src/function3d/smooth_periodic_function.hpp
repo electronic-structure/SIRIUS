@@ -12,6 +12,7 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
+#include "core/memory.hpp"
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
 #include "core/fft/gvec.hpp"
@@ -169,6 +170,18 @@ class Smooth_periodic_function
     value(int ir__) const
     {
         return f_rg_(ir__);
+    }
+
+    T const*
+    data_rg() const
+    {
+        return f_rg_.at(memory_t::host);
+    }
+
+    T*
+    data_rg()
+    {
+        return f_rg_.at(memory_t::host);
     }
 
     inline T&
@@ -546,7 +559,7 @@ inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> 
 
     T result_rg{0};
 
-    //#pragma omp parallel for schedule(static) reduction(+:result_rg)
+    #pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
         result_rg += conj(f__.value(irloc)) * g__.value(irloc) * theta__(irloc);
     }

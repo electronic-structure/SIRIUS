@@ -352,8 +352,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         out << std::endl;
         print_info(out);
         out << std::endl;
-        out << "iteration : " << iter << ", RMS : " << std::setprecision(12) << std::scientific << rms
-            << ", energy difference : " << std::setprecision(12) << std::scientific << etot - eold << std::endl;
+        out << "iteration : " << iter << ", RMS (target) : " << std::setprecision(4) << std::scientific << rms << " ("
+            << std::setprecision(4) << std::scientific << density_tol__ << ") "
+            << ", energy difference (target) : " << std::setprecision(4) << std::scientific << etot - eold << " ("
+            << std::setprecision(4) << std::scientific << energy_tol__ << ")" << std::endl;
         if (!ctx_.full_potential()) {
             out << "bands are converged : " << boolstr(result.converged) << std::endl;
         }
@@ -525,7 +527,12 @@ DFT_ground_state::print_info(std::ostream& out__) const
     write_energy2("Free energy (E-TS)", etot + s_sum);
     out__ << std::endl;
     write_energy("band gap (eV)", gap);
-    write_energy("Efermi", ef);
+    if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-8) {
+        write_energy("Efermi_up", kset_.energy_fermi_fixed_mag(0));
+        write_energy("Efermi_dn", kset_.energy_fermi_fixed_mag(1));
+    } else {
+        write_energy("Efermi", ef);
+    }
 }
 
 } // namespace sirius

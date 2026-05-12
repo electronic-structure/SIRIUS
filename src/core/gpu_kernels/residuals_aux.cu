@@ -332,7 +332,72 @@ __global__ void apply_preconditioner_gpu_kernel<float>(int const num_rows_loc__,
     }
 }
 
+__global__ void apply_preconditioner_gpu_complex_double_kernel(
+                                                int const num_rows_loc__,
+                                                double const* eval__,
+                                                double const* h_diag__,
+                                                double const* o_diag__,
+                                                acc_complex_double_t omega,
+                                                acc_complex_double_t* res__)
+{
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int ibnd = blockIdx.y;
+
+    if (j < num_rows_loc__) {
+	acc_complex_double_t p = make_accDoubleComplex(h_diag__[j] - (eval__[ibnd] + omega.x) * o_diag__[j], -omega.y * o_diag__[j]);
+	double p_mag_sq = p.x * p.x + p.y * p.y;
+	if (p_mag_sq > 1.0) {
+            p = accCdiv(make_accDoubleComplex(1.0, 0.0), p);
+            int k = array2D_offset(j, ibnd, num_rows_loc__);
+	    res__[k] = accCmul(res__[k], p);
+        }
+    }
+}
+
+__global__ void conjugate_gpu_complex_double_kernel(acc_complex_double_t* ptr__,
+                                            	    int const ld__,
+                                            	    int const num_wf__)
+{
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int ibnd = blockIdx.y;
+
+    if (j < ld__) {
+        int k = array2D_offset(j, ibnd, ld__);
+        ptr__[k] = accConj(ptr__[k]);
+    }
+}
+
 extern "C" {
+void conjugate_gpu_complex_double(acc_complex_double_t* ptr__,
+                                  int ld__,
+                                  int num_wf__)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(ld__, grid_t.x), num_wf__);
+
+    accLaunchKernel((conjugate_gpu_complex_double_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
+                    ptr__, ld__, num_wf__);
+}
+
+void
+apply_preconditioner_gpu_complex_double(acc_complex_double_t* res__, 
+					int num_rows_loc__, 
+					int num_bands__,
+                                        const double* eval__, 
+					const double* h_diag__, 
+					const double* o_diag__,
+                                        double omega_real, 
+					double omega_imag)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
+
+    acc_complex_double_t omega = make_accDoubleComplex(omega_real, omega_imag);
+
+    accLaunchKernel((apply_preconditioner_gpu_complex_double_kernel), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, omega, res__);
+}
+
+
 void apply_preconditioner_gpu_double(acc_complex_double_t* res__,
                                      int num_rows_loc__,
                                      int num_bands__,

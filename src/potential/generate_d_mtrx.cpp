@@ -28,7 +28,8 @@ Potential::generate_d_mtrx()
     PROFILE("sirius::Potential::generate_d_mtrx");
 
     /* local number of G-vectors */
-    int gvec_count   = ctx_.gvec().count();
+    int gvec_count = ctx_.gvec().count();
+    /* split local number of G-vectors into chunks */
     auto spl_ngv_loc = split_in_blocks(gvec_count, ctx_.cfg().control().gvec_chunk_size());
 
     auto& mph = get_memory_pool(memory_t::host);
@@ -62,16 +63,10 @@ Potential::generate_d_mtrx()
 
         /* trivial case */
         /* in absence of augmentation charge D-matrix is zero */
-        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
-            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                for (int i = 0; i < atom_type.num_atoms(); i++) {
-                    int const ia = atom_type.atom_id(i);
-                    for (int xi2 = 0; xi2 < nbf; xi2++) {
-                        for (int xi1 = 0; xi1 < nbf; xi1++) {
-                            d_mtrx_[ia](xi1, xi2, iv) = 0;
-                        }
-                    }
-                }
+        if (!atom_type.augment()) {
+            for (int i = 0; i < atom_type.num_atoms(); i++) {
+                auto ia = atom_type.atom_id(i);
+                d_mtrx_[ia].zero();
             }
             continue;
         }
@@ -128,7 +123,8 @@ Potential::generate_d_mtrx()
                                 ctx_.augmentation_op(iat).q_pw().at(memory_t::host, 0, 2 * g_begin), 2 * ng * nqlm);
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
 #if defined(SIRIUS_GPU)
-                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng, veff.at(memory_t::device, 0, iv),
+                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ng,
+                                                        veff.at(memory_t::device, g_begin, iv),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
@@ -142,9 +138,9 @@ Potential::generate_d_mtrx()
                                       d_tmp.ld(), acc::stream_id(1 + iv));
 #endif
                     } // iv
-                    for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        acc::sync_stream(acc::stream_id(1 + iv));
-                    }
+                    //for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                    //    acc::sync_stream(acc::stream_id(1 + iv));
+                    //}
                     break;
                 }
             }
@@ -156,29 +152,18 @@ Potential::generate_d_mtrx()
             d_tmp.copy_to(memory_t::host);
         }
 
-        // if (ctx_.cfg().control().print_checksum()) {
-        //     if (ctx_.processing_unit() == device_t::GPU) {
-        //         veff_a.copy_to(memory_t::host);
-        //     }
-        //     auto cs = veff_a.checksum();
-        //     std::stringstream s;
-        //     s << "Gvec_block_" << ib << "_veff_a";
-        //     utils::print_checksum(s.str(), cs, ctx_.out());
-        // }
-
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             if (ctx_.gvec().reduced()) {
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
+                    for (int j = 0; j < nqlm; j++) {
+                        d_tmp(j, i, iv) *= 2;
+                    }
+                }
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nqlm; j++) {
-                            d_tmp(j, i, iv) = 2 * d_tmp(j, i, iv) - component(iv).rg().f_pw_local(0).real() *
-                                                                            ctx_.augmentation_op(iat).q_pw(j, 0);
-                        }
-                    }
-                } else {
-                    for (int i = 0; i < atom_type.num_atoms(); i++) {
-                        for (int j = 0; j < nqlm; j++) {
-                            d_tmp(j, i, iv) *= 2;
+                            d_tmp(j, i, iv) -=
+                                    component(iv).rg().f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 }
@@ -186,15 +171,21 @@ Potential::generate_d_mtrx()
 
             /* sum from all ranks */
             comm_.allreduce(d_tmp.at(memory_t::host, 0, 0, iv), nqlm * atom_type.num_atoms());
+        }
 
-            // if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
-            //     for (int i = 0; i < atom_type.num_atoms(); i++) {
-            //         std::stringstream s;
-            //         s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
-            //         auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-            //         utils::print_checksum(s.str(), cs, ctx_.out());
-            //     }
-            // }
+        if (env::print_checksum()) {
+            print_checksum("d_tmp", d_tmp.checksum(), this->ctx_.out());
+        }
+
+        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+            if (env::print_checksum()) {
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
+                    std::stringstream s;
+                    s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
+                    auto cs = mdarray<double, 1>({nbf * (nbf + 1) / 2}, &d_tmp(0, i, iv)).checksum();
+                    print_checksum(s.str(), cs, this->ctx_.out());
+                }
+            }
 
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {

@@ -6133,6 +6133,9 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 /* works for non-magnetic and collinear cases */
                 RTE_ASSERT(*num_spin_comp__ == 1);
 
+
+		//std::cout << "Inside SIRIUS" << std::endl;
+
                 int nbnd_occ_k  = *nbnd_occ_k__;
                 int nbnd_occ_kq = *nbnd_occ_kq__;
 
@@ -6244,6 +6247,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
 
                 mg.emplace_back(U->memory_guard(mem));
                 mg.emplace_back(C->memory_guard(mem));
+
                 mg.emplace_back(Hphi_wf->memory_guard(mem));
                 mg.emplace_back(Sphi_wf->memory_guard(mem));
 

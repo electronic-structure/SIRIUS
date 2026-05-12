@@ -27,9 +27,7 @@
 #include "core/json.hpp"
 #include "core/profiler.hpp"
 using json = nlohmann::json;
-#if defined(SIRIUS_USE_POWER_COUNTER)
 #include "core/power.hpp"
-#endif
 
 #include "core/sht/sht.hpp"
 #include "core/sht/gaunt.hpp"
@@ -54,29 +52,6 @@ is_initialized()
     return b;
 }
 
-#if defined(SIRIUS_USE_POWER_COUNTER)
-inline static double&
-energy()
-{
-    static double e__{0};
-    return e__;
-}
-
-inline static double&
-energy_acc()
-{
-    static double e__{0};
-    return e__;
-}
-
-inline static double&
-energy_cpu()
-{
-    static double e__{0};
-    return e__;
-}
-#endif
-
 struct null_buffer : std::streambuf
 {
     int
@@ -85,6 +60,8 @@ struct null_buffer : std::streambuf
         return c;
     }
 };
+
+static std::unique_ptr<power::Profile> energy_profiler;
 
 /// Initialize the library.
 inline void
@@ -95,17 +72,16 @@ initialize(bool call_mpi_init__ = true)
     if (is_initialized()) {
         RTE_THROW("SIRIUS library is already initialized");
     }
-#if defined(SIRIUS_USE_POWER_COUNTER)
-    energy()     = -power::energy();
-    energy_acc() = -power::accel_energy();
-    energy_cpu() = -power::cpu_energy();
-#endif
     if (call_mpi_init__) {
         PROFILE("sirius::initialize::mpi");
         mpi::Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
+#endif
+
+#if defined(SIRIUS_USE_POWER_COUNTER)
+    energy_profiler = std::make_unique<power::Profile>("sirius");
 #endif
 
     if (mpi::Communicator::world().rank() == 0) {
@@ -188,35 +164,21 @@ finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_clean
 #if defined(__APEX)
     apex::finalize();
 #endif
+
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    double e     = energy() + power::energy();
-    double e_acc = energy_acc() + power::accel_energy();
-    double e_cpu = energy_cpu() + power::cpu_energy();
+    energy_profiler = nullptr;
 
     auto local_id = env::get_value_ptr<int>("SLURM_LOCALID");
-    auto node_id  = env::get_value_ptr<int>("SLURM_NODEID");
     if (local_id) {
         int color = (*local_id == 0) ? 0 : 1;
         auto comm = mpi::Communicator::world().split(color);
-        mpi::pstdout pout(comm);
         if (color == 0) {
-            pout << "node : " << *node_id << ", energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " "
-                 << e_acc << " " << e_cpu + e_acc << std::endl;
-            comm.allreduce(&e, 1);
-            comm.allreduce(&e_acc, 1);
-            comm.allreduce(&e_cpu, 1);
-            if (comm.rank() == 0) {
-                std::cout << "=== Energy consumption report ===" << std::endl;
-            }
-            std::cout << pout.flush(0);
-            if (comm.rank() == 0) {
-                std::cout << "=== total ===" << std::endl;
-                std::cout << " energy (total, cpu, gpu, cpu+gpu) [J] : " << e << " " << e_cpu << " " << e_acc << " "
-                          << e_cpu + e_acc << std::endl;
-            }
+            /* only first rank of each node participates in report generation */
+            power::report(comm);
         }
     }
 #endif
+
 #if defined(SIRIUS_DLAF)
     // Finalization frees DLA-Future grids
     // It needs to be called before finalizing MPI

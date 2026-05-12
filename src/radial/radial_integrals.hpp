@@ -361,6 +361,18 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
         }
         return val;
     }
+
+    inline auto
+    checksum() const
+    {
+        double result{0};
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            for (int i = 0; i < unit_cell_.atom_type(iat).mt_radial_basis_size(); i++) {
+                result += this->values_(i, iat).coeffs().checksum();
+            }
+        }
+        return result;
+    }
 };
 
 template <bool jl_deriv>
