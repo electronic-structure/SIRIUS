@@ -73,6 +73,27 @@ class Atom
     {
     }
 
+    /// Return const reference to corresponding atom type object.
+    inline auto const&
+    type() const
+    {
+        return type_;
+    }
+
+    /// Return reference to corresponding atom symmetry class.
+    inline auto&
+    symmetry_class()
+    {
+        return *symmetry_class_;
+    }
+
+    /// Return const referenced to atom symmetry class.
+    inline auto const&
+    symmetry_class() const
+    {
+        return *symmetry_class_;
+    }
+
     /// Initialize atom.
     inline void
     init()
@@ -328,27 +349,6 @@ class Atom
         // }
     }
 
-    /// Return const reference to corresponding atom type object.
-    inline Atom_type const&
-    type() const
-    {
-        return type_;
-    }
-
-    /// Return reference to corresponding atom symmetry class.
-    inline Atom_symmetry_class&
-    symmetry_class()
-    {
-        return (*symmetry_class_);
-    }
-
-    /// Return const referenced to atom symmetry class.
-    inline Atom_symmetry_class const&
-    symmetry_class() const
-    {
-        return (*symmetry_class_);
-    }
-
     /// Return atom type id.
     inline int
     type_id() const
@@ -357,7 +357,7 @@ class Atom
     }
 
     /// Return atom position in fractional coordinates.
-    inline r3::vector<double> const&
+    inline auto const&
     position() const
     {
         return position_;

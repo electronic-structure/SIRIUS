@@ -103,6 +103,67 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
     return ctx;
 }
 
+inline auto
+get_wave_function_value(r3::vector<double> r__, wf::Wave_functions<double> const& wf__, Unit_cell const& uc__,
+        K_point<double> const& kp__)
+{
+    auto band_id = wf::band_index(0);
+    auto spin_id = wf::spin_index(0);
+
+    int ja{-1}, jr{-1};
+    double dr{0}, tp[2];
+
+    // returned value
+    std::complex<double> val(0, 0);
+
+    if (uc__.is_point_in_mt(r__, ja, jr, dr, tp)) {
+        // ja - index of the atom where r__ belongs to
+        // jr - starting index of the radial grid
+        // dr - distance from radial_grid[jr] to r__
+        // tp - (theta, phi) angles of the point connecting centre of atom ja with r__
+
+        // get MPI location of atom ja
+        auto loc = wf__.spl_num_atoms().location(atom_index_t::global(ja));
+        // this rank holds local set of MT coefficients
+        if (wf__.comm().rank() == loc.ib) {
+
+            auto& atom = uc__.atom(ja);
+
+            // generate Ylm spherical harmonics for the given (theta, phi)
+            std::vector<std::complex<double>> ylm(atom.type().lmmax_apw());
+            sf::spherical_harmonics(atom.type().lmax_apw(), tp[0], tp[1], &ylm[0]);
+
+            // iterate over all atomic basis functions (apw and lo)
+            for (int xi = 0; xi < atom.mt_basis_size(); xi++) {
+                // expansion coefficient
+                auto c = wf__.mt_coeffs(xi, loc.index_local, spin_id, band_id);
+                // lm index of spherical harmonic
+                int lm = atom.type().indexb(xi).lm;
+                // index of radial function 
+                auto idxrf = atom.type().indexb(xi).idxrf;
+                // get derivative of radial function; this is needed for simple linear interpolation
+                auto df = (atom.symmetry_class().radial_function(jr + 1, idxrf) - 
+                           atom.symmetry_class().radial_function(jr, idxrf)) / atom.type().radial_grid().dx(jr);
+
+                val += c * ylm[lm] * (atom.symmetry_class().radial_function(jr, idxrf) + df * dr);
+            }
+        }
+        // broadcast from the rank which computed the sum
+        wf__.comm().bcast(&val, 1, loc.ib);
+
+    } else {
+        // sum over local set of G+k-vectors
+        for (int igloc = 0; igloc < kp__.gkvec().count(); igloc++) {
+            // G+k vector in Cartesian coordinates
+            auto vgc = kp__.gkvec().gvec_cart(gvec_index_t::local(igloc));
+            // plane-wave expansion
+            val += wf__.pw_coeffs(igloc, spin_id, band_id) * std::exp(std::complex<double>(0.0, dot(r__, vgc)));
+        }
+        kp__.gkvec().comm().allreduce(&val, 1);
+    }
+    return val;
+}
+
 auto
 ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
 {

@@ -464,7 +464,6 @@ K_point_set::find_band_occupancies()
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
-    std::array<double, 2> ef_corr{0, 0};
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
         // collinear case with fixed magenetisation
         energy_fermi_ = this->find_efermi_fixed_magn<T>(emin, emax);
