@@ -1,0 +1,61 @@
+{
+  "control" : {
+      "std_evp_solver_name" : "lapack",
+      "gen_evp_solver_name" : "lapack",
+      "verbosity" : 1
+  },
+
+  "parameters" : {
+      "electronic_structure_method" : "full_potential_lapwlo",
+
+      "!num_fv_states" : 40,
+
+      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+      "smearing_width" : 0.025,
+
+      "use_symmetry" : true,
+      
+      "num_mag_dims" : 0,
+
+      "gk_cutoff" : 6.0,
+      "pw_cutoff" : 20.00,
+
+      "energy_tol" : 1e-8,
+      "density_tol" : 1e-6,
+
+      "num_dft_iter" : 100,
+
+      "ngridk" : [4,4,4]
+  },
+
+    "unit_cell" : {
+
+            "lattice_vectors" : [ [0, 3.80402, 3.80402],
+                                  [3.80402, 0, 3.80402],
+                                  [3.80402, 3.80402, 0]
+                                ],
+
+            "atom_types" : ["Li", "F"],
+
+            "atom_files" : {
+                "Li" : "Li.json",
+                "F"  : "F.json"
+            },
+
+            "atoms" : {
+                "F" : [
+                    [0.5, 0.5, 0.5]
+                ],
+                "Li" : [
+                    [0, 0, 0]
+                ]
+            }
+        },
+
+    "mixer" : {
+        "beta" : 0.7,
+        "max_history" : 8
+    }
+
+}
