@@ -116,31 +116,26 @@ end subroutine sirius_initialize
 !> @brief Shut down the SIRIUS library
 !> @param [in] call_mpi_fin If .true. then MPI_Finalize must be called after the shutdown.
 !> @param [in] call_device_reset If .true. then cuda device is reset after shutdown.
-!> @param [in] call_fftw_fin If .true. then fft_cleanup must be called after the shutdown.
 !> @param [out] error_code Error code.
-subroutine sirius_finalize(call_mpi_fin,call_device_reset,call_fftw_fin,error_code)
+subroutine sirius_finalize(call_mpi_fin,call_device_reset,error_code)
 implicit none
 !
 logical, optional, target, intent(in) :: call_mpi_fin
 logical, optional, target, intent(in) :: call_device_reset
-logical, optional, target, intent(in) :: call_fftw_fin
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: call_mpi_fin_ptr
 logical(C_BOOL), target :: call_mpi_fin_c_type
 type(C_PTR) :: call_device_reset_ptr
 logical(C_BOOL), target :: call_device_reset_c_type
-type(C_PTR) :: call_fftw_fin_ptr
-logical(C_BOOL), target :: call_fftw_fin_c_type
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin,error_code)&
+subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,error_code)&
 &bind(C, name="sirius_finalize")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: call_mpi_fin
 type(C_PTR), value :: call_device_reset
-type(C_PTR), value :: call_fftw_fin
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -155,22 +150,14 @@ if (present(call_device_reset)) then
 call_device_reset_c_type = call_device_reset
 call_device_reset_ptr = C_LOC(call_device_reset_c_type)
 endif
-call_fftw_fin_ptr = C_NULL_PTR
-if (present(call_fftw_fin)) then
-call_fftw_fin_c_type = call_fftw_fin
-call_fftw_fin_ptr = C_LOC(call_fftw_fin_c_type)
-endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_ptr,&
-&error_code_ptr)
+call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,error_code_ptr)
 if (present(call_mpi_fin)) then
 endif
 if (present(call_device_reset)) then
-endif
-if (present(call_fftw_fin)) then
 endif
 end subroutine sirius_finalize
 
@@ -3073,6 +3060,14 @@ error_code_ptr = C_LOC(error_code)
 endif
 call sirius_generate_density_aux(gs_handler_ptr,add_core_ptr,transform_to_rg_ptr,&
 &paw_only_ptr,efermi_ptr,error_code_ptr)
+if (present(add_core)) then
+endif
+if (present(transform_to_rg)) then
+endif
+if (present(paw_only)) then
+endif
+if (present(efermi)) then
+endif
 end subroutine sirius_generate_density
 
 !
@@ -7395,7 +7390,7 @@ endif
 end subroutine sirius_set_dftd3_correction
 
 !
-!> @brief Set the parameters controlling the dftd3 correction.
+!> @brief Set the parameters controlling the dftd4 correction.
 !> @param [in] handler Simulation context handler.
 !> @param [in] method family of predefined parameters. Linked to the functional
 !> @param [in] damping damping correction, auto, manual.
