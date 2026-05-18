@@ -38,8 +38,9 @@ test_mpi_alltoall_impl(int M__, int N__)
     rd.calc_offsets();
 
     if (comm.rank() == 0) {
-        printf("number of ranks: %i\n", comm.size());
-        printf("local buffer size: %f Mb\n", spl_M.local_size() * N__ * sizeof(std::complex<double>) / double(1 << 20));
+        std::cout << "number of ranks   : " << comm.size() << std::endl;
+        std::cout << "local buffer size : " <<
+            spl_M.local_size() * N__ * sizeof(std::complex<double>) / double(1 << 20) << " Mb" << std::endl;
     }
 
     /* P MPI ranks reshuffle data. Each rank stores N * M / P elements which it sends and receives.
@@ -49,6 +50,9 @@ test_mpi_alltoall_impl(int M__, int N__)
     auto t0 = time_now();
     comm.alltoall(&a(0, 0), &sd.counts[0], &sd.offsets[0], &b(0, 0), &rd.counts[0], &rd.offsets[0]);
     double t = time_interval(t0);
+    if (comm.rank() == 0) {
+        std::cout << "alltoall time : " << t << " sec" << std::endl;
+    }
 
     comm.alltoall(&b(0, 0), &rd.counts[0], &rd.offsets[0], &a(0, 0), &sd.counts[0], &sd.offsets[0]);
 
@@ -70,8 +74,8 @@ test_mpi_alltoall(cmd_args const& args__)
         perf.push_back(test_mpi_alltoall_impl(M, N));
     }
     if (mpi::Communicator::world().rank() == 0) {
-        printf("average performance: %12.4f GB/s/rank\n", perf.average());
-        printf("sigma: %12.4f GB/s/rank\n", perf.sigma());
+        std::cout << "average performance : " << perf.average() << " GB/s/rank" << std::endl;
+        std::cout << "sigma               : " << perf.sigma() << " GB/s/rank" << std::endl;
     }
     return 0;
 }
