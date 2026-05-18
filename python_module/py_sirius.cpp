@@ -164,8 +164,6 @@ PYBIND11_MODULE(py_sirius, m)
                     /* call MPI_Finalize */
                     true,
                     /* reset device */
-                    false,
-                    /* fftw cleanup */
                     false);
         }
     }));
