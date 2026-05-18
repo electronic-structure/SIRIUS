@@ -370,8 +370,6 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
         fpw_sym[j]      = std::vector<std::complex<double>>(ngv, 0);
     }
 
-    std::vector<char> is_done(ngv, 0);
-
     double norm = 1 / double(sym__.size());
 
     auto phase_factor = [&](int isym, r3::vector<int> G) {
@@ -389,7 +387,7 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
         std::unordered_map<r3::vector<int>, char, fft::r3_int_hash> is_done;
         for (auto igloc : e) {
             auto G = gvec_sym__.gvec_remapped(igloc);
-            is_done[G] = igloc;
+            is_done[G] = 0;
         }
 
         for (auto igloc : e) {
