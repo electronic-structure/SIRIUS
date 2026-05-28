@@ -847,8 +847,8 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
 
         for (int x = 0; x < 3; x++) {
             /* zero lo-lo block */
-            for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
-                for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
+            for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
+                for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
                     h1(irow + kp__->num_gkvec_row(), icol + kp__->num_gkvec_col()) = la::constant<std::complex<double>>::zero();
                     o1(irow + kp__->num_gkvec_row(), icol + kp__->num_gkvec_col()) = la::constant<std::complex<double>>::zero();
                 }
