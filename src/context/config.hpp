@@ -197,7 +197,7 @@ class config_t
             }
             dict_["/settings/auto_enu_tol"_json_pointer] = auto_enu_tol__;
         }
-        /// Initial dimenstions for the fine-grain FFT grid
+        /// Initial dimensions for the fine-grain FFT grid
         inline auto fft_grid_size() const
         {
             return dict_.at("/settings/fft_grid_size"_json_pointer).get<std::array<int, 3>>();
@@ -262,7 +262,7 @@ class config_t
         }
         /// Coverage of sphere in case of spherical harmonics transformation
         /**
-            0 is Lebedev-Laikov coverage, 1 is unifrom coverage
+            0 is Lebedev-Laikov coverage, 1 is uniform coverage
         */
         inline auto sht_coverage() const
         {
@@ -275,7 +275,7 @@ class config_t
             }
             dict_["/settings/sht_coverage"_json_pointer] = sht_coverage__;
         }
-        /// Maximum orbital quantum number for which spherical coverage need to be generated.
+        /// Maximum orbital quantum number for which spherical coverage needs to be generated.
         /**
             This option can be used to increase spherical coverage in muffin-tins. Impacts generation of XC potential.
         */
@@ -483,7 +483,7 @@ class config_t
         }
         /// Restart early when the ratio unconverged vs lockable vectors drops below this threshold.
         /**
-            When there's just a few vectors left unconverged, it can be more efficient to lock the converged ones,
+            When there are just a few vectors left unconverged, it can be more efficient to lock the converged ones,
             such that the dense eigenproblem solved in each Davidson iteration has lower dimension.
             Restarting has some overhead in that it requires updating wave functions.
         */
@@ -525,7 +525,7 @@ class config_t
             }
             dict_["/iterative_solver/residual_tolerance"_json_pointer] = residual_tolerance__;
         }
-        /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used.
+        /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used).
         inline auto relative_tolerance() const
         {
             return dict_.at("/iterative_solver/relative_tolerance"_json_pointer).get<double>();
@@ -667,7 +667,7 @@ class config_t
             // tolerance of occupied bands
             double tol = ctx_.iterative_solver().energy_tolerance();
             // final tolerance of empty bands
-            double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
+            double empty_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
             \endcode
         */
         inline auto tolerance_ratio() const
@@ -712,7 +712,7 @@ class config_t
     inline auto& iterative_solver() {return iterative_solver_;}
     /// Control parameters
     /**
-        Parameters of the 'control' input sections do not in general change the numerics,
+        Parameters of the 'control' input section do not in general change the numerics,
         but instead control how the results are obtained. Changing parameters in control section should
         not change the significant digits in final results.
     */
@@ -842,7 +842,7 @@ class config_t
         }
         /// Level of verbosity.
         /**
-            The following convention in proposed:
+            The following convention is proposed:
               - 0: silent mode (no output is printed)
               - 1: basic output (low level of output)
               - 2: extended output (medium level of output)
@@ -982,6 +982,18 @@ class config_t
             }
             dict_["/control/save_rf"_json_pointer] = save_rf__;
         }
+        /// Save wave-functions.
+        inline auto save_wf() const
+        {
+            return dict_.at("/control/save_wf"_json_pointer).get<bool>();
+        }
+        inline void save_wf(bool save_wf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/save_wf"_json_pointer] = save_wf__;
+        }
         /// Type of the output stream (stdout:, file:name)
         inline auto output() const
         {
@@ -1013,7 +1025,7 @@ class config_t
     inline auto& control() {return control_;}
     /// Parameters of the simulation.
     /**
-        Most of this parameters control the behavior of high-level classes
+        Most of these parameters control the behavior of high-level classes
         like sirius::DFT_ground_state.
     */
     class parameters_t
@@ -1239,7 +1251,7 @@ class config_t
             }
             dict_["/parameters/num_mag_dims"_json_pointer] = num_mag_dims__;
         }
-        /// A choice of scaleing muffin-tin radii automatically.
+        /// A choice of scaling muffin-tin radii automatically.
         inline auto auto_rmt() const
         {
             return dict_.at("/parameters/auto_rmt"_json_pointer).get<int>();
@@ -1323,7 +1335,7 @@ class config_t
             }
             dict_["/parameters/density_tol"_json_pointer] = density_tol__;
         }
-        ///  True if this is a molecule calculation.
+        /// True if this is a molecule calculation.
         inline auto molecule() const
         {
             return dict_.at("/parameters/molecule"_json_pointer).get<bool>();
@@ -1749,7 +1761,7 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// name of the xc functional that determinates the default parameters. It should match the XC functional from libxc
+        /// name of the XC functional that determines the default parameters. It should match the XC functional from libxc
         inline auto method() const
         {
             return dict_.at("/dftd4/method"_json_pointer).get<std::string>();
@@ -1808,7 +1820,7 @@ class config_t
                 : dict_(dict__)
             {
             }
-            /// Enable custom dampping parameters. All parameters should be specified.
+            /// Enable custom damping parameters. All parameters should be specified.
             inline auto enable() const
             {
                 return dict_.at("/dftd4/parameters/enable"_json_pointer).get<bool>();
@@ -1962,7 +1974,7 @@ class config_t
             }
             dict_["/dftd3/three_body"_json_pointer] = three_body__;
         }
-        /// name of the xc functional that determinates the default parameters. It should match the XC functional from libxc
+        /// name of the xc functional that determines the default parameters. It should match the XC functional from libxc
         inline auto method() const
         {
             return dict_.at("/dftd3/method"_json_pointer).get<std::string>();
@@ -2136,7 +2148,7 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions
+        /// Method to use for generating the Hubbard subspace. [none] bare Hubbard orbitals,  [full_orthogonalization] use all atomic wave functions to generate the Hubbard subspace, [normalize] normalize the original Hubbard wave functions, [orthogonalize] orthogonalize the Hubbard wave functions
         inline auto hubbard_subspace_method() const
         {
             return dict_.at("/hubbard/hubbard_subspace_method"_json_pointer).get<std::string>();
@@ -2160,7 +2172,7 @@ class config_t
             }
             dict_["/hubbard/simplified"_json_pointer] = simplified__;
         }
-        /// Use constrained hubbard occupations number. Occupation matrices should be given
+        /// Use constrained Hubbard occupations number. Occupation matrices should be given
         inline auto constrained_calculation() const
         {
             return dict_.at("/hubbard/constrained_calculation"_json_pointer).get<bool>();
@@ -2196,7 +2208,7 @@ class config_t
             }
             dict_["/hubbard/constraint_max_iteration"_json_pointer] = constraint_max_iteration__;
         }
-        /// Mixing parameters for the constrained hubbard
+        /// Mixing parameters for the constrained Hubbard
         inline auto constraint_beta_mixing() const
         {
             return dict_.at("/hubbard/constraint_beta_mixing"_json_pointer).get<double>();
@@ -2220,7 +2232,7 @@ class config_t
             }
             dict_["/hubbard/constraint_strength"_json_pointer] = constraint_strength__;
         }
-        /// criteria used during the constraining process
+        /// Criteria used during the constraining process.
         inline auto constraint_method() const
         {
             return dict_.at("/hubbard/constraint_method"_json_pointer).get<std::string>();
@@ -2232,7 +2244,7 @@ class config_t
             }
             dict_["/hubbard/constraint_method"_json_pointer] = constraint_method__;
         }
-        /// set of matrices containing the occupation numbers a given atomic level
+        /// Set of matrices containing the occupation numbers for a given atomic level.
         class local_constraint_t
         {
           private:
