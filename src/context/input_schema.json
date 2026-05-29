@@ -98,7 +98,7 @@
                         0,
                         0
                     ],
-                    "title": "Initial dimenstions for the fine-grain FFT grid"
+                    "title": "Initial dimensions for the fine-grain FFT grid"
                 },
                 "pseudo_grid_cutoff": {
                     "type": "number",
@@ -125,12 +125,12 @@
                     "type": "integer",
                     "default": 0,
                     "title": "Coverage of sphere in case of spherical harmonics transformation",
-                    "description": "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
+                    "description": "0 is Lebedev-Laikov coverage, 1 is uniform coverage"
                 },
                 "sht_lmax": {
                     "type": "integer",
                     "default": -1,
-                    "title": "Maximum orbital quantum number for which spherical coverage need to be generated.",
+                    "title": "Maximum orbital quantum number for which spherical coverage needs to be generated.",
                     "description": "This option can be used to increase spherical coverage in muffin-tins. Impacts generation of XC potential."
                 },
                 "fp32_to_fp64_rms": {
@@ -290,7 +290,7 @@
                     "type": "number",
                     "default": 0.5,
                     "title": "Restart early when the ratio unconverged vs lockable vectors drops below this threshold.",
-                    "description": "When there's just a few vectors left unconverged, it can be more efficient to lock the converged ones,\nsuch that the dense eigenproblem solved in each Davidson iteration has lower dimension.\nRestarting has some overhead in that it requires updating wave functions."
+                    "description": "When there are just a few vectors left unconverged, it can be more efficient to lock the converged ones,\nsuch that the dense eigenproblem solved in each Davidson iteration has lower dimension.\nRestarting has some overhead in that it requires updating wave functions."
                 },
                 "energy_tolerance": {
                     "type": "number",
@@ -306,7 +306,7 @@
                 "relative_tolerance": {
                     "type": "number",
                     "default": 0,
-                    "title": "Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used."
+                    "title": "Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used)."
                 },
                 "empty_states_tolerance": {
                     "type": "number",
@@ -366,7 +366,7 @@
                     "type": "number",
                     "default": 0,
                     "title": "Fine control of the empty states tolerance.",
-                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
+                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver().energy_tolerance();\n// final tolerance of empty bands\ndouble empty_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
                 },
                 "tolerance_scale": {
                     "type": "array",
@@ -387,7 +387,7 @@
         "control": {
             "type": "object",
             "title": "Control parameters",
-            "description": "Parameters of the 'control' input sections do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
+            "description": "Parameters of the 'control' input section do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
             "properties": {
                 "mpi_grid_dims": {
                     "type": "array",
@@ -477,7 +477,7 @@
                     "type": "integer",
                     "default": 0,
                     "title": "Level of verbosity.",
-                    "description": "The following convention in proposed:\n  - 0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
+                    "description": "The following convention is proposed:\n  - 0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
                 },
                 "verification": {
                     "type": "integer",
@@ -545,7 +545,7 @@
         "parameters": {
             "type": "object",
             "title": "Parameters of the simulation.",
-            "description": "Most of this parameters control the behavior of high-level classes\nlike sirius::DFT_ground_state.",
+            "description": "Most of these parameters control the behavior of high-level classes\nlike sirius::DFT_ground_state.",
             "properties": {
                 "electronic_structure_method": {
                     "type": "string",
@@ -675,7 +675,7 @@
                 "auto_rmt": {
                     "type": "integer",
                     "default": 1,
-                    "title": "A choice of scaleing muffin-tin radii automatically."
+                    "title": "A choice of scaling muffin-tin radii automatically."
                 },
                 "ngridk": {
                     "type": "array",
@@ -736,7 +736,7 @@
                 "molecule": {
                     "type": "boolean",
                     "default": false,
-                    "title": " True if this is a molecule calculation."
+                    "title": "True if this is a molecule calculation."
                 },
                 "gamma_point": {
                     "type": "boolean",
@@ -1055,7 +1055,7 @@
                         "lcwpbe",
                         "lcwpbeh"
                     ],
-                    "title": "name of the xc functional that determinates the default parameters. It should match the XC functional from libxc"
+                    "title": "name of the XC functional that determines the default parameters. It should match the XC functional from libxc"
                 },
                 "damping": {
                     "type": "string",
@@ -1091,7 +1091,7 @@
                         "enable": {
                             "type": "boolean",
                             "default": false,
-                            "title": "Enable custom dampping parameters. All parameters should be specified."
+                            "title": "Enable custom damping parameters. All parameters should be specified."
                         },
                         "s6": {
                             "type": "number",
@@ -1353,7 +1353,7 @@
                         "x3lyp",
                         "xlyp"
                     ],
-                    "title": "name of the xc functional that determinates the default parameters. It should match the XC functional from libxc"
+                    "title": "name of the xc functional that determines the default parameters. It should match the XC functional from libxc"
                 },
                 "damping": {
                     "type": "string",
@@ -1443,7 +1443,7 @@
                         "normalize",
                         "orthogonalize"
                     ],
-                    "title": "Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions"
+                    "title": "Method to use for generating the Hubbard subspace. [none] bare Hubbard orbitals,  [full_orthogonalization] use all atomic wave functions to generate the Hubbard subspace, [normalize] normalize the original Hubbard wave functions, [orthogonalize] orthogonalize the Hubbard wave functions"
                 },
                 "simplified": {
                     "type": "boolean",
@@ -1453,7 +1453,7 @@
                 "constrained_calculation": {
                     "type": "boolean",
                     "default": false,
-                    "title": "Use constrained hubbard occupations number. Occupation matrices should be given"
+                    "title": "Use constrained Hubbard occupations number. Occupation matrices should be given"
                 },
                 "constraint_error": {
                     "type": "number",
@@ -1468,7 +1468,7 @@
                 "constraint_beta_mixing": {
                     "type": "number",
                     "default": 0.4,
-                    "title": "Mixing parameters for the constrained hubbard"
+                    "title": "Mixing parameters for the constrained Hubbard"
                 },
                 "constraint_strength": {
                     "type": "number",
@@ -1482,7 +1482,7 @@
                         "energy",
                         "occupation"
                     ],
-                    "title": "criteria used during the constraining process"
+                    "title": "Criteria used during the constraining process."
                 },
                 "local_constraint": {
                     "type": "array",
@@ -1527,7 +1527,7 @@
                         }
                     },
                     "default": [],
-                    "title": "set of matrices containing the occupation numbers a given atomic level"
+                    "title": "Set of matrices containing the occupation numbers for a given atomic level."
                 },
                 "local": {
                     "type": "array",

@@ -826,6 +826,29 @@ class Wave_functions : public Wave_functions_mt<T>
         }
         return cs;
     }
+
+    /// Gather full wave-function coefficients for one spin component and one band.
+    /** The returned vector contains all plane-wave coefficients first, followed by
+     *  all muffin-tin coefficients. The result is available on every rank.
+     */
+    inline auto
+    gather(spin_index s__, band_index b__) const
+    {
+        auto s = this->actual_spin_index(s__);
+
+        std::vector<std::complex<T>> result(gkvec_->num_gvec() + this->mt_coeffs_distr_.size());
+
+        if (gkvec_->num_gvec()) {
+            auto sendbuf = gkvec_->count() ? this->at(memory_t::host, 0, s, b__) : nullptr;
+            this->comm_.allgather(sendbuf, result.data(), gkvec_->count(), gkvec_->offset());
+        }
+        if (this->mt_coeffs_distr_.size()) {
+            auto sendbuf = this->num_mt_ ? this->at(memory_t::host, this->num_pw_, s, b__) : nullptr;
+            this->comm_.allgather(sendbuf, this->num_mt_, result.data() + gkvec_->num_gvec(),
+                                  this->mt_coeffs_distr_.counts.data(), this->mt_coeffs_distr_.offsets.data());
+        }
+        return result;
+    }
 };
 
 struct shuffle_to

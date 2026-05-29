@@ -542,6 +542,14 @@ class HDF5_tree
         write(name, &vec[0], (int)vec.size());
     }
 
+    /// Write a vector by name.
+    template <typename T>
+    void
+    write(std::string const& name, std::vector<std::complex<T>> const& vec)
+    {
+        write(name, reinterpret_cast<T const*>(&vec[0]), 2 * (int)vec.size());
+    }
+
     void
     write(std::string const& name, std::string const& str)
     {
