@@ -531,7 +531,7 @@ class HDF5_tree
     write(int name_id, std::vector<T> const& vec)
     {
         std::string name = std::to_string(name_id);
-        write(name, &vec[0], (int)vec.size());
+        write(name, vec.data(), (int)vec.size());
     }
 
     /// Write a vector by name.
@@ -539,7 +539,7 @@ class HDF5_tree
     void
     write(std::string const& name, std::vector<T> const& vec)
     {
-        write(name, &vec[0], (int)vec.size());
+        write(name, vec.data(), (int)vec.size());
     }
 
     /// Write a vector by name.
@@ -547,7 +547,7 @@ class HDF5_tree
     void
     write(std::string const& name, std::vector<std::complex<T>> const& vec)
     {
-        write(name, reinterpret_cast<T const*>(&vec[0]), 2 * (int)vec.size());
+        write(name, reinterpret_cast<T const*>(vec.data()), 2 * (int)vec.size());
     }
 
     void
@@ -672,7 +672,7 @@ class HDF5_tree
         read(name, data);
     }
 
-    /// Read a vector or a scalar.
+    /// Read a vector or a scalar into a pointer.
     template <typename T>
     void
     read(std::string const& name, T* data, int size)
@@ -682,6 +682,7 @@ class HDF5_tree
         read(name, data, dims);
     }
 
+    /// Read a vector.
     template <typename T>
     void
     read(int name_id, std::vector<T>& vec)
@@ -689,11 +690,19 @@ class HDF5_tree
         read(std::to_string(name_id), &vec[0], (int)vec.size());
     }
 
+    /// Read a vector.
     template <typename T>
     void
     read(std::string const& name, std::vector<T>& vec)
     {
-        read(name, &vec[0], (int)vec.size());
+        read(name, vec.data(), (int)vec.size());
+    }
+
+    template <typename T>
+    void
+    read(std::string const& name, std::vector<std::complex<T>>& vec)
+    {
+        read(name, reinterpret_cast<T*>(vec.data()), 2 * (int)vec.size());
     }
 
     inline void

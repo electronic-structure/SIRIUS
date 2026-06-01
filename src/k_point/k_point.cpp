@@ -519,10 +519,8 @@ K_point<T>::get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const
   /K_point_set/ik/vk
   /K_point_set/ik/band_energies
   /K_point_set/ik/band_occupancies
-  /K_point_set/ik/gkvec
   /K_point_set/ik/gvec
-  /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/pw
-  /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/mt
+  /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/coeffs
   \endverbatim
 */
 template <typename T>
@@ -547,6 +545,8 @@ K_point<T>::save(std::string const& name__, int id__) const
                 gv(x, i) = v[x];
             }
         }
+        fout["K_point_set"][id__].write("num_gkvec", this->num_gkvec());
+        fout["K_point_set"][id__].write("gklo_basis_size", this->gklo_basis_size());
         fout["K_point_set"][id__].write("gvec", gv);
         fout["K_point_set"][id__].create_node("bands");
         for (int i = 0; i < ctx_.num_bands(); i++) {
@@ -580,17 +580,11 @@ K_point<T>::save(std::string const& name__, int id__) const
 
 template <typename T>
 void
-K_point<T>::load(HDF5_tree h5in, int id)
+K_point<T>::load(HDF5_tree h5in__)
 {
-    RTE_THROW("not implemented");
-    //== band_energies_.resize(ctx_.num_bands());
-    //== h5in[id].read("band_energies", band_energies_);
-
-    //== band_occupancies_.resize(ctx_.num_bands());
-    //== h5in[id].read("band_occupancies", band_occupancies_);
-    //==
-    //== h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_);
-    //== h5in[id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
+    h5in__.read("band_energies", band_energies_);
+    h5in__.read("band_occupancies", band_occupancies_);
+    mdarray<int, 2> gv({3, num_gkvec()});
 }
 
 template <typename T>

@@ -849,6 +849,23 @@ class Wave_functions : public Wave_functions_mt<T>
         }
         return result;
     }
+
+    inline auto
+    scatter(std::vector<std::complex<T>> const& data__, spin_index s__, band_index b__)
+    {
+        auto s = this->actual_spin_index(s__);
+
+        if (gkvec_->count()) {
+            std::copy(data__.data() + gkvec_->offset(), data__.data() + gkvec_->offset() + gkvec_->count(),
+                      this->at(memory_t::host, 0, s, b__));
+        }
+        if (this->num_mt_) {
+            int r = this->comm_.rank();
+            std::copy(data__.data() + gkvec_->num_gvec(),
+                      data__.data() + gkvec_->num_gvec() + this->mt_coeffs_distr_.offset[r],
+                      this->at(memory_t::host, this->num_pw_, s, b__));
+        }
+    }
 };
 
 struct shuffle_to

@@ -332,7 +332,7 @@ class K_point
     save(std::string const& name__, int id__) const;
 
     void
-    load(HDF5_tree h5in, int id);
+    load(HDF5_tree h5in__);
 
     /// Collect distributed first-variational vectors into a global array.
     void
