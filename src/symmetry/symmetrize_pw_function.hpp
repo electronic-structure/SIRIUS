@@ -84,7 +84,7 @@ namespace sirius {
     \param [in] num_mag_dims      Number of magnetic dimensions.
     \param [inout] frg            Array of pointers to scalar and vector parts of the filed being symmetrized.
  */
-template <int num_mag_dims>
+template <int num_mag_dims> /* keep this variant for verification */
 inline void
 symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
                             mdarray<std::complex<double>, 3> const& sym_phase_factors__,
@@ -114,25 +114,12 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
 
     double const eps{1e-9};
 
-    //mdarray<int, 2> index_by_gvec({sym__.size(), ngv}, get_memory_pool(memory_t::host));
-    //#pragma omp parallel for
-    //for (int igloc = 0; igloc < ngv; igloc++) {
-    //    for (int i = 0; i < sym__.size(); i++) {
-    //        auto G = gvec_sym__.gvec_remapped(igloc);
-    //        auto G1 = r3::dot(G, sym__[i].spg_op.R);
-    //        index_by_gvec(i, igloc) = gvec_sym__.index_by_gvec(G1);
-    //    }
-    //}
-
     PROFILE_START("sirius::symmetrize|fpw|local");
 
     #pragma omp parallel
     {
         int nt  = omp_get_max_threads();
         int tid = omp_get_thread_num();
-
-        double t0;
-        double ta{0}, tb{0};
 
         for (int igloc = 0; igloc < ngv; igloc++) {
             auto G = gvec_sym__.gvec_remapped(igloc);
@@ -152,8 +139,6 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
             /* each thread is working on full shell of G-vectors */
             if (igsh % nt == tid && !is_done[igloc]) {
 
-                t0 = omp_get_wtime();
-
                 std::complex<double> symf(0, 0);
                 std::complex<double> symx(0, 0);
                 std::complex<double> symy(0, 0);
@@ -170,7 +155,6 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
 
                     /* local index of a rotated G-vector */
                     int ig1 = gvec_sym__.index_by_gvec(G1);
-                    //int ig1 = index_by_gvec(i, igloc);
 
                     bool conj_coeff{false};
 
@@ -224,17 +208,12 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
                     }
                 } /* loop over symmetries */
 
-                ta += (omp_get_wtime() - t0);
-
                 symf *= norm;
                 symx *= norm;
                 symy *= norm;
                 symz *= norm;
 
-                t0 = omp_get_wtime();
-
                 /* apply symmetry operation and get all other plane-wave coefficients */
-
                 for (int isym = 0; isym < sym__.size(); isym++) {
                     auto const& S = sym__[isym].spin_rotation;
 
@@ -309,10 +288,8 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
                         }
                     }
                 } /* loop over symmetries */
-                tb += (omp_get_wtime() - t0);
             }
         } /* loop over igloc */
-        std::cout << "thread : " << tid << ", ta : " << ta << ", tb : " << tb << std::endl;
     }
     PROFILE_STOP("sirius::symmetrize|fpw|local");
 
