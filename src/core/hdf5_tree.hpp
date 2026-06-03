@@ -510,8 +510,7 @@ class HDF5_tree
     void
     write(std::string const& name, T const* data, int size)
     {
-        std::vector<int> dims(1);
-        dims[0] = size;
+        std::vector<int> dims = {size};
         write(name, data, dims);
     }
 
@@ -520,8 +519,7 @@ class HDF5_tree
     void
     write(std::string const& name, T data)
     {
-        std::vector<int> dims(1);
-        dims[0] = 1;
+        std::vector<int> dims = {1};
         write(name, &data, dims);
     }
 
@@ -641,16 +639,16 @@ class HDF5_tree
         write_attribute(name, std::vector<T>(data), dataset_name);
     }
 
-    template <int N>
+    template <typename T, int N>
     void
-    read(std::string const& name, mdarray<std::complex<double>, N>& data)
+    read(std::string const& name, mdarray<std::complex<T>, N>& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        read(name, (double*)data.at(memory_t::host), dims);
+        read(name, reinterpret_cast<T*>(data.at(memory_t::host)), dims);
     }
 
     template <typename T, int N>
@@ -677,8 +675,7 @@ class HDF5_tree
     void
     read(std::string const& name, T* data, int size)
     {
-        std::vector<int> dims(1);
-        dims[0] = size;
+        std::vector<int> dims = {size};
         read(name, data, dims);
     }
 
@@ -687,7 +684,7 @@ class HDF5_tree
     void
     read(int name_id, std::vector<T>& vec)
     {
-        read(std::to_string(name_id), &vec[0], (int)vec.size());
+        read(std::to_string(name_id), vec.data(), (int)vec.size());
     }
 
     /// Read a vector.

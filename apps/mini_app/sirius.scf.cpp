@@ -31,6 +31,7 @@ struct task_t
     static const int ground_state_new_relax   = 5;
     static const int ground_state_new_vcrelax = 6;
     static const int fixed_mag                = 7;
+    static const int plot_wf                  = 8;
 };
 
 void

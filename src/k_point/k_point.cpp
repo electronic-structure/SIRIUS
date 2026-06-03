@@ -527,15 +527,18 @@ template <typename T>
 void
 K_point<T>::save(std::string const& name__, int id__) const
 {
-    /* rank 0 creates placeholders in the HDF5 file */
+    std::unique_ptr<HDF5_tree> fout;
+    /* rank 0 opens a file and writes common data */
     if (comm().rank() == 0) {
         /* open file with write access */
-        HDF5_tree fout(name__, hdf5_access_t::read_write);
+        fout = std::make_unique<HDF5_tree>(name__, hdf5_access_t::read_write);
+        auto& out = *fout;
+
         /* create /K_point_set/ik */
-        fout["K_point_set"].create_node(id__);
-        fout["K_point_set"][id__].write("vk", &vk_[0], 3);
-        fout["K_point_set"][id__].write("band_energies", band_energies_);
-        fout["K_point_set"][id__].write("band_occupancies", band_occupancies_);
+        out["K_point_set"].create_node(id__);
+        out["K_point_set"][id__].write("vk", &vk_[0], 3);
+        out["K_point_set"][id__].write("band_energies", band_energies_);
+        out["K_point_set"][id__].write("band_occupancies", band_occupancies_);
 
         /* save the order of G-vectors */
         mdarray<int, 2> gv({3, num_gkvec()});
@@ -545,24 +548,19 @@ K_point<T>::save(std::string const& name__, int id__) const
                 gv(x, i) = v[x];
             }
         }
-        fout["K_point_set"][id__].write("num_gkvec", this->num_gkvec());
-        fout["K_point_set"][id__].write("gklo_basis_size", this->gklo_basis_size());
-        fout["K_point_set"][id__].write("gvec", gv);
-        fout["K_point_set"][id__].create_node("bands");
+        out["K_point_set"][id__].write("num_gkvec", this->num_gkvec());
+        out["K_point_set"][id__].write("gklo_basis_size", this->gklo_basis_size());
+        out["K_point_set"][id__].write("gvec", gv);
+        out["K_point_set"][id__].create_node("bands");
         for (int i = 0; i < ctx_.num_bands(); i++) {
-            fout["K_point_set"][id__]["bands"].create_node(i);
-            fout["K_point_set"][id__]["bands"][i].create_node("spinor_wave_function");
+            out["K_point_set"][id__]["bands"].create_node(i);
+            out["K_point_set"][id__]["bands"][i].create_node("spinor_wave_function");
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                fout["K_point_set"][id__]["bands"][i]["spinor_wave_function"].create_node(ispn);
+                out["K_point_set"][id__]["bands"][i]["spinor_wave_function"].create_node(ispn);
+                ///* new format */
+                //fout["K_point_set"][id__]["bands"][i].create_node(ispn);
             }
         }
-    }
-    /* wait for rank 0 */
-    comm().barrier();
-    std::unique_ptr<HDF5_tree> fout;
-    /* rank 0 opens a file */
-    if (comm().rank() == 0) {
-        fout = std::make_unique<HDF5_tree>(name__, hdf5_access_t::read_write);
     }
 
     /* store wave-functions */
@@ -573,9 +571,14 @@ K_point<T>::save(std::string const& name__, int id__) const
             if (comm().rank() == 0) {
                 (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("coeffs", wf);
             }
-         }
-         comm().barrier();
-     }
+            //wf = this->spinor_wave_functions().gather_pw(wf::spin_index(ispn), wf::band_index(i));
+            //if (comm().rank() == 0) {
+            //    (*fout)["K_point_set"][id__]["bands"][i][ispn].write("pw", wf);
+            //}
+        }
+    }
+    fout = nullptr;
+    comm().barrier();
 }
 
 template <typename T>
@@ -584,7 +587,43 @@ K_point<T>::load(HDF5_tree h5in__)
 {
     h5in__.read("band_energies", band_energies_);
     h5in__.read("band_occupancies", band_occupancies_);
+    int num_gkvec_in;
+    h5in__.read("num_gkvec", &num_gkvec_in, 1);
+    if (num_gkvec_in != this->num_gkvec()) {
+        RTE_THROW("wrong number of G+k vectors");
+    }
+    int gklo_basis_size_in;
+    h5in__.read("gklo_basis_size", &gklo_basis_size_in, 1);
+    if (gklo_basis_size_in != this->gklo_basis_size()) {
+        RTE_THROW("wrong LAPW+lo basis size");
+    }
+    // read the order of G-vectors
     mdarray<int, 2> gv({3, num_gkvec()});
+    h5in__.read("gvec", gv);
+
+    std::vector<std::complex<T>> tmp(num_gkvec());
+
+    for (int i = 0; i < ctx_.num_bands(); i++) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* gather wave-functions */
+            std::vector<std::complex<T>> wf(this->gklo_basis_size());
+            if (comm().rank() == 0) {
+                h5in__["bands"][i]["spinor_wave_function"][ispn].read("coeffs", wf);
+                /* now we need to rearrange G-vectors in the new order */
+                #pragma omp parallel for
+                for (int i = 0; i < num_gkvec(); i++) {
+                    auto gv_old = r3::vector<int>(gv(0, i), gv(1, i), gv(2, i));
+                    /* index in the new order */
+                    int ig = this->gkvec().index_by_gvec(gv_old);
+                    tmp[ig] = wf[i];
+                }
+                /* replace the order */
+                std::copy(wf.begin(), wf.begin() + num_gkvec(), tmp.begin());
+            }
+            comm().bcast(wf.data(), wf.size(), 0);
+            this->spinor_wave_functions().scatter(wf, wf::spin_index(ispn), wf::band_index(i));
+        }
+    }
 }
 
 template <typename T>

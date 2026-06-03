@@ -706,49 +706,4 @@ K_point_set::load(std::string const& name__)
     this->sync_band<double, sync_band_t::occupancy>();
 }
 
-//==
-//== void K_point_set::load_wave_functions()
-//== {
-//==     HDF5_tree fin(storage_file_name, false);
-//==     int num_spins;
-//==     fin["parameters"].read("num_spins", &num_spins);
-//==     if (num_spins != ctx_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
-//==
-//==     int num_bands;
-//==     fin["parameters"].read("num_bands", &num_bands);
-//==     if (num_bands != ctx_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
-//==
-//==     int num_kpoints_in;
-//==     fin["parameters"].read("num_kpoints", &num_kpoints_in);
-//==
-//==     // ==================================================================
-//==     // index of current k-points in the hdf5 file, which (in general) may
-//==     // contain a different set of k-points
-//==     // ==================================================================
-//==     std::vector<int> ikidx(num_kpoints(), -1);
-//==     // read available k-points
-//==     double vk_in[3];
-//==     for (int jk = 0; jk < num_kpoints_in; jk++)
-//==     {
-//==         fin["kpoints"][jk].read("coordinates", vk_in, 3);
-//==         for (int ik = 0; ik < num_kpoints(); ik++)
-//==         {
-//==             r3::vector<double> dvk;
-//==             for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
-//==             if (dvk.length() < 1e-12)
-//==             {
-//==                 ikidx[ik] = jk;
-//==                 break;
-//==             }
-//==         }
-//==     }
-//==
-//==     for (int ik = 0; ik < num_kpoints(); ik++)
-//==     {
-//==         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
-//==
-//==         if (ctx_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
-//==     }
-//== }
-
 } // namespace sirius

@@ -851,6 +851,18 @@ class Wave_functions : public Wave_functions_mt<T>
     }
 
     inline auto
+    gather_pw(spin_index s__, band_index b__) const
+    {
+        auto s = this->actual_spin_index(s__);
+
+        std::vector<std::complex<T>> result(gkvec_->num_gvec());
+
+        auto sendbuf = gkvec_->count() ? this->at(memory_t::host, 0, s, b__) : nullptr;
+        this->comm_.allgather(sendbuf, result.data(), gkvec_->count(), gkvec_->offset());
+        return result;
+    }
+
+    inline auto
     scatter(std::vector<std::complex<T>> const& data__, spin_index s__, band_index b__)
     {
         auto s = this->actual_spin_index(s__);
@@ -862,7 +874,7 @@ class Wave_functions : public Wave_functions_mt<T>
         if (this->num_mt_) {
             int r = this->comm_.rank();
             std::copy(data__.data() + gkvec_->num_gvec(),
-                      data__.data() + gkvec_->num_gvec() + this->mt_coeffs_distr_.offset[r],
+                      data__.data() + gkvec_->num_gvec() + this->mt_coeffs_distr_.offsets[r],
                       this->at(memory_t::host, this->num_pw_, s, b__));
         }
     }
