@@ -118,17 +118,16 @@ operator<<(std::ostream& out, ffmt&& f)
 /// Print std::vector to ostream.
 template <typename T>
 inline std::ostream&
-operator<<(std::ostream& out, std::vector<T>& v)
+operator<<(std::ostream& out, std::vector<T> const& v)
 {
-    if (v.size() == 0) {
-        out << "{}";
-    } else {
-        out << "{";
-        for (size_t i = 0; i < v.size() - 1; i++) {
-            out << v[i] << ", ";
+    out << "{";
+    for (std::size_t i = 0; i < v.size(); ++i) {
+        if (i != 0) {
+            out << ", ";
         }
-        out << v.back() << "}";
+        out << v[i];
     }
+    out << "}";
     return out;
 }
 

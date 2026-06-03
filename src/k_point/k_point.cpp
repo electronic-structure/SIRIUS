@@ -23,12 +23,12 @@ K_point<T>::initialize()
 {
     PROFILE("sirius::K_point::initialize");
 
-    zil_.resize(ctx_.unit_cell().lmax_apw() + 1);
-    for (int l = 0; l <= ctx_.unit_cell().lmax_apw(); l++) {
+    zil_.resize(unit_cell_.lmax_apw() + 1);
+    for (int l = 0; l <= unit_cell_.lmax_apw(); l++) {
         zil_[l] = std::pow(std::complex<T>(0, 1), l);
     }
 
-    l_by_lm_ = sf::l_by_lm(ctx_.unit_cell().lmax_apw());
+    l_by_lm_ = sf::l_by_lm(unit_cell_.lmax_apw());
 
     int bs = ctx_.cyclic_block_size();
 
@@ -196,11 +196,11 @@ K_point<T>::generate_hubbard_orbitals()
     int nwf               = num_ps_atomic_wf.first;
 
     /* generate the initial atomic wavefunctions (full set composed of all atoms wfs) */
-    std::vector<int> atoms(ctx_.unit_cell().num_atoms());
+    std::vector<int> atoms(unit_cell_.num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
 
     this->generate_atomic_wave_functions(
-            atoms, [&](int iat) { return &ctx_.unit_cell().atom_type(iat).indexb_wfs(); }, *ctx_.ri().ps_atomic_wf_,
+            atoms, [&](int iat) { return &unit_cell_.atom_type(iat).indexb_wfs(); }, *ctx_.ri().ps_atomic_wf_,
             *atomic_wave_functions_);
 
     auto pcs = env::print_checksum();
@@ -281,8 +281,8 @@ K_point<T>::generate_hubbard_orbitals()
 
     auto num_hubbard_wf = unit_cell_.num_hubbard_wf();
 
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        auto& atom = ctx_.unit_cell().atom(ia);
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom = unit_cell_.atom(ia);
         auto& type = atom.type();
         if (type.hubbard_correction()) {
             /* loop over Hubbard orbitals of the atom */
@@ -387,7 +387,7 @@ K_point<T>::update()
 {
     PROFILE("sirius::K_point::update");
 
-    gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
+    gkvec_->lattice_vectors(unit_cell_.reciprocal_lattice_vectors());
     gkvec_partition_->update_gkvec_cart();
 
     if (ctx_.full_potential()) {
@@ -445,9 +445,9 @@ K_point<T>::get_fv_eigen_vectors(mdarray<std::complex<T>, 2>& fv_evec__) const
         for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
             /* offset in the global index of local orbitals */
             int offs{0};
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 /* number of atom local orbitals */
-                int nlo  = ctx_.unit_cell().atom(ia).mt_lo_basis_size();
+                int nlo  = unit_cell_.atom(ia).mt_lo_basis_size();
                 auto loc = fv_eigen_vectors_slab_->spl_num_atoms().location(typename atom_index_t::global(ia));
                 if (loc.ib == this->comm().rank()) {
                     for (int xi = 0; xi < nlo; xi++) {
@@ -606,7 +606,7 @@ K_point<T>::load(HDF5_tree h5in__)
     for (int i = 0; i < ctx_.num_bands(); i++) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* gather wave-functions */
-            std::vector<std::complex<T>> wf(this->gklo_basis_size());
+            std::vector<std::complex<T>> wf(num_gkvec() + unit_cell_.mt_aw_basis_size() + unit_cell_.mt_lo_basis_size());
             if (comm().rank() == 0) {
                 h5in__["bands"][i]["spinor_wave_function"][ispn].read("coeffs", wf);
                 /* now we need to rearrange G-vectors in the new order */

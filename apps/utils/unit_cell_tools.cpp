@@ -105,8 +105,7 @@ create_supercell(cmd_args const& args__)
     json dict;
     dict["unit_cell"] = ctx_sc.unit_cell().serialize();
     if (mpi::Communicator::world().rank() == 0) {
-        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        write_json_to_file(dict, "unit_cell.json");
     }
 }
 
@@ -166,8 +165,7 @@ find_primitive()
     json dict;
     dict["unit_cell"] = ctx_new.unit_cell().serialize();
     if (mpi::Communicator::world().rank() == 0) {
-        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        write_json_to_file(dict, "unit_cell.json");
     }
 }
 
@@ -276,8 +274,7 @@ convert_to_mol(cmd_args& args__)
     dict["unit_cell"]                          = ctx.unit_cell().serialize(true);
     dict["unit_cell"]["atom_coordinate_units"] = "au";
     if (mpi::Communicator::world().rank() == 0) {
-        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        write_json_to_file(dict, "unit_cell.json");
     }
 }
 
@@ -312,8 +309,7 @@ scale_lattice(cmd_args& args__)
         }
     }
     if (mpi::Communicator::world().rank() == 0) {
-        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        write_json_to_file(dict, "unit_cell.json");
     }
 }
 

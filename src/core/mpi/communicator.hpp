@@ -584,13 +584,12 @@ class Communicator
             sz = static_cast<int>(str__.size());
         }
         bcast(&sz, 1, root__);
-        char* buf = new char[sz + 1];
+        std::vector<char> buf(sz + 1);
         if (rank() == root__) {
-            std::copy(str__.c_str(), str__.c_str() + sz + 1, buf);
+            std::copy(str__.c_str(), str__.c_str() + sz + 1, buf.data());
         }
-        bcast(buf, sz + 1, root__);
-        str__ = std::string(buf);
-        delete[] buf;
+        bcast(buf.data(), sz + 1, root__);
+        str__ = std::string(buf.data());
     }
 
     /// In-place MPI_Allgatherv.

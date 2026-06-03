@@ -66,12 +66,11 @@ write_to_json_file(mdarray<T, N> const& a__, std::string const& fname__)
 {
     try {
         auto dict = serialize(a__);
-        std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        write_json_to_file(dict, fname__);
     } catch (...) {
         std::stringstream s;
         s << "Error writing mdarray to file " << fname__;
-        printf("%s\n", s.str().c_str());
+        std::cout << s.str() << std::endl;
     }
 }
 

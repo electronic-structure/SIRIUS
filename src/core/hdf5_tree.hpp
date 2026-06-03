@@ -21,6 +21,7 @@
 #include <initializer_list>
 #include "core/memory.hpp"
 #include "core/rte/rte.hpp"
+#include "core/ostream_tools.hpp"
 
 namespace sirius {
 
@@ -368,7 +369,9 @@ class HDF5_tree
         HDF5_dataset dataset(group.id(), name);
 
         if (H5Dread(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
-            RTE_THROW("error in H5Dread()");
+            std::stringstream s;
+            s << "error in H5Dread()" << ", name : " << name <<", dims : " << dims;
+            RTE_THROW(s.str());
         }
     }
 
