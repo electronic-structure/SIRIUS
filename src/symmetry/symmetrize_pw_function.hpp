@@ -87,8 +87,8 @@ namespace sirius {
 template <int num_mag_dims>
 inline void
 symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
-                       mdarray<std::complex<double>, 3> const& sym_phase_factors__,
-                       std::vector<Smooth_periodic_function<double>*> frg__)
+                            mdarray<std::complex<double>, 3> const& sym_phase_factors__,
+                            std::vector<Smooth_periodic_function<double>*> frg__)
 {
     PROFILE("sirius::symmetrize_pw_function");
 
@@ -132,7 +132,7 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
         int tid = omp_get_thread_num();
 
         double t0;
-        double ta{0},tb{0};
+        double ta{0}, tb{0};
 
         for (int igloc = 0; igloc < ngv; igloc++) {
             auto G = gvec_sym__.gvec_remapped(igloc);
@@ -178,7 +178,7 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
                     if (ig1 == -1) {
                         G1         = G1 * (-1);
                         conj_coeff = true;
-                        ig1 = gvec_sym__.index_by_gvec(G1);
+                        ig1        = gvec_sym__.index_by_gvec(G1);
                     }
 #if !defined(NDEBUG)
                     if (igsh != gvec_sym__.gvec().shell(G1)) {
@@ -354,8 +354,8 @@ symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& 
 template <int num_mag_dims>
 inline void
 symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
-                       mdarray<std::complex<double>, 3> const& sym_phase_factors__,
-                       std::vector<Smooth_periodic_function<double>*> frg__)
+                               mdarray<std::complex<double>, 3> const& sym_phase_factors__,
+                               std::vector<Smooth_periodic_function<double>*> frg__)
 {
     PROFILE("sirius::symmetrize_pw_function");
 
@@ -386,7 +386,7 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
 
         std::unordered_map<r3::vector<int>, char, fft::r3_int_hash> is_done;
         for (auto igloc : e) {
-            auto G = gvec_sym__.gvec_remapped(igloc);
+            auto G     = gvec_sym__.gvec_remapped(igloc);
             is_done[G] = 0;
         }
 
@@ -419,7 +419,7 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
                 if (ig1 == -1) {
                     G1         = G1 * (-1);
                     conj_coeff = true;
-                    ig1 = gvec_sym__.index_by_gvec(G1);
+                    ig1        = gvec_sym__.index_by_gvec(G1);
                 }
                 RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
 
@@ -438,9 +438,8 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
                     symz += val * phase * S(2, 2);
                 }
                 if (num_mag_dims == 3) {
-                    auto v =
-                            r3::dot(S, r3::vector<std::complex<double>>(
-                                               {fpw_remapped[1][ig1], fpw_remapped[2][ig1], fpw_remapped[3][ig1]}));
+                    auto v = r3::dot(S, r3::vector<std::complex<double>>(
+                                                {fpw_remapped[1][ig1], fpw_remapped[2][ig1], fpw_remapped[3][ig1]}));
                     if (conj_coeff) {
                         v[0] = std::conj(v[0]);
                         v[1] = std::conj(v[1]);
@@ -478,7 +477,7 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
                             fpw_sym[1][ig1] = symz * phase * S(2, 2);
                         }
                         if (num_mag_dims == 3) {
-                            auto v = r3::dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
+                            auto v          = r3::dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
                             fpw_sym[1][ig1] = v[0] * phase;
                             fpw_sym[2][ig1] = v[1] * phase;
                             fpw_sym[3][ig1] = v[2] * phase;

@@ -992,11 +992,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
         }
 
         if (env::print_performance() && wf_->gkvec().comm().rank() == 0) {
-            auto t = ::sirius::time_interval(t0);
+            auto t     = ::sirius::time_interval(t0);
             double gbs = 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t;
-            std::cout << "[shuffle_to_fft_layout] throughput: "
-                      << gbs << " Gb/sec, " << gbs / wf_->gkvec().comm().size() << "Gb/rank/sec"
-                      << std::endl;
+            std::cout << "[shuffle_to_fft_layout] throughput: " << gbs << " Gb/sec, "
+                      << gbs / wf_->gkvec().comm().size() << "Gb/rank/sec" << std::endl;
         }
     }
 
@@ -1087,11 +1086,10 @@ class Wave_functions_fft : public Wave_functions_base<T>
             }
         }
         if (pp && wf_->gkvec().comm().rank() == 0) {
-            auto t = ::sirius::time_interval(t0);
+            auto t     = ::sirius::time_interval(t0);
             double gbs = 2 * sizeof(T) * wf_->gkvec().num_gvec() * b__.size() / std::pow(2.0, 30) / t;
-            std::cout << "[shuffle_to_wf_layout] throughput: "
-                      << gbs << " Gb/sec, " << gbs / wf_->gkvec().comm().size() << " Gb/rank/sec"
-                      << std::endl;
+            std::cout << "[shuffle_to_wf_layout] throughput: " << gbs << " Gb/sec, " << gbs / wf_->gkvec().comm().size()
+                      << " Gb/rank/sec" << std::endl;
         }
     }
 

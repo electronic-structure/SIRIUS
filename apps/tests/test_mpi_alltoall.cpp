@@ -39,8 +39,8 @@ test_mpi_alltoall_impl(int M__, int N__)
 
     if (comm.rank() == 0) {
         std::cout << "number of ranks   : " << comm.size() << std::endl;
-        std::cout << "local buffer size : " <<
-            spl_M.local_size() * N__ * sizeof(std::complex<double>) / double(1 << 20) << " Mb" << std::endl;
+        std::cout << "local buffer size : " << spl_M.local_size() * N__ * sizeof(std::complex<double>) / double(1 << 20)
+                  << " Mb" << std::endl;
     }
 
     /* P MPI ranks reshuffle data. Each rank stores N * M / P elements which it sends and receives.

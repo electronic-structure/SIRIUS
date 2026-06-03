@@ -245,9 +245,9 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         json dict;
         json_output_common(dict);
 
-        dict["task"]         = task_id;
-        dict["context"]      = ctx.serialize();
-        dict["ground_state"] = result;
+        dict["task"]                                   = task_id;
+        dict["context"]                                = ctx.serialize();
+        dict["ground_state"]                           = result;
         dict["counters"]                               = json::object();
         dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
         dict["counters"]["band_evp_work_count"]        = ctx.evp_work_count();

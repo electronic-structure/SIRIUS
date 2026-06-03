@@ -101,17 +101,19 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
         if (true && mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
             mpi::Communicator::world().barrier();
             double t0 = ::sirius::wtime();
-            la::wrap(la::lib_t::blas).gemm('C', 'N', num_bands__, num_bands__, gvec->count(),
-                    &la::constant<std::complex<double>>::one(), phi1.at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)), phi1.ld(),
-                    phi2.at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)), phi2.ld(), &la::constant<std::complex<double>>::zero(),
-                    ovlp.at(memory_t::host), ovlp.ld());
+            la::wrap(la::lib_t::blas)
+                    .gemm('C', 'N', num_bands__, num_bands__, gvec->count(), &la::constant<std::complex<double>>::one(),
+                          phi1.at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)), phi1.ld(),
+                          phi2.at(memory_t::host, 0, wf::spin_index(0), wf::band_index(0)), phi2.ld(),
+                          &la::constant<std::complex<double>>::zero(), ovlp.at(memory_t::host), ovlp.ld());
             mpi::Communicator::world().barrier();
             double t1 = ::sirius::wtime();
             mpi::Communicator::world().allreduce(ovlp.at(memory_t::host), num_bands__ * num_bands__);
             mpi::Communicator::world().barrier();
             double t2 = ::sirius::wtime();
             std::cout << "local zgemm time : " << t1 - t0 << ", allreduce time : " << t2 - t1
-                << ", effective performance : " << 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / (t2 - t0) << " gflops" << std::endl;
+                      << ", effective performance : " << 8e-9 * num_bands__ * num_bands__ * gvec->num_gvec() / (t2 - t0)
+                      << " gflops" << std::endl;
         }
     }
     if (mpi::Communicator::world().rank() == 0) {
