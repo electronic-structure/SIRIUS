@@ -872,9 +872,9 @@ class Wave_functions : public Wave_functions_mt<T>
                       this->at(memory_t::host, 0, s, b__));
         }
         if (this->num_mt_) {
-            int r = this->comm_.rank();
+            int r         = this->comm_.rank();
             auto begin_mt = data__.data() + gkvec_->num_gvec() + this->mt_coeffs_distr_.offsets[r];
-            auto end_mt = begin_mt + this->mt_coeffs_distr_.counts[r];
+            auto end_mt   = begin_mt + this->mt_coeffs_distr_.counts[r];
             std::copy(begin_mt, end_mt, this->at(memory_t::host, this->num_pw_, s, b__));
         }
     }

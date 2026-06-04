@@ -20,7 +20,7 @@ namespace sirius {
 
 inline auto
 get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> const& wf__, r3::vector<double> r__,
-        wf::band_index band_idx__, wf::spin_index spin_idx__)
+                        wf::band_index band_idx__, wf::spin_index spin_idx__)
 {
     int ja{-1}, jr{-1};
     double dr{0}, tp[2];
@@ -54,11 +54,12 @@ get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> 
                 auto c = wf__.mt_coeffs(xi, loc.index_local, spin_idx__, band_idx__);
                 // lm index of spherical harmonic
                 int lm = atom.type().indexb(xi).lm;
-                // index of radial function 
+                // index of radial function
                 auto idxrf = atom.type().indexb(xi).idxrf;
                 // get derivative of radial function; this is needed for simple linear interpolation
-                auto f1 = (atom.symmetry_class().radial_function(jr + 1, idxrf) - 
-                           atom.symmetry_class().radial_function(jr, idxrf)) / atom.type().radial_grid().dx(jr);
+                auto f1 = (atom.symmetry_class().radial_function(jr + 1, idxrf) -
+                           atom.symmetry_class().radial_function(jr, idxrf)) /
+                          atom.type().radial_grid().dx(jr);
 
                 val += c * ylm[lm] * (atom.symmetry_class().radial_function(jr, idxrf) + f1 * dr);
             }
@@ -81,6 +82,6 @@ get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> 
     return val;
 }
 
-}
+} // namespace sirius
 
 #endif

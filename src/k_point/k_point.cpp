@@ -531,7 +531,7 @@ K_point<T>::save(std::string const& name__, int id__) const
     /* rank 0 opens a file and writes common data */
     if (comm().rank() == 0) {
         /* open file with write access */
-        fout = std::make_unique<HDF5_tree>(name__, hdf5_access_t::read_write);
+        fout      = std::make_unique<HDF5_tree>(name__, hdf5_access_t::read_write);
         auto& out = *fout;
 
         /* create /K_point_set/ik */
@@ -606,7 +606,8 @@ K_point<T>::load(HDF5_tree h5in__)
     for (int i = 0; i < ctx_.num_bands(); i++) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* gather wave-functions */
-            std::vector<std::complex<T>> wf(num_gkvec() + unit_cell_.mt_aw_basis_size() + unit_cell_.mt_lo_basis_size());
+            std::vector<std::complex<T>> wf(num_gkvec() + unit_cell_.mt_aw_basis_size() +
+                                            unit_cell_.mt_lo_basis_size());
             if (comm().rank() == 0) {
                 h5in__["bands"][i]["spinor_wave_function"][ispn].read("coeffs", wf);
                 /* now we need to rearrange G-vectors in the new order */
@@ -614,7 +615,7 @@ K_point<T>::load(HDF5_tree h5in__)
                 for (int i = 0; i < num_gkvec(); i++) {
                     auto gv_old = r3::vector<int>(gv(0, i), gv(1, i), gv(2, i));
                     /* index in the new order */
-                    int ig = this->gkvec().index_by_gvec(gv_old);
+                    int ig  = this->gkvec().index_by_gvec(gv_old);
                     tmp[ig] = wf[i];
                 }
                 /* replace the order */

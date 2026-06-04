@@ -370,7 +370,7 @@ class HDF5_tree
 
         if (H5Dread(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
             std::stringstream s;
-            s << "error in H5Dread()" << ", name : " << name <<", dims : " << dims;
+            s << "error in H5Dread()" << ", name : " << name << ", dims : " << dims;
             RTE_THROW(s.str());
         }
     }
