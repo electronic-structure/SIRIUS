@@ -1215,9 +1215,8 @@ Simulation_context::update()
         } else {
             name = save_config;
         }
-        std::ofstream fi(name, std::ofstream::out | std::ofstream::trunc);
         auto conf_dict = this->serialize();
-        fi << conf_dict.dump(4);
+        write_json_to_file(conf_dict, name);
     }
 }
 
