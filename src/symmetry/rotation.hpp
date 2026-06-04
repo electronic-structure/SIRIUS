@@ -34,7 +34,7 @@ phi_by_sin_cos(double sinp, double cosp)
 
 /// Generate SU(2) rotation matrix from the axes and angle.
 inline auto
-rotation_matrix_su2(std::array<double, 3> u__, double theta__)
+rotation_matrix_su2(r3::vector<double> u__, double theta__)
 {
     mdarray<std::complex<double>, 2> rotm({2, 2});
 

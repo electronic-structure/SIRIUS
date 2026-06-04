@@ -230,6 +230,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     auto& potential = dft.potential();
     auto& density   = dft.density();
 
+    /* in case of restart, read density from file */
     if (task_id == task_t::ground_state_restart) {
         auto fname = args.value<fs::path>("input", storage_file_name);
         if (!isHDF5(fname)) {
@@ -341,10 +342,9 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         json dict;
         json_output_common(dict);
 
-        dict["task"]         = task_id;
-        dict["context"]      = ctx.serialize();
-        dict["ground_state"] = result;
-        // dict["timers"] = utils::timer::serialize();
+        dict["task"]                                   = task_id;
+        dict["context"]                                = ctx.serialize();
+        dict["ground_state"]                           = result;
         dict["counters"]                               = json::object();
         dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
         dict["counters"]["band_evp_work_count"]        = ctx.evp_work_count();
@@ -788,8 +788,9 @@ main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0) {
-        // auto timing_result = ::utils::global_rtgraph_timer.process().flatten(1).sort_nodes();
-        auto timing_result = global_rtgraph_timer.process();
+        bool flatten{true};
+        auto timing_result =
+                flatten ? global_rtgraph_timer.process().flatten(1).sort_nodes() : global_rtgraph_timer.process();
         std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
                                           rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
                                           rt_graph::Stat::Max});

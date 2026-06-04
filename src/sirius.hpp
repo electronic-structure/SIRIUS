@@ -133,7 +133,7 @@ initialize(bool call_mpi_init__ = true)
 
 /// Shut down the library.
 inline void
-finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
+finalize(bool call_mpi_fin__ = true, bool reset_device__ = true)
 {
     PROFILE_START("sirius::finalize");
     if (!is_initialized()) {

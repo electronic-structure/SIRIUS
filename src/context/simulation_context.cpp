@@ -1006,7 +1006,7 @@ Simulation_context::update()
     /* After each update of the lattice vectors we might get a different set of G-vector shells.
      * Always update the mapping between the canonical FFT distribution and "local G-shells"
      * distribution which is used in symmetriezation of lattice periodic functions. */
-    remap_gvec_ = std::make_unique<fft::Gvec_shells>(gvec());
+    gvec_sym_ = std::make_unique<fft::Gvec_sym>(gvec());
 
     /* check symmetry of G-vectors */
     if (unit_cell().num_atoms() != 0 && use_symmetry() && cfg().control().verification() >= 1) {
@@ -1014,7 +1014,7 @@ Simulation_context::update()
         if (!full_potential()) {
             check_gvec(gvec_coarse(), unit_cell().symmetry());
         }
-        check_gvec(*remap_gvec_, unit_cell().symmetry());
+        check_gvec(*gvec_sym_, unit_cell().symmetry());
     }
 
     /* check if FFT grid is OK; this check is especially needed if the grid is set as external parameter */

@@ -31,7 +31,7 @@ symmetrize_field4d(Field4D& f__)
     }
 
     /* symmetrize PW components */
-    symmetrize_pw_function(ctx.unit_cell().symmetry(), ctx.remap_gvec(), ctx.sym_phase_factors(), ctx.num_mag_dims(),
+    symmetrize_pw_function(ctx.unit_cell().symmetry(), ctx.gvec_sym(), ctx.sym_phase_factors(), ctx.num_mag_dims(),
                            f__.pw_components());
 
     if (ctx.full_potential()) {
