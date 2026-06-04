@@ -78,13 +78,18 @@ namespace sirius {
        f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
     \f]
 
+    \tparam [in] num_mag_dims     Number of magnetic dimensions.
+
     \param [in] sym               Description of the crystal symmetry.
-    \param [in] gvec_sym          Description of the G-vector set for symmetrisation.
+    \param [in] gvec_sym          Description of the G-vector set for symmetrization.
     \param [in] sym_phase_factors Phase factors associated with fractional translations.
-    \param [in] num_mag_dims      Number of magnetic dimensions.
     \param [inout] frg            Array of pointers to scalar and vector parts of the filed being symmetrized.
+
+    \note
+    symmetrize_pw_function_impl() is kept as a reference implementation with additional sanity checks for
+    debugging symmetrization. The optimized implementation is symmetrize_pw_function_impl_v2().
  */
-template <int num_mag_dims> /* keep this variant for verification */
+template <int num_mag_dims>
 inline void
 symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
                             mdarray<std::complex<double>, 3> const& sym_phase_factors__,
@@ -358,7 +363,7 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
 
     PROFILE_START("sirius::symmetrize|fpw|local");
 
-    #pragma omp parallel for schedule(static,1)
+    #pragma omp parallel for schedule(static, 1)
     for (auto& e : gvec_sym__.gvec_shells()) {
 
         std::unordered_map<r3::vector<int>, char, fft::r3_int_hash> is_done;
