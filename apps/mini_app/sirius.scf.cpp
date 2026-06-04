@@ -677,8 +677,8 @@ main(int argn, char** argv)
 
     if (my_rank == 0) {
         bool flatten{true};
-        auto timing_result = flatten ? global_rtgraph_timer.process().flatten(1).sort_nodes() :
-                                       global_rtgraph_timer.process();
+        auto timing_result =
+                flatten ? global_rtgraph_timer.process().flatten(1).sort_nodes() : global_rtgraph_timer.process();
         std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
                                           rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
                                           rt_graph::Stat::Max});
