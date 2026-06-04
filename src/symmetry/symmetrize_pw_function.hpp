@@ -78,7 +78,7 @@ namespace sirius {
        f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
     \f]
 
-    \tparam [in] num_mag_dims     Number of magnetic dimensions.
+    \tparam num_mag_dims          Number of magnetic dimensions.
 
     \param [in] sym               Description of the crystal symmetry.
     \param [in] gvec_sym          Description of the G-vector set for symmetrization.
