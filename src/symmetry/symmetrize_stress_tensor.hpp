@@ -18,6 +18,17 @@
 
 namespace sirius {
 
+/// Symmetrize the lattice stress tensor with the crystal point-group operations.
+/** Applies the group average
+    \f[
+        \sigma_{\mathrm{sym}} = \frac{1}{N_{sym}} \sum_R R^T \sigma R
+    \f]
+    over the Cartesian rotation matrices of the crystal symmetry group.
+    The result is then explicitly made symmetric in the off-diagonal components.
+
+    \param [in] sym Crystal symmetry operations.
+    \param [in,out] s Stress tensor to symmetrize.
+ */
 inline void
 symmetrize_stress_tensor(Crystal_symmetry const& sym__, r3::matrix<double>& s__)
 {

@@ -955,22 +955,35 @@ class Gvec_fft
     }
 };
 
+/// Hash function for the std::unordered_map<r3::vector<int>..>
+struct r3_int_hash
+{
+    std::size_t
+    operator()(r3::vector<int> const& v) const noexcept
+    {
+        std::size_t h = std::hash<int>{}(v[0]);
+        h ^= std::hash<int>{}(v[1]) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= std::hash<int>{}(v[2]) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        return h;
+    }
+};
+
 /// Helper class to manage G-vector shells and redistribute G-vectors for symmetrization.
 /** G-vectors are remapped from default distribution which balances both the local number
     of z-columns and G-vectors to the distribution of G-vector shells in which each MPI rank stores
     local set of complete G-vector shells such that the "rotated" G-vector remains on the same MPI rank.
  */
-class Gvec_shells
+class Gvec_sym
 {
   private:
+    /// Original set of G-vectors.
+    Gvec const& gvec_;
+
     /// Sending counts and offsets.
     mpi::block_data_descriptor a2a_send_;
 
     /// Receiving counts and offsets.
     mpi::block_data_descriptor a2a_recv_;
-
-    /// Split global index of G-shells between MPI ranks.
-    splindex_block_cyclic<> spl_num_gsh_;
 
     /// List of G-vectors in the remapped storage.
     mdarray<int, 2> gvec_remapped_;
@@ -981,13 +994,25 @@ class Gvec_shells
     /// Alias for the G-vector communicator.
     mpi::Communicator const& comm_;
 
-    Gvec const& gvec_;
+    /// A mapping between G-vector and its local index in the new distribution.
+    std::unordered_map<r3::vector<int>, int, r3_int_hash> idx_gvec_;
 
-    /// A mapping between G-vector and it's local index in the new distribution.
-    std::map<r3::vector<int>, int> idx_gvec_;
+    /// Grouping of G-vectors by shells.
+    /** Local index of shell on current MPI rank is used. */
+    std::vector<std::vector<int>> gvec_shells_;
+
+    /// Split global index of G-shells between MPI ranks.
+    splindex_block_cyclic<> spl_num_gsh_;
 
   public:
-    Gvec_shells(Gvec const& gvec__);
+    Gvec_sym(Gvec const& gvec__);
+
+    /// G-vector by local index (in the remapped set).
+    inline auto
+    gvec_remapped(int igloc__) const
+    {
+        return r3::vector<int>(gvec_remapped_(0, igloc__), gvec_remapped_(1, igloc__), gvec_remapped_(2, igloc__));
+    }
 
     inline void
     print_gvec(std::ostream& out__) const
@@ -995,7 +1020,7 @@ class Gvec_shells
         mpi::pstdout pout(gvec_.comm());
         pout << "rank: " << gvec_.comm().rank() << std::endl;
         pout << "-- list of G-vectors in the remapped distribution --" << std::endl;
-        for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
+        for (int igloc = 0; igloc < this->count(); igloc++) {
             auto G = gvec_remapped(igloc);
 
             int igsh = gvec_shell_remapped(igloc);
@@ -1009,42 +1034,36 @@ class Gvec_shells
     }
 
     /// Local number of G-vectors in the remapped distribution with complete shells on each rank.
-    int
-    gvec_count_remapped() const
+    inline int
+    count() const
     {
         return a2a_recv_.size();
     }
 
-    /// G-vector by local index (in the remapped set).
-    r3::vector<int>
-    gvec_remapped(int igloc__) const
-    {
-        return r3::vector<int>(gvec_remapped_(0, igloc__), gvec_remapped_(1, igloc__), gvec_remapped_(2, igloc__));
-    }
-
     /// Return local index of the G-vector in the remapped set.
-    int
-    index_by_gvec(r3::vector<int> G__) const
+    inline int
+    index_by_gvec(r3::vector<int> const& G__) const
     {
-        if (idx_gvec_.count(G__)) {
-            return idx_gvec_.at(G__);
-        } else {
+        auto it = idx_gvec_.find(G__);
+        if (it == idx_gvec_.end()) {
             return -1;
         }
+        return it->second;
     }
 
     /// Index of the G-vector shell by the local G-vector index (in the remapped set).
-    int
+    inline int
     gvec_shell_remapped(int igloc__) const
     {
         return gvec_shell_remapped_(igloc__);
     }
 
+    /// Redistribute G-vectors and collect complete shells on MPI ranks.
     template <typename T>
     auto
     remap_forward(T* data__) const
     {
-        PROFILE("fft::Gvec_shells::remap_forward");
+        PROFILE("fft::Gvec_sym::remap_forward");
 
         std::vector<T> send_buf(gvec_.count());
         std::vector<int> counts(comm_.size(), 0);
@@ -1056,7 +1075,7 @@ class Gvec_shells
             counts[r]++;
         }
 
-        std::vector<T> recv_buf(gvec_count_remapped());
+        std::vector<T> recv_buf(this->count());
 
         comm_.alltoall(send_buf.data(), a2a_send_.counts.data(), a2a_send_.offsets.data(), recv_buf.data(),
                        a2a_recv_.counts.data(), a2a_recv_.offsets.data());
@@ -1064,11 +1083,12 @@ class Gvec_shells
         return recv_buf;
     }
 
+    /// Redistribute G-vectors back to default order.
     template <typename T>
     void
     remap_backward(std::vector<T> buf__, T* data__) const
     {
-        PROFILE("fft::Gvec_shells::remap_backward");
+        PROFILE("fft::Gvec_sym::remap_backward");
 
         std::vector<T> recv_buf(gvec_.count());
 
@@ -1085,7 +1105,13 @@ class Gvec_shells
         }
     }
 
-    inline Gvec const&
+    inline auto const&
+    gvec_shells() const
+    {
+        return gvec_shells_;
+    }
+
+    inline auto const&
     gvec() const
     {
         return gvec_;

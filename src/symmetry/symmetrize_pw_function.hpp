@@ -78,16 +78,22 @@ namespace sirius {
        f_{\mathrm{sym}}({\bf G}') = \hat{\bf S}f_{\mathrm{sym}}({\bf G})e^{-i{\bf G'}{\bf t}}
     \f]
 
+    \tparam num_mag_dims          Number of magnetic dimensions.
+
     \param [in] sym               Description of the crystal symmetry.
-    \param [in] gvec_shells       Description of the G-vector shells.
+    \param [in] gvec_sym          Description of the G-vector set for symmetrization.
     \param [in] sym_phase_factors Phase factors associated with fractional translations.
-    \param [in] num_mag_dims      Number of magnetic dimensions.
     \param [inout] frg            Array of pointers to scalar and vector parts of the filed being symmetrized.
+
+    \note
+    symmetrize_pw_function_impl() is kept as a reference implementation with additional sanity checks for
+    debugging symmetrization. The optimized implementation is symmetrize_pw_function_impl_v2().
  */
+template <int num_mag_dims>
 inline void
-symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gvec_shells__,
-                       mdarray<std::complex<double>, 3> const& sym_phase_factors__, int num_mag_dims__,
-                       std::vector<Smooth_periodic_function<double>*> frg__)
+symmetrize_pw_function_impl(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
+                            mdarray<std::complex<double>, 3> const& sym_phase_factors__,
+                            std::vector<Smooth_periodic_function<double>*> frg__)
 {
     PROFILE("sirius::symmetrize_pw_function");
 
@@ -95,14 +101,14 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
     std::array<std::vector<std::complex<double>>, 4> fpw_sym;
 
     /* local number of G-vectors in a distribution with complete G-vector shells */
-    int ngv = gvec_shells__.gvec_count_remapped();
+    int ngv = gvec_sym__.count();
 
-    for (int j = 0; j < num_mag_dims__ + 1; j++) {
-        fpw_remapped[j] = gvec_shells__.remap_forward(&frg__[j]->f_pw_local(0));
+    for (int j = 0; j < num_mag_dims + 1; j++) {
+        fpw_remapped[j] = gvec_sym__.remap_forward(&frg__[j]->f_pw_local(0));
         fpw_sym[j]      = std::vector<std::complex<double>>(ngv, 0);
     }
 
-    std::vector<bool> is_done(ngv, false);
+    std::vector<char> is_done(ngv, 0);
 
     double norm = 1 / double(sym__.size());
 
@@ -120,18 +126,18 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
         int nt  = omp_get_max_threads();
         int tid = omp_get_thread_num();
 
-        for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-            auto G = gvec_shells__.gvec_remapped(igloc);
+        for (int igloc = 0; igloc < ngv; igloc++) {
+            auto G = gvec_sym__.gvec_remapped(igloc);
 
-            int igsh = gvec_shells__.gvec_shell_remapped(igloc);
+            int igsh = gvec_sym__.gvec_shell_remapped(igloc);
 
 #if !defined(NDEBUG)
-            if (igsh != gvec_shells__.gvec().shell(G)) {
+            if (igsh != gvec_sym__.gvec().shell(G)) {
                 std::stringstream s;
                 s << "wrong index of G-shell" << std::endl
                   << "  G-vector : " << G << std::endl
                   << "  igsh in the remapped set : " << igsh << std::endl
-                  << "  igsh in the original set : " << gvec_shells__.gvec().shell(G);
+                  << "  igsh in the original set : " << gvec_sym__.gvec().shell(G);
                 RTE_THROW(s);
             }
 #endif
@@ -148,12 +154,12 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                 for (int i = 0; i < sym__.size(); i++) {
                     auto G1 = r3::dot(G, sym__[i].spg_op.R);
 
-                    auto S = sym__[i].spin_rotation;
+                    auto const& S = sym__[i].spin_rotation;
 
                     auto phase = std::conj(phase_factor(i, G));
 
                     /* local index of a rotated G-vector */
-                    int ig1 = gvec_shells__.index_by_gvec(G1);
+                    int ig1 = gvec_sym__.index_by_gvec(G1);
 
                     bool conj_coeff{false};
 
@@ -161,38 +167,49 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                     if (ig1 == -1) {
                         G1         = G1 * (-1);
                         conj_coeff = true;
+                        ig1        = gvec_sym__.index_by_gvec(G1);
                     }
-                    auto do_conj = (conj_coeff) ? [](std::complex<double> z) { return std::conj(z); }
-                                                : [](std::complex<double> z) { return z; };
 #if !defined(NDEBUG)
-                    if (igsh != gvec_shells__.gvec().shell(G1)) {
+                    if (igsh != gvec_sym__.gvec().shell(G1)) {
                         std::stringstream s;
                         s << "wrong index of G-shell" << std::endl
                           << "  index of G-shell : " << igsh << std::endl
                           << "  symmetry operation : " << sym__[i].spg_op.R << std::endl
                           << "  G-vector : " << G << std::endl
                           << "  rotated G-vector : " << G1 << std::endl
-                          << "  G-vector index : " << gvec_shells__.index_by_gvec(G1) << std::endl
-                          << "  index of rotated G-vector shell : " << gvec_shells__.gvec().shell(G1);
+                          << "  G-vector index : " << gvec_sym__.index_by_gvec(G1) << std::endl
+                          << "  index of rotated G-vector shell : " << gvec_sym__.gvec().shell(G1);
                         RTE_THROW(s);
                     }
 #endif
-                    ig1 = gvec_shells__.index_by_gvec(G1);
                     RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
 
                     if (frg__[0]) {
-                        symf += do_conj(fpw_remapped[0][ig1]) * phase;
+                        auto val = fpw_remapped[0][ig1];
+                        if (conj_coeff) {
+                            val = std::conj(val);
+                        }
+                        symf += val * phase;
                     }
-                    if (num_mag_dims__ == 1 && frg__[1]) {
-                        symz += do_conj(fpw_remapped[1][ig1]) * phase * S(2, 2);
+                    if (num_mag_dims == 1 && frg__[1]) {
+                        auto val = fpw_remapped[1][ig1];
+                        if (conj_coeff) {
+                            val = std::conj(val);
+                        }
+                        symz += val * phase * S(2, 2);
                     }
-                    if (num_mag_dims__ == 3) {
+                    if (num_mag_dims == 3) {
                         auto v =
                                 r3::dot(S, r3::vector<std::complex<double>>(
                                                    {fpw_remapped[1][ig1], fpw_remapped[2][ig1], fpw_remapped[3][ig1]}));
-                        symx += do_conj(v[0]) * phase;
-                        symy += do_conj(v[1]) * phase;
-                        symz += do_conj(v[2]) * phase;
+                        if (conj_coeff) {
+                            v[0] = std::conj(v[0]);
+                            v[1] = std::conj(v[1]);
+                            v[2] = std::conj(v[2]);
+                        }
+                        symx += v[0] * phase;
+                        symy += v[1] * phase;
+                        symz += v[2] * phase;
                     }
                 } /* loop over symmetries */
 
@@ -202,14 +219,14 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                 symz *= norm;
 
                 /* apply symmetry operation and get all other plane-wave coefficients */
-
                 for (int isym = 0; isym < sym__.size(); isym++) {
-                    auto S = sym__[isym].spin_rotation;
+                    auto const& S = sym__[isym].spin_rotation;
 
                     /* get rotated G-vector */
                     auto G1 = r3::dot(sym__[isym].spg_op.invRT, G);
                     /* index of a rotated G-vector */
-                    int ig1 = gvec_shells__.index_by_gvec(G1);
+                    int ig1 = gvec_sym__.index_by_gvec(G1);
+                    //int ig1 = index_by_gvec(isym, igloc);
 
                     if (ig1 != -1) {
                         RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
@@ -218,10 +235,10 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                         if (frg__[0]) {
                             symf1 = symf * phase;
                         }
-                        if (num_mag_dims__ == 1 && frg__[1]) {
+                        if (num_mag_dims == 1 && frg__[1]) {
                             symz1 = symz * phase * S(2, 2);
                         }
-                        if (num_mag_dims__ == 3) {
+                        if (num_mag_dims == 3) {
                             auto v = r3::dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
                             symx1  = v[0] * phase;
                             symy1  = v[1] * phase;
@@ -229,6 +246,7 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                         }
 
                         if (is_done[ig1]) {
+#if !defined(NDEBUG)
                             /* run checks */
                             if (frg__[0]) {
                                 /* check that another symmetry operation leads to the same coefficient */
@@ -241,7 +259,7 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                                     RTE_THROW(s);
                                 }
                             }
-                            if (num_mag_dims__ == 1 && frg__[1]) {
+                            if (num_mag_dims == 1 && frg__[1]) {
                                 if (abs_diff(fpw_sym[1][ig1], symz1) > eps) {
                                     std::stringstream s;
                                     s << "inconsistent symmetry operation" << std::endl
@@ -251,26 +269,27 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                                     RTE_THROW(s);
                                 }
                             }
-                            if (num_mag_dims__ == 3) {
+                            if (num_mag_dims == 3) {
                                 if (abs_diff(fpw_sym[1][ig1], symx1) > eps || abs_diff(fpw_sym[2][ig1], symy1) > eps ||
                                     abs_diff(fpw_sym[3][ig1], symz1) > eps) {
 
                                     RTE_THROW("inconsistent symmetry operation");
                                 }
                             }
+#endif
                         } else {
                             if (frg__[0]) {
                                 fpw_sym[0][ig1] = symf1;
                             }
-                            if (num_mag_dims__ == 1 && frg__[1]) {
+                            if (num_mag_dims == 1 && frg__[1]) {
                                 fpw_sym[1][ig1] = symz1;
                             }
-                            if (num_mag_dims__ == 3) {
+                            if (num_mag_dims == 3) {
                                 fpw_sym[1][ig1] = symx1;
                                 fpw_sym[2][ig1] = symy1;
                                 fpw_sym[3][ig1] = symz1;
                             }
-                            is_done[ig1] = true;
+                            is_done[ig1] = 1;
                         }
                     }
                 } /* loop over symmetries */
@@ -280,13 +299,13 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
     PROFILE_STOP("sirius::symmetrize|fpw|local");
 
 #if !defined(NDEBUG)
-    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-        auto G = gvec_shells__.gvec_remapped(igloc);
+    for (int igloc = 0; igloc < ngv; igloc++) {
+        auto G = gvec_sym__.gvec_remapped(igloc);
         for (int isym = 0; isym < sym__.size(); isym++) {
             auto S      = sym__[isym].spin_rotation;
             auto gv_rot = r3::dot(sym__[isym].spg_op.invRT, G);
             /* index of a rotated G-vector */
-            int ig_rot                 = gvec_shells__.index_by_gvec(gv_rot);
+            int ig_rot                 = gvec_sym__.index_by_gvec(gv_rot);
             std::complex<double> phase = std::conj(phase_factor(isym, gv_rot));
 
             if (frg__[0] && ig_rot != -1) {
@@ -297,7 +316,7 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
                     RTE_THROW(s);
                 }
             }
-            if (num_mag_dims__ == 1 && frg__[1] && ig_rot != -1) {
+            if (num_mag_dims == 1 && frg__[1] && ig_rot != -1) {
                 auto diff = abs_diff(fpw_sym[1][ig_rot], fpw_sym[1][igloc] * phase * S(2, 2));
                 if (diff > eps) {
                     std::stringstream s;
@@ -309,8 +328,168 @@ symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_shells const& gv
     }
 #endif
 
-    for (int j = 0; j < num_mag_dims__ + 1; j++) {
-        gvec_shells__.remap_backward(fpw_sym[j], &frg__[j]->f_pw_local(0));
+    for (int j = 0; j < num_mag_dims + 1; j++) {
+        gvec_sym__.remap_backward(fpw_sym[j], &frg__[j]->f_pw_local(0));
+    }
+}
+
+template <int num_mag_dims>
+inline void
+symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
+                               mdarray<std::complex<double>, 3> const& sym_phase_factors__,
+                               std::vector<Smooth_periodic_function<double>*> frg__)
+{
+    PROFILE("sirius::symmetrize_pw_function");
+
+    std::array<std::vector<std::complex<double>>, 4> fpw_remapped;
+    std::array<std::vector<std::complex<double>>, 4> fpw_sym;
+
+    /* local number of G-vectors in a distribution with complete G-vector shells */
+    int ngv = gvec_sym__.count();
+
+    for (int j = 0; j < num_mag_dims + 1; j++) {
+        fpw_remapped[j] = gvec_sym__.remap_forward(&frg__[j]->f_pw_local(0));
+        fpw_sym[j]      = std::vector<std::complex<double>>(ngv, 0);
+    }
+
+    double norm = 1 / double(sym__.size());
+
+    auto phase_factor = [&](int isym, r3::vector<int> G) {
+        return sym_phase_factors__(0, G[0], isym) * sym_phase_factors__(1, G[1], isym) *
+               sym_phase_factors__(2, G[2], isym);
+    };
+
+    double const eps{1e-9};
+
+    PROFILE_START("sirius::symmetrize|fpw|local");
+
+    #pragma omp parallel for schedule(static, 1)
+    for (auto& e : gvec_sym__.gvec_shells()) {
+
+        std::unordered_map<r3::vector<int>, char, fft::r3_int_hash> is_done;
+        for (auto igloc : e) {
+            auto G     = gvec_sym__.gvec_remapped(igloc);
+            is_done[G] = 0;
+        }
+
+        for (auto igloc : e) {
+            // loop over shells of G-vectors
+            std::complex<double> symf(0, 0);
+            std::complex<double> symx(0, 0);
+            std::complex<double> symy(0, 0);
+            std::complex<double> symz(0, 0);
+
+            auto G = gvec_sym__.gvec_remapped(igloc);
+            if (is_done[G]) {
+                continue;
+            }
+
+            /* find the symmetrized PW coefficient */
+            for (int isym = 0; isym < sym__.size(); isym++) {
+                auto G1 = r3::dot(G, sym__[isym].spg_op.R);
+
+                auto const& S = sym__[isym].spin_rotation;
+
+                auto phase = std::conj(phase_factor(isym, G));
+
+                /* local index of a rotated G-vector */
+                int ig1 = gvec_sym__.index_by_gvec(G1);
+
+                bool conj_coeff{false};
+
+                /* check the reduced G-vector */
+                if (ig1 == -1) {
+                    G1         = G1 * (-1);
+                    conj_coeff = true;
+                    ig1        = gvec_sym__.index_by_gvec(G1);
+                }
+                RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
+
+                if (frg__[0]) {
+                    auto val = fpw_remapped[0][ig1];
+                    if (conj_coeff) {
+                        val = std::conj(val);
+                    }
+                    symf += val * phase;
+                }
+                if (num_mag_dims == 1 && frg__[1]) {
+                    auto val = fpw_remapped[1][ig1];
+                    if (conj_coeff) {
+                        val = std::conj(val);
+                    }
+                    symz += val * phase * S(2, 2);
+                }
+                if (num_mag_dims == 3) {
+                    auto v = r3::dot(S, r3::vector<std::complex<double>>(
+                                                {fpw_remapped[1][ig1], fpw_remapped[2][ig1], fpw_remapped[3][ig1]}));
+                    if (conj_coeff) {
+                        v[0] = std::conj(v[0]);
+                        v[1] = std::conj(v[1]);
+                        v[2] = std::conj(v[2]);
+                    }
+                    symx += v[0] * phase;
+                    symy += v[1] * phase;
+                    symz += v[2] * phase;
+                }
+            } /* loop over symmetries */
+
+            symf *= norm;
+            symx *= norm;
+            symy *= norm;
+            symz *= norm;
+
+            /* apply symmetry operation and get all other plane-wave coefficients */
+            for (int isym = 0; isym < sym__.size(); isym++) {
+                auto const& S = sym__[isym].spin_rotation;
+
+                /* get rotated G-vector */
+                auto G1 = r3::dot(sym__[isym].spg_op.invRT, G);
+                /* index of a rotated G-vector */
+                int ig1 = gvec_sym__.index_by_gvec(G1);
+
+                if (ig1 != -1) {
+                    RTE_ASSERT(ig1 >= 0 && ig1 < ngv);
+                    if (!is_done[G1]) {
+                        auto phase = std::conj(phase_factor(isym, G1));
+
+                        if (frg__[0]) {
+                            fpw_sym[0][ig1] = symf * phase;
+                        }
+                        if (num_mag_dims == 1 && frg__[1]) {
+                            fpw_sym[1][ig1] = symz * phase * S(2, 2);
+                        }
+                        if (num_mag_dims == 3) {
+                            auto v          = r3::dot(S, r3::vector<std::complex<double>>({symx, symy, symz}));
+                            fpw_sym[1][ig1] = v[0] * phase;
+                            fpw_sym[2][ig1] = v[1] * phase;
+                            fpw_sym[3][ig1] = v[2] * phase;
+                        }
+                        is_done[G1] = 1;
+                    }
+                }
+            } /* loop over symmetries */
+        } /* loop over igloc */
+    }
+    PROFILE_STOP("sirius::symmetrize|fpw|local");
+
+    for (int j = 0; j < num_mag_dims + 1; j++) {
+        gvec_sym__.remap_backward(fpw_sym[j], &frg__[j]->f_pw_local(0));
+    }
+}
+
+inline void
+symmetrize_pw_function(Crystal_symmetry const& sym__, fft::Gvec_sym const& gvec_sym__,
+                       mdarray<std::complex<double>, 3> const& sym_phase_factors__, int num_mag_dims__,
+                       std::vector<Smooth_periodic_function<double>*> frg__)
+{
+    if (num_mag_dims__ == 0) {
+        symmetrize_pw_function_impl_v2<0>(sym__, gvec_sym__, sym_phase_factors__, frg__);
+    }
+    if (num_mag_dims__ == 1) {
+        symmetrize_pw_function_impl_v2<1>(sym__, gvec_sym__, sym_phase_factors__, frg__);
+    }
+    if (num_mag_dims__ == 3) {
+        symmetrize_pw_function_impl_v2<3>(sym__, gvec_sym__, sym_phase_factors__, frg__);
     }
 }
 

@@ -156,6 +156,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     auto& potential = dft.potential();
     auto& density   = dft.density();
 
+    /* in case of restart, read density from file */
     if (task_id == task_t::ground_state_restart) {
         auto fname = args.value<fs::path>("input", storage_file_name);
         if (!isHDF5(fname)) {
@@ -244,10 +245,9 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         json dict;
         json_output_common(dict);
 
-        dict["task"]         = task_id;
-        dict["context"]      = ctx.serialize();
-        dict["ground_state"] = result;
-        // dict["timers"] = utils::timer::serialize();
+        dict["task"]                                   = task_id;
+        dict["context"]                                = ctx.serialize();
+        dict["ground_state"]                           = result;
         dict["counters"]                               = json::object();
         dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
         dict["counters"]["band_evp_work_count"]        = ctx.evp_work_count();
@@ -419,6 +419,7 @@ run_tasks(cmd_args const& args)
     }
 
     auto fname = fpath.string();
+    /* ground state runs */
     if (task_id == task_t::ground_state_new || task_id == task_t::ground_state_restart ||
         task_id == task_t::ground_state_new_relax || task_id == task_t::ground_state_new_vcrelax) {
         auto ctx = create_sim_ctx(fname, args);
@@ -426,6 +427,7 @@ run_tasks(cmd_args const& args)
         int write_output{1};
         ground_state(*ctx, task_id, args, write_output);
     }
+    /* EoS */
     if (task_id == task_t::eos) {
         auto vs0            = args.value<double>("volume_scale0", 0.94);
         auto vs1            = args.value<double>("volume_scale1", 1.06);
@@ -674,8 +676,9 @@ main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0) {
-        // auto timing_result = ::utils::global_rtgraph_timer.process().flatten(1).sort_nodes();
-        auto timing_result = global_rtgraph_timer.process();
+        bool flatten{true};
+        auto timing_result =
+                flatten ? global_rtgraph_timer.process().flatten(1).sort_nodes() : global_rtgraph_timer.process();
         std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
                                           rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
                                           rt_graph::Stat::Max});

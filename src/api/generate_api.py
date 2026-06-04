@@ -201,7 +201,12 @@ class Argument:
 
     def append_interface_call(self, out):
 
-        if self.type_id() in ('bool', 'string'):
+        needs_post_call = (
+            self.type_id() == 'string' or
+            (self.type_id() == 'bool' and self.attr().intent() in ['inout', 'out'])
+        )
+
+        if needs_post_call:
 
             if self.attr().required() == 'optional':
                 out.write(f'if (present({self.name()})) then\n')
