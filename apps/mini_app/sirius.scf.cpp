@@ -176,6 +176,32 @@ compare_with_reference(Simulation_context& ctx, json const& result, std::string 
     }
 }
 
+auto
+get_stress(DFT_ground_state const& dft)
+{
+    std::vector<std::vector<double>> result(3, std::vector<double>(3));
+    auto st = dft.stress().stress_total();
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            result[i][j] = st(j, i);
+        }
+    }
+    return result;
+}
+
+auto
+get_forces(DFT_ground_state const& dft)
+{
+    std::vector<std::vector<double>> result(dft.ctx().unit_cell().num_atoms(), std::vector<double>(3));
+    auto& ft = dft.forces().forces_total();
+    for (int i = 0; i < dft.ctx().unit_cell().num_atoms(); i++) {
+        for (int j = 0; j < 3; j++) {
+            result[i][j] = ft(j, i);
+        }
+    }
+    return result;
+}
+
 /// Run different flavours of the ground state.
 auto
 ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
@@ -248,15 +274,6 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         dft.initial_state();
     }
 
-    bool compute_stress{false};
-    bool compute_forces{false};
-    if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-        compute_stress = true;
-    }
-    if (ctx.cfg().control().print_forces()) {
-        compute_forces = true;
-    }
-
     json result;
 
     Lattice_relaxation lr(dft);
@@ -268,35 +285,19 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
                               inp.num_dft_iter(), write_state);
 
-            if (compute_stress) {
-                dft.stress().calc_stress_total();
-            }
-            if (compute_forces) {
-                dft.forces().calc_forces_total();
-            }
-            /* compute forces and stress */
+            /* compute stress tensor */
             if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
+                dft.stress().calc_stress_total();
                 auto out = dft.ctx().out(0, __func__);
                 dft.stress().print_info(out, dft.ctx().verbosity());
-                result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
-                auto st          = dft.stress().stress_total();
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        result["stress"][i][j] = st(j, i);
-                    }
-                }
+                result["stress"] = get_stress(dft);
             }
+            /* compute forces */
             if (ctx.cfg().control().print_forces()) {
+                dft.forces().calc_forces_total();
                 auto out = dft.ctx().out(0, __func__);
                 dft.forces().print_info(out, dft.ctx().verbosity());
-                result["forces"] =
-                        std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-                auto& ft = dft.forces().forces_total();
-                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                    for (int j = 0; j < 3; j++) {
-                        result["forces"][i][j] = ft(j, i);
-                    }
-                }
+                result["forces"] = get_forces(dft);
             }
             //nlohmann::json dict;
             //std::vector<double> t;
@@ -396,26 +397,12 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
                                inp.num_dft_iter(), write_state);
             if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-                Stress& s       = dft.stress();
-                auto stress_tot = s.calc_stress_total();
-                auto elem       = std::vector<std::vector<double>>(3, std::vector<double>(3));
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        elem[i][j] = stress_tot(j, i);
-                    }
-                }
-                r1["stress"] = elem;
+                dft.stress().calc_stress_total();
+                r1["stress"] = get_stress(dft);
             }
             if (ctx.cfg().control().print_forces()) {
-                Force& f         = dft.forces();
-                auto& forces_tot = f.calc_forces_total();
-                auto elem = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                    for (int j = 0; j < 3; j++) {
-                        elem[i][j] = forces_tot(j, i);
-                    }
-                }
-                r1["forces"] = elem;
+                dft.forces().calc_forces_total();
+                r1["forces"] = get_forces(dft);
             }
         }
     }
