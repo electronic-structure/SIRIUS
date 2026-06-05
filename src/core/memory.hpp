@@ -86,6 +86,39 @@ is_device_memory(memory_t mem__)
     return static_cast<unsigned int>(mem__) & 0b1000;
 }
 
+inline char const*
+memory_t_name(memory_t mem__)
+{
+    switch (mem__) {
+        case memory_t::none: {
+            return "none";
+        }
+        case memory_t::host: {
+            return "host";
+        }
+        case memory_t::host_pinned: {
+            return "host_pinned";
+        }
+        case memory_t::device: {
+            return "device";
+        }
+        case memory_t::managed: {
+            return "managed";
+        }
+    }
+    return "unknown";
+}
+
+inline void
+print_mdarray_allocation(size_t num_bytes__, char const* location__, char const* allocator__, std::string const& label__)
+{
+    size_t const one_gb = 1024ULL * 1024ULL * 1024ULL;
+    if (num_bytes__ > one_gb) {
+        std::cout << "mdarray allocation: " << num_bytes__ << " bytes"
+                  << ", " << location__ << ", " << allocator__ << ", label: " << label__ << std::endl;
+    }
+}
+
 /// Get a memory type from a string.
 inline auto
 get_memory_t(std::string name__)
@@ -980,6 +1013,7 @@ mdarray<T, N>::allocate(memory_t memory__)
     if (is_host_memory(memory__)) {
         unique_ptr_ = sirius::get_unique_ptr<T>(this->size(), memory__);
         raw_ptr_    = unique_ptr_.get();
+        print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(memory__), "direct", label_);
         call_constructor();
     }
 #ifdef SIRIUS_GPU
@@ -987,6 +1021,7 @@ mdarray<T, N>::allocate(memory_t memory__)
     if (is_device_memory(memory__)) {
         unique_ptr_device_ = sirius::get_unique_ptr<T>(this->size(), memory__);
         raw_ptr_device_    = unique_ptr_device_.get();
+        print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(memory__), "direct", label_);
     }
 #endif
     return *this;
@@ -1004,6 +1039,7 @@ mdarray<T, N>::allocate(memory_pool& mp__)
     if (is_host_memory(mp__.memory_type())) {
         unique_ptr_ = mp__.get_unique_ptr<T>(this->size());
         raw_ptr_    = unique_ptr_.get();
+        print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(mp__.memory_type()), "pool", label_);
         call_constructor();
     }
 #ifdef SIRIUS_GPU
@@ -1011,6 +1047,7 @@ mdarray<T, N>::allocate(memory_pool& mp__)
     if (is_device_memory(mp__.memory_type())) {
         unique_ptr_device_ = mp__.get_unique_ptr<T>(this->size());
         raw_ptr_device_    = unique_ptr_device_.get();
+        print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(mp__.memory_type()), "pool", label_);
     }
 #endif
     return *this;

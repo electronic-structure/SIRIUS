@@ -312,10 +312,7 @@ Below are some basic style rules that we follow:
     \endcode
 
   - Comments are inserted before the code with slash-star style starting with the lower case:
-    \code{.cpp}
-    // call a very important function
-    do_something();
-    \endcode
+    \snippet examples/do_something.cpp important-call
   - Spaces between most operators:
     \code{.cpp}
     if (i < 5) {
@@ -378,6 +375,7 @@ Below are some basic style rules that we follow:
         case 1: {
             do_something();
             break;
+        }
         case 2: {
             do_something_else();
             break;
