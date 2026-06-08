@@ -256,7 +256,7 @@ Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0<double> H0(potential_, false);
+    Hamiltonian0<double> H0(potential_, false, false, false);
     for (auto it : kset_.spl_num_kpoints()) {
         auto hk = H0(*kset_.get<double>(it.i));
         add_ibs_force(kset_.get<double>(it.i), hk, ffac, forces_ibs_);

@@ -509,12 +509,12 @@ Unit_cell::is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, d
 }
 
 void
-Unit_cell::generate_radial_functions(std::ostream& out__)
+Unit_cell::generate_radial_functions(std::ostream& out__, bool update_enu__)
 {
     PROFILE("sirius::Unit_cell::generate_radial_functions");
 
     for (auto it : spl_num_atom_symmetry_classes()) {
-        atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity());
+        atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity(), update_enu__);
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {

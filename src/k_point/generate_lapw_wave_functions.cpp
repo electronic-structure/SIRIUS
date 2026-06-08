@@ -38,7 +38,7 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
     int mt_aw_offset{0};
 
     /* loop over blocks of atoms */
-    for (auto na : split_in_blocks(uc.num_atoms(), 64)) {
+    for (auto na : split_in_blocks(uc.num_atoms(), ctx_.cfg().control().apw_chunk_size())) {
         /* actual number of AW radial functions in a block of atoms */
         int num_mt_aw{0};
         for (int i = 0; i < na; i++) {

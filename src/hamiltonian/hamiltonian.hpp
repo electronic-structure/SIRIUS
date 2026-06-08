@@ -92,7 +92,7 @@ class Hamiltonian0
 
   public:
     /// Constructor.
-    Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__ = true);
+    Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__, bool update_lapw_enu__);
 
     ~Hamiltonian0();
 
@@ -103,7 +103,7 @@ class Hamiltonian0
     inline Hamiltonian_k<T>
     operator()(K_point<T>& kp__) const;
 
-    Simulation_context&
+    inline auto&
     ctx() const
     {
         return ctx_;

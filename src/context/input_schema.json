@@ -515,6 +515,11 @@
                     "default": 256,
                     "title": "Number of atoms in a chunk of beta-projectors."
                 },
+                "apw_chunk_size": {
+                    "type": "integer",
+                    "default": 64,
+                    "title": "Number of atoms in a block of Alm matching coefficients."
+                },
                 "beta_on_device": {
                     "type": "boolean",
                     "default": false,

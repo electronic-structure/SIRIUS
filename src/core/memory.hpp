@@ -114,7 +114,7 @@ print_mdarray_allocation(size_t num_bytes__, char const* location__, char const*
 {
     size_t const one_gb = 1024ULL * 1024ULL * 1024ULL;
     if (num_bytes__ > one_gb) {
-        std::cout << "mdarray allocation: " << num_bytes__ << " bytes"
+        std::cout << "mdarray allocation: " << static_cast<double>(num_bytes__) / one_gb << " Gb"
                   << ", " << location__ << ", " << allocator__ << ", label: " << label__ << std::endl;
     }
 }

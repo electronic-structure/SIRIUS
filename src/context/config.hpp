@@ -946,6 +946,18 @@ class config_t
             }
             dict_["/control/beta_chunk_size"_json_pointer] = beta_chunk_size__;
         }
+        /// Number of atoms in a block of Alm matching coefficients.
+        inline auto apw_chunk_size() const
+        {
+            return dict_.at("/control/apw_chunk_size"_json_pointer).get<int>();
+        }
+        inline void apw_chunk_size(int apw_chunk_size__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/apw_chunk_size"_json_pointer] = apw_chunk_size__;
+        }
         /// True if whole set of beta-projectors can be allocated on device for the entire run.
         inline auto beta_on_device() const
         {

@@ -92,7 +92,7 @@ class Atom_symmetry_class
 
     /// Generate APW and LO radial functions.
     void
-    generate_radial_functions(relativity_t rel__);
+    generate_radial_functions(relativity_t rel__, bool update_enu__);
 
     void
     sync_radial_functions(mpi::Communicator const& comm__, int const rank__);

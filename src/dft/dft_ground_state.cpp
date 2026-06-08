@@ -31,13 +31,13 @@ DFT_ground_state::initial_state()
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
-            Hamiltonian0<float> H0(potential_, true);
+            Hamiltonian0<float> H0(potential_, false, false, false);
             initialize_subspace(kset_, H0);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            Hamiltonian0<double> H0(potential_, true);
+            Hamiltonian0<double> H0(potential_, false, false, false);
             initialize_subspace(kset_, H0);
         }
     }
@@ -48,7 +48,7 @@ DFT_ground_state::create_H0()
 {
     PROFILE("sirius::DFT_ground_state::create_H0");
 
-    H0_ = std::make_shared<Hamiltonian0<double>>(potential_, true);
+    H0_ = std::make_shared<Hamiltonian0<double>>(potential_, true, true, true);
 }
 
 void
@@ -121,7 +121,7 @@ DFT_ground_state::check_scf_density()
     pot.generate(density_, ctx_.use_symmetry(), transform_to_rg);
     /* create new Hamiltonian */
     bool precompute_lapw{true};
-    Hamiltonian0<double> H0(pot, precompute_lapw);
+    Hamiltonian0<double> H0(pot, precompute_lapw, true, true);
     /* initialize the subspace */
     ::sirius::initialize_subspace(kset_, H0);
     /* find new wave-functions */
@@ -236,7 +236,10 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             RTE_THROW("not compiled with FP32 support");
 #endif
         } else {
-            Hamiltonian0<double> H0(potential_, true);
+            bool precompute_lapw{true};
+            bool update_lapw_rf{true};
+            bool update_lapw_enu = true; //(iter > 0);
+            Hamiltonian0<double> H0(potential_, precompute_lapw, update_lapw_rf, update_lapw_enu);
             /* find new wave-functions */
             result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__,
                                                          ctx_.cfg().iterative_solver().num_steps());

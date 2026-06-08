@@ -22,7 +22,8 @@ namespace sirius {
 //       externally by the host code
 
 template <typename T>
-Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__)
+Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__,
+        bool update_lapw_enu__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
@@ -41,7 +42,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
             potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
             if (update_lapw_rf__) {
-                ctx_.unit_cell().generate_radial_functions(ctx_.out());
+                ctx_.unit_cell().generate_radial_functions(ctx_.out(), update_lapw_enu__);
             }
             ctx_.unit_cell().generate_radial_integrals();
         }

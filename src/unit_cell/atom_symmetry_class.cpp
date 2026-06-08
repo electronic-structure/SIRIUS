@@ -503,8 +503,8 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
             int n                = nl_enu_vec[i].first.first;
             int l                = nl_enu_vec[i].first.second;
             nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
-                                              spherical_potential_, nl_enu_vec[i].second, 1)
-                                           .enu();
+                                              spherical_potential_, nl_enu_vec[i].second - spherical_potential_.back(), 1)
+                                           .enu() + spherical_potential_.back();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
@@ -534,7 +534,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
 }
 
 void
-Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
+Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_enu__)
 {
     PROFILE("sirius::Atom_symmetry_class::generate_radial_functions");
 
@@ -543,11 +543,13 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     sd.zero();
     rf.zero();
 
-    auto ierr_enu = find_enu(rel__);
-    if (ierr_enu) {
-        std::stringstream s;
-        s << "find_enu() failed for atom class " << id_;
-        RTE_WARNING(s);
+    if (update_enu__) {
+        auto ierr_enu = find_enu(rel__);
+        if (ierr_enu) {
+            std::stringstream s;
+            s << "find_enu() failed for atom class " << id_;
+            RTE_WARNING(s);
+        }
     }
 
     auto ierr_aw = generate_aw_radial_functions(rel__, rf, sd);
@@ -570,6 +572,10 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
         if (atom_type().parameters().cfg().control().ortho_rf()) {
             orthogonalize_radial_functions();
         }
+    } else {
+        std::stringstream s;
+        s << "radial functions for atom class " << id_ << " were not found";
+        RTE_WARNING(s);
     }
 
     if (atom_type().parameters().cfg().control().save_rf()) {

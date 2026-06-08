@@ -1340,9 +1340,13 @@ class Enu_finder : public Radial_solver
         : Radial_solver(zn__, v__, radial_grid__)
         , n_(n__)
         , l_(l__)
+        , enu_(enu_start__)
     {
         if (l_ >= n_) {
-            RTE_THROW("wrong orbital quantum number");
+            std::stringstream s;
+            s << "wrong orbital quantum number" << std::endl
+              << "  z : " << zn__ << ",  n : " << n__ << ", l : " << l__ <<", enu_start : " << enu_start__;
+            RTE_THROW(s.str());
         }
         find_enu(rel__, enu_start__, auto_enu__);
     }
