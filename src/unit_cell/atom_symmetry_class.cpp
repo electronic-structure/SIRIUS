@@ -549,6 +549,14 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
             std::stringstream s;
             s << "find_enu() failed for atom class " << id_;
             RTE_WARNING(s);
+            /* write spherical potential */
+            if (true) {
+                nlohmann::json dict;
+                dict["x"]    = atom_type_.radial_grid().values();
+                dict["veff"] = spherical_potential_;
+                dict["z"]    = atom_type_.zn();
+                write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
+            }
         }
     }
 
