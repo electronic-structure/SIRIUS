@@ -36,7 +36,7 @@ read_atom(cmd_args const& args__)
         }
         a1.set_spherical_potential(veff);
 
-        a1.generate_radial_functions(relativity_t::none);
+        a1.generate_radial_functions(relativity_t::none, true);
         a1.check_lo_linear_independence(1e-5);
     }
     return 0;

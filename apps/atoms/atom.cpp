@@ -805,7 +805,7 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
     a.init();
     Atom_symmetry_class a1(0, a);
     a1.set_spherical_potential(veff);
-    a1.generate_radial_functions(relativity_t::none);
+    a1.generate_radial_functions(relativity_t::none, true);
     mpi::pstdout pout(mpi::Communicator::self());
     a1.write_enu(pout);
     std::cout << pout.flush(0);

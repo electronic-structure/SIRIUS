@@ -177,7 +177,7 @@ compare_with_reference(Simulation_context& ctx, json const& result, std::string 
 }
 
 auto
-get_stress(DFT_ground_state const& dft)
+get_stress(DFT_ground_state& dft)
 {
     std::vector<std::vector<double>> result(3, std::vector<double>(3));
     auto st = dft.stress().stress_total();
@@ -190,7 +190,7 @@ get_stress(DFT_ground_state const& dft)
 }
 
 auto
-get_forces(DFT_ground_state const& dft)
+get_forces(DFT_ground_state& dft)
 {
     std::vector<std::vector<double>> result(dft.ctx().unit_cell().num_atoms(), std::vector<double>(3));
     auto& ft = dft.forces().forces_total();
@@ -268,7 +268,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         density.load(fname);
         density.generate_paw_density();
         potential.generate(density, ctx.use_symmetry(), true);
-        Hamiltonian0<double> H0(potential, true);
+        Hamiltonian0<double> H0(potential, true, true, true);
         initialize_subspace(kset, H0);
     } else {
         dft.initial_state();
@@ -558,7 +558,7 @@ run_k_point_path_task(cmd_args const& args, std::string const& fname)
     // density.initial_density();
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
-    Hamiltonian0<double> H0(potential, true);
+    Hamiltonian0<double> H0(potential, true, true, true);
     if (!ctx->full_potential()) {
         initialize_subspace(ks, H0);
         if (ctx->hubbard_correction()) {
@@ -632,7 +632,7 @@ run_plot_wf_task(cmd_args const& args, std::string const& fname)
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
     /* we need to create Hamiltonian to recompute radial functions */
-    Hamiltonian0<double> H0(potential, true, true);
+    Hamiltonian0<double> H0(potential, true, true, true);
 
     bool const reduce_kp = ctx->use_symmetry() && ctx->cfg().parameters().use_ibz();
     K_point_set kset(*ctx, ctx->cfg().parameters().ngridk(), ctx->cfg().parameters().shiftk(), reduce_kp);
