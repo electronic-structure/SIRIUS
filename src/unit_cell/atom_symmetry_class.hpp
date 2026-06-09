@@ -91,7 +91,7 @@ class Atom_symmetry_class
     set_spherical_potential(std::vector<double> const& vs__);
 
     /// Generate APW and LO radial functions.
-    void
+    int
     generate_radial_functions(relativity_t rel__, bool update_enu__);
 
     void
@@ -112,8 +112,32 @@ class Atom_symmetry_class
     int
     find_enu(relativity_t rel__);
 
-    void
-    write_enu(mpi::pstdout& pout) const;
+    template <typename T>
+    inline void
+    write_enu(T& pout) const
+    {
+        pout << "Atom : " << atom_type_.symbol() << ", class id : " << id_ << std::endl;
+        pout << "augmented waves" << std::endl;
+        for (int l = 0; l < num_aw_descriptors(); l++) {
+            for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
+                auto& rsd = aw_descriptor(l)[order];
+                if (rsd.auto_enu) {
+                    pout << rsd << std::endl;
+                }
+            }
+        }
+
+        pout << "local orbitals" << std::endl;
+        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+            for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
+                auto& rsd = lo_descriptor(idxlo).rsd_set[order];
+                if (rsd.auto_enu) {
+                    pout << rsd << std::endl;
+                }
+            }
+        }
+        pout << std::endl;
+    }
 
     /// Generate radial overlap and SO integrals
     /** In the case of spin-orbit interaction the following integrals are computed:

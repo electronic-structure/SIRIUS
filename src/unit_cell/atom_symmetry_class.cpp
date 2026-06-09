@@ -533,7 +533,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     return ierr;
 }
 
-void
+int
 Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_enu__)
 {
     PROFILE("sirius::Atom_symmetry_class::generate_radial_functions");
@@ -617,6 +617,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
 
         count++;
     }
+    return ierr_aw + ierr_lo;
 }
 
 void
@@ -771,32 +772,6 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
             }
         }
     }
-}
-
-void
-Atom_symmetry_class::write_enu(mpi::pstdout& pout) const
-{
-    pout << "Atom : " << atom_type_.symbol() << ", class id : " << id_ << std::endl;
-    pout << "augmented waves" << std::endl;
-    for (int l = 0; l < num_aw_descriptors(); l++) {
-        for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
-            auto& rsd = aw_descriptor(l)[order];
-            if (rsd.auto_enu) {
-                pout << rsd << std::endl;
-            }
-        }
-    }
-
-    pout << "local orbitals" << std::endl;
-    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-        for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
-            auto& rsd = lo_descriptor(idxlo).rsd_set[order];
-            if (rsd.auto_enu) {
-                pout << rsd << std::endl;
-            }
-        }
-    }
-    pout << std::endl;
 }
 
 } // namespace sirius
