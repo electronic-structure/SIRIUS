@@ -92,15 +92,11 @@ class Atom_symmetry_class
 
     /// Save spherical potential for debugging purposes.
     inline void
-    save_spherical_potential() const
-    {
-        nlohmann::json dict;
-        dict["x"]    = atom_type_.radial_grid().values();
-        dict["veff"] = spherical_potential_;
-        dict["z"]    = atom_type_.zn();
-        dict["rmt"]  = atom_type_.mt_radius();
-        write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
-    }
+    save_spherical_potential() const;
+
+    /// Save radial functions.
+    inline void
+    save_radial_functions(std::string const& fname__) const;
 
     /// Generate APW and LO radial functions.
     int
@@ -116,9 +112,9 @@ class Atom_symmetry_class
     std::vector<int>
     check_lo_linear_independence(double etol__) const;
 
-    /// Dump local orbitals to the file for debug purposes
-    void
-    dump_lo();
+    ///// Dump local orbitals to the file for debug purposes
+    //void
+    //dump_lo();
 
     /// Find linearization energy.
     int

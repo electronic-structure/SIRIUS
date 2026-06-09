@@ -549,11 +549,11 @@ Unit_cell::generate_radial_functions(std::ostream& out__, bool update_enu__)
         }
         RTE_OUT(out__) << s.str();
     }
-    if (parameters_.cfg().control().save_rf() && comm_.rank() == 0) {
-        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            atom_symmetry_class(ic).dump_lo();
-        }
-    }
+    //if (parameters_.cfg().control().save_rf() && comm_.rank() == 0) {
+    //    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+    //        atom_symmetry_class(ic).dump_lo();
+    //    }
+    //}
 }
 
 void

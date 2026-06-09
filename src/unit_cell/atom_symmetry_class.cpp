@@ -162,6 +162,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             }
         } else {
             found = false;
+            std::cout << "fail for l=" << l << std::endl;
         }
     } // l
     return found ? 0 : 1;
@@ -425,37 +426,37 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__) const
     return inc;
 }
 
-void
-Atom_symmetry_class::dump_lo()
-{
-    std::stringstream s;
-    s << "local_orbitals_" << id_ << ".dat";
-    FILE* fout = fopen(s.str().c_str(), "w");
-
-    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-        fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
-            fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
-        }
-        fprintf(fout, "\n");
-    }
-    fclose(fout);
-
-    s.str("");
-    s << "local_orbitals_deriv_" << id_ << ".dat";
-    fout = fopen(s.str().c_str(), "w");
-
-    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-        fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
-            fprintf(fout, "%f ", radial_functions_(ir, idxrf, 1));
-        }
-        fprintf(fout, "\n");
-    }
-    fclose(fout);
-}
+//void
+//Atom_symmetry_class::dump_lo()
+//{
+//    std::stringstream s;
+//    s << "local_orbitals_" << id_ << ".dat";
+//    FILE* fout = fopen(s.str().c_str(), "w");
+//
+//    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+//        fprintf(fout, "%f ", atom_type_.radial_grid(ir));
+//        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+//            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
+//            fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
+//        }
+//        fprintf(fout, "\n");
+//    }
+//    fclose(fout);
+//
+//    s.str("");
+//    s << "local_orbitals_deriv_" << id_ << ".dat";
+//    fout = fopen(s.str().c_str(), "w");
+//
+//    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+//        fprintf(fout, "%f ", atom_type_.radial_grid(ir));
+//        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+//            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
+//            fprintf(fout, "%f ", radial_functions_(ir, idxrf, 1));
+//        }
+//        fprintf(fout, "\n");
+//    }
+//    fclose(fout);
+//}
 
 void
 Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
@@ -503,8 +504,8 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
             int n                = nl_enu_vec[i].first.first;
             int l                = nl_enu_vec[i].first.second;
             nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
-                                              spherical_potential_, nl_enu_vec[i].second - spherical_potential_.back(), 1)
-                                           .enu() + spherical_potential_.back();
+                                              spherical_potential_, nl_enu_vec[i].second + spherical_potential_.back(), 1)
+                                           .enu() - spherical_potential_.back();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
@@ -515,6 +516,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
         nl_enu[e.first] = e.second;
     }
 
+    /* update AW linearization energies */
     for (int l = 0; l < num_aw_descriptors(); l++) {
         for (auto& d : aw_descriptor(l)) {
             if (d.auto_enu) {
@@ -522,6 +524,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
             }
         }
     }
+    /* update LO linearization energies */
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
         for (auto& d : lo_descriptor(idxlo).rsd_set) {
             if (d.auto_enu) {
@@ -550,7 +553,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
             s << "find_enu() failed for atom class " << id_;
             RTE_WARNING(s);
             /* write spherical potential */
-            if (true) {
+            if (atom_type().parameters().cfg().control().save_rf()) {
                 save_spherical_potential();
             }
         }
@@ -580,40 +583,15 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
         std::stringstream s;
         s << "radial functions for atom class " << id_ << " were not found";
         RTE_WARNING(s);
-        if (true) {
+        if (atom_type().parameters().cfg().control().save_rf()) {
             save_spherical_potential();
         }
     }
 
     if (atom_type().parameters().cfg().control().save_rf()) {
         static int count{0};
-
-        if (true) {
-            std::stringstream s;
-            s << "radial_functions_class_" << id_ << "_step_" << count << ".dat";
-            std::ofstream ofs(s.str(), std::ofstream::out | std::ofstream::trunc);
-
-            for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-                ofs << std::setprecision(12) << atom_type_.radial_grid(ir) << " ";
-                for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
-                    ofs << std::setprecision(12) << radial_functions_(ir, idxrf, 0) << " "
-                        << radial_functions_(ir, idxrf, 1) << " ";
-                }
-                ofs << std::endl;
-            }
-        }
-
-        if (true) {
-            std::stringstream s;
-            s << "radial_potential_class_" << id_ << "_step_" << count << ".dat";
-            std::ofstream ofs(s.str(), std::ofstream::out | std::ofstream::trunc);
-
-            for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-                ofs << std::setprecision(12) << atom_type_.radial_grid(ir) << " " << spherical_potential_[ir] << " "
-                    << spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir) << std::endl;
-            }
-        }
-
+        std::string fname = "radial_functions_class_" + std::to_string(id_) + "_step_" + std::to_string(count) + ".json";
+        save_radial_functions(fname);
         count++;
     }
     return ierr_aw + ierr_lo;
@@ -771,6 +749,54 @@ Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
             }
         }
     }
+}
+
+void
+Atom_symmetry_class::save_spherical_potential() const
+{
+    nlohmann::json dict;
+    dict["x"]    = atom_type_.radial_grid().values();
+    dict["veff"] = spherical_potential_;
+    dict["z"]    = atom_type_.zn();
+    dict["rmt"]  = atom_type_.mt_radius();
+    write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
+}
+
+void
+Atom_symmetry_class::save_radial_functions(std::string const& fname__) const
+{
+    nlohmann::json dict;
+    dict["x"]                   = atom_type_.radial_grid().values();
+    dict["z"]                   = atom_type_.zn();
+    dict["rmt"]                 = atom_type_.mt_radius();
+    dict["spherical_potential"] = spherical_potential_;
+
+    std::vector<double> veff(spherical_potential_.size());
+    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+        veff[ir] = spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir);
+    }
+    dict["spherical_potential_el"] = veff;
+
+    dict["radial_functions"] = nlohmann::json::array();
+    for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
+        std::vector<double> u(atom_type_.num_mt_points());
+        std::vector<double> rdudr(atom_type_.num_mt_points());
+
+        for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+            u[ir]     = radial_functions_(ir, idxrf, 0);
+            rdudr[ir] = radial_functions_(ir, idxrf, 1);
+        }
+
+        auto const& rfd = atom_type_.indexr(idxrf);
+        dict["radial_functions"].push_back({{"idxrf", idxrf},
+                                            {"l", rfd.am.l()},
+                                            {"order", rfd.order},
+                                            {"idxlo", static_cast<int>(rfd.idxlo)},
+                                            {"u", u},
+                                            {"rdudr", rdudr}});
+    }
+
+    write_json_to_file(dict, fname__);
 }
 
 } // namespace sirius
