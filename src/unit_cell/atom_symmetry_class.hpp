@@ -90,6 +90,18 @@ class Atom_symmetry_class
     void
     set_spherical_potential(std::vector<double> const& vs__);
 
+    /// Save spherical potential for debugging purposes.
+    inline void
+    save_spherical_potential() const
+    {
+        nlohmann::json dict;
+        dict["x"]    = atom_type_.radial_grid().values();
+        dict["veff"] = spherical_potential_;
+        dict["z"]    = atom_type_.zn();
+        dict["rmt"]  = atom_type_.mt_radius();
+        write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
+    }
+
     /// Generate APW and LO radial functions.
     int
     generate_radial_functions(relativity_t rel__, bool update_enu__);

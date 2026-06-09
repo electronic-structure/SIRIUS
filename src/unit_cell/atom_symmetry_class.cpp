@@ -551,11 +551,7 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
             RTE_WARNING(s);
             /* write spherical potential */
             if (true) {
-                nlohmann::json dict;
-                dict["x"]    = atom_type_.radial_grid().values();
-                dict["veff"] = spherical_potential_;
-                dict["z"]    = atom_type_.zn();
-                write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
+                save_spherical_potential();
             }
         }
     }
@@ -584,6 +580,9 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
         std::stringstream s;
         s << "radial functions for atom class " << id_ << " were not found";
         RTE_WARNING(s);
+        if (true) {
+            save_spherical_potential();
+        }
     }
 
     if (atom_type().parameters().cfg().control().save_rf()) {
