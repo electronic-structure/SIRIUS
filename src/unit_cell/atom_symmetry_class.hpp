@@ -112,10 +112,6 @@ class Atom_symmetry_class
     std::vector<int>
     check_lo_linear_independence(double etol__) const;
 
-    ///// Dump local orbitals to the file for debug purposes
-    //void
-    //dump_lo();
-
     /// Find linearization energy.
     int
     find_enu(relativity_t rel__);

@@ -425,38 +425,6 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__) const
     return inc;
 }
 
-//void
-//Atom_symmetry_class::dump_lo()
-//{
-//    std::stringstream s;
-//    s << "local_orbitals_" << id_ << ".dat";
-//    FILE* fout = fopen(s.str().c_str(), "w");
-//
-//    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-//        fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-//        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-//            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
-//            fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
-//        }
-//        fprintf(fout, "\n");
-//    }
-//    fclose(fout);
-//
-//    s.str("");
-//    s << "local_orbitals_deriv_" << id_ << ".dat";
-//    fout = fopen(s.str().c_str(), "w");
-//
-//    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-//        fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-//        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-//            int idxrf = atom_type_.indexr().index_of(rf_lo_index(idxlo));
-//            fprintf(fout, "%f ", radial_functions_(ir, idxrf, 1));
-//        }
-//        fprintf(fout, "\n");
-//    }
-//    fclose(fout);
-//}
-
 void
 Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
 {
