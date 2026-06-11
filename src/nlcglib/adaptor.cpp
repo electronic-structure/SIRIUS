@@ -120,7 +120,7 @@ Energy::compute()
     potential_.generate(density_, ctx.use_symmetry(), true);
 
     /* compute H@X and new band energies */
-    auto H0 = Hamiltonian0<double>(potential_, true);
+    auto H0 = Hamiltonian0<double>(potential_, true, true, true);
 
     auto proc_mem_t = ctx.processing_unit_memory_t();
 

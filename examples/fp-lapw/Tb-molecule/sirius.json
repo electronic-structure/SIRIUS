@@ -1,7 +1,8 @@
 {
     "control" : {
-        "processing_unit" : "cpu",
-        "verbosity" : 2
+        "verbosity" : 2,
+        "verification" : 0,
+        "apw_chunk_size" : 24
     },
 
     "parameters" : {
@@ -10,23 +11,24 @@
         "smearing_width" : 0.05,
         "valence_relativity" : "none",
         "core_relativity" : "none",
-        "aw_cutoff" : 7.0,
-        "pw_cutoff" : 30.00,
+        "aw_cutoff" : 6.0,
+        "pw_cutoff" : 15.00,
         "auto_rmt" : 1,
         "ngridk" : [1,1,1],
         "density_tol" : 1e-7,
         "energy_tol" : 1e-7,
-        "num_dft_iter" : 100,
+        "num_dft_iter" : 2,
         "lmax_apw"     : 10,
         "lmax_pot"     : 10,
-        "lmax_rho"     : 10
+        "lmax_rho"     : 10,
+        "molecule"     : true
     },
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-4,
         "residual_tolerance" : 1e-5,
-        "num_steps" : 12,
-        "subspace_size" : 12,
+        "num_steps" : 20,
+        "subspace_size" : 4,
         "type" : "davidson"
     },
 
@@ -36,9 +38,9 @@
                               [0, 1, 0], 
                               [0, 0, 0.5]
                             ],
-        "lattice_vectors_scale" : 60,
+        "lattice_vectors_scale" : 40,
 
-        "atom_types" : ["Tb", "N", "C", "H"],
+        "atom_types" : ["Tb", "N", "H", "C"],
 
         "atom_files" : {
             "Tb" : "Tb.json",

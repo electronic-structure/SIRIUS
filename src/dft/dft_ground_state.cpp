@@ -219,7 +219,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         double ne_diff{0};
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
 #if defined(SIRIUS_USE_FP32)
-            Hamiltonian0<float> H0(potential_, true);
+            Hamiltonian0<float> H0(potential_, true, true, true);
             /* find new wave-functions */
             if (ctx_.cfg().parameters().precision_hs() == "fp32") {
                 result = sirius::diagonalize<float, float>(H0, kset_, iter_solver_tol__,

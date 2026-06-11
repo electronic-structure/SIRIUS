@@ -58,7 +58,7 @@ call_nlcg(Simulation_context& ctx, config_t::nlcg_t const& nlcg_params, Energy& 
         RTE_THROW("invalid smearing type given");
     }
 
-    Hamiltonian0<double> H0(potential, false /* precompute laplw */);
+    Hamiltonian0<double> H0(potential, false, false, false /* precompute laplw */);
 
     sirius::UltrasoftPrecond us_precond(kset, ctx, H0.Q());
     sirius::Overlap_operators<sirius::S_k<numeric_t>> S(kset, ctx, H0.Q());
