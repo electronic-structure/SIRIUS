@@ -246,7 +246,7 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, atom_index_t::local ia
             break;
         }
         case device_t::GPU: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             acc::sync_stream(acc::stream_id(-1));
 #endif
             break;

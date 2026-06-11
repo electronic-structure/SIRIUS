@@ -146,7 +146,7 @@ ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n
 
 ftn_double FORTRAN(dlamch)(ftn_char cmach, ftn_len cmach_len);
 
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
 int
 Csys2blacs_handle(MPI_Comm SysCtxt);
 
@@ -244,7 +244,7 @@ class linalg_base
         return FORTRAN(dlamch)(&cmach, (ftn_len)1);
     }
 
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
     static ftn_int
     numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)
     {

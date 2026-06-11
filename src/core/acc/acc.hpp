@@ -248,7 +248,7 @@ sync_stream(stream_id sid__)
 inline void
 reset()
 {
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
     CALL_DEVICE_API(ProfilerStop, ());
 #endif
     CALL_DEVICE_API(DeviceReset, ());

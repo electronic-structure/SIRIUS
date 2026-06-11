@@ -245,7 +245,7 @@ XC_functional::is_vdw() const
 inline void
 XC_functional::vdw_update_unit_cell(spfft::Transform const& fft__, r3::matrix<double> const& lattice_vectors__)
 {
-#ifdef SIRIUS_USE_VDWXC
+#if defined(SIRIUS_USE_VDWXC)
     if (is_vdw()) {
         // we need to add a test for checking that the fft parameters have
         // not changed. Right now I assume that fft box can change and I

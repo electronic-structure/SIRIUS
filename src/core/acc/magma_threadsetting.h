@@ -16,7 +16,7 @@
 #ifndef MAGMA_THREADSETTING_H
 #define MAGMA_THREADSETTING_H
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -29,7 +29,7 @@ magma_int_t magma_get_lapack_numthreads();
 magma_int_t magma_get_parallel_numthreads();
 magma_int_t magma_get_omp_numthreads();
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

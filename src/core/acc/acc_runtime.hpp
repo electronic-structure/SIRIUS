@@ -27,7 +27,7 @@
 /*
  * CUDA runtime calls and definitions
  */
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
 #define accLaunchKernel(kernelName, numblocks, numthreads, memperblock, streamId, ...)                                 \
     do {                                                                                                               \
         kernelName<<<numblocks, numthreads, memperblock, streamId>>>(__VA_ARGS__);                                     \
@@ -53,7 +53,7 @@
 /*
  * ROCM runtime calls and definitions
  */
-#ifdef SIRIUS_ROCM
+#if defined(SIRIUS_ROCM)
 #define accLaunchKernel(...)                                                                                           \
     do {                                                                                                               \
         hipLaunchKernelGGL(__VA_ARGS__);                                                                               \

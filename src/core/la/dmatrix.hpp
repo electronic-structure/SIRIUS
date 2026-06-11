@@ -77,7 +77,7 @@ class dmatrix : public matrix<T>
     init()
     {
         if (blacs_grid_ != nullptr) {
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
 #endif

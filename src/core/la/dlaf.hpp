@@ -14,11 +14,11 @@
 #ifndef __DLAF_HPP__
 #define __DLAF_HPP__
 
-#ifdef SIRIUS_DLAF
+#if defined(SIRIUS_DLAF)
 
 #include "core/la/dmatrix.hpp"
 
-#ifdef SIRIUS_DLAF
+#if defined(SIRIUS_DLAF)
 #include <dlaf_c/grid.h>
 #include <dlaf_c/eigensolver/eigensolver.h>
 #include <dlaf_c/eigensolver/gen_eigensolver.h>
@@ -41,7 +41,7 @@ blacs_context(la::dmatrix<T>& M__)
         blacs_context = dlaf_create_grid(M__.blacs_grid().comm().native(), M__.blacs_grid().num_ranks_row(),
                                          M__.blacs_grid().num_ranks_col(), 'R');
     } else {
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
         // Create DLAF grid from the BLACS context
         dlaf_create_grid_from_blacs(blacs_context);
 #else

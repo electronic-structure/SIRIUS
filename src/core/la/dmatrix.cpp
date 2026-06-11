@@ -269,7 +269,7 @@ dmatrix<T>::save_to_hdf5(std::string name__, int m__, int n__)
 // instantiate for required types
 template class dmatrix<double>;
 template class dmatrix<std::complex<double>>;
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template class dmatrix<float>;
 template class dmatrix<std::complex<float>>;
 #endif

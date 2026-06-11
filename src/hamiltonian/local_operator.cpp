@@ -636,7 +636,7 @@ Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std::sha
 
 // instantiate for supported precision
 template class Local_operator<double>;
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template class Local_operator<float>;
 #endif
 } // namespace sirius

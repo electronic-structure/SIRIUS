@@ -14,7 +14,7 @@
 #include "core/acc/acc_common.hpp"
 #include "core/acc/acc_runtime.hpp"
 
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
 #include "core/acc/cuda_timer.hpp"
 #endif
 
@@ -112,7 +112,7 @@ extern "C" void create_beta_gk_gpu_float(int num_atoms,
                                          double const* atom_pos,
                                          acc_complex_float_t* beta_gk)
 {
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
     CUDA_timer t("create_beta_gk_gpu");
 #endif
 
@@ -137,7 +137,7 @@ extern "C" void create_beta_gk_gpu_double(int num_atoms,
                                           double const* atom_pos,
                                           acc_complex_double_t* beta_gk)
 {
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
     CUDA_timer t("create_beta_gk_gpu");
 #endif
 

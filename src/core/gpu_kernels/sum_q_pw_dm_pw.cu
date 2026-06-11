@@ -14,7 +14,7 @@
 #include "core/acc/acc_common.hpp"
 #include "core/acc/acc_runtime.hpp"
 
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
 #include "core/acc/cuda_timer.hpp"
 #endif
 
@@ -68,7 +68,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* 
                                    double const* dm_pw__, int ldd__, double const* sym_weight__,
                                    acc_complex_double_t* rho_pw__, int stream_id__)
 {
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
     CUDA_timer t("sum_q_pw_dm_pw_gpu");
 #endif
 

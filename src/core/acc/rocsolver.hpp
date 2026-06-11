@@ -10,7 +10,7 @@
  *
  *  \brief Contains implementation of rocsolver wrappers
  */
-#ifdef SIRIUS_ROCM
+#if defined(SIRIUS_ROCM)
 #ifndef __ROCSOLVER_HPP__
 #define __ROCSOLVER_HPP__
 

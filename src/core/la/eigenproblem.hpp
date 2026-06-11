@@ -406,7 +406,7 @@ class Eigensolver_lapack : public Eigensolver
     }
 };
 
-#ifdef SIRIUS_ELPA
+#if defined(SIRIUS_ELPA)
 class Eigensolver_elpa : public Eigensolver
 {
   private:
@@ -522,7 +522,7 @@ class Eigensolver_elpa : public Eigensolver
 };
 #endif
 
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
 class Eigensolver_scalapack : public Eigensolver
 {
   private:
@@ -1234,7 +1234,7 @@ class Eigensolver_scalapack : public Eigensolver
 };
 #endif
 
-#ifdef SIRIUS_DLAF
+#if defined(SIRIUS_DLAF)
 class Eigensolver_dlaf : public Eigensolver
 {
   public:
@@ -1432,7 +1432,7 @@ class Eigensolver_dlaf : public Eigensolver
 };
 #endif
 
-#ifdef SIRIUS_MAGMA
+#if defined(SIRIUS_MAGMA)
 class Eigensolver_magma : public Eigensolver
 {
   public:

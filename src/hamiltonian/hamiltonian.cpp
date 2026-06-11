@@ -251,7 +251,7 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
 }
 
 template class Hamiltonian0<double>;
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template class Hamiltonian0<float>;
 #endif
 

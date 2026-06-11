@@ -384,7 +384,7 @@ class Potential : public Field4D
         if (!free_atom) {
             /* contribution from nuclear potential -z*(1/r - 1/R) */
             for (int ir = 0; ir < nmtp; ir++) {
-#ifdef __VHA_AUX
+#if defined(__VHA_AUX)
                 double r = atom__.radial_grid(ir);
                 vha_mt__(0, ir) += atom__.zn() * (1 / R - 1 / r) / y00;
 #else

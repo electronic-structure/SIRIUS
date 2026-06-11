@@ -9,7 +9,7 @@
 #ifndef __OVERLAP_HPP__
 #define __OVERLAP_HPP__
 
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
 #include "inverse_overlap.hpp"
 #include "k_point/k_point_set.hpp"
 #include "context/simulation_context.hpp"

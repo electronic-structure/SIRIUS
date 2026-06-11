@@ -928,7 +928,7 @@ Simulation_context::update()
         spfft_grid_coarse_ = std::make_unique<spfft::Grid>(
                 fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count(),
                 spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
         spfft_grid_coarse_float_ = std::make_unique<spfft::GridFloat>(
                 fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2], gvec_coarse_fft_->zcol_count(),
                 spl_z.local_size(), spfft_pu, -1, comm_fft_coarse().native(), SPFFT_EXCH_DEFAULT);
@@ -942,7 +942,7 @@ Simulation_context::update()
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
                 spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
                 spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
         spfft_transform_coarse_float_.reset(new spfft::TransformFloat(spfft_grid_coarse_float_->create_transform(
                 spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
                 spl_z.local_size(), gvec_coarse_fft_->count(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));

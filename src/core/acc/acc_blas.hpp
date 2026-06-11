@@ -26,7 +26,7 @@ namespace acc {
 /// User facing interface to GPU blas functions.
 namespace blas {
 
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
 inline const char*
 error_message(acc::blas_api::status_t status)
 {

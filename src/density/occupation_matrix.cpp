@@ -208,7 +208,7 @@ Occupation_matrix::add_k_point_contribution(K_point<T>& kp__)
 
 template void
 Occupation_matrix::add_k_point_contribution<double>(K_point<double>& kp__);
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template void
 Occupation_matrix::add_k_point_contribution<float>(K_point<float>& kp__);
 #endif

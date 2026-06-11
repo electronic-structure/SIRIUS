@@ -30,7 +30,7 @@
 #include "density/augmentation_operator.hpp"
 #include "lapw/step_function.hpp"
 
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
 extern "C" void
 generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__, double const* atom_pos__,
                            std::complex<double>* phase_factors__);

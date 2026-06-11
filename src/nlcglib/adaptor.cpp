@@ -13,7 +13,7 @@
 
 #include "core/rte/rte.hpp"
 #include "core/wf/wave_functions.hpp"
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
 
 #include "adaptor.hpp"
 #include "apply_hamiltonian.hpp"

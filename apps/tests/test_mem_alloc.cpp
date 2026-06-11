@@ -29,7 +29,7 @@ test_mem_alloc(cmd_args const& args)
         if (is_host_memory(M)) {
             std::fill(ptr, ptr + s, 0);
         } else {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             acc::zero(ptr, s);
 #endif
         }
@@ -38,7 +38,7 @@ test_mem_alloc(cmd_args const& args)
         if (is_host_memory(M)) {
             std::fill(ptr, ptr + s, 0);
         } else {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             acc::zero(ptr, s);
 #endif
         }

@@ -100,7 +100,7 @@ test2()
 }
 
 /*
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
 template <typename T>
 int test3()
 {
@@ -156,7 +156,7 @@ test_linalg()
     int err = test1();
     err += test2<double>();
     err += test2<std::complex<double>>();
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
     // err += test3<std::complex<double>>();
 #endif
     return err;

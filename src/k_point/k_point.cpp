@@ -782,7 +782,7 @@ K_point<T>::generate_gklo_basis()
 }
 
 template class K_point<double>;
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template class K_point<float>;
 #endif
 } // namespace sirius

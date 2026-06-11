@@ -117,7 +117,7 @@ class ostream : public std::ostringstream
         ::sirius::rte::message_impl(false, __func__, __FILE__, __LINE__, __VA_ARGS__);                                 \
     }
 
-#ifdef NDEBUG
+#if defined(NDEBUG)
 #define RTE_ASSERT(condition__)
 #else
 #define RTE_ASSERT(condition__)                                                                                        \

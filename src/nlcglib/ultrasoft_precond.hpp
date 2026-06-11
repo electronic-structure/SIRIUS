@@ -20,7 +20,7 @@
 #include <memory>
 #include <complex>
 
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
 
 namespace sirius {
 

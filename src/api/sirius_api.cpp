@@ -17,7 +17,7 @@
 #include "core/any_ptr.hpp"
 #include "core/profiler.hpp"
 #include "error_codes.hpp"
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
 #include "nlcglib/adaptor.hpp"
 #include "nlcglib/nlcglib.hpp"
 #include "nlcglib/ultrasoft_precond.hpp"
@@ -367,7 +367,7 @@ sirius_initialize(bool const* call_mpi_init__, int* error_code__)
     call_sirius(
             [&]() {
                 sirius::initialize(*call_mpi_init__);
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
                 nlcglib::initialize();
 #endif
             },
@@ -398,7 +398,7 @@ sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, int
 {
     call_sirius(
             [&]() {
-#ifdef SIRIUS_NLCGLIB
+#if defined(SIRIUS_NLCGLIB)
                 nlcglib::finalize();
 #endif
                 bool mpi_fin{true};

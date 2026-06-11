@@ -776,7 +776,7 @@ add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T 
             break;
         }
         case SPFFT_PU_GPU: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             /* add up-up contribution */
             update_density_rg_1_complex_gpu(nr__, psi_r_up.at(memory_t::device), w__,
                                             density_rg__.at(memory_t::device, 0, 0));

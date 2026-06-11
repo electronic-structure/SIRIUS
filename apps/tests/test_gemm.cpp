@@ -11,7 +11,7 @@
 
 using namespace sirius;
 
-#ifdef __TEST_REAL
+#if defined(__TEST_REAL)
 typedef double gemm_type;
 int const nop_gemm = 2;
 #else

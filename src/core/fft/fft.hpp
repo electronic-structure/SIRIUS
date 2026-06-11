@@ -44,7 +44,7 @@ struct SpFFT_Grid<std::complex<double>>
     using type = spfft::Grid;
 };
 
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 /// Specialization of SpFFT_Grid for float.
 template <>
 struct SpFFT_Grid<float>
@@ -82,7 +82,7 @@ struct SpFFT_Transform<std::complex<double>>
     using type = spfft::Transform;
 };
 
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 /// Specialization of SpFFT_Transform for float.
 template <>
 struct SpFFT_Transform<float>

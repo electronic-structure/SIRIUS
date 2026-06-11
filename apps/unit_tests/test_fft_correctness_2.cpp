@@ -69,7 +69,7 @@ int
 test_fft(cmd_args const& args)
 {
     int result = test_fft_complex_impl<T>(args, device_t::CPU);
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     result += test_fft_complex_impl<T>(args, device_t::GPU);
 #endif
     return result;

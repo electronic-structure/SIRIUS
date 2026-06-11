@@ -75,7 +75,7 @@ template <class numeric_t>
 inline void
 DiagonalPreconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarray<numeric_t, 2>& X, memory_t pm)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     // copy d_ to gpu
     if (is_device_memory(pm)) {
         d_.allocate(memory_t::device);
@@ -285,7 +285,7 @@ Ultrasoft_preconditioner<numeric_t>::apply(mdarray<numeric_t, 2>& Y, const mdarr
                               &la::constant<numeric_t>::one(), Y.at(memory_t::host), Y.ld());
                 break;
             }
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             case device_t::GPU:
                 la::wrap(la::lib_t::gpublas)
                         .gemm('N', 'N', m, n, k, &la::constant<numeric_t>::one(), G.at(memory_t::device), G.ld(),

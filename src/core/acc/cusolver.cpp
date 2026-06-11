@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifdef SIRIUS_CUDA
+#if defined(SIRIUS_CUDA)
 #include "cusolver.hpp"
 
 namespace sirius {

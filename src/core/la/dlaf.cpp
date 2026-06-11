@@ -1,6 +1,6 @@
 #include "dlaf.hpp"
 
-#ifdef SIRIUS_DLAF
+#if defined(SIRIUS_DLAF)
 
 #include <dlaf_c/grid.h>
 #include <dlaf_c/init.h>

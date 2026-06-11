@@ -15,7 +15,7 @@
 
 namespace sirius {
 
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
 extern "C" void
 mul_veff_with_phase_factors_gpu(int num_atoms__, int num_gvec_loc__, std::complex<double> const* veff__,
                                 int const* gvx__, int const* gvy__, int const* gvz__, double const* atom_pos__,

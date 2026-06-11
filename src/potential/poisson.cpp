@@ -241,7 +241,7 @@ Potential::poisson(Periodic_function<double> const& rho__)
                 }
             }
             /* save electronic part of the potential at the point of origin */
-#ifdef __VHA_AUX
+#if defined(__VHA_AUX)
             vh_el_(it.i) = y00 * hartree_potential_->mt()[it.i](0, 0) +
                            unit_cell_.atom(it.i).zn() / unit_cell_.atom(it.i).radial_grid(0);
 #else

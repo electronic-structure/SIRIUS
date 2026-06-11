@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifdef SIRIUS_ROCM
+#if defined(SIRIUS_ROCM)
 
 #include "rocsolver.hpp"
 #include "acc_blas.hpp"
