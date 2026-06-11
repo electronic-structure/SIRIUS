@@ -505,9 +505,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
             int l = nl_enu_vec[i].first.second;
             nl_enu_vec[i].second =
                     Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(), spherical_potential_,
-                               nl_enu_vec[i].second + spherical_potential_.back(), 1)
-                            .enu() -
-                    spherical_potential_.back();
+                               nl_enu_vec[i].second, 1).enu();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
