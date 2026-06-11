@@ -38,7 +38,8 @@ init_operators(py::module& m)
 
     py::class_<Hamiltonian0<PT>>(m, "Hamiltonian0")
             .def(py::init<Potential&, bool>(), py::keep_alive<1, 2>(), "Potential"_a,
-                 py::arg("precompute_lapw") = false)
+                 py::arg("precompute_lapw") = false, py::arg("update_lapw_rf") = false,
+                 py::arg("update_lapw_enu") = false)
             .def("Q", &Hamiltonian0<PT>::Q, py::return_value_policy::reference_internal)
             .def("D", &Hamiltonian0<PT>::D, py::return_value_policy::reference_internal)
             .def("Hk", &Hamiltonian0<PT>::operator(), py::keep_alive<0, 1>())
