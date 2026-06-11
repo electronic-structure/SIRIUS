@@ -1345,7 +1345,7 @@ class Enu_finder : public Radial_solver
         if (l_ >= n_) {
             std::stringstream s;
             s << "wrong orbital quantum number" << std::endl
-              << "  z : " << zn__ << ",  n : " << n__ << ", l : " << l__ <<", enu_start : " << enu_start__;
+              << "  z : " << zn__ << ",  n : " << n__ << ", l : " << l__ << ", enu_start : " << enu_start__;
             RTE_THROW(s.str());
         }
         find_enu(rel__, enu_start__, auto_enu__);

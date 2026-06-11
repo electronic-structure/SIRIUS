@@ -501,11 +501,13 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     #pragma omp parallel for reduction(+:ierr)
     for (size_t i = 0; i < nl_enu_vec.size(); i++) {
         try {
-            int n                = nl_enu_vec[i].first.first;
-            int l                = nl_enu_vec[i].first.second;
-            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
-                                              spherical_potential_, nl_enu_vec[i].second + spherical_potential_.back(), 1)
-                                           .enu() - spherical_potential_.back();
+            int n = nl_enu_vec[i].first.first;
+            int l = nl_enu_vec[i].first.second;
+            nl_enu_vec[i].second =
+                    Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(), spherical_potential_,
+                               nl_enu_vec[i].second + spherical_potential_.back(), 1)
+                            .enu() -
+                    spherical_potential_.back();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
@@ -590,7 +592,8 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
 
     if (atom_type().parameters().cfg().control().save_rf()) {
         static int count{0};
-        std::string fname = "radial_functions_class_" + std::to_string(id_) + "_step_" + std::to_string(count) + ".json";
+        std::string fname =
+                "radial_functions_class_" + std::to_string(id_) + "_step_" + std::to_string(count) + ".json";
         save_radial_functions(fname);
         count++;
     }

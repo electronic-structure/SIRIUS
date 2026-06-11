@@ -110,7 +110,8 @@ memory_t_name(memory_t mem__)
 }
 
 inline void
-print_mdarray_allocation(size_t num_bytes__, char const* location__, char const* allocator__, std::string const& label__)
+print_mdarray_allocation(size_t num_bytes__, char const* location__, char const* allocator__,
+                         std::string const& label__)
 {
     size_t const one_gb = 1024ULL * 1024ULL * 1024ULL;
     if (num_bytes__ > one_gb) {
