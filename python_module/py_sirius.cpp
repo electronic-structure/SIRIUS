@@ -125,7 +125,7 @@ void
 initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    Hamiltonian0<double> H0(dft_gs.potential(), false);
+    Hamiltonian0<double> H0(dft_gs.potential(), false, false, false);
     initialize_subspace(kset, H0);
 }
 
