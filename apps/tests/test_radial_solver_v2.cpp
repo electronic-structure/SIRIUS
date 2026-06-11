@@ -27,8 +27,7 @@ enu_from_potential(cmd_args const& args__)
     atype.init();
     atype.set_radial_grid(x.size(), x.data());
 
-    if (static_cast<int>(x.size()) != atype.num_mt_points() ||
-        static_cast<int>(veff.size()) != atype.num_mt_points()) {
+    if (static_cast<int>(x.size()) != atype.num_mt_points() || static_cast<int>(veff.size()) != atype.num_mt_points()) {
         std::stringstream s;
         s << "radial grid or potential size does not match species file" << std::endl
           << "  x.size              : " << x.size() << std::endl
