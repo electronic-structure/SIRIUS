@@ -68,7 +68,7 @@ class K_point
     /// First-variational eigen vectors, distributed in slabs.
     std::unique_ptr<wf::Wave_functions<T>> fv_eigen_vectors_slab_;
 
-    /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
+    /// Lowest eigen-vectors of the LAPW overlap matrix with small eigen-values.
     std::unique_ptr<wf::Wave_functions<T>> singular_components_;
 
     /// Second-variational eigen vectors.
@@ -83,10 +83,10 @@ class K_point
     /// Two-component (spinor) wave functions describing the bands.
     std::unique_ptr<wf::Wave_functions<T>> spinor_wave_functions_{nullptr};
 
-    /// Pseudopotential atmoic wave-functions (not orthogonalized).
+    /// Pseudopotential atomic wave-functions (not orthogonalized).
     std::unique_ptr<wf::Wave_functions<T>> atomic_wave_functions_{nullptr};
 
-    /// Pseudopotential atmoic wave-functions (not orthogonalized) with S-operator applied.
+    /// Pseudopotential atomic wave-functions (not orthogonalized) with S-operator applied.
     std::unique_ptr<wf::Wave_functions<T>> atomic_wave_functions_S_{nullptr};
 
     /// Hubbard wave functions.
@@ -249,7 +249,7 @@ class K_point
     update();
 
     /// Generate LAPW wave-functions from eigen-vectors.
-    /** Wave-functions can be either first-variational or full-variationel depending on the method of
+    /** Wave-functions can be either first-variational or full-variational depending on the method of
         diagonalizing magnetic Hamiltonian. They are obtained from the LAPW+lo eigen-vectors and
         LAPW matching coefficients.
 
@@ -272,7 +272,7 @@ class K_point
 
         Thus, the total number of coefficients representing a wave-function is equal
         to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r)
-        Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves.
+        Y_{\ell m}(\hat {\bf r}) \f$ plus the number of G+k plane waves.
 
         Muffin-tin part of expansion coefficients \f$ F_{L \lambda}^{i {\bf k},\alpha} \f$ consists of
         two contributions:
@@ -306,18 +306,18 @@ class K_point
         \f[
         e^{-i{\bf q}{\bf r}}=4\pi \sum_{\ell m} (-i)^\ell j_{\ell}(q r)R_{\ell m}({\bf \hat q})R_{\ell m}({\bf \hat r})
         \f]
-        we arrive to the following expression:
+        we arrive at the following expression:
         \f[
         \varphi^{\alpha}_{\ell m}({\bf q}) = e^{-i{\bf q}{\bf r}_{\alpha}} \frac{4\pi}{\sqrt{\Omega}} (-i)^\ell
           R_{\ell m}({\bf q}) \int \varphi^{\alpha}_{\ell}(r)  j_{\ell}(q r) r^2 dr
         \f]
 
         \note In the current implementation wave-functions are generated as scalars (without spin index). Spinor atomic
-        wave-functions might be necessary in future for the more advanced LDA+U implementation.
+        wave-functions might be necessary in the future for the more advanced LDA+U implementation.
 
         \param [in] atoms   List of atoms, for which the wave-functions are generated.
         \param [in] indexb  Lambda function that returns index of the basis functions for each atom type.
-        \param [in] ri      Radial integrals of the product of sperical Bessel functions and atomic functions.
+        \param [in] ri      Radial integrals of the product of spherical Bessel functions and atomic functions.
         \param [out] wf     Resulting wave-functions for the list of atoms. Output wave-functions must have
                             sufficient storage space.
      */
@@ -332,11 +332,7 @@ class K_point
     save(std::string const& name__, int id__) const;
 
     void
-    load(HDF5_tree h5in, int id);
-
-    //== void save_wave_functions(int id);
-
-    //== void load_wave_functions(int id);
+    load(HDF5_tree h5in__);
 
     /// Collect distributed first-variational vectors into a global array.
     void

@@ -148,7 +148,7 @@ class K_point_set
     save(std::string const& name__) const;
 
     void
-    load();
+    load(std::string const& name__);
 
     /// Return sum of valence eigen-values.
     double
@@ -212,7 +212,7 @@ class K_point_set
     add_kpoint(r3::vector<double> vk__, double weight__)
     {
         kpoints_.push_back(std::make_unique<K_point<double>>(ctx_, vk__, weight__));
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
         kpoints_float_.push_back(std::make_unique<K_point<float>>(ctx_, vk__, weight__));
 #endif
     }

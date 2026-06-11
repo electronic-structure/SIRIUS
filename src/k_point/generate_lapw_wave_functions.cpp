@@ -110,7 +110,7 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
 template void
 K_point<double>::generate_lapw_wave_functions(wf::Wave_functions<double> const& evec__,
                                               wf::Wave_functions<double>& wf__, int ispn__);
-#ifdef SIRIUS_USE_FP32
+#if defined(SIRIUS_USE_FP32)
 template void
 K_point<float>::generate_lapw_wave_functions(wf::Wave_functions<float> const& evec__, wf::Wave_functions<float>& wf__,
                                              int ispn__);
