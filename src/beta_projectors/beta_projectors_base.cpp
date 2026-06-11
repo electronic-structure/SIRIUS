@@ -140,19 +140,15 @@ Beta_projectors_base<T>::split_in_chunks()
         return;
     }
 
-    /* initial chunk size */
-    int chunk_size = std::min(uc.num_atoms(), ctx_.cfg().control().beta_chunk_size());
-    /* maximum number of chunks */
-    int num_chunks = uc.num_atoms() / chunk_size + std::min(1, uc.num_atoms() % chunk_size);
-    /* final maximum chunk size */
-    chunk_size = uc.num_atoms() / num_chunks + std::min(1, uc.num_atoms() % num_chunks);
+    auto atom_chunks = split_in_blocks(uc.num_atoms(), ctx_.cfg().control().max_atom_chunk_size());
 
     int offset_in_beta_gk{0};
-    beta_chunks_ = std::vector<beta_chunk_t>(num_chunks);
+    beta_chunks_ = std::vector<beta_chunk_t>(atom_chunks.size());
 
-    for (int ib = 0; ib < num_chunks; ib++) {
+    int begin_atom{0};
+    for (int ib = 0; ib < static_cast<int>(atom_chunks.size()); ib++) {
         /* number of atoms in this chunk */
-        int na                      = std::min(uc.num_atoms(), (ib + 1) * chunk_size) - ib * chunk_size;
+        int na                      = atom_chunks[ib];
         beta_chunks_[ib].num_atoms_ = na;
         beta_chunks_[ib].desc_      = mdarray<int, 2>({4, na});
         beta_chunks_[ib].atom_pos_  = mdarray<double, 2>({3, na});
@@ -160,7 +156,7 @@ Beta_projectors_base<T>::split_in_chunks()
         int num_beta{0};
         for (int i = 0; i < na; i++) {
             /* global index of atom by local index and chunk */
-            int ia     = ib * chunk_size + i;
+            int ia     = begin_atom + i;
             auto pos   = uc.atom(ia).position();
             auto& type = uc.atom(ia).type();
             /* atom fractional coordinates */
@@ -178,6 +174,7 @@ Beta_projectors_base<T>::split_in_chunks()
 
             num_beta += type.mt_basis_size();
         }
+        begin_atom += na;
         /* number of beta-projectors in this chunk */
         beta_chunks_[ib].num_beta_ = num_beta;
         beta_chunks_[ib].offset_   = offset_in_beta_gk;
