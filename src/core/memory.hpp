@@ -113,13 +113,11 @@ inline void
 print_mdarray_allocation(size_t num_bytes__, char const* location__, char const* allocator__,
                          std::string const& label__)
 {
-#if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
     size_t const one_gb = 1024ULL * 1024ULL * 1024ULL;
     if (num_bytes__ > one_gb) {
         std::cout << "mdarray allocation: " << static_cast<double>(num_bytes__) / one_gb << " Gb"
                   << ", " << location__ << ", " << allocator__ << ", label: " << label__ << std::endl;
     }
-#endif
 }
 
 /// Get a memory type from a string.
@@ -1018,8 +1016,8 @@ mdarray<T, N>::allocate(memory_t memory__)
         raw_ptr_    = unique_ptr_.get();
 #if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
         print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(memory__), "direct", label_);
-        call_constructor();
 #endif
+        call_constructor();
     }
 #if defined(SIRIUS_GPU)
     /* device allocation */
