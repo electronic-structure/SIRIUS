@@ -201,14 +201,14 @@ allocate(size_t n__, memory_t M__)
             return static_cast<T*>(std::malloc(n__ * sizeof(T)));
         }
         case memory_t::host_pinned: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             return acc::allocate_host<T>(n__);
 #else
             return nullptr;
 #endif
         }
         case memory_t::device: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             return acc::allocate<T>(n__);
 #else
             return nullptr;
@@ -233,13 +233,13 @@ deallocate(void* ptr__, memory_t M__)
             break;
         }
         case memory_t::host_pinned: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             acc::deallocate_host(ptr__);
 #endif
             break;
         }
         case memory_t::device: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             acc::deallocate(ptr__);
 #endif
             break;
@@ -310,7 +310,7 @@ class memory_pool
     /// Type of memory that is handeled by this pool.
     memory_t M_;
 
-#ifdef SIRIUS_USE_MEMORY_POOL
+#if defined(SIRIUS_USE_MEMORY_POOL)
     /// Handler to umpire allocator.
     umpire::Allocator allocator_;
     /// Handler to umpire memory pool.
@@ -338,7 +338,7 @@ class memory_pool
                 break;
             }
             case memory_t::device: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
                 std::stringstream s;
                 s << "DEVICE::" << acc::get_device_id();
                 mem_type = s.str();
@@ -356,7 +356,7 @@ class memory_pool
                 break;
             }
         }
-#ifdef SIRIUS_USE_MEMORY_POOL
+#if defined(SIRIUS_USE_MEMORY_POOL)
         if (M_ != memory_t::none) {
             auto& rm         = umpire::ResourceManager::getInstance();
             this->allocator_ = rm.getAllocator(mem_type);
@@ -481,7 +481,7 @@ class memory_pool
 memory_pool&
 get_memory_pool(memory_t M__);
 
-#ifdef NDEBUG
+#if defined(NDEBUG)
 #define mdarray_assert(condition__)
 #else
 #define mdarray_assert(condition__)                                                                                    \
@@ -567,7 +567,7 @@ class index_range
     inline bool
     check_range([[maybe_unused]] index_type i__) const
     {
-#ifdef NDEBUG
+#if defined(NDEBUG)
         return true;
 #else
         if (i__ < begin_ || i__ >= end_) {
@@ -621,7 +621,7 @@ class mdarray
 
     /// Raw pointer.
     T* raw_ptr_{nullptr};
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     /// Unique pointer to the allocated GPU memory.
     std::unique_ptr<T, std::function<void(void*)>> unique_ptr_device_{nullptr};
 
@@ -902,7 +902,7 @@ mdarray<T, N>::at_idx(memory_t mem__, index_type const idx__) const
             return &raw_ptr_[idx__];
         }
         case memory_t::device: {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
             if constexpr (check_assert) {
                 mdarray_assert(raw_ptr_device_ != nullptr);
             }
@@ -954,7 +954,7 @@ mdarray<T, N>::mdarray(std::array<index_range, N> const dims__, T* ptr__, T* ptr
                        std::string label__)
     : label_{label__}
     , raw_ptr_{ptr__}
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     , raw_ptr_device_{ptr_device__}
 #endif
 {
@@ -966,7 +966,7 @@ mdarray<T, N>::mdarray(mdarray<T, N>&& src)
     : label_(src.label_)
     , unique_ptr_(std::move(src.unique_ptr_))
     , raw_ptr_(src.raw_ptr_)
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     , unique_ptr_device_(std::move(src.unique_ptr_device_))
     , raw_ptr_device_(src.raw_ptr_device_)
 #endif
@@ -976,7 +976,7 @@ mdarray<T, N>::mdarray(mdarray<T, N>&& src)
         offsets_[i] = src.offsets_[i];
     }
     src.raw_ptr_ = nullptr;
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     src.raw_ptr_device_ = nullptr;
 #endif
 }
@@ -990,7 +990,7 @@ mdarray<T, N>::operator=(mdarray<T, N>&& src)
         unique_ptr_  = std::move(src.unique_ptr_);
         raw_ptr_     = src.raw_ptr_;
         src.raw_ptr_ = nullptr;
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
         unique_ptr_device_  = std::move(src.unique_ptr_device_);
         raw_ptr_device_     = src.raw_ptr_device_;
         src.raw_ptr_device_ = nullptr;
@@ -1076,7 +1076,7 @@ mdarray<T, N>::deallocate(memory_t memory__)
         unique_ptr_.reset(nullptr);
         raw_ptr_ = nullptr;
     }
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (is_device_memory(memory__)) {
         unique_ptr_device_.reset(nullptr);
         raw_ptr_device_ = nullptr;
@@ -1304,7 +1304,7 @@ mdarray<T, N>::copy_to(memory_t mem__, size_t idx0__, size_t n__, acc::stream_id
     if (n__ == 0) {
         return;
     }
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     mdarray_assert(raw_ptr_ != nullptr);
     mdarray_assert(raw_ptr_device_ != nullptr);
     mdarray_assert(idx0__ + n__ <= size());
@@ -1359,7 +1359,7 @@ template <typename T, int N>
 bool
 mdarray<T, N>::on_device() const
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     return (raw_ptr_device_ != nullptr);
 #else
     return false;

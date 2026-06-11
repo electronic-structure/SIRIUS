@@ -26,7 +26,7 @@
 #include "core/profiler.hpp"
 #include "core/packed_index.hpp"
 
-#ifdef SIRIUS_USE_PUGIXML
+#if defined(SIRIUS_USE_PUGIXML)
 #include "pugixml.hpp"
 #endif
 
@@ -285,7 +285,7 @@ class Atom_type
     read_pseudo_paw(nlohmann::json const& parser);
 
     /// Read atomic parameters directly from UPF v2 files
-#ifdef SIRIUS_USE_PUGIXML
+#if defined(SIRIUS_USE_PUGIXML)
     inline void
     read_pseudo_uspp(pugi::xml_node const& upf);
 

@@ -13,7 +13,7 @@ dftd4::dftd4(Simulation_context& ctx__, Unit_cell& unit_cell__)
     : ctx_(ctx__)
     , unit_cell_(unit_cell__)
 {
-#ifndef SIRIUS_USE_DFTD4
+#if !defined(SIRIUS_USE_DFTD4)
     RTE_THROW("SIRIUS is compiled without dft-d4 support");
 #endif
     if (!ctx_.cfg().parameters().dftd4_correction()) {
@@ -29,7 +29,7 @@ dftd4::update_dftd4_ctx()
     if (!ctx_.cfg().parameters().dftd4_correction()) {
         return;
     }
-#ifdef SIRIUS_USE_DFTD4
+#if defined(SIRIUS_USE_DFTD4)
     auto lat = unit_cell_.lattice_vectors();
     forces_  = mdarray<double, 2>({3, unit_cell_.num_atoms()});
     lattice_vectors_.resize(9);
@@ -119,7 +119,7 @@ dftd4::calculate_energy_forces_stress()
     if (!ctx_.cfg().parameters().dftd4_correction()) {
         return;
     }
-#ifdef SIRIUS_USE_DFTD4
+#if defined(SIRIUS_USE_DFTD4)
     PROFILE("sirius::Potential::dft_d4");
     // do the actual calculations. It is needed only once since this correction does not depend on the density.
     std::vector<double> forces_tmp(unit_cell_.num_atoms() * 3);

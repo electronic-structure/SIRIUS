@@ -96,7 +96,7 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
         }
     }
 
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
     la::wrap(la::lib_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
 #else
     for (int i = 0; i < N__; i++) {
@@ -135,7 +135,7 @@ random_positive_definite(int N__, int bs__ = 16, la::BLACS_grid const* blacs_gri
     }
 
     if (blacs_grid__) {
-#ifdef SIRIUS_SCALAPACK
+#if defined(SIRIUS_SCALAPACK)
         la::wrap(la::lib_t::scalapack)
                 .gemm('C', 'N', N__, N__, N__, &la::constant<T>::one(), A, 0, 0, A, 0, 0, &la::constant<T>::zero(), B,
                       0, 0);

@@ -13,7 +13,7 @@ dftd3::dftd3(Simulation_context& ctx__, Unit_cell& unit_cell__)
     : ctx_(ctx__)
     , unit_cell_(unit_cell__)
 {
-#ifndef SIRIUS_USE_DFTD3
+#if !defined(SIRIUS_USE_DFTD3)
     RTE_THROW("SIRIUS is compiled without dft-d3 support");
 #endif
     if (!ctx_.cfg().parameters().dftd3_correction())
@@ -29,7 +29,7 @@ dftd3::update_dftd3_ctx()
 {
     if (!ctx_.cfg().parameters().dftd3_correction())
         return;
-#ifdef SIRIUS_USE_DFTD3
+#if defined(SIRIUS_USE_DFTD3)
     lattice_vectors_.resize(9);
     atom_positions_.resize(3 * unit_cell_.num_atoms());
     forces_ = mdarray<double, 2>({3, unit_cell_.num_atoms()});
@@ -169,7 +169,7 @@ dftd3::calculate_energy_forces_stress()
     if (!ctx_.cfg().parameters().dftd3_correction()) {
         return;
     }
-#ifdef SIRIUS_USE_DFTD3
+#if defined(SIRIUS_USE_DFTD3)
     PROFILE("sirius::Potential::dft_d3");
     // do the actual calculations. It is needed only once since this correction does not depend on the density.
     std::vector<double> forces_tmp(unit_cell_.num_atoms() * 3);

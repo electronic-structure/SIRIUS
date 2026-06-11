@@ -655,7 +655,7 @@ operator*(Spline<T, U> const& a__, Spline<T, U> const& b__)
     return s12;
 }
 
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
 // extern "C" double spline_inner_product_gpu_v2(int           size__,
 //                                              double const* x__,
 //                                              double const* dx__,

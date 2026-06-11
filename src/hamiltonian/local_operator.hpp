@@ -38,7 +38,7 @@ namespace spfft {
 class Transform;
 }
 
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
 extern "C" {
 
 void
@@ -88,7 +88,7 @@ template <typename T>
 inline void
 mul_by_veff_real_real_gpu(int nr__, T const* in__, T const* veff__, T* out__)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (std::is_same<T, float>::value) {
         mul_by_veff_real_real_gpu_float(nr__, in__, veff__, out__);
     }
@@ -104,7 +104,7 @@ template <typename T>
 inline void
 mul_by_veff_complex_real_gpu(int nr__, std::complex<T> const* in__, T const* veff__, std::complex<T>* out__)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (std::is_same<T, float>::value) {
         mul_by_veff_complex_real_gpu_float(nr__, in__, veff__, out__);
     }
@@ -121,7 +121,7 @@ inline void
 mul_by_veff_complex_complex_gpu(int nr__, std::complex<T> const* in__, T pref__, T const* vx__, T const* vy__,
                                 std::complex<T>* out__)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (std::is_same<T, float>::value) {
         mul_by_veff_complex_complex_gpu_float(nr__, in__, pref__, vx__, vy__, out__);
     }
@@ -138,7 +138,7 @@ inline void
 add_to_hphi_pw_gpu(int num_gvec__, int add_ekin__, T const* pw_ekin__, std::complex<T> const* phi__,
                    std::complex<T> const* vphi__, std::complex<T>* hphi__)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (std::is_same<T, float>::value) {
         add_to_hphi_pw_gpu_float(num_gvec__, add_ekin__, pw_ekin__, phi__, vphi__, hphi__);
     }
@@ -154,7 +154,7 @@ template <typename T>
 inline void
 add_to_hphi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_cart__, std::complex<T>* hphi__)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (std::is_same<T, float>::value) {
         add_to_hphi_lapw_gpu_float(num_gvec__, p__, gkvec_cart__, hphi__);
     }
@@ -170,7 +170,7 @@ template <typename T>
 inline void
 grad_phi_lapw_gpu(int num_gvec__, std::complex<T> const* p__, T const* gkvec_cart__, std::complex<T>* hphi__)
 {
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (std::is_same<T, float>::value) {
         grad_phi_lapw_gpu_float(num_gvec__, p__, gkvec_cart__, hphi__);
     }

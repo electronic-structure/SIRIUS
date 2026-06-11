@@ -794,7 +794,7 @@ is_upf_file(std::string const& str__)
                       [](char a, char b) { return std::tolower(a) == std::tolower(b); });
 }
 
-#ifdef SIRIUS_USE_PUGIXML
+#if defined(SIRIUS_USE_PUGIXML)
 template <typename T>
 std::vector<T>
 vec_from_str(std::string const& str__, identity_t<T> scaling = T{1})
@@ -1089,7 +1089,7 @@ Atom_type::read_input(std::string const& str__)
         // Read from standard UPF version 2 xml files
     } else {
 
-#ifdef SIRIUS_USE_PUGIXML
+#if defined(SIRIUS_USE_PUGIXML)
         pugi::xml_document doc;
         pugi::xml_parse_result parser = doc.load_file(str__.data());
 

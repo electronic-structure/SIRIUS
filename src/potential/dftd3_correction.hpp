@@ -14,7 +14,7 @@
 #include <vector>
 #include <string>
 
-#ifdef SIRIUS_USE_DFTD3
+#if defined(SIRIUS_USE_DFTD3)
 #include <dftd3.h>
 #else
 typedef void* dftd3_error;
@@ -115,7 +115,7 @@ class dftd3
         if (!ctx_.cfg().parameters().dftd3_correction()) {
             return;
         }
-#ifdef SIRIUS_USE_DFTD3
+#if defined(SIRIUS_USE_DFTD3)
         if (error_ != nullptr) {
             dftd3_delete_error(&error_);
         }
