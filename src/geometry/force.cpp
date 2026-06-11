@@ -846,6 +846,16 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         }
 
         for (int x = 0; x < 3; x++) {
+            /* zero lo-lo block */
+            for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
+                for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
+                    h1(irow + kp__->num_gkvec_row(), icol + kp__->num_gkvec_col()) =
+                            la::constant<std::complex<double>>::zero();
+                    o1(irow + kp__->num_gkvec_row(), icol + kp__->num_gkvec_col()) =
+                            la::constant<std::complex<double>>::zero();
+                }
+            }
+
             for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
                 auto gvec_col = kp__->gkvec_col().gvec(gvec_index_t::local(igk_col));
                 for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // loop over rows
@@ -911,7 +921,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
                     forcek__(x, ia) += kp__->weight() * std::real(dm(j, i) * zf(j, i));
                 }
             }
-        }
+        } // x
     } // ia
 }
 
@@ -931,27 +941,35 @@ Force::print_info(std::ostream& out__, int verbosity__)
         print_forces("total Forces in Ha/bohr", forces_total());
     }
 
-    if (!ctx_.full_potential() && verbosity__ >= 2) {
-        print_forces("ultrasoft contribution from Qij", forces_us());
+    if (verbosity__ >= 2) {
+        if (ctx_.full_potential()) {
+            print_forces("contribution from density", forces_rho());
 
-        print_forces("non-local contribution from Beta-projector", forces_nonloc());
+            print_forces("contribution from Hartree potential", forces_hf());
 
-        print_forces("contribution from local potential", forces_vloc());
+            print_forces("contribution from IBS", forces_ibs());
+        } else {
+            print_forces("ultrasoft contribution from Qij", forces_us());
 
-        print_forces("contribution from core density", forces_core());
+            print_forces("non-local contribution from Beta-projector", forces_nonloc());
 
-        print_forces("Ewald forces from ions", forces_ewald());
+            print_forces("contribution from local potential", forces_vloc());
 
-        if (ctx_.hubbard_correction()) {
-            print_forces("contribution from Hubbard correction", forces_hubbard());
-        }
+            print_forces("contribution from core density", forces_core());
 
-        if (ctx_.cfg().parameters().dftd3_correction()) {
-            print_forces("contribution from the dftd3 dispersion correction", potential_.dftd3_ctx().forces());
-        }
+            print_forces("Ewald forces from ions", forces_ewald());
 
-        if (ctx_.cfg().parameters().dftd4_correction()) {
-            print_forces("contribution from the dftd4 dispersion correction", potential_.dftd4_ctx().forces());
+            if (ctx_.hubbard_correction()) {
+                print_forces("contribution from Hubbard correction", forces_hubbard());
+            }
+
+            if (ctx_.cfg().parameters().dftd3_correction()) {
+                print_forces("contribution from the dftd3 dispersion correction", potential_.dftd3_ctx().forces());
+            }
+
+            if (ctx_.cfg().parameters().dftd4_correction()) {
+                print_forces("contribution from the dftd4 dispersion correction", potential_.dftd4_ctx().forces());
+            }
         }
     }
 }

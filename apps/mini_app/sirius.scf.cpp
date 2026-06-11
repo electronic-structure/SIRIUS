@@ -13,6 +13,7 @@
 #include "dft/lattice_relaxation.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
+#include "k_point/get_wave_function_value.hpp"
 
 using namespace sirius;
 using json   = nlohmann::json;
@@ -30,6 +31,7 @@ struct task_t
     static const int ground_state_new_relax   = 5;
     static const int ground_state_new_vcrelax = 6;
     static const int fixed_mag                = 7;
+    static const int plot_wf                  = 8;
 };
 
 void
@@ -80,7 +82,8 @@ preprocess_json_input(std::string fname__)
     }
 }
 
-std::unique_ptr<Simulation_context>
+/// Create context of the simulation from a file and command-line arguments.
+auto
 create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
     std::string config_string;
@@ -103,6 +106,103 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
     return ctx;
 }
 
+void
+compare_with_reference(Simulation_context& ctx, json const& result, std::string const& ref_file)
+{
+    json dict_ref;
+    std::ifstream(ref_file) >> dict_ref;
+
+    double e1 = result["energy"]["total"].get<double>();
+    double e2 = dict_ref["ground_state"]["energy"]["total"].get<double>();
+
+    if (std::abs(e1 - e2) > 1e-5) {
+        std::cout << "total energy is different: " << e1 << " computed vs. " << e2 << " reference" << std::endl;
+        ctx.comm().abort(1);
+    }
+    if (result.count("magnetisation") && dict_ref["ground_state"].count("magnetisation")) {
+        double max_diff{0};
+        auto t1 = result["magnetisation"]["total"].get<std::vector<double>>();
+        auto t2 = dict_ref["ground_state"]["magnetisation"]["total"].get<std::vector<double>>();
+        for (int x : {0, 1, 2}) {
+            max_diff = std::max(max_diff, std::abs(t1[x] - t2[x]));
+        }
+        auto v1 = result["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
+        auto v2 = dict_ref["ground_state"]["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
+        if (v1.size() != v2.size()) {
+            std::cout << "length of atomic magnetisations is different" << std::endl;
+            ctx.comm().abort(4);
+        }
+        for (size_t i = 0; i < v1.size(); i++) {
+            for (int x : {0, 1, 2}) {
+                max_diff = std::max(max_diff, std::abs(v1[i][x] - v2[i][x]));
+            }
+        }
+        if (max_diff > 1e-4) {
+            std::cout << "magnetisations is different!" << std::endl;
+            ctx.comm().abort(5);
+        }
+    }
+    if (result.count("stress") && dict_ref["ground_state"].count("stress")) {
+        double diff{0};
+        auto s1 = result["stress"].get<std::vector<std::vector<double>>>();
+        auto s2 = dict_ref["ground_state"]["stress"].get<std::vector<std::vector<double>>>();
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                diff += std::abs(s1[i][j] - s2[i][j]);
+            }
+        }
+        if (diff > 1e-5) {
+            std::cout << "total stress is different!" << std::endl;
+            std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
+            std::cout << "  computed: " << result["stress"] << "\n";
+            ctx.comm().abort(2);
+        }
+    }
+    if (result.count("forces") && dict_ref["ground_state"].count("forces")) {
+        double diff{0};
+        auto s1 = result["forces"].get<std::vector<std::vector<double>>>();
+        auto s2 = dict_ref["ground_state"]["forces"].get<std::vector<std::vector<double>>>();
+        for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+            for (int j = 0; j < 3; j++) {
+                diff += std::abs(s1[i][j] - s2[i][j]);
+            }
+        }
+        if (diff > 1e-6) {
+            std::cout << "total force is different!" << std::endl;
+            std::cout << "  reference: " << dict_ref["ground_state"]["forces"] << "\n";
+            std::cout << "  computed: " << result["forces"] << "\n";
+            ctx.comm().abort(3);
+        }
+    }
+}
+
+auto
+get_stress(DFT_ground_state& dft)
+{
+    std::vector<std::vector<double>> result(3, std::vector<double>(3));
+    auto st = dft.stress().stress_total();
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            result[i][j] = st(j, i);
+        }
+    }
+    return result;
+}
+
+auto
+get_forces(DFT_ground_state& dft)
+{
+    std::vector<std::vector<double>> result(dft.ctx().unit_cell().num_atoms(), std::vector<double>(3));
+    auto& ft = dft.forces().forces_total();
+    for (int i = 0; i < dft.ctx().unit_cell().num_atoms(); i++) {
+        for (int j = 0; j < 3; j++) {
+            result[i][j] = ft(j, i);
+        }
+    }
+    return result;
+}
+
+/// Run different flavours of the ground state.
 auto
 ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
 {
@@ -174,15 +274,6 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         dft.initial_state();
     }
 
-    bool compute_stress{false};
-    bool compute_forces{false};
-    if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-        compute_stress = true;
-    }
-    if (ctx.cfg().control().print_forces()) {
-        compute_forces = true;
-    }
-
     json result;
 
     Lattice_relaxation lr(dft);
@@ -194,35 +285,19 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             result = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
                               inp.num_dft_iter(), write_state);
 
-            if (compute_stress) {
-                dft.stress().calc_stress_total();
-            }
-            if (compute_forces) {
-                dft.forces().calc_forces_total();
-            }
-            /* compute forces and stress */
+            /* compute stress tensor */
             if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-                rte::ostream out(dft.ctx().out(), __func__);
+                dft.stress().calc_stress_total();
+                auto out = dft.ctx().out(0, __func__);
                 dft.stress().print_info(out, dft.ctx().verbosity());
-                result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
-                auto st          = dft.stress().stress_total();
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        result["stress"][i][j] = st(j, i);
-                    }
-                }
+                result["stress"] = get_stress(dft);
             }
+            /* compute forces */
             if (ctx.cfg().control().print_forces()) {
-                rte::ostream out(dft.ctx().out(), __func__);
+                dft.forces().calc_forces_total();
+                auto out = dft.ctx().out(0, __func__);
                 dft.forces().print_info(out, dft.ctx().verbosity());
-                result["forces"] =
-                        std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-                auto& ft = dft.forces().forces_total();
-                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                    for (int j = 0; j < 3; j++) {
-                        result["forces"][i][j] = ft(j, i);
-                    }
-                }
+                result["forces"] = get_forces(dft);
             }
             break;
         }
@@ -299,102 +374,269 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             auto r1 = dft.find(inp.density_tol(), inp.energy_tol(), ctx.cfg().iterative_solver().energy_tolerance(),
                                inp.num_dft_iter(), write_state);
             if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
-                Stress& s       = dft.stress();
-                auto stress_tot = s.calc_stress_total();
-                auto elem       = std::vector<std::vector<double>>(3, std::vector<double>(3));
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        elem[i][j] = stress_tot(j, i);
-                    }
-                }
-                r1["stress"] = elem;
+                dft.stress().calc_stress_total();
+                r1["stress"] = get_stress(dft);
             }
             if (ctx.cfg().control().print_forces()) {
-                Force& f         = dft.forces();
-                auto& forces_tot = f.calc_forces_total();
-                auto elem = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-                for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                    for (int j = 0; j < 3; j++) {
-                        elem[i][j] = forces_tot(j, i);
-                    }
-                }
-                r1["forces"] = elem;
+                dft.forces().calc_forces_total();
+                r1["forces"] = get_forces(dft);
             }
         }
     }
 
     if (ref_file.size() != 0) {
-        json dict_ref;
-        std::ifstream(ref_file) >> dict_ref;
-
-        double e1 = result["energy"]["total"].get<double>();
-        double e2 = dict_ref["ground_state"]["energy"]["total"].get<double>();
-
-        if (std::abs(e1 - e2) > 1e-5) {
-            std::cout << "total energy is different: " << e1 << " computed vs. " << e2 << " reference" << std::endl;
-            ctx.comm().abort(1);
-        }
-        if (result.count("magnetisation") && dict_ref["ground_state"].count("magnetisation")) {
-            double max_diff{0};
-            auto t1 = result["magnetisation"]["total"].get<std::vector<double>>();
-            auto t2 = dict_ref["ground_state"]["magnetisation"]["total"].get<std::vector<double>>();
-            for (int x : {0, 1, 2}) {
-                max_diff = std::max(max_diff, std::abs(t1[x] - t2[x]));
-            }
-            auto v1 = result["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
-            auto v2 = dict_ref["ground_state"]["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
-            if (v1.size() != v2.size()) {
-                std::cout << "length of atomic magnetisations is different" << std::endl;
-                ctx.comm().abort(4);
-            }
-            for (size_t i = 0; i < v1.size(); i++) {
-                for (int x : {0, 1, 2}) {
-                    max_diff = std::max(max_diff, std::abs(v1[i][x] - v2[i][x]));
-                }
-            }
-            if (max_diff > 1e-4) {
-                std::cout << "magnetisations is different!" << std::endl;
-                ctx.comm().abort(5);
-            }
-        }
-        if (result.count("stress") && dict_ref["ground_state"].count("stress")) {
-            double diff{0};
-            auto s1 = result["stress"].get<std::vector<std::vector<double>>>();
-            auto s2 = dict_ref["ground_state"]["stress"].get<std::vector<std::vector<double>>>();
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    diff += std::abs(s1[i][j] - s2[i][j]);
-                }
-            }
-            if (diff > 1e-5) {
-                std::cout << "total stress is different!" << std::endl;
-                std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
-                std::cout << "  computed: " << result["stress"] << "\n";
-                ctx.comm().abort(2);
-            }
-        }
-        if (result.count("forces") && dict_ref["ground_state"].count("forces")) {
-            double diff{0};
-            auto s1 = result["forces"].get<std::vector<std::vector<double>>>();
-            auto s2 = dict_ref["ground_state"]["forces"].get<std::vector<std::vector<double>>>();
-            for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                for (int j = 0; j < 3; j++) {
-                    diff += std::abs(s1[i][j] - s2[i][j]);
-                }
-            }
-            if (diff > 1e-6) {
-                std::cout << "total force is different!" << std::endl;
-                std::cout << "  reference: " << dict_ref["ground_state"]["forces"] << "\n";
-                std::cout << "  computed: " << result["forces"] << "\n";
-                ctx.comm().abort(3);
-            }
-        }
+        compare_with_reference(ctx, result, ref_file);
     }
 
     /* wait for all */
     ctx.comm().barrier();
 
     return result;
+}
+
+/// Total energy as a function of volume.
+void
+run_eos_task(cmd_args const& args, std::string const& fname)
+{
+    auto vs0            = args.value<double>("volume_scale0", 0.94);
+    auto vs1            = args.value<double>("volume_scale1", 1.06);
+    auto s0             = std::pow(vs0, 1.0 / 3);
+    auto s1             = std::pow(vs1, 1.0 / 3);
+    auto num_eos_points = args.value<int>("num_eos_points", 7);
+
+    int write_output{0};
+
+    json dict;
+    json_output_common(dict);
+    dict["result"] = {};
+
+    int rank{0};
+    std::vector<double> volume;
+    std::vector<double> energy;
+    for (int i = 0; i < num_eos_points; i++) {
+        double vs = vs0 + i * (vs1 - vs0) / (num_eos_points - 1);
+        double s  = std::pow(vs, 1.0 / 3);
+        auto ctx  = create_sim_ctx(fname, args);
+        rank      = ctx->comm().rank();
+        /* scale lattice vectors */
+        auto lv = ctx->unit_cell().lattice_vectors() * s;
+        ctx->unit_cell().set_lattice_vectors(lv);
+        ctx->initialize();
+        ctx->out() << "EOS step : " << i << ", lattice scale : " << s << std::endl
+                   << "lattice scale range : " << s0 << " " << s1 << std::endl
+                   << "volume scale range  : " << vs0 << " " << vs1 << std::endl;
+        auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+        dict["result"] += e;
+        volume.push_back(ctx->unit_cell().omega());
+        energy.push_back(e["energy"]["free"].get<double>());
+    }
+    if (rank == 0) {
+        std::cout << "final result:" << std::endl;
+        for (int i = 0; i < num_eos_points; i++) {
+            std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
+        }
+        dict["volume"] = volume;
+        dict["energy"] = energy;
+        write_json_to_file(dict, "output_eos.json");
+    }
+}
+
+/// Total energy as a function of fixed magnetizaion.
+void
+run_fixed_mag_task(cmd_args const& args, std::string const& fname)
+{
+    auto num_eos_points = args.value<int>("num_eos_points", 7);
+
+    int write_output{0};
+
+    json dict;
+    json_output_common(dict);
+    dict["result"] = {};
+
+    int rank{0};
+    std::vector<double> fixed_mag;
+    std::vector<double> energy;
+    for (int i = 0; i < num_eos_points; i++) {
+        double scale = static_cast<double>(i) / (num_eos_points - 1);
+        auto ctx     = create_sim_ctx(fname, args);
+        rank         = ctx->comm().rank();
+        auto mag     = (i == 0) ? 1e-8 : ctx->cfg().parameters().fixed_mag() * scale;
+        ctx->cfg().parameters().fixed_mag(mag);
+        ctx->initialize();
+        ctx->out() << "EOS step : " << i << ", fixed magnetic moment : " << mag << std::endl;
+        auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+        dict["result"] += e;
+        fixed_mag.push_back(mag);
+        energy.push_back(e["energy"]["free"].get<double>());
+    }
+    if (rank == 0) {
+        std::cout << "final result:" << std::endl;
+        for (int i = 0; i < num_eos_points; i++) {
+            std::cout << "magnetisation: " << fixed_mag[i] << ", energy: " << energy[i] << std::endl;
+        }
+        dict["fixed_mag"] = fixed_mag;
+        dict["energy"]    = energy;
+        write_json_to_file(dict, "output_eos.json");
+    }
+}
+
+void
+run_k_point_path_task(cmd_args const& args, std::string const& fname)
+{
+    auto ctx = create_sim_ctx(fname, args);
+    ctx->cfg().iterative_solver().energy_tolerance(1e-12);
+    ctx->gamma_point(false);
+    ctx->initialize();
+
+    Potential potential(*ctx);
+
+    Density density(*ctx);
+
+    K_point_set ks(*ctx);
+
+    json inp;
+    std::ifstream(fname) >> inp;
+
+    /* list of pairs (label, k-point vector) */
+    std::vector<std::pair<std::string, std::vector<double>>> vertex;
+
+    auto labels = inp["kpoints_path"].get<std::vector<std::string>>();
+    for (auto e : labels) {
+        auto v = inp["kpoints_rel"][e].get<std::vector<double>>();
+        vertex.push_back({e, v});
+    }
+
+    std::vector<double> x_axis;
+    std::vector<std::pair<double, std::string>> x_ticks;
+
+    /* first point */
+    x_axis.push_back(0);
+    x_ticks.push_back({0, vertex[0].first});
+    ks.add_kpoint(&vertex[0].second[0], 1.0);
+
+    double t{0};
+    for (size_t i = 0; i < vertex.size() - 1; i++) {
+        r3::vector<double> v0      = r3::vector<double>(vertex[i].second);
+        r3::vector<double> v1      = r3::vector<double>(vertex[i + 1].second);
+        r3::vector<double> dv      = v1 - v0;
+        r3::vector<double> dv_cart = dot(ctx->unit_cell().reciprocal_lattice_vectors(), dv);
+        int np                     = std::max(10, static_cast<int>(30 * dv_cart.length()));
+        for (int j = 1; j <= np; j++) {
+            r3::vector<double> v = v0 + dv * static_cast<double>(j) / np;
+            ks.add_kpoint(&v[0], 1.0);
+            t += dv_cart.length() / np;
+            x_axis.push_back(t);
+        }
+        x_ticks.push_back({t, vertex[i + 1].first});
+    }
+
+    ks.initialize();
+
+    // density.initial_density();
+    density.load(storage_file_name);
+    potential.generate(density, ctx->use_symmetry(), true);
+    Hamiltonian0<double> H0(potential, true);
+    if (!ctx->full_potential()) {
+        initialize_subspace(ks, H0);
+        if (ctx->hubbard_correction()) {
+            RTE_THROW("fix me");
+            // potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the
+            // saved file potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
+        }
+    }
+    sirius::diagonalize<double, double>(H0, ks, ctx->cfg().iterative_solver().energy_tolerance(),
+                                        ctx->cfg().iterative_solver().num_steps());
+
+    ks.sync_band<double, sync_band_t::energy>();
+    if (mpi::Communicator::world().rank() == 0) {
+        json dict;
+        dict["header"]                 = {};
+        dict["header"]["x_axis"]       = x_axis;
+        dict["header"]["x_ticks"]      = std::vector<json>();
+        dict["header"]["num_bands"]    = ctx->num_bands();
+        dict["header"]["num_mag_dims"] = ctx->num_mag_dims();
+        for (auto& e : x_ticks) {
+            json j;
+            j["x"]     = e.first;
+            j["label"] = e.second;
+            dict["header"]["x_ticks"].push_back(j);
+        }
+        dict["bands"] = std::vector<json>();
+
+        for (int ik = 0; ik < ks.num_kpoints(); ik++) {
+            json bnd_k;
+            bnd_k["kpoint"] = std::vector<double>(3, 0);
+            for (int x = 0; x < 3; x++) {
+                bnd_k["kpoint"][x] = ks.get<double>(ik)->vk()[x];
+            }
+            std::vector<double> bnd_e;
+
+            for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
+                for (int j = 0; j < ctx->num_bands(); j++) {
+                    bnd_e.push_back(ks.get<double>(ik)->band_energy(j, ispn));
+                }
+            }
+            // ks.get_band_energies(ik, bnd_e.data());
+            bnd_k["values"] = bnd_e;
+            dict["bands"].push_back(bnd_k);
+        }
+        write_json_to_file(dict, "bands.json");
+    }
+}
+
+void
+run_gs_task(cmd_args const& args, std::string const& fname, int task_id)
+{
+    auto ctx = create_sim_ctx(fname, args);
+    ctx->initialize();
+    int write_output{1};
+    ground_state(*ctx, task_id, args, write_output);
+}
+
+void
+run_plot_wf_task(cmd_args const& args, std::string const& fname)
+{
+    auto ctx = create_sim_ctx(fname, args);
+    ctx->initialize();
+
+    /* create Potential instance */
+    Potential potential(*ctx);
+
+    /* create density instance */
+    Density density(*ctx);
+
+    /* load density */
+    density.load(storage_file_name);
+    potential.generate(density, ctx->use_symmetry(), true);
+    /* we need to create Hamiltonian to recompute radial functions */
+    Hamiltonian0<double> H0(potential, true);
+
+    bool const reduce_kp = ctx->use_symmetry() && ctx->cfg().parameters().use_ibz();
+    K_point_set kset(*ctx, ctx->cfg().parameters().ngridk(), ctx->cfg().parameters().shiftk(), reduce_kp);
+    kset.load(storage_file_name);
+
+    nlohmann::json dict;
+    std::vector<double> t;
+    std::vector<double> val_abs;
+    std::vector<double> val_re;
+    std::vector<double> val_im;
+    for (int i = 0; i < 200; i++) {
+        double x              = i / 199.0;
+        r3::vector<double> rc = x * (ctx->unit_cell().lattice_vector(0) + ctx->unit_cell().lattice_vector(1) +
+                                     ctx->unit_cell().lattice_vector(2));
+        auto val = get_wave_function_value(*kset.get<double>(0), kset.get<double>(0)->spinor_wave_functions(), rc,
+                                           wf::band_index(0), wf::spin_index(0));
+
+        t.push_back(rc.length());
+        val_abs.push_back(std::abs(val));
+        val_re.push_back(std::real(val));
+        val_im.push_back(std::imag(val));
+    }
+    dict["t"]       = t;
+    dict["val_abs"] = val_abs;
+    dict["val_re"]  = val_re;
+    dict["val_im"]  = val_im;
+    write_json_to_file(dict, "psi_r_v2.json");
 }
 
 /// Run a task based on a command line input.
@@ -419,196 +661,29 @@ run_tasks(cmd_args const& args)
     }
 
     auto fname = fpath.string();
-    /* ground state runs */
-    if (task_id == task_t::ground_state_new || task_id == task_t::ground_state_restart ||
-        task_id == task_t::ground_state_new_relax || task_id == task_t::ground_state_new_vcrelax) {
-        auto ctx = create_sim_ctx(fname, args);
-        ctx->initialize();
-        int write_output{1};
-        ground_state(*ctx, task_id, args, write_output);
-    }
-    /* EoS */
-    if (task_id == task_t::eos) {
-        auto vs0            = args.value<double>("volume_scale0", 0.94);
-        auto vs1            = args.value<double>("volume_scale1", 1.06);
-        auto s0             = std::pow(vs0, 1.0 / 3);
-        auto s1             = std::pow(vs1, 1.0 / 3);
-        auto num_eos_points = args.value<int>("num_eos_points", 7);
-
-        int write_output{0};
-
-        json dict;
-        json_output_common(dict);
-        // dict["context"] = ctx.serialize();
-        dict["result"] = {};
-
-        int rank{0};
-        std::vector<double> volume;
-        std::vector<double> energy;
-        for (int i = 0; i < num_eos_points; i++) {
-            double vs = vs0 + i * (vs1 - vs0) / (num_eos_points - 1);
-            double s  = std::pow(vs, 1.0 / 3);
-            auto ctx  = create_sim_ctx(fname, args);
-            rank      = ctx->comm().rank();
-            /* scale lattice vectors */
-            auto lv = ctx->unit_cell().lattice_vectors() * s;
-            ctx->unit_cell().set_lattice_vectors(lv);
-            ctx->initialize();
-            ctx->out() << "EOS step : " << i << ", lattice scale : " << s << std::endl
-                       << "lattice scale range : " << s0 << " " << s1 << std::endl
-                       << "volume scale range  : " << vs0 << " " << vs1 << std::endl;
-            auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
-            dict["result"] += e;
-            volume.push_back(ctx->unit_cell().omega());
-            energy.push_back(e["energy"]["free"].get<double>());
+    switch (task_id) {
+        case task_t::ground_state_new:
+        case task_t::ground_state_restart:
+        case task_t::ground_state_new_relax:
+        case task_t::ground_state_new_vcrelax: {
+            run_gs_task(args, fname, task_id);
+            break;
         }
-        if (rank == 0) {
-            std::cout << "final result:" << std::endl;
-            for (int i = 0; i < num_eos_points; i++) {
-                std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
-            }
-            dict["volume"] = volume;
-            dict["energy"] = energy;
-            write_json_to_file(dict, "output_eos.json");
+        case task_t::eos: {
+            run_eos_task(args, fname);
+            break;
         }
-    }
-
-    if (task_id == task_t::fixed_mag) {
-        auto num_eos_points = args.value<int>("num_eos_points", 7);
-
-        int write_output{0};
-
-        json dict;
-        json_output_common(dict);
-        dict["result"] = {};
-
-        int rank{0};
-        std::vector<double> fixed_mag;
-        std::vector<double> energy;
-        for (int i = 0; i < num_eos_points; i++) {
-            double scale = static_cast<double>(i) / (num_eos_points - 1);
-            auto ctx     = create_sim_ctx(fname, args);
-            rank         = ctx->comm().rank();
-            auto mag     = (i == 0) ? 1e-8 : ctx->cfg().parameters().fixed_mag() * scale;
-            ctx->cfg().parameters().fixed_mag(mag);
-            ctx->initialize();
-            ctx->out() << "EOS step : " << i << ", fixed magnetic moment : " << mag << std::endl;
-            auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
-            dict["result"] += e;
-            fixed_mag.push_back(mag);
-            energy.push_back(e["energy"]["free"].get<double>());
+        case task_t::fixed_mag: {
+            run_fixed_mag_task(args, fname);
+            break;
         }
-        if (rank == 0) {
-            std::cout << "final result:" << std::endl;
-            for (int i = 0; i < num_eos_points; i++) {
-                std::cout << "magnetisation: " << fixed_mag[i] << ", energy: " << energy[i] << std::endl;
-            }
-            dict["fixed_mag"] = fixed_mag;
-            dict["energy"]    = energy;
-            write_json_to_file(dict, "output_eos.json");
+        case task_t::k_point_path: {
+            run_k_point_path_task(args, fname);
+            break;
         }
-    }
-
-    if (task_id == task_t::k_point_path) {
-        auto ctx = create_sim_ctx(fname, args);
-        ctx->cfg().iterative_solver().energy_tolerance(1e-12);
-        ctx->gamma_point(false);
-        ctx->initialize();
-
-        Potential potential(*ctx);
-
-        Density density(*ctx);
-
-        K_point_set ks(*ctx);
-
-        json inp;
-        std::ifstream(fname) >> inp;
-
-        /* list of pairs (label, k-point vector) */
-        std::vector<std::pair<std::string, std::vector<double>>> vertex;
-
-        auto labels = inp["kpoints_path"].get<std::vector<std::string>>();
-        for (auto e : labels) {
-            auto v = inp["kpoints_rel"][e].get<std::vector<double>>();
-            vertex.push_back({e, v});
-        }
-
-        std::vector<double> x_axis;
-        std::vector<std::pair<double, std::string>> x_ticks;
-
-        /* first point */
-        x_axis.push_back(0);
-        x_ticks.push_back({0, vertex[0].first});
-        ks.add_kpoint(&vertex[0].second[0], 1.0);
-
-        double t{0};
-        for (size_t i = 0; i < vertex.size() - 1; i++) {
-            r3::vector<double> v0      = r3::vector<double>(vertex[i].second);
-            r3::vector<double> v1      = r3::vector<double>(vertex[i + 1].second);
-            r3::vector<double> dv      = v1 - v0;
-            r3::vector<double> dv_cart = dot(ctx->unit_cell().reciprocal_lattice_vectors(), dv);
-            int np                     = std::max(10, static_cast<int>(30 * dv_cart.length()));
-            for (int j = 1; j <= np; j++) {
-                r3::vector<double> v = v0 + dv * static_cast<double>(j) / np;
-                ks.add_kpoint(&v[0], 1.0);
-                t += dv_cart.length() / np;
-                x_axis.push_back(t);
-            }
-            x_ticks.push_back({t, vertex[i + 1].first});
-        }
-
-        ks.initialize();
-
-        // density.initial_density();
-        density.load(storage_file_name);
-        potential.generate(density, ctx->use_symmetry(), true);
-        Hamiltonian0<double> H0(potential, true);
-        if (!ctx->full_potential()) {
-            initialize_subspace(ks, H0);
-            if (ctx->hubbard_correction()) {
-                RTE_THROW("fix me");
-                // potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the
-                // saved file potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
-            }
-        }
-        sirius::diagonalize<double, double>(H0, ks, ctx->cfg().iterative_solver().energy_tolerance(),
-                                            ctx->cfg().iterative_solver().num_steps());
-
-        ks.sync_band<double, sync_band_t::energy>();
-        if (mpi::Communicator::world().rank() == 0) {
-            json dict;
-            dict["header"]                 = {};
-            dict["header"]["x_axis"]       = x_axis;
-            dict["header"]["x_ticks"]      = std::vector<json>();
-            dict["header"]["num_bands"]    = ctx->num_bands();
-            dict["header"]["num_mag_dims"] = ctx->num_mag_dims();
-            for (auto& e : x_ticks) {
-                json j;
-                j["x"]     = e.first;
-                j["label"] = e.second;
-                dict["header"]["x_ticks"].push_back(j);
-            }
-            dict["bands"] = std::vector<json>();
-
-            for (int ik = 0; ik < ks.num_kpoints(); ik++) {
-                json bnd_k;
-                bnd_k["kpoint"] = std::vector<double>(3, 0);
-                for (int x = 0; x < 3; x++) {
-                    bnd_k["kpoint"][x] = ks.get<double>(ik)->vk()[x];
-                }
-                std::vector<double> bnd_e;
-
-                for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
-                    for (int j = 0; j < ctx->num_bands(); j++) {
-                        bnd_e.push_back(ks.get<double>(ik)->band_energy(j, ispn));
-                    }
-                }
-                // ks.get_band_energies(ik, bnd_e.data());
-                bnd_k["values"] = bnd_e;
-                dict["bands"].push_back(bnd_k);
-            }
-            std::ofstream ofs("bands.json", std::ofstream::out | std::ofstream::trunc);
-            ofs << dict.dump(4);
+        case task_t::plot_wf: {
+            run_plot_wf_task(args, fname);
+            break;
         }
     }
 }
