@@ -162,7 +162,6 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             }
         } else {
             found = false;
-            std::cout << "fail for l=" << l << std::endl;
         }
     } // l
     return found ? 0 : 1;

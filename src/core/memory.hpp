@@ -26,7 +26,7 @@
 #include <stdexcept>
 #include <cstdint>
 
-#ifdef SIRIUS_USE_MEMORY_POOL
+#if defined(SIRIUS_USE_MEMORY_POOL)
 #include <umpire/ResourceManager.hpp>
 #include <umpire/Allocator.hpp>
 #include <umpire/util/wrap_allocator.hpp>
@@ -113,11 +113,13 @@ inline void
 print_mdarray_allocation(size_t num_bytes__, char const* location__, char const* allocator__,
                          std::string const& label__)
 {
+#if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
     size_t const one_gb = 1024ULL * 1024ULL * 1024ULL;
     if (num_bytes__ > one_gb) {
         std::cout << "mdarray allocation: " << static_cast<double>(num_bytes__) / one_gb << " Gb"
                   << ", " << location__ << ", " << allocator__ << ", label: " << label__ << std::endl;
     }
+#endif
 }
 
 /// Get a memory type from a string.
@@ -1014,15 +1016,19 @@ mdarray<T, N>::allocate(memory_t memory__)
     if (is_host_memory(memory__)) {
         unique_ptr_ = sirius::get_unique_ptr<T>(this->size(), memory__);
         raw_ptr_    = unique_ptr_.get();
+#if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
         print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(memory__), "direct", label_);
         call_constructor();
+#endif
     }
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     /* device allocation */
     if (is_device_memory(memory__)) {
         unique_ptr_device_ = sirius::get_unique_ptr<T>(this->size(), memory__);
         raw_ptr_device_    = unique_ptr_device_.get();
+#if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
         print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(memory__), "direct", label_);
+#endif
     }
 #endif
     return *this;
@@ -1040,15 +1046,19 @@ mdarray<T, N>::allocate(memory_pool& mp__)
     if (is_host_memory(mp__.memory_type())) {
         unique_ptr_ = mp__.get_unique_ptr<T>(this->size());
         raw_ptr_    = unique_ptr_.get();
+#if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
         print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(mp__.memory_type()), "pool", label_);
+#endif
         call_constructor();
     }
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     /* device allocation */
     if (is_device_memory(mp__.memory_type())) {
         unique_ptr_device_ = mp__.get_unique_ptr<T>(this->size());
         raw_ptr_device_    = unique_ptr_device_.get();
+#if defined(SIRIUS_PRINT_MEMORY_ALLOCATION)
         print_mdarray_allocation(this->size() * sizeof(T), memory_t_name(mp__.memory_type()), "pool", label_);
+#endif
     }
 #endif
     return *this;
@@ -1272,7 +1282,7 @@ mdarray<T, N>::zero(memory_t mem__, size_t idx0__, size_t n__)
         // std::fill(raw_ptr_ + idx0__, raw_ptr_ + idx0__ + n__, 0);
         std::memset((void*)&raw_ptr_[idx0__], 0, n__ * sizeof(T));
     }
-#ifdef SIRIUS_GPU
+#if defined(SIRIUS_GPU)
     if (n__ && on_device() && is_device_memory(mem__)) {
         mdarray_assert(raw_ptr_device_ != nullptr);
         acc::zero(&raw_ptr_device_[idx0__], n__);

@@ -299,29 +299,6 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
                 dft.forces().print_info(out, dft.ctx().verbosity());
                 result["forces"] = get_forces(dft);
             }
-            //nlohmann::json dict;
-            //std::vector<double> t;
-            //std::vector<double> val_abs;
-            //std::vector<double> val_re;
-            //std::vector<double> val_im;
-            //for (int i = 0; i < 200; i++) {
-            //    double x = i / 199.0;
-            //    r3::vector<double> rc = x * (dft.ctx().unit_cell().lattice_vector(0) + dft.ctx().unit_cell().lattice_vector(1) +
-            //            dft.ctx().unit_cell().lattice_vector(2));
-            //    auto val = get_wave_function_value(*dft.k_point_set().get<double>(0),
-            //            dft.k_point_set().get<double>(0)->spinor_wave_functions(), rc, wf::band_index(0),
-            //            wf::spin_index(0));
-
-            //    t.push_back(rc.length());
-            //    val_abs.push_back(std::abs(val));
-            //    val_re.push_back(std::real(val));
-            //    val_im.push_back(std::imag(val));
-            //}
-            //dict["t"] = t;
-            //dict["val_abs"] = val_abs;
-            //dict["val_re"] = val_re;
-            //dict["val_im"] = val_im;
-            //write_json_to_file(dict, "psi_r.json");
             break;
         }
         case task_t::ground_state_new_relax: {
