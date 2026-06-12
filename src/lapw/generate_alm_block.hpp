@@ -29,6 +29,7 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
         num_mt_aw += ctx__.unit_cell().atom(atom_begin__ + ia).mt_aw_basis_size();
     }
 
+    /* resulting block of alm coefficients */
     mdarray<std::complex<T>, 2> result;
     switch (ctx__.processing_unit()) {
         case device_t::CPU: {
@@ -68,8 +69,18 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
                     break;
                 }
             }
-            /* generate LAPW matching coefficients on the CPU */
-            alm__.template generate<conjugate>(atom, alm_atom);
+            if (alm__.all_atoms()) {
+                auto ptr_out = alm_atom.at(memory_t::host);
+                std::copy(alm__.begin(atom_begin__ + i), alm__.end(atom_begin__ + i), ptr_out);
+                if (conjugate) {
+                    for (size_t i = 0; i < alm_atom.size(); i++) {
+                        alm_atom[i] = std::conj(alm_atom[i]);
+                    }
+                }
+            } else {
+                /* generate LAPW matching coefficients on the CPU */
+                alm__.template generate<conjugate>(atom, alm_atom);
+            }
             if (ctx__.processing_unit() == device_t::GPU) {
                 alm_atom.copy_to(memory_t::device, acc::stream_id(tid));
             }

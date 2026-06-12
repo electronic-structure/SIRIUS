@@ -60,6 +60,9 @@ class Matching_coefficients // TODO: compute on GPU
     /// Matching coefficients for all atoms.
     mdarray<std::complex<double>, 2> alm_all_atoms_;
 
+    /// Offset in the alm_all_atoms array.
+    std::vector<int> mt_aw_offset_;
+
     /// True if matching coefficients for all atoms are computed.
     bool all_atoms_{false};
 
@@ -200,6 +203,18 @@ class Matching_coefficients // TODO: compute on GPU
         return all_atoms_;
     }
 
+    inline auto
+    begin(int ia) const
+    {
+        return alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]);
+    }
+
+    inline auto
+    end(int ia) const
+    {
+        return this->begin(ia) + this->gkvec().count() * unit_cell_.atom(ia).type().mt_aw_basis_size();
+    }
+
     /// Generate plane-wave matching coefficients for the radial solutions of a given atom.
     /** \param [in]  atom      Atom, for which matching coefficients are generated.
         \param [out] alm       Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
@@ -313,10 +328,12 @@ class Matching_coefficients // TODO: compute on GPU
     inline void
     generate()
     {
+        PROFILE("sirius::Matching_coefficients::generate");
+
         int num_mt_aw{0};
-        std::vector<int> mt_aw_offset(unit_cell_.num_atoms());
+        mt_aw_offset_ = std::vector<int>(unit_cell_.num_atoms());
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            mt_aw_offset[ia] = num_mt_aw;
+            mt_aw_offset_[ia] = num_mt_aw;
             num_mt_aw += unit_cell_.atom(ia).mt_aw_basis_size();
         }
 
@@ -326,7 +343,7 @@ class Matching_coefficients // TODO: compute on GPU
             auto& type = atom.type();
             /* wrap matching coefficients of a single atom */
             mdarray<std::complex<double>, 2> alm_atom({this->gkvec().count(), type.mt_aw_basis_size()},
-                                                       alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset[ia]),
+                                                       alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]),
                                                        mdarray_label("alm_atom"));
             /* generate LAPW matching coefficients on the CPU */
             this->generate<false>(atom, alm_atom);

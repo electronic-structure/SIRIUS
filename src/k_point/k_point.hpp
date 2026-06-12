@@ -718,6 +718,12 @@ class K_point
         return *alm_coeffs_loc_;
     }
 
+    inline auto&
+    alm_coeffs_loc()
+    {
+        return *alm_coeffs_loc_;
+    }
+
     inline auto const&
     comm() const
     {
