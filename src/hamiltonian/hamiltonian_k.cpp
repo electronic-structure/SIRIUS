@@ -236,7 +236,11 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             auto& atom = uc.atom(ia);
             int nmt    = atom.mt_aw_basis_size();
 
-            kp_.alm_coeffs_loc().template generate<false>(atom, alm);
+            if (kp_.alm_coeffs_loc().all_atoms()) {
+                std::copy(kp_.alm_coeffs_loc().begin(ia), kp_.alm_coeffs_loc().end(ia), alm.at(memory_t::host));
+            } else {
+                kp_.alm_coeffs_loc().template generate<false>(atom, alm);
+            }
             if (what & 1) {
                 H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_loc(), alm, halm);
             }
@@ -1062,12 +1066,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* Prepare APW-lo contribution for the entire index of APW basis functions. Here we compute the action
      * of the APW-lo Hamiltonian and overlap on the local-orbital part of wave-functions.
      *
-     *            n
-     * +------+ +---+
-     * |      | |   |
-     * |      |x|lo |
-     * |      | |   |
-     * |      | +---+
+     *              n
+     * +------+   +---+
+     * |      |   |   |
+     * |      | x |lo |
+     * |      |   |   |
+     * |      |   +---+
      * |APW-lo|
      * |      |
      * |      |
@@ -1111,12 +1115,12 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* lo-lo contribution (lo-lo Hamiltonian and overlap are block-diagonal in atom index and the whole application is
      * local to MPI rank)
      *
-     *            n
-     * +------+ +---+
-     * |      | |   |
-     * |lo-lo |x|lo |
-     * |      | |   |
-     * +------+ +---+
+     *              n
+     * +------+   +---+
+     * |      |   |   |
+     * |lo-lo | x |lo |
+     * |      |   |   |
+     * +------+   +---+
      */
     if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|lo-lo");
