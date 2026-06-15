@@ -93,7 +93,10 @@ add_library(sirius_cxx "${_SOURCES};${_CUSOURCES};")
 target_compile_features(sirius_cxx PUBLIC cxx_std_17)
 target_compile_features(sirius_cxx PUBLIC c_std_99)
 target_compile_features(sirius_cxx PUBLIC cuda_std_17)
-set_target_properties(sirius_cxx PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(sirius_cxx PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
+  POSITION_INDEPENDENT_CODE ON)
 
 if(SIRIUS_USE_ROCM)
   set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
@@ -165,7 +168,11 @@ if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   target_include_directories(sirius PUBLIC
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 
-  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+  set_target_properties(sirius PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    POSITION_INDEPENDENT_CODE ON
+    Fortran_MODULE_DIRECTORY mod_files)
   install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
   install(FILES "${PROJECT_SOURCE_DIR}/src/api/sirius_c_headers.h"
