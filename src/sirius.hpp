@@ -84,12 +84,14 @@ initialize(bool call_mpi_init__ = true)
     energy_profiler = std::make_unique<power::Profile>("sirius");
 #endif
 
-    if (mpi::Communicator::world().rank() == 0) {
-        std::printf("# SIRIUS %i.%i.%i, git hash: %s\n", major_version(), minor_version(), revision(),
-                    git_hash().c_str());
+    if (env::get_verbosity() > 0) {
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "# SIRIUS " << major_version() << "." << minor_version() << "." << revision() << "."
+                      << ", git hash: " << git_hash() << std::endl;
 #if !defined(NDEBUG)
-        std::printf("# Warning! Compiled in 'debug' mode with assert statements enabled!\n");
+            std::cout << "# Warning! Compiled in 'debug' mode with assert statements enabled!" << std::endl;
 #endif
+        }
     }
 
     // uncomment this if you want to supress std::cout from all MPI ranks except from rank=0
