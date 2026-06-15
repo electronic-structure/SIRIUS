@@ -125,6 +125,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   $<$<OR:$<BOOL:${SIRIUS_USE_DFTD3}>,$<BOOL:${SIRIUS_USE_DFTD4}>>:sirius::mctclib>
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
+  $<$<BOOL:${SIRIUS_USE_VCSQNM}>:Eigen3::Eigen>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
   $<$<BOOL:${SIRIUS_USE_NVTX}>:CUDA::nvtx3>
   $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
