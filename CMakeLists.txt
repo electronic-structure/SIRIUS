@@ -153,6 +153,10 @@ if (SIRIUS_USE_DFTD4)
   find_package(DFTD4 REQUIRED)
 endif ()
 
+if (SIRIUS_USE_VCSQNM)
+  find_package(Eigen3 CONFIG REQUIRED)
+endif ()
+
 # Check if SpFFT support single precision if required
 if(NOT SIRIUS_USE_FP32 STREQUAL "OFF")
   if(SPFFT_SINGLE_PRECISION)

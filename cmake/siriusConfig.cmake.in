@@ -1,10 +1,16 @@
 @PACKAGE_INIT@
 
-if(NOT @BUILD_SHARED_LIBS@)
-  find_package(sirius_cxx CONFIG REQUIRED)
-endif()
-
 include(CMakeFindDependencyMacro)
+
+set(SIRIUS_USE_DFTD3 @SIRIUS_USE_DFTD3@)
+set(SIRIUS_USE_DFTD4 @SIRIUS_USE_DFTD4@)
+set(SIRIUS_USE_NLCGLIB @SIRIUS_USE_NLCGLIB@)
+set(SIRIUS_USE_VCSQNM @SIRIUS_USE_VCSQNM@)
+
+set(SIRIUS_BUILD_SHARED_LIBS @BUILD_SHARED_LIBS@)
+if(NOT SIRIUS_BUILD_SHARED_LIBS)
+  find_dependency(sirius_cxx CONFIG)
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/siriusTargets.cmake")
 
