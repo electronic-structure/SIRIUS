@@ -36,6 +36,9 @@
 #include <list>
 #include <string>
 #include <vector>
+#if defined(RT_GRAPH_PRINT_ID)
+#include <iostream>
+#endif
 
 namespace rt_graph {
 
@@ -81,6 +84,9 @@ struct TimeStamp
         , identifierPtr(identifier)
         , type(stampType)
     {
+#if defined(RT_GRAPH_PRINT_ID)
+        std::cout << std::string(identifier) << std::endl;
+#endif
     }
 
     ClockType::time_point time;
