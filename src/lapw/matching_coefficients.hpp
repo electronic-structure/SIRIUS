@@ -58,6 +58,7 @@ class Matching_coefficients // TODO: compute on GPU
     mdarray<std::complex<double>, 4> alm_b_;
 
     /// Matching coefficients for all atoms.
+    /** For convenience, conjugated coefficients are stored */
     mdarray<std::complex<double>, 2> alm_all_atoms_;
 
     /// Offset in the alm_all_atoms array.
@@ -203,15 +204,23 @@ class Matching_coefficients // TODO: compute on GPU
         return all_atoms_;
     }
 
+    /// Return pointer to the beginning of Alm array for a given atom.
     inline auto
     begin(int ia) const
     {
+        if (!all_atoms_) {
+            RTE_THROW("Matching coefficients for all atoms were not allocated");
+        }
         return alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]);
     }
 
+    /// Return pointer to the end of Alm array for a given atom.
     inline auto
     end(int ia) const
     {
+        if (!all_atoms_) {
+            RTE_THROW("Matching coefficients for all atoms were not allocated");
+        }
         return this->begin(ia) + this->gkvec().count() * unit_cell_.atom(ia).type().mt_aw_basis_size();
     }
 
@@ -345,8 +354,8 @@ class Matching_coefficients // TODO: compute on GPU
             mdarray<std::complex<double>, 2> alm_atom({this->gkvec().count(), type.mt_aw_basis_size()},
                                                        alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]),
                                                        mdarray_label("alm_atom"));
-            /* generate LAPW matching coefficients on the CPU */
-            this->generate<false>(atom, alm_atom);
+            /* generate conjugated LAPW matching coefficients on the CPU */
+            this->generate<true>(atom, alm_atom);
         }
     }
 };
