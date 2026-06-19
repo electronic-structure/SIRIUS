@@ -250,6 +250,14 @@ Simulation_context::initialize()
         pw_cutoff(full_potential() ? 12 : 20);
     }
 
+    if (cfg().control().max_atom_chunk_size() == -1) {
+        if (full_potential()) {
+            cfg().control().max_atom_chunk_size(64);
+        } else {
+            cfg().control().max_atom_chunk_size(256);
+        }
+    }
+
     print_memory_usage(this->out(), FILE_LINE);
 
     /* initialize variables related to the unit cell */

@@ -48,6 +48,7 @@ class Matching_coefficients // TODO: compute on GPU
     /// Description of the G+k vectors.
     fft::Gvec const& gkvec_;
 
+    /// Length of G+k vectors.
     std::vector<double> gkvec_len_;
 
     /// Spherical harmonics Ylm(theta, phi) of the G+k vectors.
@@ -55,6 +56,16 @@ class Matching_coefficients // TODO: compute on GPU
 
     /// Precomputed values for the linear equations for matching coefficients.
     mdarray<std::complex<double>, 4> alm_b_;
+
+    /// Matching coefficients for all atoms.
+    /** For convenience, conjugated coefficients are stored */
+    mdarray<std::complex<double>, 2> alm_all_atoms_;
+
+    /// Offset in the alm_all_atoms array.
+    std::vector<int> mt_aw_offset_;
+
+    /// True if matching coefficients for all atoms are computed.
+    bool all_atoms_{false};
 
     /// Generate matching coefficients for a specific \f$ \ell \f$ and order.
     /** \param [in] ngk           Number of G+k vectors.
@@ -99,14 +110,15 @@ class Matching_coefficients // TODO: compute on GPU
 
   public:
     /// Constructor
-    Matching_coefficients(Unit_cell const& unit_cell__, fft::Gvec const& gkvec__)
+    Matching_coefficients(Unit_cell const& unit_cell__, fft::Gvec const& gkvec__, bool all_atoms__ = false)
         : unit_cell_(unit_cell__)
         , gkvec_(gkvec__)
+        , all_atoms_(all_atoms__)
     {
         int lmax_apw  = unit_cell__.lmax_apw();
         int lmmax_apw = sf::lmmax(lmax_apw);
 
-        gkvec_ylm_ = mdarray<std::complex<double>, 2>({gkvec_.count(), lmmax_apw});
+        gkvec_ylm_ = mdarray<std::complex<double>, 2>({gkvec_.count(), lmmax_apw}, mdarray_label("gkvec_ylm"));
         gkvec_len_.resize(gkvec_.count());
 
         /* get length and Ylm harmonics of G+k vectors */
@@ -173,6 +185,43 @@ class Matching_coefficients // TODO: compute on GPU
                 }
             }
         }
+
+        if (all_atoms_) {
+            alm_all_atoms_ = mdarray<std::complex<double>, 2>({gkvec_.count(), unit_cell_.mt_aw_basis_size()},
+                                                              mdarray_label("alm_all_atoms"));
+        }
+    }
+
+    inline auto const&
+    gkvec() const
+    {
+        return gkvec_;
+    }
+
+    inline auto
+    all_atoms() const
+    {
+        return all_atoms_;
+    }
+
+    /// Return pointer to the beginning of Alm array for a given atom.
+    inline auto
+    begin(int ia) const
+    {
+        if (!all_atoms_) {
+            RTE_THROW("Matching coefficients for all atoms were not allocated");
+        }
+        return alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]);
+    }
+
+    /// Return pointer to the end of Alm array for a given atom.
+    inline auto
+    end(int ia) const
+    {
+        if (!all_atoms_) {
+            RTE_THROW("Matching coefficients for all atoms were not allocated");
+        }
+        return this->begin(ia) + this->gkvec().count() * unit_cell_.atom(ia).type().mt_aw_basis_size();
     }
 
     /// Generate plane-wave matching coefficients for the radial solutions of a given atom.
@@ -284,10 +333,30 @@ class Matching_coefficients // TODO: compute on GPU
         }
     }
 
-    auto const&
-    gkvec() const
+    /// Generate matching coefficients for all atoms.
+    inline void
+    generate()
     {
-        return gkvec_;
+        PROFILE("sirius::Matching_coefficients::generate");
+
+        int num_mt_aw{0};
+        mt_aw_offset_ = std::vector<int>(unit_cell_.num_atoms());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            mt_aw_offset_[ia] = num_mt_aw;
+            num_mt_aw += unit_cell_.atom(ia).mt_aw_basis_size();
+        }
+
+        #pragma omp parallel for
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto& atom = unit_cell_.atom(ia);
+            auto& type = atom.type();
+            /* wrap matching coefficients of a single atom */
+            mdarray<std::complex<double>, 2> alm_atom({this->gkvec().count(), type.mt_aw_basis_size()},
+                                                      alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]),
+                                                      mdarray_label("alm_atom"));
+            /* generate conjugated LAPW matching coefficients on the CPU */
+            this->generate<true>(atom, alm_atom);
+        }
     }
 };
 

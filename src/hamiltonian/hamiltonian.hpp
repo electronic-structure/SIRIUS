@@ -149,8 +149,8 @@ class Hamiltonian0
      *  \f]
      */
     void
-    apply_hmt_to_apw(int ia__, int j__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
-                     mdarray<std::complex<T>, 2>& halm__) const;
+    apply_hmt_to_apw(device_t pu__, int ia__, int j__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
+                     mdarray<std::complex<T>, 2>& halm__, int stream_id__ = -1) const;
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
     void

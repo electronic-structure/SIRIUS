@@ -110,6 +110,18 @@ class K_point
     std::unique_ptr<Matching_coefficients> alm_coeffs_col_{nullptr};
 
     /// LAPW matching coefficients for the local set G+k vectors.
+    /** Used in operations that apply the Hamiltonian or construct LAPW wave functions
+        from the plane-wave coefficients stored locally on this MPI rank. Unlike
+        alm_coeffs_row_ and alm_coeffs_col_, which are tied to the row and column
+        distributions of the explicit LAPW Hamiltonian and overlap matrices, this
+        object follows the local G+k distribution of the k-point.
+
+        The object may cache matching coefficients for all atoms. This is used by the
+        iterative first-variation solver to generate the coefficients once and reuse
+        them during repeated Hamiltonian applications. Code paths that require atom
+        blocks can still request coefficients through the regular Matching_coefficients
+        interface; depending on the cache mode this either copies precomputed data or
+        generates the coefficients for the requested atom. */
     std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
     /// Number of G+k vectors distributed along rows of MPI grid
@@ -710,6 +722,12 @@ class K_point
 
     inline auto const&
     alm_coeffs_loc() const
+    {
+        return *alm_coeffs_loc_;
+    }
+
+    inline auto&
+    alm_coeffs_loc()
     {
         return *alm_coeffs_loc_;
     }

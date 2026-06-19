@@ -22,34 +22,46 @@ memcpy_simple_1(char* dest__, char* src__, size_t n__)
 int
 test_memop()
 {
-    int n = 20000000;
+    size_t n = 2000 * 1000 * 1000;
     std::vector<double> v1(n, 1.0);
     std::vector<double> v2(n, 2.0);
 
-    double t = -omp_get_wtime();
-    std::memcpy(&v1[0], &v2[0], n * sizeof(double));
-    t += omp_get_wtime();
-    printf("memcpy(stdlib) bandwidth: %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
+    std::cout << "total size : " << v1.size() * sizeof(double) / 1024 / 1024 / 1024.0 << " GB" << std::endl;
 
-    t = -omp_get_wtime();
-    memcpy_simple_1((char*)&v1[0], (char*)&v2[0], n * sizeof(double));
-    t += omp_get_wtime();
-    printf("memcpy(simple) bandwidth: %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
+    for (int i = 0; i < 4; i++) {
+        std::cout << "pass : " << i << std::endl;
+        double t = -omp_get_wtime();
+        std::memcpy(&v1[0], &v2[0], n * sizeof(double));
+        t += omp_get_wtime();
+        std::cout << "memcpy(stdlib) time : " << t << ", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30)
+                  << "GB/s" << std::endl;
 
-    t = -omp_get_wtime();
-    std::copy(v2.begin(), v2.end(), v1.begin());
-    t += omp_get_wtime();
-    printf("std::copy bandwidth     : %f GB/s \n", double(2 * n * sizeof(double)) / t / (1 << 30));
+        t = -omp_get_wtime();
+        memcpy_simple_1((char*)&v1[0], (char*)&v2[0], n * sizeof(double));
+        t += omp_get_wtime();
+        std::cout << "memcpy(simple) time : " << t << ", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30)
+                  << "GB/s" << std::endl;
 
-    t = -omp_get_wtime();
-    std::memset(&v1[0], 0, n * sizeof(double));
-    t += omp_get_wtime();
-    printf("memset(stdlib) bandwidth: %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
+        t = -omp_get_wtime();
+        std::copy(v2.begin(), v2.end(), v1.begin());
+        t += omp_get_wtime();
+        std::cout << "std::copy time : " << t << ", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30) << "GB/s"
+                  << std::endl;
 
-    t = -omp_get_wtime();
-    std::fill(v1.begin(), v1.end(), 0.0);
-    t += omp_get_wtime();
-    printf("std::fill bandwidth     : %f GB/s \n", double(n * sizeof(double)) / t / (1 << 30));
+        t = -omp_get_wtime();
+        std::memset(&v1[0], 0, n * sizeof(double));
+        t += omp_get_wtime();
+        std::cout << "memset(stdlib) time : " << t << ", bandwidth: " << n * sizeof(double) / t / (1 << 30) << "GB/s"
+                  << std::endl;
+
+        t = -omp_get_wtime();
+        std::fill(v1.begin(), v1.end(), 0.0);
+        t += omp_get_wtime();
+        std::cout << "std::fill time : " << t << ", bandwidth: " << n * sizeof(double) / t / (1 << 30) << "GB/s"
+                  << std::endl;
+
+        std::cout << std::endl;
+    }
 
     return 0;
 }

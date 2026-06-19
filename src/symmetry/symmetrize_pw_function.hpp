@@ -359,8 +359,6 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
                sym_phase_factors__(2, G[2], isym);
     };
 
-    double const eps{1e-9};
-
     PROFILE_START("sirius::symmetrize|fpw|local");
 
     #pragma omp parallel for schedule(static, 1)
