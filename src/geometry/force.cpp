@@ -807,7 +807,7 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         Hk__.set_fv_h_o_apw_lo(atom, ia, 0, alm_row, alm_col, h, o);
 
         /* apply MT Hamiltonian to column coefficients */
-        Hk__.H0().apply_hmt_to_apw(ia, 0, kp__->num_gkvec_col(), alm_col, halm_col);
+        Hk__.H0().apply_hmt_to_apw(device_t::CPU, ia, 0, kp__->num_gkvec_col(), alm_col, halm_col);
 
         /* apw-apw block of the overlap matrix */
         la::wrap(la::lib_t::blas)

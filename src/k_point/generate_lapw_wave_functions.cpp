@@ -37,6 +37,8 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
     int atom_begin{0};
     int mt_aw_offset{0};
 
+    auto evec_mg = evec__.memory_guard(ctx_.processing_unit_memory_t(), wf::copy_to::device);
+
     /* loop over blocks of atoms */
     for (auto na : split_in_blocks(uc.num_atoms(), ctx_.cfg().control().max_atom_chunk_size())) {
         /* actual number of AW radial functions in a block of atoms */
@@ -48,15 +50,15 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm_block<false, T>(ctx_, atom_begin, na, this->alm_coeffs_loc());
-        auto cs  = alm.checksum();
+        auto alm = generate_alm_block<true, T>(ctx_, atom_begin, na, this->alm_coeffs_loc());
         if (pcs) {
+            auto cs = alm.checksum();
             print_checksum("alm", cs, RTE_OUT(this->out(0)));
         }
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
-        spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_TRANSPOSE, 1.0,
-                        alm.at(memory_t::host), alm.ld(), &evec__.pw_coeffs(0, wf::spin_index(0), wf::band_index(0)),
+        spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_CONJ_TRANSPOSE, 1.0,
+                        alm.at(ctx_.processing_unit_memory_t()), alm.ld(), evec__.pw_coeffs(wf::spin_index(0)).at(ctx_.processing_unit_memory_t()),
                         evec__.ld(), 0.0, alm_fv.at(memory_t::host), alm_fv.ld(), mt_aw_offset, 0,
                         alm_fv.spla_distribution(), ctx_.spla_context());
 

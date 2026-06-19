@@ -190,7 +190,9 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 {
     PROFILE("sirius::Hamiltonian::get_h_o_diag");
 
-    auto const& uc = H0_.ctx().unit_cell();
+    auto const& ctx = H0_.ctx();
+
+    auto const& uc = ctx.unit_cell();
 
     splindex_block<atom_index_t> spl_num_atoms(uc.num_atoms(), n_blocks(kp_.comm().size()),
                                                block_id(kp_.comm().rank()));
@@ -207,67 +209,100 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         if (what & 1) {
             auto gvc      = kp_.gkvec().gkvec_cart(gvec_index_t::local(igloc));
             T ekin        = 0.5 * dot(gvc, gvc);
-            h_diag[igloc] = H0_.local_op().v0(0) + ekin * H0_.ctx().theta_pw(0).real();
+            h_diag[igloc] = H0_.local_op().v0(0) + ekin * ctx.theta_pw(0).real();
         }
         if (what & 2) {
-            o_diag[igloc] = H0_.ctx().theta_pw(0).real();
+            o_diag[igloc] = ctx.theta_pw(0).real();
         }
     }
-
-    #pragma omp parallel
-    {
-        matrix<std::complex<T>> alm({kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size()});
-
-        auto halm = (what & 1) ? matrix<std::complex<T>>({kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size()})
-                               : matrix<std::complex<T>>();
-
-        auto h_diag_omp = (what & 1) ? mdarray<T, 1>({kp_.num_gkvec_loc()}) : mdarray<T, 1>();
+    int atom_begin{0};
+    for (auto na : split_in_blocks(uc.num_atoms(), ctx.cfg().control().max_atom_chunk_size())) {
+        /* actual number of AW radial functions in a block of atoms */
+        int num_mt_aw{0};
+        std::vector<int> offsets_aw(na);
+        for (int i = 0; i < na; i++) {
+            int ia        = atom_begin + i;
+            auto& type    = uc.atom(ia).type();
+            offsets_aw[i] = num_mt_aw;
+            num_mt_aw += type.mt_aw_basis_size();
+        }
+        matrix<std::complex<T>> halm;
         if (what & 1) {
-            h_diag_omp.zero();
-        }
-
-        auto o_diag_omp = (what & 2) ? mdarray<T, 1>({kp_.num_gkvec_loc()}) : mdarray<T, 1>();
-        if (what & 2) {
-            o_diag_omp.zero();
-        }
-
-        #pragma omp for
-        for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            auto& atom = uc.atom(ia);
-            int nmt    = atom.mt_aw_basis_size();
-
-            if (kp_.alm_coeffs_loc().all_atoms()) {
-                std::copy(kp_.alm_coeffs_loc().begin(ia), kp_.alm_coeffs_loc().end(ia), alm.at(memory_t::host));
-            } else {
-                kp_.alm_coeffs_loc().template generate<false>(atom, alm);
-            }
-            if (what & 1) {
-                H0_.apply_hmt_to_apw(ia, 0, kp_.num_gkvec_loc(), alm, halm);
-            }
-
-            for (int xi = 0; xi < nmt; xi++) {
-                for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
-                    if (what & 1) {
-                        h_diag_omp[igloc] += std::real(std::conj(alm(igloc, xi)) * halm(igloc, xi));
-                    }
-                    if (what & 2) {
-                        o_diag_omp[igloc] += std::real(std::conj(alm(igloc, xi)) * alm(igloc, xi));
-                    }
+            switch (ctx.processing_unit()) {
+                case device_t::CPU: {
+                    halm = matrix<std::complex<T>>({kp_.num_gkvec_loc(), num_mt_aw},
+                                    get_memory_pool(memory_t::host), mdarray_label("halm"));
+                    break;
+                }
+                case device_t::GPU: {
+                    halm = matrix<std::complex<T>>({kp_.num_gkvec_loc(), num_mt_aw},
+                                    get_memory_pool(memory_t::host_pinned), mdarray_label("halm"));
+                    halm.allocate(get_memory_pool(memory_t::device));
+                    break;
                 }
             }
         }
 
-        #pragma omp critical
-        for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
-            if (what & 1) {
-                h_diag[igloc] += h_diag_omp[igloc];
+        /* generate complex conjugated Alm coefficients for a block of atoms */
+        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na, kp_.alm_coeffs_loc());
+
+        /* apply muffin-tin APW Hamiltonian to the block of Alm coefficients */
+        if (what & 1) {
+            PROFILE("sirius::Hamiltonian::get_h_o_diag|hmt");
+            #pragma omp parallel for schedule(static, 1)
+            for (int i = 0; i < na; i++) {
+                int ia        = atom_begin + i;
+                auto& type    = uc.atom(ia).type();
+                matrix<std::complex<T>> alm_atom, halm_atom;
+                switch (ctx.processing_unit()) {
+                    case device_t::CPU: {
+                        alm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                            alm.at(memory_t::host, 0, offsets_aw[i]));
+                        halm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                            halm.at(memory_t::host, 0, offsets_aw[i]));
+                        break;
+                    }
+                    case device_t::GPU: {
+                        alm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                            alm.at(memory_t::host, 0, offsets_aw[i]), alm.at(memory_t::device, 0, offsets_aw[i]));
+                        halm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                            halm.at(memory_t::host, 0, offsets_aw[i]), halm.at(memory_t::device, 0, offsets_aw[i]));
+                        break;
+
+                    }
+                }
+                H0_.apply_hmt_to_apw(ctx.processing_unit(), ia, 0, kp_.num_gkvec_loc(), alm_atom, halm_atom, omp_get_thread_num());
             }
-            if (what & 2) {
-                o_diag[igloc] += o_diag_omp[igloc];
+            if (ctx.processing_unit() == device_t::GPU) {
+                halm.copy_to(memory_t::host);
             }
         }
+
+        /* compute APW contribution */
+        for (int i = 0; i < na; i++) {
+            int ia        = atom_begin + i;
+            auto& type    = uc.atom(ia).type();
+            auto alm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                    alm.at(memory_t::host, 0, offsets_aw[i]));
+            auto halm_atom = (what & 1) ? matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                    halm.at(memory_t::host, 0, offsets_aw[i])) : matrix<std::complex<T>>();
+            #pragma omp parallel
+            for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
+                #pragma omp for
+                for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
+                    if (what & 1) {
+                        h_diag[igloc] += std::real(std::conj(alm_atom(igloc, xi)) * halm_atom(igloc, xi));
+                    }
+                    if (what & 2) {
+                        o_diag[igloc] += std::real(std::conj(alm_atom(igloc, xi)) * alm_atom(igloc, xi));
+                    }
+                }
+            }
+        }
+        atom_begin += na;
     }
 
+    /* local obribal part */
     nlo = 0;
     for (auto it : spl_num_atoms) {
         auto& atom = uc.atom(it.i);
@@ -286,7 +321,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         nlo += atom.mt_lo_basis_size();
     }
 
-    if (H0_.ctx().processing_unit() == device_t::GPU) {
+    if (ctx.processing_unit() == device_t::GPU) {
         if (what & 1) {
             h_diag.allocate(memory_t::device).copy_to(memory_t::device);
         }
@@ -424,7 +459,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
 
                 /* can't copy alm to device now as it might be modified by the iora */
 
-                H0_.apply_hmt_to_apw(ia, ispn__, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
+                H0_.apply_hmt_to_apw(device_t::CPU, ia, ispn__, kp_.num_gkvec_col(), alm_col_atom, halm_col_atom);
                 if (pu == device_t::GPU) {
                     halm_col_atom.copy_to(memory_t::device, acc::stream_id(tid));
                 }
