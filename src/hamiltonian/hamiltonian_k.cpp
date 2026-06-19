@@ -230,13 +230,13 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         if (what & 1) {
             switch (ctx.processing_unit()) {
                 case device_t::CPU: {
-                    halm = matrix<std::complex<T>>({kp_.num_gkvec_loc(), num_mt_aw},
-                                    get_memory_pool(memory_t::host), mdarray_label("halm"));
+                    halm = matrix<std::complex<T>>({kp_.num_gkvec_loc(), num_mt_aw}, get_memory_pool(memory_t::host),
+                                                   mdarray_label("halm"));
                     break;
                 }
                 case device_t::GPU: {
                     halm = matrix<std::complex<T>>({kp_.num_gkvec_loc(), num_mt_aw},
-                                    get_memory_pool(memory_t::host_pinned), mdarray_label("halm"));
+                                                   get_memory_pool(memory_t::host_pinned), mdarray_label("halm"));
                     halm.allocate(get_memory_pool(memory_t::device));
                     break;
                 }
@@ -251,27 +251,29 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
             PROFILE("sirius::Hamiltonian::get_h_o_diag|hmt");
             #pragma omp parallel for schedule(static, 1)
             for (int i = 0; i < na; i++) {
-                int ia        = atom_begin + i;
-                auto& type    = uc.atom(ia).type();
+                int ia     = atom_begin + i;
+                auto& type = uc.atom(ia).type();
                 matrix<std::complex<T>> alm_atom, halm_atom;
                 switch (ctx.processing_unit()) {
                     case device_t::CPU: {
-                        alm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
-                            alm.at(memory_t::host, 0, offsets_aw[i]));
+                        alm_atom  = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                                                            alm.at(memory_t::host, 0, offsets_aw[i]));
                         halm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
-                            halm.at(memory_t::host, 0, offsets_aw[i]));
+                                                            halm.at(memory_t::host, 0, offsets_aw[i]));
                         break;
                     }
                     case device_t::GPU: {
-                        alm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
-                            alm.at(memory_t::host, 0, offsets_aw[i]), alm.at(memory_t::device, 0, offsets_aw[i]));
+                        alm_atom  = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                                                            alm.at(memory_t::host, 0, offsets_aw[i]),
+                                                            alm.at(memory_t::device, 0, offsets_aw[i]));
                         halm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
-                            halm.at(memory_t::host, 0, offsets_aw[i]), halm.at(memory_t::device, 0, offsets_aw[i]));
+                                                            halm.at(memory_t::host, 0, offsets_aw[i]),
+                                                            halm.at(memory_t::device, 0, offsets_aw[i]));
                         break;
-
                     }
                 }
-                H0_.apply_hmt_to_apw(ctx.processing_unit(), ia, 0, kp_.num_gkvec_loc(), alm_atom, halm_atom, omp_get_thread_num());
+                H0_.apply_hmt_to_apw(ctx.processing_unit(), ia, 0, kp_.num_gkvec_loc(), alm_atom, halm_atom,
+                                     omp_get_thread_num());
             }
             if (ctx.processing_unit() == device_t::GPU) {
                 halm.copy_to(memory_t::host);
@@ -280,12 +282,13 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
 
         /* compute APW contribution */
         for (int i = 0; i < na; i++) {
-            int ia        = atom_begin + i;
-            auto& type    = uc.atom(ia).type();
-            auto alm_atom = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
-                    alm.at(memory_t::host, 0, offsets_aw[i]));
+            int ia         = atom_begin + i;
+            auto& type     = uc.atom(ia).type();
+            auto alm_atom  = matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
+                                                     alm.at(memory_t::host, 0, offsets_aw[i]));
             auto halm_atom = (what & 1) ? matrix<std::complex<T>>({kp_.num_gkvec_loc(), type.mt_aw_basis_size()},
-                    halm.at(memory_t::host, 0, offsets_aw[i])) : matrix<std::complex<T>>();
+                                                                  halm.at(memory_t::host, 0, offsets_aw[i]))
+                                        : matrix<std::complex<T>>();
             #pragma omp parallel
             for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
                 #pragma omp for

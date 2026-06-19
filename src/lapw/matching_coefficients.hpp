@@ -188,7 +188,7 @@ class Matching_coefficients // TODO: compute on GPU
 
         if (all_atoms_) {
             alm_all_atoms_ = mdarray<std::complex<double>, 2>({gkvec_.count(), unit_cell_.mt_aw_basis_size()},
-                    mdarray_label("alm_all_atoms"));
+                                                              mdarray_label("alm_all_atoms"));
         }
     }
 
@@ -352,8 +352,8 @@ class Matching_coefficients // TODO: compute on GPU
             auto& type = atom.type();
             /* wrap matching coefficients of a single atom */
             mdarray<std::complex<double>, 2> alm_atom({this->gkvec().count(), type.mt_aw_basis_size()},
-                                                       alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]),
-                                                       mdarray_label("alm_atom"));
+                                                      alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]),
+                                                      mdarray_label("alm_atom"));
             /* generate conjugated LAPW matching coefficients on the CPU */
             this->generate<true>(atom, alm_atom);
         }

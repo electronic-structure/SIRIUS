@@ -58,9 +58,10 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for the block of atoms */
         spla::pgemm_ssb(num_mt_aw, ctx_.num_fv_states(), this->gkvec().count(), SPLA_OP_CONJ_TRANSPOSE, 1.0,
-                        alm.at(ctx_.processing_unit_memory_t()), alm.ld(), evec__.pw_coeffs(wf::spin_index(0)).at(ctx_.processing_unit_memory_t()),
-                        evec__.ld(), 0.0, alm_fv.at(memory_t::host), alm_fv.ld(), mt_aw_offset, 0,
-                        alm_fv.spla_distribution(), ctx_.spla_context());
+                        alm.at(ctx_.processing_unit_memory_t()), alm.ld(),
+                        evec__.pw_coeffs(wf::spin_index(0)).at(ctx_.processing_unit_memory_t()), evec__.ld(), 0.0,
+                        alm_fv.at(memory_t::host), alm_fv.ld(), mt_aw_offset, 0, alm_fv.spla_distribution(),
+                        ctx_.spla_context());
 
         atom_begin += na;
         mt_aw_offset += num_mt_aw;

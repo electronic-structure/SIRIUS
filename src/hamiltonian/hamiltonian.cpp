@@ -124,19 +124,19 @@ Hamiltonian0<T>::~Hamiltonian0()
 
 template <typename T>
 void
-Hamiltonian0<T>::apply_hmt_to_apw(device_t pu__, int ia__, int ispn__, int ngv__, mdarray<std::complex<T>, 2> const& alm__,
-                                  mdarray<std::complex<T>, 2>& halm__, int stream_id__) const
+Hamiltonian0<T>::apply_hmt_to_apw(device_t pu__, int ia__, int ispn__, int ngv__,
+                                  mdarray<std::complex<T>, 2> const& alm__, mdarray<std::complex<T>, 2>& halm__,
+                                  int stream_id__) const
 {
     auto& type = ctx_.unit_cell().atom(ia__).type();
 
     auto la  = (pu__ == device_t::CPU) ? la::lib_t::blas : la::lib_t::gpublas;
     auto mem = (pu__ == device_t::CPU) ? memory_t::host : memory_t::device;
 
-    la::wrap(la)
-            .gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
-                  &la::constant<std::complex<T>>::one(), alm__.at(mem), alm__.ld(),
-                  hmt_[ia__].at(mem, 0, 0, ispn__), hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(),
-                  halm__.at(mem), halm__.ld(), acc::stream_id(stream_id__));
+    la::wrap(la).gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
+                      &la::constant<std::complex<T>>::one(), alm__.at(mem), alm__.ld(),
+                      hmt_[ia__].at(mem, 0, 0, ispn__), hmt_[ia__].ld(), &la::constant<std::complex<T>>::zero(),
+                      halm__.at(mem), halm__.ld(), acc::stream_id(stream_id__));
 }
 
 template <typename T>

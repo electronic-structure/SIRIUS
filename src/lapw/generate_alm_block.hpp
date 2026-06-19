@@ -34,8 +34,9 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
 
     /* quick exit */
     if (conjugate && alm__.all_atoms()) {
-        result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw}, const_cast<std::complex<T>*>(alm__.begin(atom_begin__)),
-                                                 mdarray_label("alm_block"));
+        result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
+                                             const_cast<std::complex<T>*>(alm__.begin(atom_begin__)),
+                                             mdarray_label("alm_block"));
         if (ctx__.processing_unit() == device_t::GPU) {
             result.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
         }
@@ -87,7 +88,7 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
                     auto ptr_in = alm__.begin(atom_begin__ + i);
                     for (size_t j = 0; j < alm_atom.size(); j++) {
                         ptr_out[j] = std::conj(ptr_in[j]);
-                    } 
+                    }
                 } else {
                     std::copy(alm__.begin(atom_begin__ + i), alm__.end(atom_begin__ + i), ptr_out);
                     //std::memcpy(ptr_out, alm__.begin(atom_begin__ + i), alm_atom.size() * sizeof(std::complex<T>));
@@ -105,7 +106,8 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
         }
     }
     tt = (omp_get_wtime() - tt);
-    std::cout << "effective BW : " << result.size() * 2 * sizeof(std::complex<double>) / tt / (1<<30) << " GB/s" << std::endl;
+    std::cout << "effective BW : " << result.size() * 2 * sizeof(std::complex<double>) / tt / (1 << 30) << " GB/s"
+              << std::endl;
     return result;
 }
 
