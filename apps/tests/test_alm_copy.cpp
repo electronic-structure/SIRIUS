@@ -46,9 +46,9 @@ template <typename T>
 int
 test_alm_copy_v2()
 {
-    size_t m = 200000; // number of G+k vectors
-    size_t n = 300;    // number of AW coefficients per atom
-    size_t k = 64;     // number of atoms in a block
+    int m = 200000; // number of G+k vectors
+    int n = 300;    // number of AW coefficients per atom
+    int k = 64;     // number of atoms in a block
 
     auto& mp = get_memory_pool(memory_t::host_pinned);
 
