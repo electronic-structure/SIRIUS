@@ -57,7 +57,6 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
         }
     }
 
-    auto tt = omp_get_wtime();
     #pragma omp parallel
     {
         int tid = omp_get_thread_num();
@@ -91,7 +90,6 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
                     }
                 } else {
                     std::copy(alm__.begin(atom_begin__ + i), alm__.end(atom_begin__ + i), ptr_out);
-                    //std::memcpy(ptr_out, alm__.begin(atom_begin__ + i), alm_atom.size() * sizeof(std::complex<T>));
                 }
             } else {
                 /* generate LAPW matching coefficients on the CPU */
@@ -105,9 +103,6 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
             acc::sync_stream(acc::stream_id(tid));
         }
     }
-    tt = (omp_get_wtime() - tt);
-    std::cout << "effective BW : " << result.size() * 2 * sizeof(std::complex<double>) / tt / (1 << 30) << " GB/s"
-              << std::endl;
     return result;
 }
 
