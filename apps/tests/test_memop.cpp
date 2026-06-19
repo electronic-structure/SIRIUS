@@ -33,27 +33,32 @@ test_memop()
         double t = -omp_get_wtime();
         std::memcpy(&v1[0], &v2[0], n * sizeof(double));
         t += omp_get_wtime();
-        std::cout << "memcpy(stdlib) time : " << t <<", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30) << "GB/s" << std::endl;
+        std::cout << "memcpy(stdlib) time : " << t << ", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30)
+                  << "GB/s" << std::endl;
 
         t = -omp_get_wtime();
         memcpy_simple_1((char*)&v1[0], (char*)&v2[0], n * sizeof(double));
         t += omp_get_wtime();
-        std::cout << "memcpy(simple) time : " << t <<", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30) << "GB/s" << std::endl;
+        std::cout << "memcpy(simple) time : " << t << ", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30)
+                  << "GB/s" << std::endl;
 
         t = -omp_get_wtime();
         std::copy(v2.begin(), v2.end(), v1.begin());
         t += omp_get_wtime();
-        std::cout << "std::copy time : " << t <<", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30) << "GB/s" << std::endl;
+        std::cout << "std::copy time : " << t << ", bandwidth: " << 2 * n * sizeof(double) / t / (1 << 30) << "GB/s"
+                  << std::endl;
 
         t = -omp_get_wtime();
         std::memset(&v1[0], 0, n * sizeof(double));
         t += omp_get_wtime();
-        std::cout << "memset(stdlib) time : " << t <<", bandwidth: " << n * sizeof(double) / t / (1 << 30) << "GB/s" << std::endl;
+        std::cout << "memset(stdlib) time : " << t << ", bandwidth: " << n * sizeof(double) / t / (1 << 30) << "GB/s"
+                  << std::endl;
 
         t = -omp_get_wtime();
         std::fill(v1.begin(), v1.end(), 0.0);
         t += omp_get_wtime();
-        std::cout << "std::fill time : " << t <<", bandwidth: " << n * sizeof(double) / t / (1 << 30) << "GB/s" << std::endl;
+        std::cout << "std::fill time : " << t << ", bandwidth: " << n * sizeof(double) / t / (1 << 30) << "GB/s"
+                  << std::endl;
 
         std::cout << std::endl;
     }
