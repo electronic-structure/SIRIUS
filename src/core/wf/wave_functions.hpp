@@ -19,6 +19,7 @@
 #include <iostream>
 #include <costa/layout.hpp>
 #include <costa/grid2grid/transformer.hpp>
+#include <type_traits>
 #include "core/la/linalg.hpp"
 #include "core/strong_type.hpp"
 #include "core/hdf5_tree.hpp"
@@ -26,6 +27,7 @@
 #include "core/env/env.hpp"
 #include "core/rte/rte.hpp"
 #include "core/time_tools.hpp"
+#include "wf_inner_local.hpp"
 
 namespace sirius {
 
@@ -1361,29 +1363,15 @@ inner_diag_local(memory_t mem__, wf::Wave_functions<T> const& lhs__, wf::Wave_fu
         if (std::is_same<F, real_type<F>>::value) {
             reduced = lhs__.comm().rank() + 1;
         }
-        mdarray<F, 1> result_gpu({num_wf__.get()});
-        result_gpu.allocate(mem__).zero(mem__);
 
         for (auto s = spins__.begin(); s != spins__.end(); s++) {
-            auto s1   = lhs__.actual_spin_index(s);
-            auto s2   = rhs__.actual_spin_index(s);
-            auto ptr1 = lhs__.at(mem__, 0, s1, wf::band_index(0));
-            auto ptr2 = rhs__.at(mem__, 0, s2, wf::band_index(0));
-            if (std::is_same<T, double>::value) {
+            auto s1     = lhs__.actual_spin_index(s);
+            auto s2     = rhs__.actual_spin_index(s);
+            auto ptr1   = lhs__.at(mem__, 0, s1, wf::band_index(0));
+            auto ptr2   = rhs__.at(mem__, 0, s2, wf::band_index(0));
+            int ngv_loc = lhs__.ld();
 
-                if (std::is_same<F, double>::value) {
-                    inner_diag_local_gpu_double_double(ptr1, lhs__.ld(), ptr2, rhs__.ld(), lhs__.ld(), num_wf__.get(),
-                                                       reduced, result_gpu.at(mem__));
-                }
-                if (std::is_same<F, std::complex<double>>::value) {
-                    inner_diag_local_gpu_double_complex_double(ptr1, lhs__.ld(), ptr2, rhs__.ld(), lhs__.ld(),
-                                                               num_wf__.get(), result_gpu.at(mem__));
-                }
-            }
-        }
-        result_gpu.copy_to(memory_t::host);
-        for (int i = 0; i < num_wf__.get(); i++) {
-            result[i] = result_gpu[i];
+            inner_product_local_gpu(ptr1, rhs__.ld(), ptr2, lhs__.ld(), ngv_loc, num_wf__.get(), reduced, result);
         }
 #endif
     }

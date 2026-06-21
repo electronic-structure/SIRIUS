@@ -144,7 +144,7 @@ get_gpublasDiagonal_t(char c)
     {                                                                                                                  \
         acc::blas_api::status_t status;                                                                                \
         if ((status = func__ args__) != acc::blas_api::status::Success) {                                              \
-            error_message(status);                                                                                     \
+            acc::blas::error_message(status);                                                                          \
             char nm[1024];                                                                                             \
             gethostname(nm, 1024);                                                                                     \
             std::printf("hostname: %s\n", nm);                                                                         \

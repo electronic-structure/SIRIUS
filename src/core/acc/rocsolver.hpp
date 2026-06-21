@@ -20,6 +20,7 @@
 #include "acc.hpp"
 #include "acc_blas_api.hpp"
 #include "core/rte/rte.hpp"
+#include "core/memory.hpp"
 
 namespace sirius {
 
@@ -68,178 +69,355 @@ get_rocblas_operation(char trans)
     return op;
 }
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | double
+/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | double,float
 template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
+void
 syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, T* A, int lda, T* D, T* E,
         int* info)
 {
-    CALL_ROCSOLVER(rocsolver_dsyevd, (handle, evect, uplo, n, A, lda, D, E, info));
+    if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_dsyevd, (handle, evect, uplo, n, A, lda, D, E, info));
+    } else if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_ssyevd, (handle, evect, uplo, n, A, lda, D, E, info));
+    }
 }
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | float
+/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | complex double, float
 template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, T* A, int lda, T* D, T* E,
-        int* info)
-{
-    CALL_ROCSOLVER(rocsolver_ssyevd, (handle, evect, uplo, n, A, lda, D, E, info));
-}
-
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | complex double
-template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
+void
 syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<T>* A, int lda,
         T* D, T* E, int* info)
 {
-    CALL_ROCSOLVER(rocsolver_zheevd,
-                   (handle, evect, uplo, n, reinterpret_cast<rocblas_double_complex*>(A), lda, D, E, info));
+    if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_zheevd,
+                       (handle, evect, uplo, n, reinterpret_cast<rocblas_double_complex*>(A), lda, D, E, info));
+
+    } else if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_cheevd,
+                       (handle, evect, uplo, n, reinterpret_cast<rocblas_float_complex*>(A), lda, D, E, info));
+    }
 }
 
-/// _sy_mmetric or _he_rmitian STANDARD eigenvalue problem | complex float
+/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | double, float
 template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syheevd(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<T>* A, int lda,
-        T* D, T* E, int* info)
-{
-    CALL_ROCSOLVER(rocsolver_cheevd,
-                   (handle, evect, uplo, n, reinterpret_cast<rocblas_float_complex*>(A), lda, D, E, info));
-}
-
-/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | double
-template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
+int
 syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        T* A, int lda, T* B, int ldb, T* D, T* E, int* info)
+        T* A, int lda, T* B, int ldb, T* D, T* E)
 {
-    CALL_ROCSOLVER(rocsolver_dsygvd, (handle, itype, evect, uplo, n, A, lda, B, ldb, D, E, info));
+    auto& mpd   = get_memory_pool(memory_t::device);
+    auto d_info = mpd.get_unique_ptr<int>(1);
+    if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_dsygvd, (handle, itype, evect, uplo, n, A, lda, B, ldb, D, E, d_info.get()));
+    } else if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_ssygvd, (handle, itype, evect, uplo, n, A, lda, B, ldb, D, E, d_info.get()));
+    }
+    int info;
+    acc::copyout(&info, d_info.get(), 1);
+    return info;
 }
 
-/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | float
+/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | complex double, float
 template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
+int
 syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        T* A, int lda, T* B, int ldb, T* D, T* E, int* info)
+        std::complex<T>* A, int lda, std::complex<T>* B, int ldb, T* D, T* E)
 {
-    CALL_ROCSOLVER(rocsolver_ssygvd, (handle, itype, evect, uplo, n, A, lda, B, ldb, D, E, info));
-}
-
-/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | complex float
-template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        std::complex<T>* A, int lda, std::complex<T>* B, int ldb, T* D, T* E, int* info)
-{
-    CALL_ROCSOLVER(rocsolver_chegvd, (handle, itype, evect, uplo, n, reinterpret_cast<rocblas_float_complex*>(A), lda,
-                                      reinterpret_cast<rocblas_float_complex*>(B), ldb, D, E, info));
-}
-
-/// _sy_mmetric or _he_rmitian GENERALIZED eigenvalue problem | complex double
-template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
-syhegvd(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        std::complex<T>* A, int lda, std::complex<T>* B, int ldb, T* D, T* E, int* info)
-{
-    CALL_ROCSOLVER(rocsolver_zhegvd, (handle, itype, evect, uplo, n, reinterpret_cast<rocblas_double_complex*>(A), lda,
-                                      reinterpret_cast<rocblas_double_complex*>(B), ldb, D, E, info));
+    auto& mpd   = get_memory_pool(memory_t::device);
+    auto d_info = mpd.get_unique_ptr<int>(1);
+    if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_zhegvd, (handle, itype, evect, uplo, n, reinterpret_cast<rocblas_double_complex*>(A),
+                                          lda, reinterpret_cast<rocblas_double_complex*>(B), ldb, D, E, d_info.get()));
+    } else if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_chegvd, (handle, itype, evect, uplo, n, reinterpret_cast<rocblas_float_complex*>(A),
+                                          lda, reinterpret_cast<rocblas_float_complex*>(B), ldb, D, E, d_info.get()));
+    }
+    int info;
+    acc::copyout(&info, d_info.get(), 1);
+    return info;
 }
 
 #if (ROCSOLVER_VERSION_MAJOR > 3) || ((ROCSOLVER_VERSION_MAJOR == 3) && (ROCSOLVER_VERSION_MINOR >= 19))
 /// x versions
 /// -----------------------------------------------------------------------------------------------------------------
-template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
-syheevx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, T* A, int lda, int il, int iu,
-        double abstol, int* nev, T* D, T* Z, int ldz, int* ifail, int* info)
+struct rocsolver_evx_return_type
 {
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_dsyevx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, vl, vu, il, iu, abstol, nev,
-                     D, Z, ldz, ifail, info);
-}
+    ///  If info = 0, the first nev elements of ifail are zero. Otherwise,
+    ///  contains the indices of those eigenvectors that failed to converge. Not
+    ///  referenced if evect is rocblas_evect_none.
+    std::vector<int> ifail;
+    /// If info = 0, successful exit. If info = i > 0, the algorithm did not
+    /// converge. i columns of Z did not converge.
+    int info;
+    /// The total number of eigenvalues found. If erange is rocblas_erange_all,
+    /// nev = n. If erange is rocblas_erange_index, nev = iu - il + 1.
+    /// Otherwise, 0 <= nev <= n.
+    int nev;
+};
+template <class T>
+rocsolver_evx_return_type
+syheevx(rocblas_handle handle, const rocblas_evect evect, rocblas_erange erange, const rocblas_fill uplo, int n, T* A,
+        int lda, double vl, double vu, int il, int iu, double abstol, T* D, T* Z, int ldz)
+{
+    auto& mpd    = get_memory_pool(memory_t::device);
+    auto d_info  = mpd.get_unique_ptr<int>(1);
+    auto d_nev   = mpd.get_unique_ptr<int>(1);
+    auto d_ifail = mpd.get_unique_ptr<int>(n);
 
-template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syheevx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, T* A, int lda, int il, int iu,
-        double abstol, int* nev, T* D, T* Z, int ldz, int* ifail, int* info)
-{
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_ssyevx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, vl, vu, il, iu, abstol, nev,
-                     D, Z, ldz, ifail, info);
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_ssyevx, (handle, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, vl, vu,
+                                          il, iu, abstol, d_nev.get(), D, Z, ldz, d_ifail.get(), d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_dsyevx, (handle, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, vl, vu,
+                                          il, iu, abstol, d_nev.get(), D, Z, ldz, d_ifail.get(), d_info.get()));
+    }
+
+    rocsolver_evx_return_type ret;
+
+    acc::copyout(&ret.info, d_info.get(), 1);
+    acc::copyout(&ret.nev, d_nev.get(), 1);
+
+    if (evect != rocblas_evect_none) {
+        ret.ifail = std::vector<int>(n);
+        acc::copyout(ret.ifail.data(), d_ifail.get(), n);
+    }
+
+    return ret;
 }
 
 /// Hermitian | complex double
 template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
-syheevx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<double>* A,
-        int lda, int il, int iu, double abstol, int* nev, T* D, std::complex<double>* Z, int ldz, int* ifail, int* info)
+rocsolver_evx_return_type
+syheevx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<T>* A, int lda,
+        double vu, double vl, int il, int iu, double abstol, T* D, std::complex<T>* Z, int ldz)
 {
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_zheevx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n,
-                     reinterpret_cast<rocblas_double_complex*>(A), lda, vl, vu, il, iu, abstol, nev, D,
-                     reinterpret_cast<rocblas_double_complex*>(Z), ldz, ifail, info);
-}
+    auto& mpd    = get_memory_pool(memory_t::device);
+    auto d_info  = mpd.get_unique_ptr<int>(1);
+    auto d_nev   = mpd.get_unique_ptr<int>(1);
+    auto d_ifail = mpd.get_unique_ptr<int>(n);
 
-template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syheevx(rocblas_handle handle, const rocblas_evect evect, const rocblas_fill uplo, int n, std::complex<float>* A,
-        int lda, int il, int iu, double abstol, int* nev, T* D, std::complex<float>* Z, int ldz, int* ifail, int* info)
-{
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_cheevx(handle, evect, rocblas_erange::rocblas_erange_index, uplo, n,
-                     reinterpret_cast<rocblas_float_complex*>(A), lda, vl, vu, il, iu, abstol, nev, D,
-                     reinterpret_cast<rocblas_float_complex*>(Z), ldz, ifail, info);
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_cheevx,
+                       (handle, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                        reinterpret_cast<rocblas_float_complex*>(A), lda, vl, vu, il, iu, abstol, d_nev.get(), D,
+                        reinterpret_cast<rocblas_float_complex*>(Z), ldz, d_ifail.get(), d_info.get()));
+
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_zheevx,
+                       (handle, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                        reinterpret_cast<rocblas_double_complex*>(A), lda, vl, vu, il, iu, abstol, d_nev.get(), D,
+                        reinterpret_cast<rocblas_double_complex*>(Z), ldz, d_ifail.get(), d_info.get()));
+    }
+    rocsolver_evx_return_type ret;
+
+    acc::copyout(&ret.info, d_info.get(), 1);
+    acc::copyout(&ret.nev, d_nev.get(), 1);
+
+    if (evect != rocblas_evect_none) {
+        ret.ifail = std::vector<int>(n);
+        acc::copyout(ret.ifail.data(), d_ifail.get(), n);
+    }
+
+    return ret;
 }
 
 /// x versions
 /// -----------------------------------------------------------------------------------------------------------------
 template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
+rocsolver_evx_return_type
 syhegvx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        T* A, int lda, T* B, int ldb, int il, int iu, double abstol, int* nev, T* D, T* Z, int ldz, int* ifail,
-        int* info)
+        T* A, int lda, T* B, int ldb, double vu, double vl, int il, int iu, double abstol, T* D, T* Z, int ldz)
 {
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_dsygvx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, B, ldb, vl, vu, il,
-                     iu, abstol, nev, D, Z, ldz, ifail, info);
-}
+    auto& mpd    = get_memory_pool(memory_t::device);
+    auto d_info  = mpd.get_unique_ptr<int>(1);
+    auto d_nev   = mpd.get_unique_ptr<int>(1);
+    auto d_ifail = mpd.get_unique_ptr<int>(n);
 
-template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syhegvx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        T* A, int lda, T* B, int ldb, int il, int iu, double abstol, int* nev, T* D, T* Z, int ldz, int* ifail,
-        int* info)
-{
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_ssygvx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, B, ldb, vl, vu, il,
-                     iu, abstol, nev, D, Z, ldz, ifail, info);
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_ssygvx,
+                       (handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, B, ldb, vl, vu, il,
+                        iu, abstol, d_nev.get(), D, Z, ldz, d_ifail.get(), d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_dsygvx,
+                       (handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n, A, lda, B, ldb, vl, vu, il,
+                        iu, abstol, d_nev.get(), D, Z, ldz, d_ifail.get(), d_info.get()));
+    }
+
+    rocsolver_evx_return_type ret;
+
+    acc::copyout(&ret.info, d_info.get(), 1);
+    acc::copyout(&ret.nev, d_nev.get(), 1);
+
+    if (evect != rocblas_evect_none) {
+        ret.ifail = std::vector<int>(n);
+        acc::copyout(ret.ifail.data(), d_ifail.get(), n);
+    }
+
+    return ret;
 }
 
 /// Hermitian | complex double
 template <class T>
-std::enable_if_t<std::is_same<T, double>::value>
+rocsolver_evx_return_type
 syhegvx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        std::complex<double>* A, int lda, std::complex<double>* B, int ldb, int il, int iu, double abstol, int* nev,
-        T* D, std::complex<double>* Z, int ldz, int* ifail, int* info)
+        std::complex<double>* A, int lda, std::complex<double>* B, int ldb, double vl, double vu, int il, int iu,
+        double abstol, T* D, std::complex<double>* Z, int ldz)
 {
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_zhegvx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n,
-                     reinterpret_cast<rocblas_double_complex*>(A), lda, reinterpret_cast<rocblas_double_complex*>(B),
-                     ldb, vl, vu, il, iu, abstol, nev, D, reinterpret_cast<rocblas_double_complex*>(Z), ldz, ifail,
-                     info);
+    auto& mpd    = get_memory_pool(memory_t::device);
+    auto d_info  = mpd.get_unique_ptr<int>(1);
+    auto d_nev   = mpd.get_unique_ptr<int>(1);
+    auto d_ifail = mpd.get_unique_ptr<int>(n);
+
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_chegvx,
+                       (handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                        reinterpret_cast<rocblas_float_complex*>(A), lda, reinterpret_cast<rocblas_float_complex*>(B),
+                        ldb, vl, vu, il, iu, abstol, d_nev.get(), D, reinterpret_cast<rocblas_float_complex*>(Z), ldz,
+                        d_ifail.get(), d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_zhegvx,
+                       (handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n,
+                        reinterpret_cast<rocblas_double_complex*>(A), lda, reinterpret_cast<rocblas_double_complex*>(B),
+                        ldb, vl, vu, il, iu, abstol, d_nev.get(), D, reinterpret_cast<rocblas_double_complex*>(Z), ldz,
+                        d_ifail.get(), d_info.get()));
+    }
+
+    rocsolver_evx_return_type ret;
+
+    acc::copyout(&ret.info, d_info.get(), 1);
+    acc::copyout(&ret.nev, d_nev.get(), 1);
+
+    if (evect != rocblas_evect_none) {
+        ret.ifail = std::vector<int>(n);
+        acc::copyout(ret.ifail.data(), d_ifail.get(), n);
+    }
+
+    return ret;
 }
 
-template <class T>
-std::enable_if_t<std::is_same<T, float>::value>
-syhegvx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_fill uplo, int n,
-        std::complex<float>* A, int lda, std::complex<float>* B, int ldb, int il, int iu, double abstol, int* nev, T* D,
-        std::complex<float>* Z, int ldz, int* ifail, int* info)
+#endif // rocsolver >=3.19.0
+
+// rocm 7.2.0
+#if (ROCSOLVER_VERSION_MAJOR > 3) || ((ROCSOLVER_VERSION_MAJOR == 3) && (ROCSOLVER_VERSION_MINOR >= 30))
+struct rocblas_evdx_return_type
 {
-    double vl, vu{0}; // ingored if erange = erange_index
-    rocsolver_chegvx(handle, itype, evect, rocblas_erange::rocblas_erange_index, uplo, n,
-                     reinterpret_cast<rocblas_float_complex*>(A), lda, reinterpret_cast<rocblas_float_complex*>(B), ldb,
-                     vl, vu, il, iu, abstol, nev, D, reinterpret_cast<rocblas_float_complex*>(Z), ldz, ifail, info);
+    int info;
+    int nev;
+};
+/// dx versions (divide-and-conquer + subset selection)
+/// -----------------------------------------------------------------------------------------------------------------
+template <class T>
+rocblas_evdx_return_type
+syheevdx(rocblas_handle handle, const rocblas_evect evect, const rocblas_erange erange, const rocblas_fill uplo, int n,
+         T* A, int lda, T vl, T vu, int il, int iu, T* w, T* E, int ldz)
+{
+    int info;
+    int nev;
+
+    auto& mpd   = get_memory_pool(memory_t::device);
+    auto d_info = mpd.get_unique_ptr<int>(1);
+    auto d_nev  = mpd.get_unique_ptr<int>(1);
+
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_ssyevdx,
+                       (handle, evect, erange, uplo, n, A, lda, vl, vu, il, iu, d_nev.get(), w, E, ldz, d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_dsyevdx,
+                       (handle, evect, erange, uplo, n, A, lda, vl, vu, il, iu, d_nev.get(), w, E, ldz, d_info.get()));
+    }
+    acc::copyout(&info, d_info.get(), 1);
+    acc::copyout(&nev, d_nev.get(), 1);
+
+    return {.info = info, .nev = nev};
 }
-#endif // rocsolver >=5.3.0
+
+/// Hermitian | complex double
+template <class T>
+rocblas_evdx_return_type
+syheevdx(rocblas_handle handle, const rocblas_evect evect, const rocblas_erange erange, const rocblas_fill uplo, int n,
+         std::complex<T>* A, int lda, T vl, T vu, int il, int iu, T* w, std::complex<T>* E, int ldz)
+{
+    int info;
+    int nev;
+
+    auto& mpd   = get_memory_pool(memory_t::device);
+    auto d_info = mpd.get_unique_ptr<int>(1);
+    auto d_nev  = mpd.get_unique_ptr<int>(1);
+
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_cheevdx,
+                       (handle, evect, erange, uplo, n, reinterpret_cast<rocblas_float_complex*>(A), lda, vl, vu, il,
+                        iu, d_nev.get(), w, reinterpret_cast<rocblas_float_complex*>(E), ldz, d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_zheevdx,
+                       (handle, evect, erange, uplo, n, reinterpret_cast<rocblas_double_complex*>(A), lda, vl, vu, il,
+                        iu, d_nev.get(), w, reinterpret_cast<rocblas_double_complex*>(E), ldz, d_info.get()));
+    }
+    acc::copyout(&info, d_info.get(), 1);
+    acc::copyout(&nev, d_nev.get(), 1);
+
+    return {.info = info, .nev = nev};
+}
+
+/// General eigenproblem
+template <class T>
+rocblas_evdx_return_type
+syhegvdx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_erange erange,
+         const rocblas_fill uplo, int n, T* A, int lda, T* B, int ldb, T vl, T vu, int il, int iu, T* w, T* Z, int ldz)
+{
+    int info;
+    int nev;
+
+    auto& mpd   = get_memory_pool(memory_t::device);
+    auto d_info = mpd.get_unique_ptr<int>(1);
+    auto d_nev  = mpd.get_unique_ptr<int>(1);
+
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_ssygvdx, (handle, itype, evect, erange, uplo, n, A, lda, B, ldb, vl, vu, il, iu,
+                                           d_nev.get(), w, Z, ldz, d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_dsygvdx, (handle, itype, evect, erange, uplo, n, A, lda, B, ldb, vl, vu, il, iu,
+                                           d_nev.get(), w, Z, ldz, d_info.get()));
+    }
+
+    acc::copyout(&info, d_info.get(), 1);
+    acc::copyout(&nev, d_nev.get(), 1);
+
+    return {.info = info, .nev = nev};
+}
+
+// complex
+template <class T>
+rocblas_evdx_return_type
+syhegvdx(rocblas_handle handle, const rocblas_eform itype, const rocblas_evect evect, const rocblas_erange erange,
+         const rocblas_fill uplo, int n, std::complex<T>* A, int lda, std::complex<T>* B, int ldb, T vl, T vu, int il,
+         int iu, T* w, std::complex<T>* Z, int ldz)
+{
+    int info;
+    int nev;
+
+    auto& mpd   = get_memory_pool(memory_t::device);
+    auto d_info = mpd.get_unique_ptr<int>(1);
+    auto d_nev  = mpd.get_unique_ptr<int>(1);
+
+    if constexpr (std::is_same_v<T, float>) {
+        CALL_ROCSOLVER(rocsolver_chegvdx,
+                       (handle, itype, evect, erange, uplo, n, reinterpret_cast<rocblas_float_complex*>(A), lda,
+                        reinterpret_cast<rocblas_float_complex*>(B), ldb, vl, vu, il, iu, d_nev.get(), w,
+                        reinterpret_cast<rocblas_float_complex*>(Z), ldz, d_info.get()));
+    } else if constexpr (std::is_same_v<T, double>) {
+        CALL_ROCSOLVER(rocsolver_zhegvdx,
+                       (handle, itype, evect, erange, uplo, n, reinterpret_cast<rocblas_double_complex*>(A), lda,
+                        reinterpret_cast<rocblas_double_complex*>(B), ldb, vl, vu, il, iu, d_nev.get(), w,
+                        reinterpret_cast<rocblas_double_complex*>(Z), ldz, d_info.get()));
+    }
+
+    acc::copyout(&info, d_info.get(), 1);
+    acc::copyout(&nev, d_nev.get(), 1);
+
+    return {.info = info, .nev = nev};
+}
+
+#endif // rocsolver >= 3.30.0 (aka rocm 7.0.1)
 
 /// Linear Solvers
 void
@@ -255,5 +433,5 @@ zgetrf(rocblas_handle handle, int m, int n, acc_complex_double_t* A, int* devIpi
 
 } // namespace sirius
 
-#endif
-#endif
+#endif // __ROCSOLVER_HPP__
+#endif // SIRIUS_ROCM
