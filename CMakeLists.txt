@@ -209,8 +209,8 @@ else()
   find_package(LAPACK REQUIRED)
   set(SIRIUS_LINALG_LIB "${LAPACK_LIBRARIES}")
   if(SIRIUS_USE_SCALAPACK)
-    find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
-    set(SIRIUS_LINALG_LIB "${SIRIUS_LINALG_LIB};${SIRIUS_SCALAPACK_LIBRARIES}")
+    find_package(SCALAPACK REQUIRED)
+    list(APPEND SIRIUS_LINALG_LIB sirius::scalapack)
   endif()
 endif()
 
