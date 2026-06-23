@@ -90,9 +90,17 @@ class Atom_symmetry_class
     void
     set_spherical_potential(std::vector<double> const& vs__);
 
+    /// Save spherical potential for debugging purposes.
+    inline void
+    save_spherical_potential() const;
+
+    /// Save radial functions.
+    inline void
+    save_radial_functions(std::string const& fname__) const;
+
     /// Generate APW and LO radial functions.
-    void
-    generate_radial_functions(relativity_t rel__);
+    int
+    generate_radial_functions(relativity_t rel__, bool update_enu__ = true);
 
     void
     sync_radial_functions(mpi::Communicator const& comm__, int const rank__);
@@ -104,16 +112,36 @@ class Atom_symmetry_class
     std::vector<int>
     check_lo_linear_independence(double etol__) const;
 
-    /// Dump local orbitals to the file for debug purposes
-    void
-    dump_lo();
-
     /// Find linearization energy.
     int
     find_enu(relativity_t rel__);
 
-    void
-    write_enu(mpi::pstdout& pout) const;
+    template <typename T>
+    inline void
+    write_enu(T& pout) const
+    {
+        pout << "Atom : " << atom_type_.symbol() << ", class id : " << id_ << std::endl;
+        pout << "augmented waves" << std::endl;
+        for (int l = 0; l < num_aw_descriptors(); l++) {
+            for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
+                auto& rsd = aw_descriptor(l)[order];
+                if (rsd.auto_enu) {
+                    pout << rsd << std::endl;
+                }
+            }
+        }
+
+        pout << "local orbitals" << std::endl;
+        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+            for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
+                auto& rsd = lo_descriptor(idxlo).rsd_set[order];
+                if (rsd.auto_enu) {
+                    pout << rsd << std::endl;
+                }
+            }
+        }
+        pout << std::endl;
+    }
 
     /// Generate radial overlap and SO integrals
     /** In the case of spin-orbit interaction the following integrals are computed:

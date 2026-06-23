@@ -982,6 +982,18 @@ class config_t
             }
             dict_["/control/save_rf"_json_pointer] = save_rf__;
         }
+        /// Save wave-functions.
+        inline auto save_wf() const
+        {
+            return dict_.at("/control/save_wf"_json_pointer).get<bool>();
+        }
+        inline void save_wf(bool save_wf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/save_wf"_json_pointer] = save_wf__;
+        }
         /// Type of the output stream (stdout:, file:name)
         inline auto output() const
         {

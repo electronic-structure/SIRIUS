@@ -395,15 +395,17 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     if (write_state__) {
         ctx_.create_storage_file(storage_file_name);
-        if (ctx_.full_potential()) { // TODO: why this is necessary?
-            density_.rho().rg().fft_transform(-1);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                density_.mag(j).rg().fft_transform(-1);
-            }
-        }
+        //if (ctx_.full_potential()) { // TODO: why this is necessary?
+        //    density_.rho().rg().fft_transform(-1);
+        //    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        //        density_.mag(j).rg().fft_transform(-1);
+        //    }
+        //}
         // potential_.save(storage_file_name);
         density_.save(storage_file_name);
-        // kset_.save(storage_file_name);
+        if (ctx_.cfg().control().save_wf()) {
+            kset_.save(storage_file_name);
+        }
     }
 
     auto tstop = std::chrono::high_resolution_clock::now();
