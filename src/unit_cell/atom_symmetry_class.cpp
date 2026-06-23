@@ -468,11 +468,11 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     #pragma omp parallel for reduction(+:ierr)
     for (size_t i = 0; i < nl_enu_vec.size(); i++) {
         try {
-            int n = nl_enu_vec[i].first.first;
-            int l = nl_enu_vec[i].first.second;
-            nl_enu_vec[i].second =
-                    Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(), spherical_potential_,
-                               nl_enu_vec[i].second, 1).enu();
+            int n                = nl_enu_vec[i].first.first;
+            int l                = nl_enu_vec[i].first.second;
+            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
+                                              spherical_potential_, nl_enu_vec[i].second, 1)
+                                           .enu();
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
