@@ -844,11 +844,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto pp  = env::print_performance();
     auto pcs = env::print_checksum();
 
-    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
-    double ngop{8e-9};                          // default value for complex type
-    if (std::is_same<T, real_type<T>>::value) { // change it if it is real type
-        ngop = 2e-9;
-    }
+    /* prefactor for the matrix multiplication in complex arithmetic (in Giga-operations) */
+    constexpr double ngop{8e-9};
     double gflops{0};
     double time{0};
 
@@ -1029,7 +1026,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     auto appy_hmt_apw_apw = [this, &ctx, la, mem, &b__](int atom_begin__, wf::Wave_functions_mt<T> const& alm_phi__,
                                                         wf::Wave_functions_mt<T>& halm_phi__) {
-        #pragma omp parallel for
+        size_t nops{0};
+        #pragma omp parallel for reduction(nops:+)
         for (auto it : alm_phi__.spl_num_atoms()) {
             int tid    = omp_get_thread_num();
             int ia     = atom_begin__ + it.i;
@@ -1047,7 +1045,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               &la::constant<Tc>::zero(),
                               halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
                               acc::stream_id(tid));
+            nops += naw * b__.size() * naw;
         }
+        return nops;
     };
 
     auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__,
@@ -1294,7 +1294,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 {
                     auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
                     auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
-                    appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+                    auto nops = appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+                    gflops += ngop * nops;
 
                     if (pcs) {
                         auto cs1 = alm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), b__);
