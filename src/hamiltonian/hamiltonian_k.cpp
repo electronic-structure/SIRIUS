@@ -814,7 +814,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     comm.template allreduce<int, mpi::op_t::min>(vmin.data(), vmin.size());
     comm.template allreduce<int, mpi::op_t::max>(vmax.data(), vmax.size());
-    
+
     if (vmin != vmax) {
         std::stringstream s;
         s << "inconsistent apply_fv_h_o arguments on rank " << comm.rank()
