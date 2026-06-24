@@ -174,8 +174,14 @@ class Simulation_context : public Simulation_parameters
     /// MPI grid for this simulation.
     std::unique_ptr<mpi::Grid> mpi_grid_;
 
-    /// 2D BLACS grid for distributed linear algebra operations.
+    /// 2D BLACS grid for distributed eigen-solver and related linear algebra operations.
+    /** In case of a sequential eigen-solver this BLACS grid is trivial 1x1 with the self-communicator */
     std::unique_ptr<la::BLACS_grid> blacs_grid_;
+
+    /// 2D BLACS grid for the entire MPI grid of the band parallelisation.
+    /** This grid is used by COSTA data reshuffling in the construction of the LAPW wave functions and
+     *  application of the LAPW Hamiltonian and overlap matrices. */
+    std::unique_ptr<la::BLACS_grid> blacs_grid_band_;
 
     /// Grid descriptor for the fine-grained FFT transform.
     fft::Grid fft_grid_;
@@ -473,6 +479,12 @@ class Simulation_context : public Simulation_parameters
     blacs_grid() const
     {
         return *blacs_grid_;
+    }
+
+    auto const&
+    blacs_grid_band() const
+    {
+        return *blacs_grid_band_;
     }
 
     /// Total communicator of the simulation.

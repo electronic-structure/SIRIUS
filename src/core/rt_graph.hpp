@@ -29,8 +29,6 @@
 #ifndef RT_GRAPH_HPP_GUARD
 #define RT_GRAPH_HPP_GUARD
 
-#define RT_GRAPH_PRINT_ID 1
-
 #include <atomic>
 #include <chrono>
 #include <cstddef>
