@@ -167,7 +167,7 @@ class Simulation_parameters
     }
 
     /// Set dimensions of MPI grid for band diagonalization problem.
-    std::vector<int>
+    inline auto
     mpi_grid_dims(std::vector<int> mpi_grid_dims__)
     {
         cfg().control().mpi_grid_dims(mpi_grid_dims__);
@@ -479,7 +479,7 @@ class Simulation_parameters
         return (num_spins() == 2 || hubbard_correction() || so_correction());
     }
 
-    std::vector<int>
+    inline auto
     mpi_grid_dims() const
     {
         return cfg().control().mpi_grid_dims();
