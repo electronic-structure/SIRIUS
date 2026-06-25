@@ -802,13 +802,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto& comm = kp_.comm();
 
 #if !defined(NDEBUG)
-    std::array<int, 5> v{
-        b__.begin(),
-        b__.end(),
-        hphi__ != nullptr,
-        ophi__ != nullptr,
-        phi_is_lo__
-    };
+    std::array<int, 5> v{b__.begin(), b__.end(), hphi__ != nullptr, ophi__ != nullptr, phi_is_lo__};
     auto vmin = v;
     auto vmax = v;
 
@@ -817,11 +811,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     if (vmin != vmax) {
         std::stringstream s;
-        s << "inconsistent apply_fv_h_o arguments on rank " << comm.rank()
-          << ": b=" << b__.begin() << ":" << b__.end()
-          << ", hphi=" << (hphi__ != nullptr)
-          << ", ophi=" << (ophi__ != nullptr)
-          << ", phi_is_lo=" << phi_is_lo__;
+        s << "inconsistent apply_fv_h_o arguments on rank " << comm.rank() << ": b=" << b__.begin() << ":" << b__.end()
+          << ", hphi=" << (hphi__ != nullptr) << ", ophi=" << (ophi__ != nullptr) << ", phi_is_lo=" << phi_is_lo__;
         RTE_THROW(s);
     }
 #endif
@@ -844,9 +835,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto pp  = env::print_performance();
     auto pcs = env::print_checksum();
 
-    /* prefactor for the matrix multiplication in complex arithmetic (in Giga-operations) */
-    constexpr double ngop{8e-9};
-    double gflops{0};
+    size_t flop{0};
     double time{0};
 
     if (hphi__ != nullptr) {
@@ -1027,7 +1016,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto appy_hmt_apw_apw = [this, &ctx, la, mem, &b__](int atom_begin__, wf::Wave_functions_mt<T> const& alm_phi__,
                                                         wf::Wave_functions_mt<T>& halm_phi__) {
         size_t nops{0};
-        #pragma omp parallel for reduction(nops:+)
+        #pragma omp parallel for reduction(+:nops)
         for (auto it : alm_phi__.spl_num_atoms()) {
             int tid    = omp_get_thread_num();
             int ia     = atom_begin__ + it.i;
@@ -1045,7 +1034,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               &la::constant<Tc>::zero(),
                               halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
                               acc::stream_id(tid));
-            nops += naw * b__.size() * naw;
+            nops += 8L * naw * b__.size() * naw;
         }
         return nops;
     };
@@ -1254,7 +1243,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                             phi__.at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(), 0.0,
                             alm_phi.at(memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
                             ctx.spla_context());
-            gflops += ngop * num_mt_aw * b__.size() * ngv;
+            flop += 8L * num_mt_aw * b__.size() * ngv;
 
             if (pcs) {
                 auto cs = alm_phi.checksum(num_mt_aw, b__.size());
@@ -1269,7 +1258,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(), one,
                                 ophi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
                                 ctx.spla_context());
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
             }
 
             if (hphi__) {
@@ -1294,8 +1283,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 {
                     auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
                     auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
-                    auto nops = appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
-                    gflops += ngop * nops;
+                    flop += appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
 
                     if (pcs) {
                         auto cs1 = alm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), b__);
@@ -1325,7 +1313,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 halm_phi.ld(), 0, 0, halm_phi.spla_distribution(), one,
                                 hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                                 ctx.spla_context());
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8 * ngv * b__.size() * num_mt_aw;
                 if (pcs) {
                     auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                     if (comm.rank() == 0) {
@@ -1352,7 +1340,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         print_checksum("hphi_apw#2", cs, RTE_OUT(std::cout));
                     }
                 }
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
             }
             if (ophi__) {
                 /* APW-lo contribution to ophi */
@@ -1361,7 +1349,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 o_apw_lo_phi_lo.spla_distribution(), one,
                                 ophi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
                                 ctx.spla_context());
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
             }
             time += time_interval(t0);
         }
@@ -1426,7 +1414,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     }
 
     if (pp && comm.rank() == 0) {
-        RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
+        RTE_OUT(std::cout) << "effective local zgemm performance : " << 1e-9 * flop / time << " GFlop/s" << std::endl;
     }
 
     if (pcs) {
