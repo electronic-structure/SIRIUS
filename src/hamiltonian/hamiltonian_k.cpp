@@ -291,7 +291,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
                                         : matrix<std::complex<T>>();
             #pragma omp parallel
             for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                #pragma omp for
+                #pragma omp for nowait
                 for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
                     if (what & 1) {
                         h_diag[igloc] += std::real(std::conj(alm_atom(igloc, xi)) * halm_atom(igloc, xi));
