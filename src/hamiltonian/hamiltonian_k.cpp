@@ -819,9 +819,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     using Tc = std::complex<T>;
 
-    int npr = ctx.mpi_grid_dims()[0];
-    int npc = ctx.mpi_grid_dims()[1];
-
     /* we need a blacs grid to work with distributed matrices; default blacs grid
      * of the simulation context is not suitable because that one is created for the
      * eigen-value solver */
