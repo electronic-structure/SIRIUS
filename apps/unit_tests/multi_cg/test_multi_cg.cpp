@@ -94,6 +94,7 @@ struct BlockVector
     inline auto
     deep_copy_conj() const
     {
+        RTE_THROW("implement this");
         return *this;
     }
 };
