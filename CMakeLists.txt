@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.10.0
+  VERSION 7.11.1
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -131,7 +131,9 @@ if(SIRIUS_USE_NLCGLIB)
 endif()
 
 find_package(MPI REQUIRED)
+#set(GSL_CBLAS_LIBRARY ${BLAS_LIBRARIES} CACHE STRING "" FORCE)
 find_package(GSL REQUIRED)
+set_target_properties(GSL::gsl PROPERTIES INTERFACE_LINK_LIBRARIES "")
 find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
@@ -149,6 +151,10 @@ endif ()
 
 if (SIRIUS_USE_DFTD4)
   find_package(DFTD4 REQUIRED)
+endif ()
+
+if (SIRIUS_USE_VCSQNM)
+  find_package(Eigen3 CONFIG REQUIRED)
 endif ()
 
 # Check if SpFFT support single precision if required
@@ -170,9 +176,32 @@ set(SIRIUS_LINALG_LIB "")
 if(SIRIUS_USE_MKL)
   set(MKL_INTERFACE "lp64" CACHE STRING "")
   set(MKL_THREADING "sequential" CACHE STRING "")
-  set(MKL_MPI "mpich" CACHE STRING "")
+  execute_process(COMMAND ${MPI_CXX_COMPILER} --showme:version
+                  OUTPUT_VARIABLE MPI_VER_OUT
+                  ERROR_VARIABLE MPI_VER_ERR)
+  if(MPI_VER_OUT MATCHES "Open MPI" OR MPI_VER_ERR MATCHES "Open MPI")
+    set(MKL_MPI "openmpi")
+  else()
+    set(MKL_MPI "intelmpi")
+  endif()
   find_package(MKL CONFIG REQUIRED)
   set(SIRIUS_LINALG_LIB "MKL::MKL")
+  if(SIRIUS_USE_SCALAPACK)
+    if(TARGET MKL::mkl_scalapack_lp64)
+      list(APPEND SIRIUS_LINALG_LIB MKL::mkl_scalapack_lp64)
+    else()
+      find_library(_MKL_SCALAPACK mkl_scalapack_lp64
+        HINTS $ENV{MKLROOT}/lib $ENV{MKLROOT}/lib/intel64)
+      list(APPEND SIRIUS_LINALG_LIB ${_MKL_SCALAPACK})
+    endif()
+    if(TARGET MKL::mkl_blacs_${MKL_MPI}_lp64)
+      list(APPEND SIRIUS_LINALG_LIB MKL::mkl_blacs_${MKL_MPI}_lp64)
+    else()
+      find_library(_MKL_BLACS mkl_blacs_${MKL_MPI}_lp64
+        HINTS $ENV{MKLROOT}/lib $ENV{MKLROOT}/lib/intel64)
+      list(APPEND SIRIUS_LINALG_LIB ${_MKL_BLACS})
+    endif()
+  endif()
 elseif(SIRIUS_USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
   set(SIRIUS_LINALG_LIB "${SIRIUS_CRAY_LIBSCI_LIBRARIES}")

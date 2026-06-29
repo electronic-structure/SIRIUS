@@ -28,6 +28,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     version("develop", branch="develop")
     version("master", branch="master")
 
+    version("7.10.0", sha256="ef02f2a899ccd72803bed3c4b7460457e67d99a68e0d6e5ab157566a1e6abf4f")
+    version("7.9.0", sha256="c36e9a00637b9626f83c0db740751440bfe06ef4c8d7cadb9822dd3cf03c1046")
     version("7.8.0", sha256="2cd2f98d35fb9e0a8f6d68714c6f8d682895781d564e91ef6685d92569ffd413")
     version("7.7.1", sha256="6039c84197d9e719e826f98b840cff19bc513887b443f97c0099d3c8b908efed")
     version("7.7.0", sha256="be0bdc76db9eb8afdcb950f0ccaf7535b8e85d72a4232dc92246f54fa68d9d7b")
@@ -69,8 +71,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
     variant("nvtx", default=False, description="Use NVTX profiler")
-    variant("dftd3", default=False, description="Enable dft-d3 corrections", when="@7.8.1:")
-    variant("dftd4", default=False, description="Enable dft-d4 corrections", when="@7.8.1:")
+    variant("dftd3", default=False, description="Enable dft-d3 corrections", when="@7.9.0:")
+    variant("dftd4", default=False, description="Enable dft-d4 corrections", when="@7.9.0:")
 
     with when("@7.6:"):
         variant(
@@ -145,14 +147,12 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("nlcglib+cuda", when="+nlcglib+cuda")
 
     depends_on("libvdwxc@0.5:+mpi", when="+vdwxc")
-
+    depends_on("rocprofiler-sdk", when="+nvtx+rocm")
     depends_on("scalapack", when="+scalapack")
 
     with when("+dlaf"):
-        depends_on("dla-future +scalapack")
-        conflicts("+dlaf ~scalapack")
-        depends_on("dla-future@0.3.0:", when="@:7.8.0")
-        depends_on("dla-future@0.9.0:")
+        depends_on("dla-future@0.3.0:")
+        depends_on("dla-future +scalapack", when="+scalapack")
         depends_on("dla-future +cuda", when="+cuda")
         depends_on("dla-future +rocm", when="+rocm")
 
@@ -305,6 +305,10 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
                     args.extend(
                         [self.define("ENABLE_BLACS", "On"), self.define("ENABLE_SCALAPACK", "On")]
                     )
+
+        if "+elpa" in spec:
+            elpa_incdir = os.path.join(spec["elpa"].headers.directories[0], "elpa")
+            args.append(self.define(cm_label + "ELPA_INCLUDE_DIR", elpa_incdir))
 
         if "+cuda" in spec:
             cuda_arch = spec.variants["cuda_arch"].value

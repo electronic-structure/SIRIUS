@@ -21,6 +21,7 @@
 #include <initializer_list>
 #include "core/memory.hpp"
 #include "core/rte/rte.hpp"
+#include "core/ostream_tools.hpp"
 
 namespace sirius {
 
@@ -368,7 +369,9 @@ class HDF5_tree
         HDF5_dataset dataset(group.id(), name);
 
         if (H5Dread(dataset.id(), hdf5_type_wrapper<T>(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
-            RTE_THROW("error in H5Dread()");
+            std::stringstream s;
+            s << "error in H5Dread()" << ", name : " << name << ", dims : " << dims;
+            RTE_THROW(s.str());
         }
     }
 
@@ -510,8 +513,7 @@ class HDF5_tree
     void
     write(std::string const& name, T const* data, int size)
     {
-        std::vector<int> dims(1);
-        dims[0] = size;
+        std::vector<int> dims = {size};
         write(name, data, dims);
     }
 
@@ -520,8 +522,7 @@ class HDF5_tree
     void
     write(std::string const& name, T data)
     {
-        std::vector<int> dims(1);
-        dims[0] = 1;
+        std::vector<int> dims = {1};
         write(name, &data, dims);
     }
 
@@ -531,7 +532,7 @@ class HDF5_tree
     write(int name_id, std::vector<T> const& vec)
     {
         std::string name = std::to_string(name_id);
-        write(name, &vec[0], (int)vec.size());
+        write(name, vec.data(), (int)vec.size());
     }
 
     /// Write a vector by name.
@@ -539,7 +540,15 @@ class HDF5_tree
     void
     write(std::string const& name, std::vector<T> const& vec)
     {
-        write(name, &vec[0], (int)vec.size());
+        write(name, vec.data(), (int)vec.size());
+    }
+
+    /// Write a vector by name.
+    template <typename T>
+    void
+    write(std::string const& name, std::vector<std::complex<T>> const& vec)
+    {
+        write(name, reinterpret_cast<T const*>(vec.data()), 2 * (int)vec.size());
     }
 
     void
@@ -633,16 +642,16 @@ class HDF5_tree
         write_attribute(name, std::vector<T>(data), dataset_name);
     }
 
-    template <int N>
+    template <typename T, int N>
     void
-    read(std::string const& name, mdarray<std::complex<double>, N>& data)
+    read(std::string const& name, mdarray<std::complex<T>, N>& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        read(name, (double*)data.at(memory_t::host), dims);
+        read(name, reinterpret_cast<T*>(data.at(memory_t::host)), dims);
     }
 
     template <typename T, int N>
@@ -664,28 +673,36 @@ class HDF5_tree
         read(name, data);
     }
 
-    /// Read a vector or a scalar.
+    /// Read a vector or a scalar into a pointer.
     template <typename T>
     void
     read(std::string const& name, T* data, int size)
     {
-        std::vector<int> dims(1);
-        dims[0] = size;
+        std::vector<int> dims = {size};
         read(name, data, dims);
     }
 
+    /// Read a vector.
     template <typename T>
     void
     read(int name_id, std::vector<T>& vec)
     {
-        read(std::to_string(name_id), &vec[0], (int)vec.size());
+        read(std::to_string(name_id), vec.data(), (int)vec.size());
     }
 
+    /// Read a vector.
     template <typename T>
     void
     read(std::string const& name, std::vector<T>& vec)
     {
-        read(name, &vec[0], (int)vec.size());
+        read(name, vec.data(), (int)vec.size());
+    }
+
+    template <typename T>
+    void
+    read(std::string const& name, std::vector<std::complex<T>>& vec)
+    {
+        read(name, reinterpret_cast<T*>(vec.data()), 2 * (int)vec.size());
     }
 
     inline void

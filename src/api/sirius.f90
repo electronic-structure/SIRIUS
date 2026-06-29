@@ -116,31 +116,26 @@ end subroutine sirius_initialize
 !> @brief Shut down the SIRIUS library
 !> @param [in] call_mpi_fin If .true. then MPI_Finalize must be called after the shutdown.
 !> @param [in] call_device_reset If .true. then cuda device is reset after shutdown.
-!> @param [in] call_fftw_fin If .true. then fft_cleanup must be called after the shutdown.
 !> @param [out] error_code Error code.
-subroutine sirius_finalize(call_mpi_fin,call_device_reset,call_fftw_fin,error_code)
+subroutine sirius_finalize(call_mpi_fin,call_device_reset,error_code)
 implicit none
 !
 logical, optional, target, intent(in) :: call_mpi_fin
 logical, optional, target, intent(in) :: call_device_reset
-logical, optional, target, intent(in) :: call_fftw_fin
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: call_mpi_fin_ptr
 logical(C_BOOL), target :: call_mpi_fin_c_type
 type(C_PTR) :: call_device_reset_ptr
 logical(C_BOOL), target :: call_device_reset_c_type
-type(C_PTR) :: call_fftw_fin_ptr
-logical(C_BOOL), target :: call_fftw_fin_c_type
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin,error_code)&
+subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,error_code)&
 &bind(C, name="sirius_finalize")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: call_mpi_fin
 type(C_PTR), value :: call_device_reset
-type(C_PTR), value :: call_fftw_fin
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -155,23 +150,11 @@ if (present(call_device_reset)) then
 call_device_reset_c_type = call_device_reset
 call_device_reset_ptr = C_LOC(call_device_reset_c_type)
 endif
-call_fftw_fin_ptr = C_NULL_PTR
-if (present(call_fftw_fin)) then
-call_fftw_fin_c_type = call_fftw_fin
-call_fftw_fin_ptr = C_LOC(call_fftw_fin_c_type)
-endif
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_ptr,&
-&error_code_ptr)
-if (present(call_mpi_fin)) then
-endif
-if (present(call_device_reset)) then
-endif
-if (present(call_fftw_fin)) then
-endif
+call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,error_code_ptr)
 end subroutine sirius_finalize
 
 !
@@ -762,12 +745,6 @@ call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_pt
 &hubbard_correction_kind_ptr,hubbard_full_orthogonalization_ptr,hubbard_constrained_calculation_ptr,&
 &hubbard_orbitals_ptr,dftd3_correction_ptr,sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,&
 &smearing_width_ptr,spglib_tol_ptr,electronic_structure_method_ptr,error_code_ptr)
-if (present(gamma_point)) then
-endif
-if (present(use_symmetry)) then
-endif
-if (present(so_correction)) then
-endif
 if (present(valence_rel)) then
 deallocate(valence_rel_c_type)
 endif
@@ -776,12 +753,6 @@ deallocate(core_rel_c_type)
 endif
 if (present(iter_solver_type)) then
 deallocate(iter_solver_type_c_type)
-endif
-if (present(hubbard_correction)) then
-endif
-if (present(hubbard_full_orthogonalization)) then
-endif
-if (present(hubbard_constrained_calculation)) then
 endif
 if (present(hubbard_orbitals)) then
 deallocate(hubbard_orbitals_c_type)
@@ -1959,10 +1930,6 @@ endif
 call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
 &iter_solver_tol_ptr,initial_guess_ptr,max_niter_ptr,save_state_ptr,converged_ptr,&
 &niter_ptr,rho_min_ptr,error_code_ptr)
-if (present(initial_guess)) then
-endif
-if (present(save_state)) then
-endif
 if (present(converged)) then
 converged = converged_c_type
 endif
@@ -2124,8 +2091,6 @@ deallocate(fname_c_type)
 endif
 if (present(symbol)) then
 deallocate(symbol_c_type)
-endif
-if (present(spin_orbit)) then
 endif
 end subroutine sirius_add_atom_type
 
@@ -2734,8 +2699,6 @@ endif
 call sirius_set_pw_coeffs_aux(gs_handler_ptr,label_ptr,pw_coeffs_ptr,transform_to_rg_ptr,&
 &ngv_ptr,gvl_ptr,comm_ptr,error_code_ptr)
 deallocate(label_c_type)
-if (present(transform_to_rg)) then
-endif
 end subroutine sirius_set_pw_coeffs
 
 !
@@ -2931,12 +2894,6 @@ error_code_ptr = C_LOC(error_code)
 endif
 call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_pw_ptr,&
 &precompute_rf_ptr,precompute_ri_ptr,iter_solver_tol_ptr,iter_solver_steps_ptr,error_code_ptr)
-if (present(precompute_pw)) then
-endif
-if (present(precompute_rf)) then
-endif
-if (present(precompute_ri)) then
-endif
 end subroutine sirius_find_eigen_states
 
 !
@@ -5048,8 +5005,6 @@ call sirius_option_set_aux(handler_ptr,section_ptr,name_ptr,type_ptr,data_ptr,ma
 &append_ptr,error_code_ptr)
 deallocate(section_c_type)
 deallocate(name_c_type)
-if (present(append)) then
-endif
 end subroutine sirius_option_set
 
 !
@@ -5332,8 +5287,6 @@ endif
 call sirius_set_rg_values_aux(gs_handler_ptr,label_ptr,grid_dims_ptr,local_box_origin_ptr,&
 &local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_pw_ptr,error_code_ptr)
 deallocate(label_c_type)
-if (present(transform_to_pw)) then
-endif
 end subroutine sirius_set_rg_values
 
 !
@@ -5418,8 +5371,6 @@ endif
 call sirius_get_rg_values_aux(gs_handler_ptr,label_ptr,grid_dims_ptr,local_box_origin_ptr,&
 &local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_rg_ptr,error_code_ptr)
 deallocate(label_c_type)
-if (present(transform_to_rg)) then
-endif
 end subroutine sirius_get_rg_values
 
 !
@@ -6986,8 +6937,6 @@ endif
 call sirius_diagonalize_hamiltonian_aux(handler_ptr,gs_handler_ptr,H0_handler_ptr,&
 &iter_solver_tol_ptr,max_steps_ptr,converge_by_energy_ptr,exact_diagonalization_ptr,&
 &converged_ptr,niter_ptr,error_code_ptr)
-if (present(exact_diagonalization)) then
-endif
 converged = converged_c_type
 end subroutine sirius_diagonalize_hamiltonian
 
@@ -7403,15 +7352,13 @@ deallocate(method_c_type)
 if (present(damping)) then
 deallocate(damping_c_type)
 endif
-if (present(atm)) then
-endif
 if (present(damping_term)) then
 deallocate(damping_term_c_type)
 endif
 end subroutine sirius_set_dftd3_correction
 
 !
-!> @brief Set the parameters controlling the dftd3 correction.
+!> @brief Set the parameters controlling the dftd4 correction.
 !> @param [in] handler Simulation context handler.
 !> @param [in] method family of predefined parameters. Linked to the functional
 !> @param [in] damping damping correction, auto, manual.
@@ -7534,8 +7481,6 @@ call sirius_set_dftd4_correction_aux(handler_ptr,method_ptr,damping_ptr,atm_ptr,
 deallocate(method_c_type)
 if (present(damping)) then
 deallocate(damping_c_type)
-endif
-if (present(atm)) then
 endif
 if (present(damping_term)) then
 deallocate(damping_term_c_type)

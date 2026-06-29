@@ -19,6 +19,7 @@
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
+#include "core/hdf5_tree.hpp"
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/acc/acc.hpp"
@@ -211,7 +212,7 @@ class Simulation_context : public Simulation_parameters
 
     std::shared_ptr<fft::Gvec_fft> gvec_coarse_fft_;
 
-    std::shared_ptr<fft::Gvec_shells> remap_gvec_;
+    std::shared_ptr<fft::Gvec_sym> gvec_sym_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -463,9 +464,9 @@ class Simulation_context : public Simulation_parameters
     }
 
     auto const&
-    remap_gvec() const
+    gvec_sym() const
     {
-        return *remap_gvec_;
+        return *gvec_sym_;
     }
 
     auto const&

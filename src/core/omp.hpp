@@ -14,9 +14,15 @@
 #ifndef __OMP_HPP__
 #define __OMP_HPP__
 
+#include <complex>
+
 #if defined(_OPENMP)
 
 #include <omp.h>
+
+#pragma omp declare reduction( \
+    complex_double_plus : std::complex<double> : omp_out += omp_in \
+) initializer(omp_priv = std::complex<double>{0.0, 0.0})
 
 #else
 inline int

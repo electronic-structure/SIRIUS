@@ -19,6 +19,7 @@
 #include "spheric_function_set.hpp"
 #include "smooth_periodic_function.hpp"
 #include "core/profiler.hpp"
+#include "core/hdf5_tree.hpp"
 
 namespace sirius {
 

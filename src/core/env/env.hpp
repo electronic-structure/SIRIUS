@@ -23,7 +23,24 @@
 
 namespace sirius {
 
-/// Get environment variables.
+/// Access runtime environment variables.
+/** The following environment variables are recognized by SIRIUS:
+    - SIRIUS_CONFIG: path to an additional JSON configuration file imported by Simulation_context.
+    - SIRIUS_SAVE_CONFIG: write the serialized configuration to this file; if set to "all",
+      write each saved configuration to a numbered siriusXXXXXX.json file.
+    - SIRIUS_VERBOSITY: override the runtime verbosity level.
+    - SIRIUS_EV_SOLVER: override the standard and generalized eigen-value solver names.
+    - SIRIUS_PRINT_TIMING: print timers at finalization. This is a bit mask: 1 prints the timer tree,
+      2 prints the flattened timer tree, and 4 writes timers.json.
+    - SIRIUS_PRINT_MEMORY_USAGE: print host and, when available, device memory usage.
+    - SIRIUS_PRINT_MPI_LAYOUT: print MPI rank placement information during context initialization.
+    - SIRIUS_PRINT_PERFORMANCE: print selected performance counters.
+    - SIRIUS_PRINT_CHECKSUM: print checksums of selected arrays and operators for debugging.
+    - SIRIUS_PRINT_HASH: print hashes of selected arrays and operators for debugging.
+    - SIRIUS_CHECK_SCF_DENSITY: check the SCF density after the ground-state search.
+    - SIRIUS_PRINT_DENSITY_MATRIX: print the full-potential density matrix; value 1 selects
+      complex spherical harmonics and value 2 selects real spherical harmonics.
+*/
 namespace env {
 
 /// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.

@@ -934,17 +934,17 @@ class config_t
             }
             dict_["/control/use_second_variation"_json_pointer] = use_second_variation__;
         }
-        /// Number of atoms in a chunk of beta-projectors.
-        inline auto beta_chunk_size() const
+        /// Maximum number of atoms per chunk when splitting the full atom index.
+        inline auto max_atom_chunk_size() const
         {
-            return dict_.at("/control/beta_chunk_size"_json_pointer).get<int>();
+            return dict_.at("/control/max_atom_chunk_size"_json_pointer).get<int>();
         }
-        inline void beta_chunk_size(int beta_chunk_size__)
+        inline void max_atom_chunk_size(int max_atom_chunk_size__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/control/beta_chunk_size"_json_pointer] = beta_chunk_size__;
+            dict_["/control/max_atom_chunk_size"_json_pointer] = max_atom_chunk_size__;
         }
         /// True if whole set of beta-projectors can be allocated on device for the entire run.
         inline auto beta_on_device() const
@@ -981,6 +981,18 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/control/save_rf"_json_pointer] = save_rf__;
+        }
+        /// Save wave-functions.
+        inline auto save_wf() const
+        {
+            return dict_.at("/control/save_wf"_json_pointer).get<bool>();
+        }
+        inline void save_wf(bool save_wf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/control/save_wf"_json_pointer] = save_wf__;
         }
         /// Type of the output stream (stdout:, file:name)
         inline auto output() const

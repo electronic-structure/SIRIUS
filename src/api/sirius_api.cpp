@@ -387,10 +387,6 @@ sirius_finalize:
       type: bool
       attr: in, optional
       doc: If .true. then cuda device is reset after shutdown.
-    call_fftw_fin:
-      type: bool
-      attr: in, optional
-      doc: If .true. then fft_cleanup must be called after the shutdown.
     error_code:
       type: int
       attr: out, optional
@@ -398,8 +394,7 @@ sirius_finalize:
 @api end
 */
 void
-sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, bool const* call_fftw_fin__,
-                int* error_code__)
+sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -408,7 +403,6 @@ sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, boo
 #endif
                 bool mpi_fin{true};
                 bool device_reset{true};
-                bool fftw_fin{true};
 
                 if (call_mpi_fin__ != nullptr) {
                     mpi_fin = *call_mpi_fin__;
@@ -418,11 +412,7 @@ sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, boo
                     device_reset = *call_device_reset__;
                 }
 
-                if (call_fftw_fin__ != nullptr) {
-                    fftw_fin = *call_fftw_fin__;
-                }
-
-                sirius::finalize(mpi_fin, device_reset, fftw_fin);
+                sirius::finalize(mpi_fin, device_reset);
             },
             error_code__);
 }
@@ -7493,7 +7483,7 @@ sirius_set_dftd3_correction(void* const* handler__, char const* method__, char c
 /*
   @api begin
   sirius_set_dftd4_correction:
-    doc: Set the parameters controlling the dftd3 correction.
+    doc: Set the parameters controlling the dftd4 correction.
     arguments:
       handler:
         type: ctx_handler
@@ -7553,7 +7543,7 @@ sirius_set_dftd4_correction(void* const* handler__, char const* method__, char c
     call_sirius(
             [&]() {
                 auto& sim_ctx = get_sim_ctx(handler__);
-                sim_ctx.cfg().dftd3().method(method__);
+                sim_ctx.cfg().dftd4().method(method__);
                 if (damping__ != nullptr) {
                     sim_ctx.cfg().dftd4().damping(damping__);
                 }

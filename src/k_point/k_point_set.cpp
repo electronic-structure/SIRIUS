@@ -464,7 +464,6 @@ K_point_set::find_band_occupancies()
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
-    std::array<double, 2> ef_corr{0, 0};
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-10 && ctx_.num_mag_dims() == 1) {
         // collinear case with fixed magenetisation
         energy_fermi_ = this->find_efermi_fixed_magn<T>(emin, emax);
@@ -675,172 +674,36 @@ K_point_set::save(std::string const& name__) const
     }
 }
 
-/// \todo check parameters of saved data in a separate function
 void
-K_point_set::load()
+K_point_set::load(std::string const& name__)
 {
-    RTE_THROW("not implemented");
+    HDF5_tree fin(name__, hdf5_access_t::read_only);
 
-    //== HDF5_tree fin(storage_file_name, false);
+    int num_kpoints_in;
+    fin["K_point_set"].read("num_kpoints", &num_kpoints_in, 1);
+    if (num_kpoints_in != num_kpoints()) {
+        RTE_THROW("wrong number of k-points");
+    }
 
-    //== int num_kpoints_in;
-    //== fin["K_point_set"].read("num_kpoints", &num_kpoints_in);
-
-    //== std::vector<int> ikidx(num_kpoints(), -1);
-    //== // read available k-points
-    //== double vk_in[3];
-    //== for (int jk = 0; jk < num_kpoints_in; jk++)
-    //== {
-    //==     fin["K_point_set"][jk].read("coordinates", vk_in, 3);
-    //==     for (int ik = 0; ik < num_kpoints(); ik++)
-    //==     {
-    //==         r3::vector<double> dvk;
-    //==         for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);//==         if (dvk.length() < 1e-12)
-    //==         {
-    //==             ikidx[ik] = jk;
-    //==             break;
-    //==         }
-    //==     }
-    //== }
-
-    //== for (int ik = 0; ik < num_kpoints(); ik++)
-    //== {
-    //==     int rank = spl_num_kpoints_.local_rank(ik);
-    //==
-    //==     if (comm_.rank() == rank) kpoints_[ik]->load(fin["K_point_set"], ikidx[ik]);
-    //== }
+    /// Index of current k-points in the saved file.
+    std::vector<int> ikidx(num_kpoints(), -1);
+    // read available k-points
+    r3::vector<double> vk_in;
+    for (int jk = 0; jk < num_kpoints(); jk++) {
+        fin["K_point_set"][jk].read("vk", &vk_in[0], 3);
+        auto ik = this->find_kpoint(vk_in);
+        if (ik == -1) {
+            RTE_THROW("wrong index of k-point");
+        }
+        // to get current point ik go to jk in the file
+        ikidx[ik] = jk;
+    }
+    for (auto it : spl_num_kpoints_) {
+        auto kp = this->get<double>(it.i);
+        kp->load(fin["K_point_set"][ikidx[it.i]]);
+    }
+    this->sync_band<double, sync_band_t::energy>();
+    this->sync_band<double, sync_band_t::occupancy>();
 }
-
-//== void K_point_set::save_wave_functions()
-//== {
-//==     if (Platform::mpi_rank() == 0)
-//==     {
-//==         HDF5_tree fout(storage_file_name, false);
-//==         fout["parameters"].write("num_kpoints", num_kpoints());
-//==         fout["parameters"].write("num_bands", ctx_.num_bands());
-//==         fout["parameters"].write("num_spins", ctx_.num_spins());
-//==     }
-//==
-//==     if (ctx_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
-//==     {
-//==         for (int ik = 0; ik < num_kpoints(); ik++)
-//==         {
-//==             int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
-//==
-//==             if (ctx_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
-//==
-//==             ctx_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
-//==         }
-//==     }
-//== }
-//==
-//== void K_point_set::load_wave_functions()
-//== {
-//==     HDF5_tree fin(storage_file_name, false);
-//==     int num_spins;
-//==     fin["parameters"].read("num_spins", &num_spins);
-//==     if (num_spins != ctx_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
-//==
-//==     int num_bands;
-//==     fin["parameters"].read("num_bands", &num_bands);
-//==     if (num_bands != ctx_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
-//==
-//==     int num_kpoints_in;
-//==     fin["parameters"].read("num_kpoints", &num_kpoints_in);
-//==
-//==     // ==================================================================
-//==     // index of current k-points in the hdf5 file, which (in general) may
-//==     // contain a different set of k-points
-//==     // ==================================================================
-//==     std::vector<int> ikidx(num_kpoints(), -1);
-//==     // read available k-points
-//==     double vk_in[3];
-//==     for (int jk = 0; jk < num_kpoints_in; jk++)
-//==     {
-//==         fin["kpoints"][jk].read("coordinates", vk_in, 3);
-//==         for (int ik = 0; ik < num_kpoints(); ik++)
-//==         {
-//==             r3::vector<double> dvk;
-//==             for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
-//==             if (dvk.length() < 1e-12)
-//==             {
-//==                 ikidx[ik] = jk;
-//==                 break;
-//==             }
-//==         }
-//==     }
-//==
-//==     for (int ik = 0; ik < num_kpoints(); ik++)
-//==     {
-//==         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
-//==
-//==         if (ctx_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
-//==     }
-//== }
-
-//== void K_point_set::fixed_band_occupancies()
-//== {
-//==     Timer t("sirius::K_point_set::fixed_band_occupancies");
-//==
-//==     if (ctx_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
-//==
-//==     double n_up = (ctx_.num_valence_electrons() + ctx_.fixed_moment()) / 2.0;
-//==     double n_dn = (ctx_.num_valence_electrons() - ctx_.fixed_moment()) / 2.0;
-//==
-//==     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
-//==     bnd_occ.zero();
-//==
-//==     int j = 0;
-//==     while (n_up > 0)
-//==     {
-//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(ctx_.max_occupancy()), n_up);
-//==         j++;
-//==         n_up -= ctx_.max_occupancy();
-//==     }
-//==
-//==     j = ctx_.num_fv_states();
-//==     while (n_dn > 0)
-//==     {
-//==         for (int ik = 0; ik < num_kpoints(); ik++) bnd_occ(j, ik) = std::min(double(ctx_.max_occupancy()), n_dn);
-//==         j++;
-//==         n_dn -= ctx_.max_occupancy();
-//==     }
-//==
-//==     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
-//==
-//==     double gap = 0.0;
-//==
-//==     int nve = int(ctx_.num_valence_electrons() + 1e-12);
-//==     if ((ctx_.num_spins() == 2) ||
-//==         ((fabs(nve - ctx_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
-//==     {
-//==         // find band gap
-//==         std::vector< std::pair<double, double> > eband;
-//==         std::pair<double, double> eminmax;
-//==
-//==         for (int j = 0; j < ctx_.num_bands(); j++)
-//==         {
-//==             eminmax.first = 1e10;
-//==             eminmax.second = -1e10;
-//==
-//==             for (int ik = 0; ik < num_kpoints(); ik++)
-//==             {
-//==                 eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
-//==                 eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
-//==             }
-//==
-//==             eband.push_back(eminmax);
-//==         }
-//==
-//==         std::sort(eband.begin(), eband.end());
-//==
-//==         int ist = nve;
-//==         if (ctx_.num_spins() == 1) ist /= 2;
-//==
-//==         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
-//==
-//==         band_gap_ = gap;
-//==     }
-//== }
 
 } // namespace sirius

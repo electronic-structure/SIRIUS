@@ -84,12 +84,14 @@ initialize(bool call_mpi_init__ = true)
     energy_profiler = std::make_unique<power::Profile>("sirius");
 #endif
 
-    if (mpi::Communicator::world().rank() == 0) {
-        std::printf("# SIRIUS %i.%i.%i, git hash: %s\n", major_version(), minor_version(), revision(),
-                    git_hash().c_str());
+    if (env::get_verbosity() > 0) {
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "# SIRIUS " << major_version() << "." << minor_version() << "." << revision() << "."
+                      << ", git hash: " << git_hash() << std::endl;
 #if !defined(NDEBUG)
-        std::printf("# Warning! Compiled in 'debug' mode with assert statements enabled!\n");
+            std::cout << "# Warning! Compiled in 'debug' mode with assert statements enabled!" << std::endl;
 #endif
+        }
     }
 
     // uncomment this if you want to supress std::cout from all MPI ranks except from rank=0
@@ -133,7 +135,7 @@ initialize(bool call_mpi_init__ = true)
 
 /// Shut down the library.
 inline void
-finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
+finalize(bool call_mpi_fin__ = true, bool reset_device__ = true)
 {
     PROFILE_START("sirius::finalize");
     if (!is_initialized()) {
@@ -312,10 +314,7 @@ Below are some basic style rules that we follow:
     \endcode
 
   - Comments are inserted before the code with slash-star style starting with the lower case:
-    \code{.cpp}
-    // call a very important function
-    do_something();
-    \endcode
+    \snippet examples/do_something.cpp important-call
   - Spaces between most operators:
     \code{.cpp}
     if (i < 5) {
@@ -378,6 +377,7 @@ Below are some basic style rules that we follow:
         case 1: {
             do_something();
             break;
+        }
         case 2: {
             do_something_else();
             break;

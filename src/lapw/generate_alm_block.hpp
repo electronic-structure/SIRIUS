@@ -29,7 +29,20 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
         num_mt_aw += ctx__.unit_cell().atom(atom_begin__ + ia).mt_aw_basis_size();
     }
 
+    /* resulting block of alm coefficients */
     mdarray<std::complex<T>, 2> result;
+
+    /* quick exit */
+    if (conjugate && alm__.all_atoms()) {
+        result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
+                                             const_cast<std::complex<T>*>(alm__.begin(atom_begin__)),
+                                             mdarray_label("alm_block"));
+        if (ctx__.processing_unit() == device_t::GPU) {
+            result.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+        }
+        return result;
+    }
+
     switch (ctx__.processing_unit()) {
         case device_t::CPU: {
             result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw}, get_memory_pool(memory_t::host),
@@ -47,7 +60,7 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
     #pragma omp parallel
     {
         int tid = omp_get_thread_num();
-        #pragma omp for
+        #pragma omp for schedule(static, 1)
         for (int i = 0; i < num_atoms__; i++) {
             auto& atom = ctx__.unit_cell().atom(atom_begin__ + i);
             auto& type = atom.type();
@@ -68,8 +81,20 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
                     break;
                 }
             }
-            /* generate LAPW matching coefficients on the CPU */
-            alm__.template generate<conjugate>(atom, alm_atom);
+            if (alm__.all_atoms()) {
+                auto ptr_out = alm_atom.at(memory_t::host);
+                if constexpr (!conjugate) {
+                    auto ptr_in = alm__.begin(atom_begin__ + i);
+                    for (size_t j = 0; j < alm_atom.size(); j++) {
+                        ptr_out[j] = std::conj(ptr_in[j]);
+                    }
+                } else {
+                    std::copy(alm__.begin(atom_begin__ + i), alm__.end(atom_begin__ + i), ptr_out);
+                }
+            } else {
+                /* generate LAPW matching coefficients on the CPU */
+                alm__.template generate<conjugate>(atom, alm_atom);
+            }
             if (ctx__.processing_unit() == device_t::GPU) {
                 alm_atom.copy_to(memory_t::device, acc::stream_id(tid));
             }

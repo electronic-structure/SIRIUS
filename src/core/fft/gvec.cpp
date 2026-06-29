@@ -659,9 +659,9 @@ Gvec_fft::Gvec_fft(Gvec const& gvec__, mpi::Communicator const& comm_fft__, mpi:
     pile_gvec();
 }
 
-Gvec_shells::Gvec_shells(Gvec const& gvec__)
-    : comm_(gvec__.comm())
-    , gvec_(gvec__)
+Gvec_sym::Gvec_sym(Gvec const& gvec__)
+    : gvec_(gvec__)
+    , comm_(gvec__.comm())
 {
     PROFILE("fft::Gvec_shells");
 
@@ -671,7 +671,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     /* split G-vector shells between ranks in cyclic order */
     spl_num_gsh_ = splindex_block_cyclic<>(gvec_.num_shells(), n_blocks(comm_.size()), block_id(comm_.rank()), 1);
 
-    /* each rank sends a fraction of its local G-vectors to other ranks */
+    /* each rank repacks and sends a fraction of its local G-vectors to other ranks */
     /* count this fraction */
     for (int igloc = 0; igloc < gvec_.count(); igloc++) {
         int ig   = gvec_.offset() + igloc;
@@ -697,15 +697,21 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     }
     a2a_recv_.calc_offsets();
     /* sanity check: sum of local sizes in the remapped order is equal to the total number of G-vectors */
-    int ng = gvec_count_remapped();
+    int ng = this->count();
     comm_.allreduce(&ng, 1);
     if (ng != gvec_.num_gvec()) {
         RTE_THROW("wrong number of G-vectors");
     }
+    //int ng_min = this->count();
+    //comm_.allreduce<int, mpi::op_t::min>(&ng_min, 1);
+    //int ng_max = this->count();
+    //comm_.allreduce<int, mpi::op_t::max>(&ng_max, 1);
+
+    //std::cout << "debug: Gvec_shells: Gvec imbalance : " << 1.0 * ng_min / ng_max << std::endl;
 
     /* local set of G-vectors in the remapped order */
-    gvec_remapped_       = mdarray<int, 2>({3, gvec_count_remapped()}, mdarray_label("gvec_remapped_"));
-    gvec_shell_remapped_ = mdarray<int, 1>({gvec_count_remapped()}, mdarray_label("gvec_shell_remapped_"));
+    gvec_remapped_       = mdarray<int, 2>({3, this->count()}, mdarray_label("gvec_remapped_"));
+    gvec_shell_remapped_ = mdarray<int, 1>({this->count()}, mdarray_label("gvec_shell_remapped_"));
     std::vector<int> counts(comm_.size(), 0);
     for (int r = 0; r < comm_.size(); r++) {
         for (int igloc = 0; igloc < gvec_.count(r); igloc++) {
@@ -721,11 +727,12 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
             }
         }
     }
-    for (int ig = 0; ig < gvec_count_remapped(); ig++) {
+    for (int ig = 0; ig < this->count(); ig++) {
+        /* G -> ig mapping */
         idx_gvec_[gvec_remapped(ig)] = ig;
     }
     /* sanity check */
-    for (int igloc = 0; igloc < this->gvec_count_remapped(); igloc++) {
+    for (int igloc = 0; igloc < this->count(); igloc++) {
         auto G = this->gvec_remapped(igloc);
         if (this->index_by_gvec(G) != igloc) {
             RTE_THROW("Wrong remapped index of G-vector");
@@ -734,6 +741,12 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
         if (igsh != this->gvec().shell(G)) {
             RTE_THROW("Wrong remapped shell of G-vector");
         }
+    }
+
+    gvec_shells_.resize(spl_num_gsh_.local_size());
+    for (int igloc = 0; igloc < this->count(); igloc++) {
+        int igsh = this->gvec_shell_remapped(igloc);
+        gvec_shells_[spl_num_gsh_.location(igsh).index_local].push_back(igloc);
     }
 }
 

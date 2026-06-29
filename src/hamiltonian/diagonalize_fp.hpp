@@ -570,6 +570,10 @@ diagonalize_fp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
         if (itso.type() == "exact") {
             diagonalize_fp_fv_exact(Hk__, kp__);
         } else if (itso.type() == "davidson") {
+            /* generate Alm coefficients once */
+            if (kp__.alm_coeffs_loc().all_atoms()) {
+                kp__.alm_coeffs_loc().generate();
+            }
             diagonalize_fp_fv_davidson(Hk__, kp__, itsol_tol__);
         }
         /* generate first-variational states */

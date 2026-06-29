@@ -510,10 +510,10 @@
                     "default": true,
                     "title": "True if second-variational diagonalization is used in LAPW method."
                 },
-                "beta_chunk_size": {
+                "max_atom_chunk_size": {
                     "type": "integer",
-                    "default": 256,
-                    "title": "Number of atoms in a chunk of beta-projectors."
+                    "default": -1,
+                    "title": "Maximum number of atoms per chunk when splitting the full atom index."
                 },
                 "beta_on_device": {
                     "type": "boolean",
@@ -529,6 +529,11 @@
                     "type": "boolean",
                     "default": false,
                     "title": "Save LAPW radial functions in text file for inspection."
+                },
+                "save_wf": {
+                    "type": "boolean",
+                    "default": false,
+                    "title": "Save wave-functions."
                 },
                 "output": {
                     "type": "string",

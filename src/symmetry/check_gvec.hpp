@@ -75,33 +75,33 @@ check_gvec(fft::Gvec const& gvec__, Crystal_symmetry const& sym__)
 }
 
 inline void
-check_gvec(fft::Gvec_shells const& gvec_shells__, Crystal_symmetry const& sym__)
+check_gvec(fft::Gvec_sym const& gvec_sym__, Crystal_symmetry const& sym__)
 {
     /* check G-vector symmetries */
-    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
-        auto G = gvec_shells__.gvec_remapped(igloc);
+    for (int igloc = 0; igloc < gvec_sym__.count(); igloc++) {
+        auto G = gvec_sym__.gvec_remapped(igloc);
 
         for (int i = 0; i < sym__.size(); i++) {
             auto& invRT = sym__[i].spg_op.invRT;
             auto gv_rot = dot(invRT, G);
 
             /* local index of a rotated G-vector */
-            int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+            int ig_rot = gvec_sym__.index_by_gvec(gv_rot);
 
             if (ig_rot == -1) {
                 gv_rot = gv_rot * (-1);
-                ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+                ig_rot = gvec_sym__.index_by_gvec(gv_rot);
                 if (ig_rot == -1) {
                     std::stringstream s;
                     s << "Failed to find a rotated G-vector in the list" << std::endl
                       << "  local index of original vector: " << igloc << std::endl
-                      << "  global index of G-shell: " << gvec_shells__.gvec_shell_remapped(igloc) << std::endl
+                      << "  global index of G-shell: " << gvec_sym__.gvec_shell_remapped(igloc) << std::endl
                       << "  original G-vector: " << G << std::endl
                       << "  rotated G-vector: " << gv_rot;
                     RTE_THROW(s);
                 }
             }
-            if (ig_rot >= gvec_shells__.gvec_count_remapped()) {
+            if (ig_rot >= gvec_sym__.count()) {
                 std::stringstream s;
                 s << "G-vector index is above the boundary";
                 RTE_THROW(s);

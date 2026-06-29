@@ -93,7 +93,10 @@ add_library(sirius_cxx "${_SOURCES};${_CUSOURCES};")
 target_compile_features(sirius_cxx PUBLIC cxx_std_17)
 target_compile_features(sirius_cxx PUBLIC c_std_99)
 target_compile_features(sirius_cxx PUBLIC cuda_std_17)
-set_target_properties(sirius_cxx PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(sirius_cxx PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
+  POSITION_INDEPENDENT_CODE ON)
 
 if(SIRIUS_USE_ROCM)
   set_source_files_properties(${_CUSOURCES} PROPERTIES LANGUAGE HIP)
@@ -111,6 +114,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   sirius::hdf5
   costa::costa
   $<TARGET_NAME_IF_EXISTS:sirius::elpa>
+  $<TARGET_NAME_IF_EXISTS:sirius::scalapack>
   $<$<BOOL:${SIRIUS_USE_DLAF}>:DLAF::DLAF>
   $<TARGET_NAME_IF_EXISTS:sirius::magma>
   $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
@@ -119,10 +123,12 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   SpFFT::spfft
   SPLA::spla
   GSL::gsl
-  $<$<BOOL:${SIRIUS_USE_DFTD3}>:sirius::dftd3 sirius::mctclib>
-  $<$<BOOL:${SIRIUS_USE_DFTD4}>:sirius::dftd4 sirius::mctclib sirius::multicharge>
+  $<$<BOOL:${SIRIUS_USE_DFTD3}>:sirius::dftd3>
+  $<$<BOOL:${SIRIUS_USE_DFTD4}>:sirius::dftd4 sirius::multicharge>
+  $<$<OR:$<BOOL:${SIRIUS_USE_DFTD3}>,$<BOOL:${SIRIUS_USE_DFTD4}>>:sirius::mctclib>
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
+  $<$<BOOL:${SIRIUS_USE_VCSQNM}>:Eigen3::Eigen>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
   $<$<BOOL:${SIRIUS_USE_NVTX}>:CUDA::nvtx3>
   $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
@@ -162,7 +168,11 @@ if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   target_include_directories(sirius PUBLIC
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 
-  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+  set_target_properties(sirius PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    POSITION_INDEPENDENT_CODE ON
+    Fortran_MODULE_DIRECTORY mod_files)
   install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
   install(FILES "${PROJECT_SOURCE_DIR}/src/api/sirius_c_headers.h"
