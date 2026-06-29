@@ -72,7 +72,6 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     auto psi_wf  = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
     auto dvpsi_wf =
             sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-    auto tmp_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
     for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
         for (int i = 0; i < nbnd_occ; i++) {
@@ -99,9 +98,6 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
     auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
 
-    auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-    auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ), wf::num_mag_dims(0), false);
-
     auto mem = sctx.processing_unit_memory_t();
 
     std::vector<wf::device_memory_guard> mg;
@@ -109,14 +105,11 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     mg.emplace_back(psi_wf->memory_guard(mem, wf::copy_to::device));
     mg.emplace_back(dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host));
     mg.emplace_back(dvpsi_wf->memory_guard(mem, wf::copy_to::device));
-    mg.emplace_back(tmp_wf->memory_guard(mem));
 
     mg.emplace_back(U->memory_guard(mem));
     mg.emplace_back(C->memory_guard(mem));
-    mg.emplace_back(Hphi_wf->memory_guard(mem));
-    mg.emplace_back(Sphi_wf->memory_guard(mem));
 
-    sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, Hphi_wf, Sphi_wf, psi_wf, tmp_wf,
+    sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, psi_wf,
                                                          *alpha_pv__ / 2, // rydberg/hartree factor
                                                          std::complex<double>(0, 0), wf::band_range(0, nbnd_occ), sr,
                                                          mem);

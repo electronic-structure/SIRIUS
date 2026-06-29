@@ -101,7 +101,7 @@ random_symmetric(int N__, int bs__, la::BLACS_grid const& blacs_grid__)
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
-            B(i, j) = conj(A(j, i));
+            B(i, j) = sirius::conj(A(j, i));
         }
     }
 #endif

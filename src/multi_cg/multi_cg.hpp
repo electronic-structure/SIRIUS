@@ -440,7 +440,6 @@ struct Smoothed_diagonal_preconditioner
                 }
             } else {
 #if defined(SIRIUS_GPU)
-		//std::cout << "Entering GPU preconditioner" << std::endl;
                 double om_r = std::real(omega);
                 double om_i = adjoint__ ? -std::imag(omega) : std::imag(omega);
                 apply_preconditioner_gpu_complex_double(res__.at(mem, 0, sp, wf::band_index(0)), res__.ld(), num_active,
@@ -490,20 +489,18 @@ struct Linear_response_operator
     wf::spin_range sr;
     memory_t mem;
     la::dmatrix<std::complex<double>> overlap;
+    std::vector<wf::device_memory_guard> mg;
 
     Linear_response_operator(sirius::Hamiltonian_k<double>& Hk, std::vector<double> const& eigvals,
-                             std::shared_ptr<wf::Wave_functions<double>> Hphi,
-                             std::shared_ptr<wf::Wave_functions<double>> Sphi,
-                             std::shared_ptr<wf::Wave_functions<double>> evq,
-                             std::shared_ptr<wf::Wave_functions<double>> tmp, double alpha_pv,
+                             std::shared_ptr<wf::Wave_functions<double>> evq, double alpha_pv,
                              std::complex<double> omega, wf::band_range br, wf::spin_range sr, memory_t mem)
         : ctx(Hk.H0().ctx())
         , Hk(Hk)
         , eigenvals(eigvals)
-        , Hphi(Hphi)
-        , Sphi(Sphi)
+        , Hphi(wave_function_factory<double>(ctx, Hk.kp(), wf::num_bands(eigvals.size()), wf::num_mag_dims(0), false))
+        , Sphi(wave_function_factory<double>(ctx, Hk.kp(), wf::num_bands(eigvals.size()), wf::num_mag_dims(0), false))
         , evq(evq)
-        , tmp(tmp)
+        , tmp(wave_function_factory<double>(ctx, Hk.kp(), wf::num_bands(eigvals.size()), wf::num_mag_dims(0), false))
         , alpha_pv(alpha_pv)
         , omega(omega)
         , br(br)
@@ -519,10 +516,9 @@ struct Linear_response_operator
         // but QE has a very specific way to compute it, so we just forward it from
         // there.;
 
-        // flip the sign of the eigenvals so that the axpby works
-        //for (auto& e : min_eigenvals) {
-        //    e *= -1;
-        //}
+        mg.emplace_back(Hphi->memory_guard(mem));
+        mg.emplace_back(Sphi->memory_guard(mem));
+        mg.emplace_back(tmp->memory_guard(mem));
     }
 
     inline bool
@@ -547,17 +543,12 @@ struct Linear_response_operator
     {
         PROFILE("sirius::Linear_response_operator::multiply");
 
-	//std::cout << "Entered multiply" << std::endl;	
-        
         // Hphi = H * x, Sphi = S * x
         Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, num_active), *x.x, Hphi.get(), Sphi.get());
-        
-	// overlap := evq' * (S * x) = <Psi_k | S | X>
+
+        // overlap := evq' * (S * x) = <Psi_k | S | X>
         wf::inner(ctx.spla_context(), mem, wf::spin_range(0), *evq, br, *Sphi, wf::band_range(0, num_active), overlap,
                   0, 0);
-	//std::cout << "[PASS] wf::inner completed!" << std::endl;
-
-	//std::cout << "Inner product done" << std::endl;
 
         std::vector<std::complex<double>> ones(num_active, 1.0);
         std::vector<std::complex<double>> ev(num_active);
@@ -576,18 +567,12 @@ struct Linear_response_operator
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), ev.data(), Sphi.get(), ones.data(),
                   Hphi.get());
 
-	//std::cout << "axpby done" << std::endl;
-
         // tmp := evq * overlap
         wf::transform(ctx.spla_context(), mem, overlap, 0, 0, 1.0, *evq, wf::spin_index(0), br, 0.0, *tmp,
                       wf::spin_index(0), wf::band_range(0, num_active));
 
-	//std::cout << "Transform wf done" << std::endl;
-
         // Sphi contains S|Psi_k><Psi_k| S |X>
         Hk.apply_s<std::complex<double>>(wf::spin_range(0), wf::band_range(0, num_active), *tmp, *Sphi);
-
-	//std::cout << "H applied again" << std::endl;
 
         // Projector, add alpha_pv * (S * (evq * (evq' * (S * x))))
 
@@ -596,15 +581,11 @@ struct Linear_response_operator
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alpha_pvs.data(), Sphi.get(), ones.data(),
                   Hphi.get());
 
-	//std::cout << "axpby 2 done" << std::endl;
-
         // y[:, i] <- alpha * Hphi + beta * y[:, i]
         std::vector<std::complex<double>> alphas(num_active, alpha);
         std::vector<std::complex<double>> betas(num_active, beta);
         wf::axpby(mem, wf::spin_range(0), wf::band_range(0, num_active), alphas.data(), Hphi.get(), betas.data(),
                   y.x.get());
-
-	//std::cout << "axpby 3 done" << std::endl;
     }
 };
 
