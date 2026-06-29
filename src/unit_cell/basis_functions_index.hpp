@@ -31,6 +31,8 @@ struct basis_function_index_descriptor
     rf_lo_index idxlo;
     /// Index of the radial function or beta projector in the case of pseudo potential.
     rf_index idxrf;
+    /// Index of the given basis function.
+    /** This is needed if we iterate over basis function and need to find its index. */
     bf_index xi{-1};
 
     basis_function_index_descriptor(angular_momentum am, int m, int order, rf_lo_index idxlo, rf_index idxrf)
