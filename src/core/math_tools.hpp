@@ -193,20 +193,6 @@ conj(std::complex<T> x__)
     return std::conj(x__);
 }
 
-//template <typename T>
-//inline T
-//zero_if_not_complex(T x__)
-//{
-//    return x__;
-//};
-//
-//template <typename T>
-//inline T
-//zero_if_not_complex(std::complex<T> x__)
-//{
-//    return 0;
-//};
-
 } // namespace sirius
 
 #endif

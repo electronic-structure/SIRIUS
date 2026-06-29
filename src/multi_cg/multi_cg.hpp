@@ -52,20 +52,6 @@ repack(std::vector<T>& data, std::vector<int> const& ids)
     }
 }
 
-//template <typename T>
-//inline T
-//safe_conj(T const& val)
-//{
-//    return val;
-//}
-//
-//template <typename T>
-//inline std::complex<T>
-//safe_conj(std::complex<T> const& val)
-//{
-//    return std::conj(val);
-//}
-
 template <typename Matrix, typename Prec, typename StateVec>
 auto
 multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C, int maxiters = 10, double tol = 1e-3,
@@ -508,8 +494,6 @@ struct Linear_response_operator
         , mem(mem)
         , overlap(br.size(), Hphi->num_wf())
     {
-        // TODO: allocate Hphi, Sphi, tmp in here
-
         // I think we could just compute alpha_pv here by just making it big enough
         // s.t. the operator H - e * S + alpha_pv * Q is positive, e.g:
         // alpha_pv = 2 * min_eigenvals.back();
