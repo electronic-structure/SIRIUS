@@ -52,19 +52,19 @@ repack(std::vector<T>& data, std::vector<int> const& ids)
     }
 }
 
-template <typename T>
-inline T
-safe_conj(T const& val)
-{
-    return val;
-}
-
-template <typename T>
-inline std::complex<T>
-safe_conj(std::complex<T> const& val)
-{
-    return std::conj(val);
-}
+//template <typename T>
+//inline T
+//safe_conj(T const& val)
+//{
+//    return val;
+//}
+//
+//template <typename T>
+//inline std::complex<T>
+//safe_conj(std::complex<T> const& val)
+//{
+//    return std::conj(val);
+//}
 
 template <typename Matrix, typename Prec, typename StateVec>
 auto
@@ -195,7 +195,7 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
             for (size_t i = 0; i < num_unconverged; ++i) {
                 alphas[i] = rhos[i] / rhos_old[i];
                 if (!is_herm) {
-                    alphas1[i] = safe_conj(alphas[i]);
+                    alphas1[i] = sirius::conj(alphas[i]);
                 }
             }
 
@@ -241,7 +241,7 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] = rhos[i] / sigmas[i];
             if (!is_herm) {
-                alphas1[i] = safe_conj(alphas[i]);
+                alphas1[i] = sirius::conj(alphas[i]);
             }
         }
 
