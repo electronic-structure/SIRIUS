@@ -291,7 +291,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
                                         : matrix<std::complex<T>>();
             #pragma omp parallel
             for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                #pragma omp for
+                #pragma omp for nowait
                 for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
                     if (what & 1) {
                         h_diag[igloc] += std::real(std::conj(alm_atom(igloc, xi)) * halm_atom(igloc, xi));
@@ -797,9 +797,32 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         return;
     }
 
+    auto& ctx = this->H0_.ctx();
+
+    auto& comm = kp_.comm();
+
+#if !defined(NDEBUG)
+    std::array<int, 5> v{b__.begin(), b__.end(), hphi__ != nullptr, ophi__ != nullptr, phi_is_lo__};
+    auto vmin = v;
+    auto vmax = v;
+
+    comm.template allreduce<int, mpi::op_t::min>(vmin.data(), vmin.size());
+    comm.template allreduce<int, mpi::op_t::max>(vmax.data(), vmax.size());
+
+    if (vmin != vmax) {
+        std::stringstream s;
+        s << "inconsistent apply_fv_h_o arguments on rank " << comm.rank() << ": b=" << b__.begin() << ":" << b__.end()
+          << ", hphi=" << (hphi__ != nullptr) << ", ophi=" << (ophi__ != nullptr) << ", phi_is_lo=" << phi_is_lo__;
+        RTE_THROW(s);
+    }
+#endif
+
     using Tc = std::complex<T>;
 
-    auto& ctx = this->H0_.ctx();
+    /* we need a blacs grid to work with distributed matrices; default blacs grid
+     * of the simulation context is not suitable because that one is created for the
+     * eigen-value solver */
+    auto& blacs_grid = ctx.blacs_grid_band();
 
     auto pu = ctx.processing_unit();
 
@@ -809,12 +832,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto pp  = env::print_performance();
     auto pcs = env::print_checksum();
 
-    /* prefactor for the matrix multiplication in complex or double arithmetic (in Giga-operations) */
-    double ngop{8e-9};                          // default value for complex type
-    if (std::is_same<T, real_type<T>>::value) { // change it if it is real type
-        ngop = 2e-9;
-    }
-    double gflops{0};
+    size_t flop{0};
     double time{0};
 
     if (hphi__ != nullptr) {
@@ -827,8 +845,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             ophi__->zero(memory_t::host, wf::spin_index(0), b__);
         }
     }
-
-    auto& comm = kp_.comm();
 
     /* ophi is computed on the CPU to avoid complicated GPU implementation */
     if (is_device_memory(mem)) {
@@ -878,7 +894,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto& one  = la::constant<Tc>::one();
     auto& zero = la::constant<Tc>::zero();
 
-    /* apply APW-lo part of Hamiltonian to lo- part of wave-functions */
+    /* apply APW-lo muffin-tin part of Hamiltonian to lo- part of wave-functions */
     auto apply_hmt_apw_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T>& h_apw_lo__) {
         #pragma omp parallel for
         for (auto it : spl_atoms) {
@@ -889,6 +905,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             int naw    = type.mt_aw_basis_size();
             int nlo    = type.mt_lo_basis_size();
 
+            /* local atom index */
             auto aidx = it.li;
 
             auto& hmt = this->H0_.hmt(ia);
@@ -995,7 +1012,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     auto appy_hmt_apw_apw = [this, &ctx, la, mem, &b__](int atom_begin__, wf::Wave_functions_mt<T> const& alm_phi__,
                                                         wf::Wave_functions_mt<T>& halm_phi__) {
-        #pragma omp parallel for
+        size_t nops{0};
+        #pragma omp parallel for reduction(+:nops)
         for (auto it : alm_phi__.spl_num_atoms()) {
             int tid    = omp_get_thread_num();
             int ia     = atom_begin__ + it.i;
@@ -1013,7 +1031,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               &la::constant<Tc>::zero(),
                               halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
                               acc::stream_id(tid));
+            nops += 8L * naw * b__.size() * naw;
         }
+        return nops;
     };
 
     auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms](wf::Wave_functions_mt<T> const& alm_phi__,
@@ -1030,8 +1050,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
             auto aidx = it.li;
 
             auto& hmt = H0_.hmt(ia);
-
-            // TODO: add stream_id
 
             la::wrap(la).gemm('N', 'N', nlo, b__.size(), naw, &la::constant<Tc>::one(), hmt.at(mem, naw, 0, 0),
                               hmt.ld(), alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)),
@@ -1104,7 +1122,6 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     /* Prepare APW-lo contribution for the entire index of APW basis functions. Here we compute the action
      * of the APW-lo Hamiltonian and overlap on the local-orbital part of wave-functions.
      *
-     *              n
      * +------+   +---+
      * |      |   |   |
      * |      | x |lo |
@@ -1127,22 +1144,28 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                  memory_t::host);
     auto mg = tmp.memory_guard(mem);
 
+    /* precompute temporary objects (MT hamiltonian / overlap x lo part of wave-functions) that
+     * are later used to compute APW-lo contribution; the application of the Hamiltonian and
+     * overlap is local to the MPI rank; afterwards the data is reshuffled to 2D scalapack distribution 
+     * with COSTA to be later used in spla call */
     if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
         PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo-prep");
 
         if (hphi__) {
             apply_hmt_apw_lo(tmp);
 
-            h_apw_lo_phi_lo = la::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(), ctx.blacs_grid(), bs, bs);
+            h_apw_lo_phi_lo = la::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(), blacs_grid, bs, bs);
 
             auto layout_in = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
+            comm.barrier();
             costa::transform(layout_in, h_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.native());
         }
         if (ophi__) {
             apply_omt_apw_lo(tmp);
-            o_apw_lo_phi_lo = la::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(), ctx.blacs_grid(), bs, bs);
+            o_apw_lo_phi_lo = la::dmatrix<Tc>(ctx.unit_cell().mt_aw_basis_size(), b__.size(), blacs_grid, bs, bs);
 
             auto layout_in = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
+            comm.barrier();
             costa::transform(layout_in, o_apw_lo_phi_lo.grid_layout(), 'N', one, zero, comm.native());
         }
     }
@@ -1171,7 +1194,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     }
 
     /* <A_{lm}^{\alpha}(G) | C_j(G) > for all Alm matching coefficients */
-    la::dmatrix<Tc> alm_phi(ctx.unit_cell().mt_aw_basis_size(), b__.size(), ctx.blacs_grid(), bs, bs);
+    la::dmatrix<Tc> alm_phi(ctx.unit_cell().mt_aw_basis_size(), b__.size(), blacs_grid, bs, bs);
 
     /*  compute APW-APW contribution
      *                         n
@@ -1217,7 +1240,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                             phi__.at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), phi__.ld(), 0.0,
                             alm_phi.at(memory_t::host), alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(),
                             ctx.spla_context());
-            gflops += ngop * num_mt_aw * b__.size() * ngv;
+            flop += 8L * num_mt_aw * b__.size() * ngv;
 
             if (pcs) {
                 auto cs = alm_phi.checksum(num_mt_aw, b__.size());
@@ -1232,7 +1255,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 alm_phi.ld(), offset_aw_global, 0, alm_phi.spla_distribution(), one,
                                 ophi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
                                 ctx.spla_context());
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
             }
 
             if (hphi__) {
@@ -1246,17 +1269,18 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 wf::Wave_functions_mt<T> halm_phi_slab(comm, num_mt_apw_coeffs_in_block, wf::num_mag_dims(0),
                                                        wf::num_bands(b__.size()), memory_t::host);
 
-                la::dmatrix<Tc> halm_phi(num_mt_aw, b__.size(), ctx.blacs_grid(), bs, bs);
+                la::dmatrix<Tc> halm_phi(num_mt_aw, b__.size(), blacs_grid, bs, bs);
                 {
                     auto layout_in  = alm_phi.grid_layout(offset_aw_global, 0, num_mt_aw, b__.size());
                     auto layout_out = alm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
+                    comm.barrier();
                     costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
                 }
 
                 {
                     auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
                     auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
-                    appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
+                    flop += appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
 
                     if (pcs) {
                         auto cs1 = alm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), b__);
@@ -1271,6 +1295,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                 {
                     auto layout_in  = halm_phi_slab.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
                     auto layout_out = halm_phi.grid_layout();
+                    comm.barrier();
                     costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
                     if (pcs) {
                         auto cs = halm_phi.checksum(num_mt_aw, b__.size());
@@ -1285,7 +1310,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 halm_phi.ld(), 0, 0, halm_phi.spla_distribution(), one,
                                 hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                                 ctx.spla_context());
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8 * ngv * b__.size() * num_mt_aw;
                 if (pcs) {
                     auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                     if (comm.rank() == 0) {
@@ -1312,7 +1337,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         print_checksum("hphi_apw#2", cs, RTE_OUT(std::cout));
                     }
                 }
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
             }
             if (ophi__) {
                 /* APW-lo contribution to ophi */
@@ -1321,7 +1346,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 o_apw_lo_phi_lo.spla_distribution(), one,
                                 ophi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), ophi__->ld(),
                                 ctx.spla_context());
-                gflops += ngop * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
             }
             time += time_interval(t0);
         }
@@ -1364,6 +1389,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         {
             auto layout_in  = alm_phi.grid_layout();
             auto layout_out = tmp.grid_layout_mt(wf::spin_index(0), wf::band_range(0, b__.size()));
+            comm.barrier();
             costa::transform(layout_in, layout_out, 'N', one, zero, comm.native());
         }
 
@@ -1385,7 +1411,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     }
 
     if (pp && comm.rank() == 0) {
-        RTE_OUT(std::cout) << "effective local zgemm performance : " << gflops / time << " GFlop/s" << std::endl;
+        RTE_OUT(std::cout) << "effective local zgemm performance : " << 1e-9 * flop / time << " GFlop/s" << std::endl;
     }
 
     if (pcs) {

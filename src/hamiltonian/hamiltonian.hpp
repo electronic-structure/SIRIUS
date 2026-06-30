@@ -351,7 +351,8 @@ class Hamiltonian_k
                  wf::Wave_functions<T>* hphi__, wf::Wave_functions<T>* ophi__) const;
 
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
-    /** The Hamiltonian matrix has the following expression:
+    /** Starting from the LAPW+lo basis functions definition in \ref lapw_basis_definition, the Hamiltonian
+     *  matrix has the following expression:
      *  \f[
      *      H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  =
      *      \left( \begin{array}{cc}

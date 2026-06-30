@@ -50,7 +50,7 @@ Potential::poisson_add_pseudo_pw(mdarray<std::complex<double>, 2>& qmt__, mdarra
                 break;
             }
             case device_t::GPU: {
-                auto& mp  = get_memory_pool(memory_t::host);
+                auto& mp  = get_memory_pool(memory_t::host_pinned);
                 auto& mpd = get_memory_pool(memory_t::device);
                 /* allocate on GPU */
                 pf = mdarray<std::complex<double>, 2>({ngv, na}, nullptr);

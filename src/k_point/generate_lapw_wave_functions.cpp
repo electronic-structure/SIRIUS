@@ -26,13 +26,15 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
         return;
     }
 
+    auto const& blacs_grid = ctx_.blacs_grid_band();
+
     auto const& uc = ctx_.unit_cell();
 
     auto pcs = env::print_checksum();
 
     auto bs = ctx_.cyclic_block_size();
     /* store the result of Alm(G) * C_i(G) product */
-    la::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs);
+    la::dmatrix<std::complex<T>> alm_fv(uc.mt_aw_basis_size(), ctx_.num_fv_states(), blacs_grid, bs, bs);
 
     int atom_begin{0};
     int mt_aw_offset{0};

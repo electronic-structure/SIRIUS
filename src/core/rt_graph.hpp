@@ -85,7 +85,19 @@ struct TimeStamp
         , type(stampType)
     {
 #if defined(RT_GRAPH_PRINT_ID)
-        std::cout << std::string(identifier) << std::endl;
+        switch (stampType) {
+            case TimeStampType::Start: {
+                std::cout << "start " << identifier << std::endl;
+                break;
+            }
+            case TimeStampType::Stop: {
+                std::cout << "stop " << identifier << std::endl;
+                break;
+            }
+            case TimeStampType::Empty: {
+                break;
+            }
+        }
 #endif
     }
 

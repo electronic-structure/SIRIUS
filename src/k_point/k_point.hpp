@@ -855,6 +855,7 @@ wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, w
  *
  *  LAPW+lo basis consists of two different sets of functions: LAPW functions \f$ \varphi_{{\bf G+k}} \f$ defined over
  *  entire unit cell:
+ *  \anchor lapw_basis_definition
  *  \f[
  *      \varphi_{{\bf G+k}}({\bf r}) = \left\{ \begin{array}{ll}
  *      \displaystyle \sum_{L} \sum_{\nu=1}^{O_{\ell}^{\alpha}} a_{L\nu}^{\alpha}({\bf G+k})u_{\ell \nu}^{\alpha}(r)

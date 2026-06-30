@@ -399,8 +399,8 @@ Simulation_context::initialize()
         is_magma = false;
     }
 
-    int npr = mpi_grid_dims()[0];
-    int npc = mpi_grid_dims()[1];
+    int const npr = mpi_grid_dims()[0];
+    int const npc = mpi_grid_dims()[1];
 
     /* deduce the default eigen-value solver */
     for (int i : {0, 1}) {
@@ -464,6 +464,8 @@ Simulation_context::initialize()
     } else {
         blacs_grid_ = std::make_unique<la::BLACS_grid>(mpi::Communicator::self(), 1, 1);
     }
+
+    blacs_grid_band_ = std::make_unique<la::BLACS_grid>(comm_band(), npr, npc);
 
     /* setup the cyclic block size */
     if (cyclic_block_size() < 0) {
