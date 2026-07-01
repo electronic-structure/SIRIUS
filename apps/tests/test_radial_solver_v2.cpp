@@ -20,7 +20,7 @@ enu_from_potential(cmd_args const& args__)
     ifs >> dict;
 
     auto x    = dict["x"].get<std::vector<double>>();
-    auto veff = dict["veff"].get<std::vector<double>>();
+    auto veff = dict["spherical_potential"].get<std::vector<double>>();
     auto z    = dict["z"].get<double>();
 
     Atom_type atype(params, 0, "X", species_file);
@@ -55,11 +55,16 @@ enu_from_potential(cmd_args const& args__)
     Atom_symmetry_class atom_class(0, atype);
     atom_class.set_spherical_potential(veff);
 
-    auto ierr = atom_class.find_enu(rel);
+    int ierr{0};
+    if (!args__.exist("skip_enu")) {
+        ierr += atom_class.find_enu(rel);
+    }
 
     atom_class.write_enu(std::cout);
 
     ierr += atom_class.generate_radial_functions(rel, false);
+
+    atom_class.save_radial_functions("radial_functions_" + species_file);
 
     return ierr;
 }
@@ -70,6 +75,7 @@ main(int argn, char** argv)
     cmd_args args(argn, argv,
                   {{"species=", "(string) species file"},
                    {"potential=", "(string) spherical potential JSON"},
+                   {"skip_enu", "skip the search of Enu"},
                    {"rel=", "(string) valence relativity"}});
 
     sirius::initialize(true);

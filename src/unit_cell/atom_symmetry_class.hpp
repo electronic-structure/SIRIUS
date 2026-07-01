@@ -91,11 +91,11 @@ class Atom_symmetry_class
     set_spherical_potential(std::vector<double> const& vs__);
 
     /// Save spherical potential for debugging purposes.
-    inline void
+    void
     save_spherical_potential() const;
 
     /// Save radial functions.
-    inline void
+    void
     save_radial_functions(std::string const& fname__) const;
 
     /// Generate APW and LO radial functions.

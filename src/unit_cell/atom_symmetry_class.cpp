@@ -723,10 +723,10 @@ void
 Atom_symmetry_class::save_spherical_potential() const
 {
     nlohmann::json dict;
-    dict["x"]    = atom_type_.radial_grid().values();
-    dict["veff"] = spherical_potential_;
-    dict["z"]    = atom_type_.zn();
-    dict["rmt"]  = atom_type_.mt_radius();
+    dict["x"]                   = atom_type_.radial_grid().values();
+    dict["z"]                   = atom_type_.zn();
+    dict["rmt"]                 = atom_type_.mt_radius();
+    dict["spherical_potential"] = spherical_potential_;
     write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
 }
 
