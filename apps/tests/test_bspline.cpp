@@ -314,7 +314,7 @@ hydrogen_bspline(cmd_args const& args__)
     BSpline_basis basis(order, knots);
 
     std::vector<int> active_basis;
-    for (int i = 0; i < basis.size() - 1; i++) {
+    for (int i = 1; i < basis.size() - 1; i++) {
         active_basis.push_back(i);
     }
 
