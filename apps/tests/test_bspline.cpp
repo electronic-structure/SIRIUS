@@ -296,9 +296,7 @@ hydrogen_bspline(cmd_args const& args__)
     params.valence_relativity(args__.value<std::string>("rel", "none"));
     params.verbosity(4);
 
-    std::ifstream ifs(pot_file);
-    nlohmann::json dict;
-    ifs >> dict;
+    auto dict = read_json_from_file(pot_file);
 
     auto x    = dict["x"].get<std::vector<double>>();
     auto veff = dict["spherical_potential_el"].get<std::vector<double>>();
@@ -310,11 +308,15 @@ hydrogen_bspline(cmd_args const& args__)
 
     RTE_ASSERT(l >= 0);
 
+    if (z != atype.zn()) {
+        RTE_THROW("wrong nucleus charge");
+    }
+
     auto knots = make_interp_knots(atype.radial_grid(), order);
     BSpline_basis basis(order, knots);
 
     std::vector<int> active_basis;
-    for (int i = 1; i < basis.size() - 1; i++) {
+    for (int i = 0; i < basis.size() - 1; i++) {
         active_basis.push_back(i);
     }
 
@@ -375,6 +377,21 @@ hydrogen_bspline(cmd_args const& args__)
         }
     }
 
+    double r0    = atype.radial_grid().first();
+    double gamma = double(l + 1) / r0 - atype.zn() / double(l + 1);
+
+    for (int ii = 0; ii < n; ii++) {
+        int i = active_basis[ii];
+        double Bi = basis(i, r0);
+
+        for (int jj = 0; jj < n; jj++) {
+            int j = active_basis[jj];
+            double Bj = basis(j, r0);
+
+            H(ii, jj) += 0.5 * gamma * Bi * Bj;
+        }
+    }
+
     std::vector<double> eval(n);
 
     la::dmatrix<double> h(n, n);
@@ -430,8 +447,7 @@ hydrogen_bspline(cmd_args const& args__)
             }
         }
 
-        std::ofstream ofs("bspline_radial_functions.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << jout.dump(4);
+        write_json_to_file(jout, "radial_functions_bspline_" + species_file);
     }
 
     return 0;
