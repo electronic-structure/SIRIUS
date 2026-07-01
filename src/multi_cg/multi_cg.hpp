@@ -112,8 +112,6 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
             P.apply(C1, R1, true);
         }
 
-	//std::cout << "Preconditioner applied" << std::endl;
-
         rhos_old = rhos;
 
         // CG rhos = dot(C, R) -> <R | P | R>
@@ -168,9 +166,6 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
             P.eigvals.copy_to(memory_t::device);
         }
 
-	//std::cout << "Finished check convergence" << std::endl;
-
-
         // In the first iteration we have U == 0, so no need for an axpy.
         if (iter == 0) {
             U.copy(C, num_unconverged);
@@ -193,19 +188,12 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
             }
         }
 
-
-	//std::cout << "Defined U" << std::endl;
-
-
         // C = A * U.
         A.multiply(1.0, U, 0.0, C, num_unconverged);
         // BiCG C1 = A^+ * U1
         if (!is_herm) {
             A.multiply(1.0, U1, 0.0, C1, num_unconverged, true);
-	}
-
-	//std::cout << "Applied A" << std::endl;
-
+        }
 
         // compute the optimal distance for the search direction
         // sigmas = dot(U, C)
@@ -217,10 +205,6 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
             // BiCG sigma = dot(U1,C) = U1 * A * U
             U1.block_dot(C, sigmas, num_unconverged);
         }
-
-
-	//std::cout << "Block dot done" << std::endl;
-
 
         // Update the solution and the residual
         // alpha is the step length
@@ -247,9 +231,6 @@ multi_cg(Matrix& A, Prec& P, StateVec& X, StateVec& B, StateVec& U, StateVec& C,
         if (!is_herm) {
             R1.block_axpy(alphas1, C1, num_unconverged);
         }
-
-//	std::cout << "End of iteration" << std::endl;
-
     }
     struct
     {
@@ -355,7 +336,6 @@ struct Wave_functions_wrap
     inline auto
     deep_copy_conj() const
     {
-	//std::cout << "Entering deep copy conj" << std::endl;
         auto out = this->deep_copy();
         if (sirius::is_host_memory(mem)) {
             #pragma omp parallel for
@@ -367,7 +347,6 @@ struct Wave_functions_wrap
             }
         } else {
 #if defined(SIRIUS_GPU)
-	  //  std::cout << "Entering deep copy conj GPU" << std::endl;
             auto base_ptr = out.x->at(mem, 0, wf::spin_index(0), wf::band_index(0));
             conjugate_gpu_complex_double(base_ptr, out.x->ld(), x->num_wf().get());
 #endif
