@@ -177,7 +177,10 @@ class Hamiltonian_k
   private:
     /// K-point independent part of Hamiltonian.
     Hamiltonian0<T> const& H0_;
+
+    /// K-point for which Hamiltonian is applied.
     K_point<T>& kp_;
+
     /// Hubbard correction.
     /** In general case it is a k-dependent matrix */
     std::shared_ptr<U_operator<T>> u_op_;
@@ -214,6 +217,12 @@ class Hamiltonian_k
     U() const -> U_operator<T> const&
     {
         return *u_op_;
+    }
+
+    K_point<T>&
+    kp() const
+    {
+        return kp_;
     }
 
     /// Apply first-variational LAPW Hamiltonian and overlap matrices.

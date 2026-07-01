@@ -87,7 +87,7 @@ generate_subspace_matrix(Simulation_context& ctx__, int N__, int n__, int num_lo
             #pragma omp parallel for
             for (int i = 0; i < N__ - num_locked__; i++) {
                 for (int j = N__ - num_locked__; j < N__ + n__ - num_locked__; j++) {
-                    mtrx__(j, i) = conj(mtrx__(i, j));
+                    mtrx__(j, i) = sirius::conj(mtrx__(i, j));
                 }
             }
         } else {

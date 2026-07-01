@@ -27,7 +27,7 @@ test_alm_copy()
         #pragma omp parallel
         {
             #pragma omp for schedule(static, 1)
-            for (int i = 0; i < k; i++) {
+            for (size_t i = 0; i < k; i++) {
                 auto ptr_in  = &v1[m * n * i];
                 auto ptr_out = &v2[m * n * i];
                 std::copy(ptr_in, ptr_in + m * n, ptr_out);
@@ -92,8 +92,8 @@ test_alm_copy_v2()
                 auto ptr_in  = alm_all.at(memory_t::host, 0, n * ia);
                 auto ptr_out = alm_blk.at(memory_t::host, 0, n * ia);
 
-                for (size_t j = 0; j < m * n; j++) {
-                    ptr_out[j] = conj(ptr_in[j]);
+                for (int j = 0; j < m * n; j++) {
+                    ptr_out[j] = sirius::conj(ptr_in[j]);
                 }
             }
         }

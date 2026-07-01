@@ -177,33 +177,21 @@ rel_diff(T a, T b)
 }
 
 /// Return complex conjugate of a number. For a real value this is the number itself.
+template <typename T>
 inline auto
-conj(double x__)
+conj(T x__)
 {
     /* std::conj() will return complex for a double value input; this is not what we want */
     return x__;
 }
 
 /// Return complex conjugate of a number.
+template <typename T>
 inline auto
-conj(std::complex<double> x__)
+conj(std::complex<T> x__)
 {
     return std::conj(x__);
 }
-
-template <typename T>
-inline T
-zero_if_not_complex(T x__)
-{
-    return x__;
-};
-
-template <typename T>
-inline T
-zero_if_not_complex(std::complex<T> x__)
-{
-    return 0;
-};
 
 } // namespace sirius
 
