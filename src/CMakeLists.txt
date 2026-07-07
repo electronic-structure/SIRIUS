@@ -107,7 +107,7 @@ if(SIRIUS_USE_CUDA)
    set_target_properties(sirius_cxx PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 endif()
 
-target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
+target_link_libraries(sirius_cxx PUBLIC
   MPI::MPI_CXX
   sirius::libxc
   sirius::libspg

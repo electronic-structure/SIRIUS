@@ -133,7 +133,6 @@ endif()
 find_package(MPI REQUIRED)
 #set(GSL_CBLAS_LIBRARY ${BLAS_LIBRARIES} CACHE STRING "" FORCE)
 find_package(GSL REQUIRED)
-set_target_properties(GSL::gsl PROPERTIES INTERFACE_LINK_LIBRARIES "")
 find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
@@ -174,43 +173,56 @@ endif()
 
 set(SIRIUS_LINALG_LIB "")
 if(SIRIUS_USE_MKL)
-  set(MKL_INTERFACE "lp64" CACHE STRING "")
-  set(MKL_THREADING "sequential" CACHE STRING "")
-  execute_process(COMMAND ${MPI_CXX_COMPILER} --showme:version
-                  OUTPUT_VARIABLE MPI_VER_OUT
-                  ERROR_VARIABLE MPI_VER_ERR)
-  if(MPI_VER_OUT MATCHES "Open MPI" OR MPI_VER_ERR MATCHES "Open MPI")
-    set(MKL_MPI "openmpi")
-  else()
-    set(MKL_MPI "intelmpi")
-  endif()
-  find_package(MKL CONFIG REQUIRED)
-  set(SIRIUS_LINALG_LIB "MKL::MKL")
+  set(MKL_INTERFACE "lp64" CACHE STRING "oneMKL interface: lp64 or ilp64")
+  set(MKL_THREADING "sequential" CACHE STRING "oneMKL threading layer")
+  set(MKL_LINK "dynamic" CACHE STRING "oneMKL linkage: static, dynamic, or sdl")
+  set_property(CACHE MKL_LINK PROPERTY STRINGS static dynamic sdl)
+
   if(SIRIUS_USE_SCALAPACK)
-    if(TARGET MKL::mkl_scalapack_lp64)
-      list(APPEND SIRIUS_LINALG_LIB MKL::mkl_scalapack_lp64)
-    else()
-      find_library(_MKL_SCALAPACK mkl_scalapack_lp64
-        HINTS $ENV{MKLROOT}/lib $ENV{MKLROOT}/lib/intel64)
-      list(APPEND SIRIUS_LINALG_LIB ${_MKL_SCALAPACK})
+    # Request the complete cluster target from MKLConfig.cmake.  It owns the
+    # ScaLAPACK -> BLACS -> MKL link order and the --start/--end-group pair
+    # needed for static oneMKL on ELF platforms.
+    set(ENABLE_SCALAPACK ON)
+
+    # Do not silently map every non-Open-MPI implementation to Intel MPI.
+    # MKLConfig.cmake accepts intelmpi, openmpi, mpich, and mpich2.
+    if(NOT DEFINED MKL_MPI)
+      if(MPI_CXX_LIBRARY_VERSION_STRING MATCHES "Open MPI")
+        set(MKL_MPI "openmpi")
+      elseif(MPI_CXX_LIBRARY_VERSION_STRING MATCHES "MPICH")
+        set(MKL_MPI "mpich")
+      elseif(MPI_CXX_LIBRARY_VERSION_STRING MATCHES "Intel.*MPI")
+        set(MKL_MPI "intelmpi")
+      else()
+        message(FATAL_ERROR
+          "Cannot infer MKL_MPI from MPI_CXX_LIBRARY_VERSION_STRING='${MPI_CXX_LIBRARY_VERSION_STRING}'. "
+          "Set -DMKL_MPI={intelmpi,openmpi,mpich,mpich2} explicitly.")
+      endif()
     endif()
-    if(TARGET MKL::mkl_blacs_${MKL_MPI}_lp64)
-      list(APPEND SIRIUS_LINALG_LIB MKL::mkl_blacs_${MKL_MPI}_lp64)
-    else()
-      find_library(_MKL_BLACS mkl_blacs_${MKL_MPI}_lp64
-        HINTS $ENV{MKLROOT}/lib $ENV{MKLROOT}/lib/intel64)
-      list(APPEND SIRIUS_LINALG_LIB ${_MKL_BLACS})
+  endif()
+
+  find_package(MKL CONFIG REQUIRED)
+
+  if(SIRIUS_USE_SCALAPACK)
+    if(NOT TARGET MKL::MKL_SCALAPACK)
+      message(FATAL_ERROR
+        "oneMKL did not provide MKL::MKL_SCALAPACK.  Ensure ENABLE_SCALAPACK=ON, "
+        "MKL_LINK is not 'sdl', and MKL_MPI names a supported MPI family.")
     endif()
+    set(SIRIUS_LINALG_LIB MKL::MKL_SCALAPACK)
+  else()
+    set(SIRIUS_LINALG_LIB MKL::MKL)
   endif()
 elseif(SIRIUS_USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
   set(SIRIUS_LINALG_LIB "${SIRIUS_CRAY_LIBSCI_LIBRARIES}")
 else()
   find_package(LAPACK REQUIRED)
-  set(SIRIUS_LINALG_LIB "${LAPACK_LIBRARIES}")
   if(SIRIUS_USE_SCALAPACK)
     find_package(SCALAPACK REQUIRED)
-    list(APPEND SIRIUS_LINALG_LIB sirius::scalapack)
+    set(SIRIUS_LINALG_LIB sirius::scalapack)
+  else()
+    set(SIRIUS_LINALG_LIB LAPACK::LAPACK)
   endif()
 endif()
 

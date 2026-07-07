@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.23)
 
+include(CMakeFindDependencyMacro)
+
 if(NOT TARGET sirius::sirius_cxx)
   # Find bundled modules first
   set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules"
@@ -33,9 +35,6 @@ if(NOT TARGET sirius::sirius_cxx)
 
   find_dependency(MPI ${mode} COMPONENTS CXX)
   find_dependency(GSL ${mode})
-  if(TARGET GSL::gsl)
-    set_target_properties(GSL::gsl PROPERTIES INTERFACE_LINK_LIBRARIES "")
-  endif()
   find_dependency(fmt ${mode})
   find_dependency(LibXC 3.0.0 ${mode})
   find_dependency(LibSPG ${mode})
@@ -66,14 +65,18 @@ if(NOT TARGET sirius::sirius_cxx)
   if(SIRIUS_USE_MKL)
     set(MKL_INTERFACE "@MKL_INTERFACE@")
     set(MKL_THREADING "@MKL_THREADING@")
+    set(MKL_LINK "@MKL_LINK@")
     set(MKL_MPI "@MKL_MPI@")
-    find_dependency(MKL CONFIG)
+    if(SIRIUS_USE_SCALAPACK)
+      set(ENABLE_SCALAPACK ON)
+    endif()
+    find_dependency(MKL CONFIG ${mode})
   elseif(SIRIUS_USE_CRAY_LIBSCI)
     find_dependency(CRAY_LIBSCI ${mode})
   else()
     find_dependency(LAPACK ${mode})
     if(SIRIUS_USE_SCALAPACK)
-      find_dependency(SCALAPACK ${mode}) # just sets scalapack_DIR
+      find_dependency(SCALAPACK ${mode})
     endif()
   endif()
 
