@@ -3,12 +3,23 @@
 
 using namespace sirius;
 
+template <int order>
+/// B-spline basis of fixed order on a given knot sequence.
+/** The order of a B-spline is one plus its polynomial degree. Basis function \f$ B_{i,k}(x) \f$ of order
+ *  \f$ k \f$ has support on \f$ [t_i, t_{i+k}] \f$, where \f$ t_i \f$ are knots. The implementation uses the
+ *  Cox-de Boor recursion formula and assumes a nondecreasing knot sequence. */
 class BSpline_basis
 {
   private:
-    int order_;
+    /// Knot sequence.
     std::vector<double> knots_;
 
+    /// Evaluate a B-spline basis function of a given recursive order.
+    /** \param [in] i  Index of the B-spline.
+     *  \param [in] k  Recursive order.
+     *  \param [in] x  Point at which the B-spline is evaluated.
+     *  \return Value of \f$ B_{i,k}(x) \f$.
+     */
     double
     value(int i__, int k__, double x__) const
     {
@@ -31,6 +42,12 @@ class BSpline_basis
         return v;
     }
 
+    /// Evaluate the first derivative of a B-spline basis function.
+    /** \param [in] i  Index of the B-spline.
+     *  \param [in] k  Recursive order.
+     *  \param [in] x  Point at which the derivative is evaluated.
+     *  \return Value of \f$ dB_{i,k}(x) / dx \f$.
+     */
     double
     deriv(int i__, int k__, double x__) const
     {
@@ -54,24 +71,30 @@ class BSpline_basis
     }
 
   public:
-    BSpline_basis(int order__, std::vector<double> knots__)
-        : order_(order__)
-        , knots_(std::move(knots__))
+    /// Constructor.
+    /** \param [in] knots  Knot sequence defining the B-spline basis. */
+    BSpline_basis(std::vector<double> knots__)
+        : knots_(std::move(knots__))
     {
     }
 
-    int
-    order() const
-    {
-        return order_;
-    }
+    /// Compile-time order of the B-spline basis.
+    static constexpr int order_value{order};
 
+    /// Number of basis functions.
     int
     size() const
     {
-        return static_cast<int>(knots_.size()) - order_;
+        return static_cast<int>(knots_.size()) - order;
     }
 
+    /// Evaluate a B-spline basis function.
+    /** \param [in] i  Index of the B-spline.
+     *  \param [in] x  Point at which the B-spline is evaluated.
+     *  \return Value of \f$ B_{i,k}(x) \f$.
+     *
+     *  The last point of the domain is treated explicitly because the recursive definition uses half-open knot
+     *  intervals. */
     double
     operator()(int i__, double x__) const
     {
@@ -79,24 +102,33 @@ class BSpline_basis
             return (i__ == size() - 1) ? 1.0 : 0.0;
         }
 
-        return value(i__, order_, x__);
+        return value(i__, order, x__);
     }
 
+    /// Evaluate the first derivative of a B-spline basis function.
+    /** \param [in] i  Index of the B-spline.
+     *  \param [in] x  Point at which the derivative is evaluated.
+     *  \return Value of \f$ dB_{i,k}(x) / dx \f$.
+     *
+     *  At the right boundary the derivative is evaluated as the left-sided limit. */
     double
     deriv(int i__, double x__) const
     {
         if (x__ == knots_.back()) {
             x__ = std::nextafter(x__, knots_.front());
         }
-        return deriv(i__, order_, x__);
+        return deriv(i__, order, x__);
     }
 
+    /// Number of knots.
     int
     num_knots() const
     {
         return static_cast<int>(knots_.size());
     }
 
+    /// Return a knot value.
+    /** \param [in] i  Index of the knot. */
     double
     knot(int i__) const
     {
@@ -105,26 +137,11 @@ class BSpline_basis
 };
 
 static std::vector<double>
-make_interp_knots(Radial_grid<double> const& grid__, int order__, int step__ = 1)
+make_interp_knots(Radial_grid<double> const& grid__, int order__, int num_points__)
 {
-    int num_points = grid__.num_points();
-    RTE_ASSERT(num_points >= order__);
-    RTE_ASSERT(step__ >= 1);
+    RTE_ASSERT(num_points__ >= order__);
 
-    int degree = order__ - 1;
-
-    std::vector<double> inner_knots;
-    for (int j = 0; j < num_points - order__; j += step__) {
-        double x{0};
-        for (int m = 1; m <= degree; m++) {
-            x += grid__.x(j + m);
-        }
-        inner_knots.push_back(x / degree);
-    }
-
-    int num_basis = static_cast<int>(inner_knots.size()) + order__;
-
-    std::vector<double> knots(num_basis + order__);
+    std::vector<double> knots(num_points__ + order__);
 
     double x0 = grid__.first();
     double x1 = grid__.last();
@@ -133,11 +150,13 @@ make_interp_knots(Radial_grid<double> const& grid__, int order__, int step__ = 1
         knots[i] = x0;
     }
 
-    for (int i = 0; i < static_cast<int>(inner_knots.size()); i++) {
-        knots[order__ + i] = inner_knots[i];
+    int num_inner = num_points__ - order__;
+    Radial_grid_lin<double> inner_grid(num_inner + 2, x0, x1);
+    for (int i = 0; i < num_inner; i++) {
+        knots[order__ + i] = inner_grid.x(i + 1);
     }
 
-    for (int i = num_basis; i < num_basis + order__; i++) {
+    for (int i = num_points__; i < num_points__ + order__; i++) {
         knots[i] = x1;
     }
 
@@ -281,11 +300,11 @@ gauss_legendre_rule(int n__, std::vector<double>& x__, std::vector<double>& w__)
 //    return max_err < 1e-8 ? 0 : 1;
 //}
 
+template <int order>
 static int
-hydrogen_bspline(cmd_args const& args__)
+hydrogen_bspline_impl(cmd_args const& args__)
 {
-    int num_points = args__.value<int>("num_points", 200);
-    int order      = args__.value<int>("order", 7);
+    int num_points = args__.value<int>("num_points", 100);
     int l          = args__.value<int>("l", 0);
     int nq         = args__.value<int>("nq", 10);
     auto species_file = args__.value<std::string>("species");
@@ -312,8 +331,8 @@ hydrogen_bspline(cmd_args const& args__)
         RTE_THROW("wrong nucleus charge");
     }
 
-    auto knots = make_interp_knots(atype.radial_grid(), order);
-    BSpline_basis basis(order, knots);
+    auto knots = make_interp_knots(atype.radial_grid(), order, num_points);
+    BSpline_basis<order> basis(knots);
 
     std::vector<int> active_basis;
     for (int i = 0; i < basis.size() - 1; i++) {
@@ -322,10 +341,19 @@ hydrogen_bspline(cmd_args const& args__)
 
     int n = static_cast<int>(active_basis.size());
 
-    mdarray<double, 2> H({n, n}, "radial_hamiltonian");
-    mdarray<double, 2> S({n, n}, "radial_overlap");
-    H.zero();
-    S.zero();
+    std::vector<double> eval(n);
+    la::dmatrix<double> h(n, n);
+    la::dmatrix<double> s(n, n);
+    la::dmatrix<double> evec(n, n);
+
+    h.zero();
+    s.zero();
+
+
+    //mdarray<double, 2> H({n, n}, "radial_hamiltonian");
+    //mdarray<double, 2> S({n, n}, "radial_overlap");
+    //H.zero();
+    //S.zero();
 
     std::vector<double> xg;
     std::vector<double> wg;
@@ -370,8 +398,8 @@ hydrogen_bspline(cmd_args const& args__)
                         continue;
                     }
 
-                    S(ii, jj) += w * Bi * Bj;
-                    H(ii, jj) += w * (0.5 * dBi * dBj + Bi * veff * Bj);
+                    s(ii, jj) += w * Bi * Bj;
+                    h(ii, jj) += w * (0.5 * dBi * dBj + Bi * veff * Bj);
                 }
             }
         }
@@ -388,20 +416,7 @@ hydrogen_bspline(cmd_args const& args__)
             int j = active_basis[jj];
             double Bj = basis(j, r0);
 
-            H(ii, jj) += 0.5 * gamma * Bi * Bj;
-        }
-    }
-
-    std::vector<double> eval(n);
-
-    la::dmatrix<double> h(n, n);
-    la::dmatrix<double> s(n, n);
-    la::dmatrix<double> evec(n, n);
-
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            h.set(i, j, H(i, j));
-            s.set(i, j, S(i, j));
+            h(ii, jj) += 0.5 * gamma * Bi * Bj;
         }
     }
 
@@ -453,12 +468,37 @@ hydrogen_bspline(cmd_args const& args__)
     return 0;
 }
 
+static int
+hydrogen_bspline(cmd_args const& args__)
+{
+    int order = args__.value<int>("order", 7);
+
+    switch (order) {
+        case 4: {
+            return hydrogen_bspline_impl<4>(args__);
+        }
+        case 5: {
+            return hydrogen_bspline_impl<5>(args__);
+        }
+        case 6: {
+            return hydrogen_bspline_impl<6>(args__);
+        }
+        case 7: {
+            return hydrogen_bspline_impl<7>(args__);
+        }
+        default: {
+            RTE_THROW("unsupported B-spline order");
+        }
+    }
+    return -1; // make compiler happpy
+}
+
 int
 main(int argn, char** argv)
 {
     cmd_args args(argn, argv, {{"species=", "(string) species file"},
                                {"potential=", "(string) spherical potential JSON"},
-                               {"num_points=", "{int} number of radial grid points"},
+                               {"num_points=", "{int} number of interpolating grid points"},
                                {"order=", "{int} B-spline order"},
                                {"l=", "{int} angular momentum"},
                                {"nq=", "{int} number of Gauss-Legendre points per knot interval"}});
