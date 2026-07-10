@@ -15,13 +15,18 @@
 
 namespace sirius {
 
-void
-Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
+enu_search_t
+find_enu(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
+         std::vector<double> const& v__, enu_search_t const& enu__)
 {
-    int np = num_points();
+    Radial_solver solver(zn__, v__, radial_grid__);
 
-    Spline<double> chi_p(radial_grid());
-    Spline<double> chi_q(radial_grid());
+    enu_search_t enu_out = enu__;
+
+    int np = solver.num_points();
+
+    Spline<double> chi_p(radial_grid__);
+    Spline<double> chi_q(radial_grid__);
 
     std::vector<double> p(np);
     std::vector<double> q(np);
@@ -41,14 +46,14 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
         double denu{1e-5};
         double e1;
         sinfo << "find_enu(): find top enery" << std::endl
-              << "  n         : " << n_ << ", l : " << l_ << std::endl
+              << "  n         : " << n__ << ", l : " << l__ << std::endl
               << "  enu_start : " << enu__.etop << std::endl;
         try {
             /* 1st pass: estimate upper and lower boundaries of the etop */
-            e1 = integrate_forward_until(rel__, enu__.etop, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                         [&s, &sp, &denu, this](int iter, int nn, double& enu) {
+            e1 = solver.integrate_forward_until(rel__, enu__.etop, l__, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                         [&s, &sp, &denu, n__, l__](int iter, int nn, double& enu) {
                                              sp = s;
-                                             s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
+                                             s  = (nn > (n__ - l__ - 1)) ? -1 : 1;
                                              if (s != sp && iter > 0) {
                                                  return true;
                                              }
@@ -64,7 +69,7 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
         /* only with this condition we need to refine top energy by bisection;
          * otherwise etop stays untouched */
         if (std::abs(e1 - enu__.etop_first_pass) > enu_tol) {
-            enu__.etop_first_pass = e1;
+            enu_out.etop_first_pass = e1;
 
             double e2 = e1 - sp * denu;
 
@@ -79,9 +84,9 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
 
             try {
                 /* 2nd pass: refine by bisection */
-                enu__.etop = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                                [&e1, &e2, enu_tol, this](int iter, int nn, double& enu) {
-                                                    if (nn > (n_ - l_ - 1)) {
+                enu_out.etop = solver.integrate_forward_until(rel__, (e1 + e2) / 2, l__, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                                [&e1, &e2, enu_tol, n__, l__](int iter, int nn, double& enu) {
+                                                    if (nn > (n__ - l__ - 1)) {
                                                         e2 = enu;
                                                     } else {
                                                         e1 = enu;
@@ -103,13 +108,13 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
         RTE_THROW(sinfo);
     }
 
-    auto surface_deriv = [this, &dpdr, &p]() {
+    auto surface_deriv = [&dpdr, &p, &radial_grid__]() {
         if (true) {
             /* return  p'(R) */
             return dpdr.back();
         } else {
             /* return R*u'(R) */
-            return dpdr.back() - p.back() / radial_grid_.last();
+            return dpdr.back() - p.back() / radial_grid__.last();
         }
     };
 
@@ -119,12 +124,12 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
     double denu{1e-5};
     for (auto de: {1e-4, 1e-3, 1e-2, 1e-1, 1.0}) {
         int num_nodes;
-        integrate_forward_until(rel__, enu__.etop - de, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+        solver.integrate_forward_until(rel__, enu__.etop - de, l__, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
                          [&num_nodes](int iter, int nn, double& enu) {
                                 num_nodes = nn;
                                 return true;
                             });
-        if (surface_deriv() * sd < 0 || num_nodes != (n_ - l_ - 1)) {
+        if (surface_deriv() * sd < 0 || num_nodes != (n__ - l__ - 1)) {
             break;
         }
         denu = de;
@@ -136,8 +141,8 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
     try {
         sinfo << "find_enu(): find bottom energy" << std::endl << "  enu_start : " << enu__.etop << std::endl;
         auto sd = surface_deriv();
-        auto e1 = integrate_forward_until(rel__, enu__.etop, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                            [this, &denu, sd, &surface_deriv, &p](int iter, int nn, double& enu) {
+        auto e1 = solver.integrate_forward_until(rel__, enu__.etop, l__, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                            [&denu, sd, &surface_deriv, &p](int iter, int nn, double& enu) {
                                                 if (surface_deriv() * sd < 0) {
                                                     return true;
                                                 }
@@ -152,12 +157,12 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
         auto e2 = e1 + denu;
         /* simple estimation of the bottom energy */
         if (enu__.auto_enu == 3) {
-            enu__.ebot =  (e1 + e2) * 0.5;
-            enu__.enu = (enu__.ebot + enu__.etop) / 2.0;
+            enu_out.ebot =  (e1 + e2) * 0.5;
+            enu_out.enu = (enu_out.ebot + enu_out.etop) / 2.0;
         } else {
             sinfo << "find_enu(): refine bottom energy" << std::endl << "  enu_start : " << (e1 + e2) / 2 << std::endl;
-            enu__.ebot = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                            [this, &e1, &e2, sd, &surface_deriv](int iter, int nn, double& enu) {
+            enu_out.ebot = solver.integrate_forward_until(rel__, (e1 + e2) / 2, l__, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
+                                            [&e1, &e2, sd, &surface_deriv](int iter, int nn, double& enu) {
                                                 if (surface_deriv() * sd > 0) {
                                                     e2 = enu;
                                                 } else {
@@ -168,11 +173,11 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
                                             });
             switch (enu__.auto_enu) {
                 case 1: {
-                    enu__.enu = (enu__.ebot + enu__.etop) / 2.0;
+                    enu_out.enu = (enu_out.ebot + enu_out.etop) / 2.0;
                     break;
                 }
                 case 2: {
-                    enu__.enu = enu__.ebot;
+                    enu_out.enu = enu_out.ebot;
                     break;
                 }
                 default: {
@@ -183,6 +188,8 @@ Enu_finder::find_enu(relativity_t rel__, enu_search_t& enu__)
     } catch (std::exception const& e) {
         sinfo << e.what() << std::endl << "denu : " << denu << std::endl;
     }
+
+    return enu_out;
 }
 
 }; // namespace sirius

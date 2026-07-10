@@ -687,63 +687,6 @@ class Radial_solver
         return nn;
     }
 
-    inline double
-    integrate_forward_until(relativity_t rel__, double enu__, int l__, int k__, Spline<double>& chi_p__,
-                            Spline<double>& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
-                            std::vector<double>& q__, std::vector<double>& dqdr__, bool bound_state__,
-                            std::function<bool(int, int, double&)> condition__)
-    {
-
-        auto integrate_forward = [&](double enu__) -> int {
-            int nn{0};
-            switch (rel__) {
-                case relativity_t::none: {
-                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                   dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, k__, chi_p__, chi_q__, p__,
-                                                                              dpdr__, q__, dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::zora: {
-                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                   dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::iora: {
-                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                   dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::dirac: {
-                    nn = integrate_forward_gsl<relativity_t::dirac>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                    dqdr__, bound_state__);
-                    break;
-                }
-                default: {
-                    RTE_THROW("unsupported relativity type");
-                }
-            }
-            return nn;
-        };
-
-        for (int i = 0; i < 1000; i++) {
-            int nn = integrate_forward(enu__);
-            if (condition__(i, nn, enu__)) {
-                return enu__;
-            }
-        }
-        std::stringstream s;
-        s << "integrate_forward_until(): condition is not achieved in 1000 iterations" << std::endl
-          << "  curent value of enu: " << enu__ << std::endl
-          << "  l, k : " << l__ << " " << k__ << std::endl
-          << "  zn : " << zn_;
-        RTE_THROW(s);
-        return 0.0;
-    }
-
   public:
     Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid<double> const& radial_grid__,
                   double epsabs__ = 1e-3, double epsrel__ = 1e-3)
@@ -940,6 +883,64 @@ class Radial_solver
 
         return radial_solver_result_t{nn, p.back(), rdudr, uderiv};
     }
+
+    inline double
+    integrate_forward_until(relativity_t rel__, double enu__, int l__, int k__, Spline<double>& chi_p__,
+                            Spline<double>& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
+                            std::vector<double>& q__, std::vector<double>& dqdr__, bool bound_state__,
+                            std::function<bool(int, int, double&)> condition__)
+    {
+
+        auto integrate_forward = [&](double enu__) -> int {
+            int nn{0};
+            switch (rel__) {
+                case relativity_t::none: {
+                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::koelling_harmon: {
+                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, k__, chi_p__, chi_q__, p__,
+                                                                              dpdr__, q__, dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::zora: {
+                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::iora: {
+                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::dirac: {
+                    nn = integrate_forward_gsl<relativity_t::dirac>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                    dqdr__, bound_state__);
+                    break;
+                }
+                default: {
+                    RTE_THROW("unsupported relativity type");
+                }
+            }
+            return nn;
+        };
+
+        for (int i = 0; i < 1000; i++) {
+            int nn = integrate_forward(enu__);
+            if (condition__(i, nn, enu__)) {
+                return enu__;
+            }
+        }
+        std::stringstream s;
+        s << "integrate_forward_until(): condition is not achieved in 1000 iterations" << std::endl
+          << "  curent value of enu: " << enu__ << std::endl
+          << "  l, k : " << l__ << " " << k__ << std::endl
+          << "  zn : " << zn_;
+        RTE_THROW(s);
+        return 0.0;
+    }
+
 
     inline int
     num_points() const
@@ -1190,30 +1191,8 @@ struct enu_search_t
     double etop_first_pass{0};
 };
 
-class Enu_finder : public Radial_solver
-{
-  private:
-    int n_;
-
-    int l_;
-
-    void
-    find_enu(relativity_t rel__, enu_search_t& enu__);
-
-  public:
-    /// Constructor
-    Enu_finder(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
-               std::vector<double> const& v__, enu_search_t& enu__)
-        : Radial_solver(zn__, v__, radial_grid__)
-        , n_(n__)
-        , l_(l__)
-    {
-        if (l_ >= n_) {
-            RTE_THROW("wrong orbital quantum number");
-        }
-        find_enu(rel__, enu__);
-    }
-};
+enu_search_t find_enu(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
+                std::vector<double> const& v__, enu_search_t const& enu__);
 
 }; // namespace sirius
 

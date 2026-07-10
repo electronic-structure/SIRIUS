@@ -30,14 +30,13 @@ test_enu(cmd_args const& args__)
 
     enu_search_t enu{-0.1, -0.1, -0.1, auto_enu};
 
-    Enu_finder e(rel, zn, n, l, rgrid, v, enu);
-    auto enu_ref = enu.enu;
+    auto enu_ref = find_enu(rel, zn, n, l, rgrid, v, enu).enu;
 
     #pragma omp parallel for
     for (int i = 0; i < 100; i++) {
         enu_search_t enu1{-0.1, -0.1, -0.1, auto_enu};
-        Enu_finder(rel, zn, n, l, rgrid, v, enu1);
-        if (enu1.enu != enu_ref) {
+        auto result = find_enu(rel, zn, n, l, rgrid, v, enu1);
+        if (result.enu != enu_ref) {
             std::cout << "wrong enu : " << enu1.enu << " " << enu_ref << std::endl;
         }
     }
@@ -61,11 +60,11 @@ test_enu(cmd_args const& args__)
     fclose(fout);
 
     enu_search_t enu2{-0.1, -0.1, -0.1, auto_enu};
-    Enu_finder(rel, zn, n, l, rgrid, v, enu2);
+    auto e2 = find_enu(rel, zn, n, l, rgrid, v, enu2).enu;
     enu_search_t enu3{enu2.enu, enu2.enu, enu2.enu, auto_enu};
-    Enu_finder(rel, zn, n, l, rgrid, v, enu3);
+    auto e3 = find_enu(rel, zn, n, l, rgrid, v, enu3).enu;
 
-    std::cout << "enu2: " << enu2.enu << ", enu3: " << enu3.enu << ", diff: " << std::abs(enu2.enu - enu3.enu) << std::endl;
+    std::cout << "enu2: " << e2 << ", enu3: " << e3 << ", diff: " << std::abs(e2 - e3) << std::endl;
 
     return 0;
 }
