@@ -1,3 +1,7 @@
+if(CMAKE_VERSION VERSION_LESS "3.25")
+  message(FATAL_ERROR "SIRIUS requires CMake 3.25 or newer.")
+endif()
+
 include(CMakeFindDependencyMacro)
 
 if(NOT TARGET sirius::sirius_cxx)
