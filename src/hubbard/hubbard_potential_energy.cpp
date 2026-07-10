@@ -215,7 +215,7 @@ calculate_energy_collinear_nonlocal(Simulation_context const& ctx__, const int i
     for (int is = 0; is < ctx__.num_spins(); is++) {
         for (int m1 = 0; m1 < 2 * jl + 1; m1++) {
             for (int m2 = 0; m2 < 2 * il + 1; m2++) {
-                hubbard_energy += nl.V() * std::real(om__(m2, m1, is) * conj(om__(m2, m1, is)));
+                hubbard_energy += nl.V() * std::real(om__(m2, m1, is) * sirius::conj(om__(m2, m1, is)));
             }
         }
     }

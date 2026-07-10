@@ -77,7 +77,7 @@ test_rot_ylm_impl(cmd_args const& args)
             for (int l = 0; l <= lmax; l++) {
                 for (int i = 0; i < 2 * l + 1; i++) {
                     for (int j = 0; j < 2 * l + 1; j++) {
-                        ylm1(l * l + i) += conj(ylm_rot_mtrx[l](i, j)) * ylm(l * l + j);
+                        ylm1(l * l + i) += sirius::conj(ylm_rot_mtrx[l](i, j)) * ylm(l * l + j);
                     }
                 }
             }

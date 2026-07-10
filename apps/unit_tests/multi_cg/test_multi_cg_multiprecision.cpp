@@ -102,6 +102,19 @@ struct BlockVector
             }
         }
     }
+
+    inline auto
+    deep_copy() const
+    {
+        return *this;
+    }
+
+    inline auto
+    deep_copy_conj() const
+    {
+        RTE_THROW("implement this");
+        return *this;
+    }
 };
 
 // This is a linear but special operator A(X)
@@ -129,8 +142,14 @@ struct PosDefMatrixShifted
     {
     }
 
+    inline bool
+    is_hermitian() const
+    {
+        return true;
+    }
+
     void
-    multiply(T alpha, BlockVector<T> const& u, T beta, BlockVector<T>& v, size_t num)
+    multiply(T alpha, BlockVector<T> const& u, T beta, BlockVector<T>& v, size_t num, bool adjoint = false)
     {
         v.vec.leftCols(num) = alpha * A * u.vec.leftCols(num) +
                               alpha * u.vec.leftCols(num) * shifts.head(num).asDiagonal() + beta * v.vec.leftCols(num);
@@ -154,7 +173,7 @@ struct IdentityPreconditioner
     mdarray<double, 1> eigvals;
     template <typename T>
     void
-    apply(BlockVector<T>& C, BlockVector<T> const& B)
+    apply(BlockVector<T>& C, BlockVector<T> const& B, bool adjoint = false)
     {
         C = B;
     }

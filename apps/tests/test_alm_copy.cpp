@@ -93,7 +93,7 @@ test_alm_copy_v2()
                 auto ptr_out = alm_blk.at(memory_t::host, 0, n * ia);
 
                 for (int j = 0; j < m * n; j++) {
-                    ptr_out[j] = conj(ptr_in[j]);
+                    ptr_out[j] = sirius::conj(ptr_in[j]);
                 }
             }
         }

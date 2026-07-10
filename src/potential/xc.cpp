@@ -346,7 +346,9 @@ Potential::xc_rg_magnetic(Density const& density__, bool use_lapl__, const bool 
     mdarray<double, 1> exc({num_points}, mdarray_label("exc_tmp"));
     mdarray<double, 1> vxc_up({num_points}, mdarray_label("vxc_up_tmp"));
     mdarray<double, 1> vxc_dn({num_points}, mdarray_label("vxc_dn_dmp"));
+#if defined(SIRIUS_USE_VDWXC)
     std::array<double, 9> stress_kernel;
+#endif
 
     /* loop over XC functionals */
     for (auto& ixc : xc_func_) {

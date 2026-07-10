@@ -833,18 +833,15 @@ wave_function_factory(Simulation_context const& ctx__, K_point<T> const& kp__, w
                       wf::num_mag_dims num_md__, bool mt_part__)
 {
     using wf_t = wf::Wave_functions<T>;
-    std::unique_ptr<wf_t> wf{nullptr};
     if (mt_part__) {
         std::vector<int> num_mt_coeffs(ctx__.unit_cell().num_atoms());
         for (int ia = 0; ia < ctx__.unit_cell().num_atoms(); ia++) {
             num_mt_coeffs[ia] = ctx__.unit_cell().atom(ia).mt_lo_basis_size();
         }
-        wf = std::make_unique<wf_t>(kp__.gkvec_sptr(), num_mt_coeffs, num_md__, num_wf__, ctx__.host_memory_t());
+        return std::make_shared<wf_t>(kp__.gkvec_sptr(), num_mt_coeffs, num_md__, num_wf__, ctx__.host_memory_t());
     } else {
-        wf = std::make_unique<wf_t>(kp__.gkvec_sptr(), num_md__, num_wf__, ctx__.host_memory_t());
+        return std::make_shared<wf_t>(kp__.gkvec_sptr(), num_md__, num_wf__, ctx__.host_memory_t());
     }
-
-    return wf;
 }
 
 } // namespace sirius

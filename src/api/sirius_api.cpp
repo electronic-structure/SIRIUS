@@ -6095,6 +6095,10 @@ sirius_linear_solver:
       type: double
       attr: in, optional
       doc: Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+    omega:
+      type: complex
+      attr: in, optional
+      doc: Complex frequency
     niter:
       type: int
       attr: out, optional
@@ -6110,7 +6114,7 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
                      double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
-                     double const* tol__, int* niter__, int* error_code__)
+                     double const* tol__, std::complex<double> const* omega__, int* niter__, int* error_code__)
 {
     using namespace sirius;
     PROFILE("api::sirius::linear_solver");
@@ -6174,8 +6178,6 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                                                                       wf::num_mag_dims(0), false);
                 auto dvpsi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
                                                                       wf::num_mag_dims(0), false);
-                auto tmp_wf   = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
-                                                                      wf::num_mag_dims(0), false);
 
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                     for (int i = 0; i < nbnd_occ_kq; i++) {
@@ -6184,6 +6186,8 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                         }
                     }
                 }
+
+                // TODO: comment where nbnd_occ_k and nbnd_occ_kq are used and how
 
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
                     for (int i = 0; i < nbnd_occ_k; i++) {
@@ -6196,14 +6200,14 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                     }
                 }
 
-                /* check residuals H|psi> - e * S |psi> */
-                if (sctx.cfg().control().verification() >= 1) {
-                    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-                    kp.initialize();
-                    auto Hk = H0(kp);
-                    // sirius::check_wave_functions<double, std::complex<double>>(
-                    //         Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
-                }
+                ///* check residuals H|psi> - e * S |psi> */
+                //if (sctx.cfg().control().verification() >= 1) {
+                //    sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
+                //    kp.initialize();
+                //    auto Hk = H0(kp);
+                //    // sirius::check_wave_functions<double, std::complex<double>>(
+                //    //         Hk, *psi_wf, sr, wf::band_range(0, nbnd_occ_kq), eigvals_vec.data());
+                //}
 
                 /* setup auxiliary state vectors for CG */
                 auto U = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
@@ -6211,35 +6215,28 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                 auto C = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k), wf::num_mag_dims(0),
                                                                false);
 
-                auto Hphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
-                                                                     wf::num_mag_dims(0), false);
-                auto Sphi_wf = sirius::wave_function_factory<double>(sctx, kp, wf::num_bands(nbnd_occ_k),
-                                                                     wf::num_mag_dims(0), false);
-
                 auto mem = sctx.processing_unit_memory_t();
 
                 std::vector<wf::device_memory_guard> mg;
 
                 mg.emplace_back(psi_wf->memory_guard(mem, wf::copy_to::device));
+                /* this is X in LR notation: it is copied back to host at the end */
                 mg.emplace_back(dpsi_wf->memory_guard(mem, wf::copy_to::device | wf::copy_to::host));
                 mg.emplace_back(dvpsi_wf->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(tmp_wf->memory_guard(mem, wf::copy_to::device));
 
-                mg.emplace_back(U->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(C->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(Hphi_wf->memory_guard(mem, wf::copy_to::device));
-                mg.emplace_back(Sphi_wf->memory_guard(mem, wf::copy_to::device));
+                mg.emplace_back(U->memory_guard(mem));
+                mg.emplace_back(C->memory_guard(mem));
 
-                sirius::lr::Linear_response_operator linear_operator(const_cast<sirius::Simulation_context&>(sctx), Hk,
-                                                                     eigvals_vec, Hphi_wf.get(), Sphi_wf.get(),
-                                                                     psi_wf.get(), tmp_wf.get(),
+                auto omega = get_value(omega__, std::complex<double>(0, 0)) / 2.0;
+
+                sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, psi_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
-                                                                     wf::band_range(0, nbnd_occ_kq), sr, mem);
+                                                                     omega, wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
-                auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf.get(), mem};
-                auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf.get(), mem};
-                auto U_wrap = sirius::lr::Wave_functions_wrap{U.get(), mem};
-                auto C_wrap = sirius::lr::Wave_functions_wrap{C.get(), mem};
+                auto X_wrap = sirius::lr::Wave_functions_wrap{dpsi_wf, mem};
+                auto B_wrap = sirius::lr::Wave_functions_wrap{dvpsi_wf, mem};
+                auto U_wrap = sirius::lr::Wave_functions_wrap{U, mem};
+                auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
 
                 /* set up the diagonal preconditioner */
                 auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
@@ -6255,7 +6252,8 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                                                                             std::move(eigvals_mdarray),
                                                                             nbnd_occ_k,
                                                                             mem,
-                                                                            sr};
+                                                                            sr,
+                                                                            omega};
 
                 // Identity_preconditioner preconditioner{static_cast<size_t>(nbnd_occ)};
 

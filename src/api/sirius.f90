@@ -5942,11 +5942,12 @@ end subroutine sirius_create_H0
 !> @param [in] nbnd_occ_k Number of occupied bands at k.
 !> @param [in] nbnd_occ_kq Number of occupied bands at k+q.
 !> @param [in] tol Tolerance for the unconverged residuals (residual L2-norm should be below this value).
+!> @param [in] omega Complex frequency
 !> @param [out] niter Average number of iterations.
 !> @param [out] error_code Error code
 subroutine sirius_linear_solver(gs_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,niter,&
-&error_code)
+&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,&
+&niter,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
@@ -5964,6 +5965,7 @@ integer, target, intent(in) :: spin
 integer, target, intent(in) :: nbnd_occ_k
 integer, target, intent(in) :: nbnd_occ_kq
 real(8), optional, target, intent(in) :: tol
+complex(8), optional, target, intent(in) :: omega
 integer, optional, target, intent(out) :: niter
 integer, optional, target, intent(out) :: error_code
 !
@@ -5982,13 +5984,14 @@ type(C_PTR) :: spin_ptr
 type(C_PTR) :: nbnd_occ_k_ptr
 type(C_PTR) :: nbnd_occ_kq_ptr
 type(C_PTR) :: tol_ptr
+type(C_PTR) :: omega_ptr
 type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_linear_solver_aux(gs_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,niter,&
-&error_code)&
+&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,&
+&niter,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
@@ -6006,6 +6009,7 @@ type(C_PTR), value :: spin
 type(C_PTR), value :: nbnd_occ_k
 type(C_PTR), value :: nbnd_occ_kq
 type(C_PTR), value :: tol
+type(C_PTR), value :: omega
 type(C_PTR), value :: niter
 type(C_PTR), value :: error_code
 end subroutine
@@ -6043,6 +6047,10 @@ tol_ptr = C_NULL_PTR
 if (present(tol)) then
 tol_ptr = C_LOC(tol)
 endif
+omega_ptr = C_NULL_PTR
+if (present(omega)) then
+omega_ptr = C_LOC(omega)
+endif
 niter_ptr = C_NULL_PTR
 if (present(niter)) then
 niter_ptr = C_LOC(niter)
@@ -6053,7 +6061,7 @@ error_code_ptr = C_LOC(error_code)
 endif
 call sirius_linear_solver_aux(gs_handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,&
 &dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,&
-&nbnd_occ_k_ptr,nbnd_occ_kq_ptr,tol_ptr,niter_ptr,error_code_ptr)
+&nbnd_occ_k_ptr,nbnd_occ_kq_ptr,tol_ptr,omega_ptr,niter_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
 
 !
