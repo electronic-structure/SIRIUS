@@ -28,27 +28,30 @@ test_enu(cmd_args const& args__)
 
     int auto_enu{1};
 
-    Enu_finder e(rel, zn, n, l, rgrid, v, -0.1, auto_enu);
-    auto enu_ref = e.enu();
+    enu_search_t enu{-0.1, -0.1, -0.1, auto_enu};
+
+    Enu_finder e(rel, zn, n, l, rgrid, v, enu);
+    auto enu_ref = enu.enu;
 
     #pragma omp parallel for
     for (int i = 0; i < 100; i++) {
-        auto enu1 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1, auto_enu).enu();
-        if (enu1 != enu_ref) {
-            std::cout << "wrong enu : " << enu1 << " " << enu_ref << std::endl;
+        enu_search_t enu1{-0.1, -0.1, -0.1, auto_enu};
+        Enu_finder(rel, zn, n, l, rgrid, v, enu1);
+        if (enu1.enu != enu_ref) {
+            std::cout << "wrong enu : " << enu1.enu << " " << enu_ref << std::endl;
         }
     }
 
-    printf("Z: %i n: %i l: %i band energies (bottom, top, enu): %12.6f %12.6f %12.6f\n", zn, n, l, e.ebot(), e.etop(),
-           e.enu());
+    printf("Z: %i n: %i l: %i band energies (bottom, top, enu): %12.6f %12.6f %12.6f\n", zn, n, l, enu.ebot, enu.etop,
+           enu.enu);
 
     Radial_solver solver(zn, v, rgrid);
 
     int dme{0};
 
-    auto result1 = solver.solve(rel, dme, l, e.ebot());
-    auto result2 = solver.solve(rel, dme, l, e.etop());
-    auto result3 = solver.solve(rel, dme, l, e.enu());
+    auto result1 = solver.solve(rel, dme, l, enu.ebot);
+    auto result2 = solver.solve(rel, dme, l, enu.etop);
+    auto result3 = solver.solve(rel, dme, l, enu.enu);
 
     FILE* fout = fopen("radial_solution.dat", "w");
     for (int i = 0; i < rgrid.num_points(); i++) {
@@ -57,10 +60,12 @@ test_enu(cmd_args const& args__)
     }
     fclose(fout);
 
-    auto enu2 = Enu_finder(rel, zn, n, l, rgrid, v, -0.1, auto_enu).enu();
-    auto enu3 = Enu_finder(rel, zn, n, l, rgrid, v, enu2, auto_enu).enu();
+    enu_search_t enu2{-0.1, -0.1, -0.1, auto_enu};
+    Enu_finder(rel, zn, n, l, rgrid, v, enu2);
+    enu_search_t enu3{enu2.enu, enu2.enu, enu2.enu, auto_enu};
+    Enu_finder(rel, zn, n, l, rgrid, v, enu3);
 
-    std::cout << "enu2: " << enu2 << ", enu3: " << enu3 << ", diff: " << std::abs(enu2 - enu3) << std::endl;
+    std::cout << "enu2: " << enu2.enu << ", enu3: " << enu3.enu << ", diff: " << std::abs(enu2.enu - enu3.enu) << std::endl;
 
     return 0;
 }

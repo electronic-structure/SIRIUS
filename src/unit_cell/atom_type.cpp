@@ -185,9 +185,9 @@ Atom_type::init()
         rf_coef_.allocate(memory_t::device);
         vrf_coef_.allocate(memory_t::device);
     }
-    if (parameters_.processing_unit() == device_t::GPU) {
-        radial_grid_.copy_to_device();
-    }
+    //if (parameters_.processing_unit() == device_t::GPU) {
+    //    radial_grid_.copy_to_device();
+    //}
 
     if (this->spin_orbit_coupling()) {
         this->generate_f_coefficients();

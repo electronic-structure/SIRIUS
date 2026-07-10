@@ -63,6 +63,8 @@ class Atom_symmetry_class
     /// Spin-orbit interaction integrals.
     mdarray<double, 3> so_radial_integrals_;
 
+    std::map<std::pair<int, int>, enu_search_t> enu_search_;
+
     /// List of radial descriptor sets used to construct augmented waves.
     mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
 

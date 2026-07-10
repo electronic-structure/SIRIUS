@@ -54,6 +54,24 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
     for (int i = 0; i < atom_type_.num_lo_descriptors(); i++) {
         lo_descriptors_.push_back(atom_type_.lo_descriptor(i));
     }
+
+    /* find which aw functions need auto enu */
+    for (int l = 0; l < num_aw_descriptors(); l++) {
+        for (auto const& d : aw_descriptor(l)) {
+            if (d.auto_enu) {
+                enu_search_[{d.n, d.l}] = enu_search_t{d.enu, d.enu, d.enu, d.auto_enu};
+            }
+        }
+    }
+
+    /* find which lo functions need auto enu */
+    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+        for (auto const& d : lo_descriptor(idxlo).rsd_set) {
+            if (d.auto_enu) {
+                enu_search_[{d.n, d.l}] = enu_search_t{d.enu, d.enu, d.enu, d.auto_enu};
+            }
+        }
+    }
 }
 
 int
@@ -440,29 +458,8 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
 {
     PROFILE("sirius::Atom_symmetry_class::find_enu");
 
-    /* {n,l} -> enu map */
-    std::map<std::pair<int, int>, double> nl_enu;
-
-    /* find which aw functions need auto enu */
-    for (int l = 0; l < num_aw_descriptors(); l++) {
-        for (auto const& d : aw_descriptor(l)) {
-            if (d.auto_enu) {
-                nl_enu[{d.n, d.l}] = d.enu;
-            }
-        }
-    }
-
-    /* find which lo functions need auto enu */
-    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-        for (auto const& d : lo_descriptor(idxlo).rsd_set) {
-            if (d.auto_enu) {
-                nl_enu[{d.n, d.l}] = d.enu;
-            }
-        }
-    }
-
     /* unroll {n,l} -> enu map to enable omp for loop */
-    std::vector<std::pair<std::pair<int, int>, double>> nl_enu_vec(nl_enu.begin(), nl_enu.end());
+    std::vector<std::pair<std::pair<int, int>, enu_search_t>> nl_enu_vec(enu_search_.begin(), enu_search_.end());
 
     int ierr{0};
     #pragma omp parallel for reduction(+:ierr)
@@ -470,9 +467,8 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
         try {
             int n                = nl_enu_vec[i].first.first;
             int l                = nl_enu_vec[i].first.second;
-            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
-                                              spherical_potential_, nl_enu_vec[i].second, 1)
-                                           .enu();
+            Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
+                                              spherical_potential_, nl_enu_vec[i].second);
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             ierr++;
@@ -480,14 +476,14 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     }
     /* update the {n,l} -> enu map */
     for (auto& e : nl_enu_vec) {
-        nl_enu[e.first] = e.second;
+        enu_search_[e.first] = e.second;
     }
 
     /* update AW linearization energies */
     for (int l = 0; l < num_aw_descriptors(); l++) {
         for (auto& d : aw_descriptor(l)) {
             if (d.auto_enu) {
-                d.enu = nl_enu[{d.n, d.l}];
+                d.enu = enu_search_[{d.n, d.l}].enu;
             }
         }
     }
@@ -495,7 +491,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
         for (auto& d : lo_descriptor(idxlo).rsd_set) {
             if (d.auto_enu) {
-                d.enu = nl_enu[{d.n, d.l}];
+                d.enu = enu_search_[{d.n, d.l}].enu;
             }
         }
     }

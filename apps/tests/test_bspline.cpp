@@ -1,6 +1,10 @@
 #include "sirius.hpp"
 #include "testing.hpp"
 
+#include "radial/bspline.hpp"
+
+#include <algorithm>
+
 using namespace sirius;
 
 template <int order>
@@ -136,42 +140,12 @@ class BSpline_basis
     }
 };
 
-static std::vector<double>
-make_interp_knots(Radial_grid<double> const& grid__, int order__, int num_points__)
-{
-    RTE_ASSERT(num_points__ >= order__);
-
-    std::vector<double> knots(num_points__ + order__);
-
-    double x0 = grid__.first();
-    double x1 = grid__.last();
-
-    for (int i = 0; i < order__; i++) {
-        knots[i] = x0;
-    }
-
-    int num_inner = num_points__ - order__;
-    Radial_grid_lin<double> inner_grid(num_inner + 2, x0, x1);
-    for (int i = 0; i < num_inner; i++) {
-        knots[order__ + i] = inner_grid.x(i + 1);
-    }
-
-    for (int i = num_points__; i < num_points__ + order__; i++) {
-        knots[i] = x1;
-    }
-
-    return knots;
-}
-
 //static std::vector<double>
-//make_interp_knots(Radial_grid<double> const& grid__, int order__)
+//make_interp_knots(Radial_grid<double> const& grid__, int order__, int num_points__)
 //{
-//    int num_points = grid__.num_points();
-//    RTE_ASSERT(num_points >= order__);
+//    RTE_ASSERT(num_points__ >= order__);
 //
-//    int degree = order__ - 1;
-//
-//    std::vector<double> knots(num_points + order__);
+//    std::vector<double> knots(num_points__ + order__);
 //
 //    double x0 = grid__.first();
 //    double x1 = grid__.last();
@@ -180,61 +154,119 @@ make_interp_knots(Radial_grid<double> const& grid__, int order__, int num_points
 //        knots[i] = x0;
 //    }
 //
-//    int num_inner = num_points - order__;
-//    for (int j = 0; j < num_inner; j++) {
-//        double x{0};
-//        for (int m = 1; m <= degree; m++) {
-//            x += grid__.x(j + m);
-//        }
-//        knots[order__ + j] = x / degree;
+//    int num_inner = num_points__ - order__;
+//    Radial_grid_lin<double> inner_grid(num_inner + 2, x0, x1);
+//    for (int i = 0; i < num_inner; i++) {
+//        knots[order__ + i] = inner_grid.x(i + 1);
 //    }
 //
-//    for (int i = num_points; i < num_points + order__; i++) {
+//    for (int i = num_points__; i < num_points__ + order__; i++) {
 //        knots[i] = x1;
 //    }
 //
 //    return knots;
 //}
+//
+//static void
+//gauss_legendre_rule(int n__, std::vector<double>& x__, std::vector<double>& w__)
+//
+//{
+//
+//    if (n__ <= 0) {
+//
+//        throw std::invalid_argument("gauss_legendre_rule: n must be positive");
+//
+//    }
+//
+//    x__.resize(n__);
+//
+//    w__.resize(n__);
+//
+//    gsl_integration_glfixed_table* table =
+//
+//        gsl_integration_glfixed_table_alloc(static_cast<size_t>(n__));
+//
+//    if (table == nullptr) {
+//
+//        throw std::runtime_error("gauss_legendre_rule: failed to allocate GSL table");
+//
+//    }
+//
+//    for (int i = 0; i < n__; i++) {
+//
+//        double xi;
+//
+//        double wi;
+//
+//        int status = gsl_integration_glfixed_point(
+//
+//            -1.0, 1.0,
+//
+//            static_cast<size_t>(i),
+//
+//            &xi, &wi,
+//
+//            table
+//
+//        );
+//
+//        if (status != GSL_SUCCESS) {
+//
+//            gsl_integration_glfixed_table_free(table);
+//
+//            throw std::runtime_error("gauss_legendre_rule: gsl_integration_glfixed_point failed");
+//
+//        }
+//
+//        x__[i] = xi;
+//
+//        w__[i] = wi;
+//
+//    }
+//
+//    gsl_integration_glfixed_table_free(table);
+//
+//}
 
-static void
-gauss_legendre_rule(int n__, std::vector<double>& x__, std::vector<double>& w__)
-{
-    x__.resize(n__);
-    w__.resize(n__);
-
-    constexpr double eps{1e-14};
-    int m = (n__ + 1) / 2;
-
-    for (int i = 0; i < m; i++) {
-        double z = std::cos(pi * (double(i) + 0.75) / (double(n__) + 0.5));
-        double z1;
-
-        double p1{0};
-        double p2{0};
-        double pp{0};
-
-        do {
-            p1 = 1.0;
-            p2 = 0.0;
-
-            for (int j = 1; j <= n__; j++) {
-                double p3 = p2;
-                p2 = p1;
-                p1 = ((2.0 * j - 1.0) * z * p2 - (j - 1.0) * p3) / j;
-            }
-
-            pp = n__ * (z * p1 - p2) / (z * z - 1.0);
-
-            z1 = z;
-            z  = z1 - p1 / pp;
-        } while (std::abs(z - z1) > eps);
-
-        x__[i]          = -z;
-        x__[n__ - 1 - i] = z;
-        w__[i]          = 2.0 / ((1.0 - z * z) * pp * pp);
-        w__[n__ - 1 - i] = w__[i];
-    }
-}
+//static void
+//gauss_legendre_rule(int n__, std::vector<double>& x__, std::vector<double>& w__)
+//{
+//    x__.resize(n__);
+//    w__.resize(n__);
+//
+//    constexpr double eps{1e-14};
+//    int m = (n__ + 1) / 2;
+//
+//    for (int i = 0; i < m; i++) {
+//        double z = std::cos(pi * (double(i) + 0.75) / (double(n__) + 0.5));
+//        double z1;
+//
+//        double p1{0};
+//        double p2{0};
+//        double pp{0};
+//
+//        do {
+//            p1 = 1.0;
+//            p2 = 0.0;
+//
+//            for (int j = 1; j <= n__; j++) {
+//                double p3 = p2;
+//                p2 = p1;
+//                p1 = ((2.0 * j - 1.0) * z * p2 - (j - 1.0) * p3) / j;
+//            }
+//
+//            pp = n__ * (z * p1 - p2) / (z * z - 1.0);
+//
+//            z1 = z;
+//            z  = z1 - p1 / pp;
+//        } while (std::abs(z - z1) > eps);
+//
+//        x__[i]          = -z;
+//        x__[n__ - 1 - i] = z;
+//        w__[i]          = 2.0 / ((1.0 - z * z) * pp * pp);
+//        w__[n__ - 1 - i] = w__[i];
+//    }
+//}
 
 
 //int
@@ -334,12 +366,9 @@ hydrogen_bspline_impl(cmd_args const& args__)
     auto knots = make_interp_knots(atype.radial_grid(), order, num_points);
     BSpline_basis<order> basis(knots);
 
-    std::vector<int> active_basis;
-    for (int i = 0; i < basis.size() - 1; i++) {
-        active_basis.push_back(i);
-    }
+    bspline_basis<order> basis1(atype.radial_grid(), num_points, nq);
 
-    int n = static_cast<int>(active_basis.size());
+    int n = basis.size() - 1;
 
     std::vector<double> eval(n);
     la::dmatrix<double> h(n, n);
@@ -349,76 +378,179 @@ hydrogen_bspline_impl(cmd_args const& args__)
     h.zero();
     s.zero();
 
-
-    //mdarray<double, 2> H({n, n}, "radial_hamiltonian");
-    //mdarray<double, 2> S({n, n}, "radial_overlap");
-    //H.zero();
-    //S.zero();
-
     std::vector<double> xg;
     std::vector<double> wg;
     gauss_legendre_rule(nq, xg, wg);
 
     Spline<double> veff_s(atype.radial_grid(), veff);
 
-    for (int ik = 0; ik < basis.num_knots() - 1; ik++) {
-        double a = basis.knot(ik);
-        double b = basis.knot(ik + 1);
+    //for (int ir = 0; ir < atype.radial_grid().num_points(); ir++) {
+    //    auto r = atype.radial_grid(ir);
+    //    double sum{0};
+    //    for (int i = 0; i < basis.size(); i++) {
+    //        double Bi = basis(i, r);
+    //        sum += Bi;
+    //    }
+    //    std::cout << "r=" << r << ", sum=" << sum << std::endl;
+    //}
 
-        if (b <= a) {
-            continue;
+    //for (int i = 0; i < basis.size(); i++) {
+    //    for (int k = 0; k < basis.num_knots() - 1; k++) {
+    //        auto ai = basis.knot(k);
+    //        auto bi = basis.knot(k + 1);
+    //        double sum{0};
+    //        for (int iq = 0; iq < 10; iq++) {
+    //            double r = ai + (bi - ai) * iq / 9.0;
+    //            sum += basis(i, r);
+    //        }
+    //        std::cout << "basis function : " << i << ", knot interval : " << k << " [" << ai << ", " << bi << "], value : " << sum << std::endl;
+    //    }
+    //}
+
+    struct bspline_pair
+    {
+        int i;
+        int j;
+        std::vector<double> w;
+        std::vector<double> r;
+        std::vector<double> Bi;
+        std::vector<double> dBi;
+        std::vector<double> Bj;
+        std::vector<double> dBj;
+    };
+
+    std::vector<bspline_pair> pairs;
+
+
+    for (int i = 0; i < n; i++) {
+        for (int ik = 0; ik < order; ik++) {
+            double ai = basis.knot(i + ik);
+            double bi = basis.knot(i + ik + 1);
+            if (bi <= ai) {
+                continue;
+            }
+
+            for (int j = 0; j < n; j++) {
+                for (int jk = 0; jk < order; jk++) {
+                    double a = std::max(ai, basis.knot(j + jk));
+                    double b = std::min(bi, basis.knot(j + jk + 1));
+                    if (b <= a) {
+                        continue;
+                    }
+
+                    bspline_pair p;
+                    p.i = i;
+                    p.j = j;
+                    for (int iq = 0; iq < nq; iq++) {
+                        double r = 0.5 * ((b - a) * xg[iq] + (b + a));
+                        double w = 0.5 * (b - a) * wg[iq];
+
+                        double Bi  = basis(i, r);
+                        double dBi = basis.deriv(i, r);
+                        double Bj  = basis(j, r);
+                        double dBj = basis.deriv(j, r);
+
+                        p.r.push_back(r);
+                        p.w.push_back(w);
+                        p.Bi.push_back(Bi);
+                        p.dBi.push_back(dBi);
+                        p.Bj.push_back(Bj);
+                        p.dBj.push_back(dBj);
+                    }
+                    pairs.push_back(p);
+                }
+            }
         }
+    }
 
+    for (auto& p: basis1.basis_pairs()) {
         for (int iq = 0; iq < nq; iq++) {
-            double r = 0.5 * ((b - a) * xg[iq] + (b + a));
-            double w = 0.5 * (b - a) * wg[iq];
+            double r = p.r[iq];
+            double w = p.w[iq];
 
             double veff = veff_s(r) - z / r;
             if (l > 0) {
                 veff += 0.5 * double(l * (l + 1)) / (r * r);
             }
 
-            for (int ii = 0; ii < n; ii++) {
-                int i = active_basis[ii];
+            double Bi  = p.Bi[iq];
+            double dBi = p.dBi[iq];
+            double Bj  = p.Bj[iq];
+            double dBj = p.dBj[iq];
 
-                double Bi  = basis(i, r);
-                double dBi = basis.deriv(i, r);
 
-                if (Bi == 0.0 && dBi == 0.0) {
-                    continue;
-                }
-
-                for (int jj = 0; jj < n; jj++) {
-                    int j = active_basis[jj];
-
-                    double Bj  = basis(j, r);
-                    double dBj = basis.deriv(j, r);
-
-                    if (Bj == 0.0 && dBj == 0.0) {
-                        continue;
-                    }
-
-                    s(ii, jj) += w * Bi * Bj;
-                    h(ii, jj) += w * (0.5 * dBi * dBj + Bi * veff * Bj);
-                }
-            }
+            s(p.i, p.j) += w * Bi * Bj;
+            h(p.i, p.j) += w * (0.5 * dBi * dBj + Bi * veff * Bj);
         }
     }
+
+    //for (int i = 0; i < n; i++) {
+
+    //    auto jj_begin = std::lower_bound(active_basis.begin(), active_basis.begin() + i + 1, i - order + 1);
+    //    for (int j = static_cast<int>(std::distance(active_basis.begin(), jj_begin)); j <= i; j++) {
+
+    //        double sij{0};
+    //        double hij{0};
+
+    //        for (int ik = 0; ik < order; ik++) {
+    //            double ai = basis.knot(i + ik);
+    //            double bi = basis.knot(i + ik + 1);
+
+    //            if (bi <= ai) {
+    //                continue;
+    //            }
+
+    //            for (int jk = 0; jk < order; jk++) {
+    //                double a = std::max(ai, basis.knot(j + jk));
+    //                double b = std::min(bi, basis.knot(j + jk + 1));
+
+    //                if (b <= a) {
+    //                    continue;
+    //                }
+
+    //                for (int iq = 0; iq < nq; iq++) {
+    //                    double r = 0.5 * ((b - a) * xg[iq] + (b + a));
+    //                    double w = 0.5 * (b - a) * wg[iq];
+
+    //                    double veff = veff_s(r) - z / r;
+    //                    if (l > 0) {
+    //                        veff += 0.5 * double(l * (l + 1)) / (r * r);
+    //                    }
+
+    //                    double Bi  = basis(i, r);
+    //                    double dBi = basis.deriv(i, r);
+    //                    double Bj  = basis(j, r);
+    //                    double dBj = basis.deriv(j, r);
+
+    //                    sij += w * Bi * Bj;
+    //                    hij += w * (0.5 * dBi * dBj + Bi * veff * Bj);
+    //                }
+    //            }
+    //        }
+
+    //        s(ii, jj) = sij;
+    //        h(ii, jj) = hij;
+    //        if (jj != ii) {
+    //            s(jj, ii) = sij;
+    //            h(jj, ii) = hij;
+    //        }
+    //    }
+    //}
 
     double r0    = atype.radial_grid().first();
     double gamma = double(l + 1) / r0 - atype.zn() / double(l + 1);
+    h(0, 0) += 0.5 * gamma;
 
-    for (int ii = 0; ii < n; ii++) {
-        int i = active_basis[ii];
-        double Bi = basis(i, r0);
+    //for (int i = 0; i < n; i++) {
+    //    double Bi = basis(i, r0);
+    //    std::cout << "Bi=" <<  Bi << std::endl;
 
-        for (int jj = 0; jj < n; jj++) {
-            int j = active_basis[jj];
-            double Bj = basis(j, r0);
+    //    for (int j = 0; j < n; j++) {
+    //        double Bj = basis(j, r0);
 
-            h(ii, jj) += 0.5 * gamma * Bi * Bj;
-        }
-    }
+    //        h(i, j) += 0.5 * gamma * Bi * Bj;
+    //    }
+    //}
 
     auto solver = la::Eigensolver_factory("lapack");
     int info    = solver->solve(n, n, h, s, eval.data(), evec);
@@ -455,7 +587,7 @@ hydrogen_bspline_impl(cmd_args const& args__)
             for (int ist = 0; ist < num_states; ist++) {
                 double p{0};
                 for (int j = 0; j < n; j++) {
-                    p += evec(j, ist) * basis(active_basis[j], r);
+                    p += evec(j, ist) * basis(j, r);
                 }
                 jout["p"][ist].push_back(p);
                 jout["u"][ist].push_back(p / r);
