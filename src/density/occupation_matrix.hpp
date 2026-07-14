@@ -93,12 +93,14 @@ class Occupation_matrix : public Hubbard_matrix
             copy(e.second, dest__.occ_mtrx_T_.at(e.first));
         }
 
-        for (int i = 0; i < src__.num_atomic_levels(); i++) {
-            copy(src__.local_constraints_[i], dest__.local_constraints_[i]);
-        }
+        if (src__.ctx().hubbard_constrained_calculation()) {
+            for (int i = 0; i < src__.num_atomic_levels(); i++) {
+                copy(src__.local_constraints_[i], dest__.local_constraints_[i]);
+            }
 
-        for (int i = 0; i < src__.num_atomic_levels(); i++) {
-            copy(src__.multipliers_constraints_[i], dest__.multipliers_constraints_[i]);
+            for (int i = 0; i < src__.num_atomic_levels(); i++) {
+                copy(src__.multipliers_constraints_[i], dest__.multipliers_constraints_[i]);
+            }
         }
 
         dest__.active_constraints_ = src__.active_constraints_;

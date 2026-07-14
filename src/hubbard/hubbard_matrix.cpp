@@ -36,7 +36,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
         /* allocated vector of on-site (local) matrices */
         local_ = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_levels_);
 
-        if (ctx_.cfg().hubbard().constraint().local().size()) {
+        if (ctx_.hubbard_constrained_calculation()) {
             active_constraints_      = std::vector<bool>(num_atomic_levels_, false);
             local_constraints_       = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_levels_);
             multipliers_constraints_ = std::vector<mdarray<std::complex<double>, 3>>(num_atomic_levels_);

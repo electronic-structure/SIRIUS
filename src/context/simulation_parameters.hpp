@@ -118,6 +118,24 @@ class Simulation_parameters
     void
     import(cmd_args const& args__);
 
+    /// Set core relativity for the LAPW method.
+    void
+    core_relativity(std::string name__);
+
+    /// Set valence relativity for the LAPW method.
+    void
+    valence_relativity(std::string name__);
+
+    void
+    processing_unit(std::string name__);
+
+    void
+    smearing(std::string name__);
+
+    /// Set type of electronic structure method.
+    void
+    electronic_structure_method(std::string name__);
+
     /// Set lmax for APW basis functions.
     void
     lmax_apw(int lmax_apw__)
@@ -184,30 +202,12 @@ class Simulation_parameters
         cfg().parameters().xc_functionals(xcfunc);
     }
 
-    /// Set type of electronic structure method.
-    void
-    electronic_structure_method(std::string name__);
-
     /// Get type of electronic structure method.
     auto
     electronic_structure_method() const
     {
         return electronic_structure_method_;
     }
-
-    /// Set core relativity for the LAPW method.
-    void
-    core_relativity(std::string name__);
-
-    /// Set valence relativity for the LAPW method.
-    void
-    valence_relativity(std::string name__);
-
-    void
-    processing_unit(std::string name__);
-
-    void
-    smearing(std::string name__);
 
     auto
     smearing() const -> smearing::smearing_t
@@ -430,6 +430,8 @@ class Simulation_parameters
         return cfg().parameters().hubbard_correction();
     }
 
+    /// Check if constrained LDA+U calculation is enabled.
+    /** This is done by checking the size of the input local constraints array. */
     bool
     hubbard_constrained_calculation() const
     {
