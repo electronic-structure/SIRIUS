@@ -4,7 +4,7 @@
     "verbosity": 1
   },
   "hubbard": {
-    "hubbard_subspace_method" : "full_orthogonalization",
+    "subspace_method" : "full_orthogonalization",
     "local": [
       {
         "atom_type": "Co",
