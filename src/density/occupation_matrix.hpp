@@ -79,39 +79,33 @@ class Occupation_matrix : public Hubbard_matrix
     }
 
     friend void
-    copy(Occupation_matrix const& src__, Occupation_matrix& dest__);
+    copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
+    {
+        for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
+            copy(src__.local(at_lvl), dest__.local(at_lvl));
+        }
+
+        for (int i = 0; i < src__.num_nonlocal(); i++) {
+            copy(src__.nonlocal(i), dest__.nonlocal(i));
+        }
+
+        for (auto& e : src__.occ_mtrx_T()) {
+            copy(e.second, dest__.occ_mtrx_T_.at(e.first));
+        }
+
+        for (int i = 0; i < src__.num_atomic_levels(); i++) {
+            copy(src__.local_constraints_[i], dest__.local_constraints_[i]);
+        }
+
+        for (int i = 0; i < src__.num_atomic_levels(); i++) {
+            copy(src__.multipliers_constraints_[i], dest__.multipliers_constraints_[i]);
+        }
+
+        dest__.active_constraints_ = src__.active_constraints_;
+        dest__.constraint_error_   = src__.constraint_error_;
+        dest__.num_steps_          = src__.num_steps_;
+    }
 };
-
-inline void
-copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
-{
-    for (int at_lvl = 0; at_lvl < static_cast<int>(src__.atomic_orbitals().size()); at_lvl++) {
-        copy(src__.local(at_lvl), dest__.local(at_lvl));
-    }
-
-    for (int i = 0; i < static_cast<int>(src__.ctx().cfg().hubbard().nonlocal().size()); i++) {
-        copy(src__.nonlocal(i), dest__.nonlocal(i));
-    }
-
-    for (auto& e : src__.occ_mtrx_T()) {
-        copy(e.second, dest__.occ_mtrx_T_.at(e.first));
-    }
-
-    for (int i = 0; i < static_cast<int>(src__.local_constraints().size()); i++) {
-        copy(src__.local_constraints(i), dest__.local_constraints(i));
-    }
-
-    for (int i = 0; i < static_cast<int>(src__.multipliers_constraints().size()); i++) {
-        copy(src__.multipliers_constraints(i), dest__.multipliers_constraints(i));
-    }
-
-    for (int i = 0; i < static_cast<int>(src__.apply_constraints().size()); i++) {
-        dest__.apply_constraints()[i] = src__.apply_constraints(i);
-    }
-
-    dest__.constraint_error()                = src__.constraint_error();
-    dest__.constraint_number_of_iterations() = src__.constraint_number_of_iterations();
-}
 
 } // namespace sirius
 #endif

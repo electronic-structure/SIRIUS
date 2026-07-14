@@ -30,7 +30,7 @@ generate_constraint_potential(Simulation_context const& ctx__, Atom_type const& 
     for (int is = 0; is < ctx__.num_spins(); is++) {
         for (int m1 = 0; m1 < lmax_at; m1++) {
             for (int m2 = 0; m2 < lmax_at; m2++) {
-                um__(m2, m1, is) -= ctx__.cfg().hubbard().constraint_strength() * lagrange_multiplier__(m2, m1, is);
+                um__(m2, m1, is) -= ctx__.cfg().hubbard().constraint().strength() * lagrange_multiplier__(m2, m1, is);
             }
         }
     }
@@ -191,7 +191,7 @@ calculate_energy_constraint_contribution(Simulation_context const& ctx__, Atom_t
 
         for (int m1 = 0; m1 < lmax_at; m1++) {
             for (int m2 = 0; m2 < lmax_at; m2++) {
-                hubbard_energy_constraint += ctx__.cfg().hubbard().constraint_strength() *
+                hubbard_energy_constraint += ctx__.cfg().hubbard().constraint().strength() *
                                              (om__(m2, m1, is) - om_constraints__(m2, m1, is)) *
                                              lagrange_multipliers__(m2, m1, is);
             }
@@ -561,10 +561,10 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
 {
     auto& ctx = om__.ctx();
 
-    for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        const int ia = om__.atomic_orbitals(at_lvl).first;
+    for (int at_lvl = 0; at_lvl < om__.num_atomic_levels(); at_lvl++) {
+        const int ia = om__.atomic_orbital(at_lvl).first;
         auto& atype  = ctx.unit_cell().atom(ia).type();
-        int lo_ind   = om__.atomic_orbitals(at_lvl).second;
+        int lo_ind   = om__.atomic_orbital(at_lvl).second;
 
         if (ctx.num_mag_dims() != 3) {
             ::sirius::generate_potential_collinear_local(ctx, atype, lo_ind, om__.local(at_lvl), um__.local(at_lvl));
@@ -573,18 +573,18 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
                                                              um__.local(at_lvl));
         }
 
-        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "energy") {
-            if (om__.apply_constraints(at_lvl)) {
+        if (om__.apply_constraints() && ctx.cfg().hubbard().constraint().type() == "energy") {
+            if (om__.active_constraint(at_lvl)) {
                 ::sirius::generate_constraint_potential(ctx, atype, lo_ind, at_lvl, om__.local(at_lvl),
-                                                        om__.local_constraints(at_lvl),
-                                                        om__.multipliers_constraints(at_lvl), um__.local(at_lvl));
+                                                        om__.local_constraint(at_lvl),
+                                                        om__.multipliers_constraint(at_lvl), um__.local(at_lvl));
             }
         }
 
-        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "occupantion") {
-            if (om__.apply_constraints(at_lvl)) {
+        if (om__.apply_constraints() && ctx.cfg().hubbard().constraint().type() == "occupation") {
+            if (om__.active_constraint(at_lvl)) {
                 ::sirius::generate_constraint_potential(ctx, atype, lo_ind, at_lvl, om__.local(at_lvl),
-                                                        om__.local_constraints(at_lvl), om__.local_constraints(at_lvl),
+                                                        om__.local_constraint(at_lvl), om__.local_constraint(at_lvl),
                                                         um__.local(at_lvl));
             }
         }
@@ -609,21 +609,21 @@ energy(Hubbard_matrix const& om__)
 
     auto& ctx = om__.ctx();
 
-    for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        const int ia = om__.atomic_orbitals(at_lvl).first;
+    for (int at_lvl = 0; at_lvl < om__.num_atomic_levels(); at_lvl++) {
+        const int ia = om__.atomic_orbital(at_lvl).first;
         auto& atype  = ctx.unit_cell().atom(ia).type();
-        int lo_ind   = om__.atomic_orbitals(at_lvl).second;
+        int lo_ind   = om__.atomic_orbital(at_lvl).second;
         if (ctx.num_mag_dims() != 3) {
             energy += ::sirius::calculate_energy_collinear_local(ctx, atype, lo_ind, om__.local(at_lvl));
         } else {
             energy += ::sirius::calculate_energy_non_collinear_local(ctx, atype, lo_ind, om__.local(at_lvl));
         }
 
-        if (om__.apply_constraint() && ctx.cfg().hubbard().constraint_method() == "energy") {
-            if (om__.apply_constraints(at_lvl)) {
+        if (om__.apply_constraints() && ctx.cfg().hubbard().constraint().type() == "energy") {
+            if (om__.active_constraint(at_lvl)) {
                 double tmp_ = ::sirius::calculate_energy_constraint_contribution(ctx, atype, lo_ind, om__.local(at_lvl),
-                                                                                 om__.local_constraints(at_lvl),
-                                                                                 om__.multipliers_constraints(at_lvl));
+                                                                                 om__.local_constraint(at_lvl),
+                                                                                 om__.multipliers_constraint(at_lvl));
                 energy += tmp_;
             }
         }
@@ -656,9 +656,9 @@ one_electron_energy_hubbard(Hubbard_matrix const& om__, Hubbard_matrix const& pm
     auto& ctx = om__.ctx();
     if (ctx.hubbard_correction()) {
         std::complex<double> tmp{0.0, 0.0};
-        for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-            const int ia = om__.atomic_orbitals(at_lvl).first;
-            int lo_ind   = om__.atomic_orbitals(at_lvl).second;
+        for (int at_lvl = 0; at_lvl < om__.num_atomic_levels(); at_lvl++) {
+            const int ia = om__.atomic_orbital(at_lvl).first;
+            int lo_ind   = om__.atomic_orbital(at_lvl).second;
             auto& atype  = ctx.unit_cell().atom(ia).type();
             auto& hub_wf = atype.lo_descriptor_hub(lo_ind);
 

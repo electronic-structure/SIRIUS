@@ -433,7 +433,7 @@ class Simulation_parameters
     bool
     hubbard_constrained_calculation() const
     {
-        return cfg().hubbard().constrained_calculation();
+        return cfg().hubbard().constraint().local().size() != 0;
     }
 
     bool

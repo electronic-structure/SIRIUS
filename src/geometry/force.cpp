@@ -640,10 +640,10 @@ Force::hubbard_force_add_k_contribution_collinear(K_point<double>& kp__, Q_opera
         /* compute the derivative of the occupancies numbers */
         for (int dir = 0; dir < 3; dir++) {
             std::complex<double> d{0.0};
-            for (int at_lvl = 0; at_lvl < static_cast<int>(potential_.hubbard_potential().local().size()); at_lvl++) {
-                const int ia1    = potential_.hubbard_potential().atomic_orbitals(at_lvl).first;
+            for (int at_lvl = 0; at_lvl < static_cast<int>(potential_.hubbard_potential().num_atomic_levels()); at_lvl++) {
+                const int ia1    = potential_.hubbard_potential().atomic_orbital(at_lvl).first;
                 const auto& atom = ctx_.unit_cell().atom(ia1);
-                const int lo     = potential_.hubbard_potential().atomic_orbitals(at_lvl).second;
+                const int lo     = potential_.hubbard_potential().atomic_orbital(at_lvl).second;
                 if (atom.type().lo_descriptor_hub(lo).use_for_calculation()) {
                     int const lmax_at = 2 * atom.type().lo_descriptor_hub(lo).l() + 1;
                     const int offset  = potential_.hubbard_potential().offset(at_lvl);

@@ -1085,12 +1085,12 @@ class Atom_type
         return ((indexb(xi).am == indexb(xj).am) && (indexb(xi).idxrf == indexb(xj).idxrf));
     }
 
-    /// Return a vector containing all information about the localized atomic
-    /// orbitals used to generate the Hubbard subspace.
-    inline const auto&
-    lo_descriptor_hub() const
+    /// Return the number of Hubbard orbital descriptors for this atom type, including auxiliary orbitals used only 
+    /// for full orthogonalization and excluded from the application of the Hubbard potential.
+    inline auto
+    num_lo_descriptors_hub() const
     {
-        return lo_descriptors_hub_;
+        return static_cast<int>(lo_descriptors_hub_.size());
     }
 
     inline auto const&

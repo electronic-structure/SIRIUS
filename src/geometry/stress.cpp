@@ -151,11 +151,10 @@ Stress::calc_stress_hubbard()
         potential_.U().compute_occupancies_stress_derivatives(*kp, q_op, dn);
         for (int dir1 = 0; dir1 < 3; dir1++) {
             for (int dir2 = 0; dir2 < 3; dir2++) {
-                for (int at_lvl = 0; at_lvl < static_cast<int>(potential_.hubbard_potential().local().size());
-                     at_lvl++) {
-                    const int ia1    = potential_.hubbard_potential().atomic_orbitals(at_lvl).first;
+                for (int at_lvl = 0; at_lvl < potential_.hubbard_potential().num_atomic_levels(); at_lvl++) {
+                    const int ia1    = potential_.hubbard_potential().atomic_orbital(at_lvl).first;
                     const auto& atom = ctx_.unit_cell().atom(ia1);
-                    const int lo     = potential_.hubbard_potential().atomic_orbitals(at_lvl).second;
+                    const int lo     = potential_.hubbard_potential().atomic_orbital(at_lvl).second;
                     if (atom.type().lo_descriptor_hub(lo).use_for_calculation()) {
                         const int lmax_at = 2 * atom.type().lo_descriptor_hub(lo).l() + 1;
                         const int offset  = potential_.hubbard_potential().offset(at_lvl);

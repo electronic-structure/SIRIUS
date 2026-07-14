@@ -58,11 +58,13 @@ class U_operator
 {
   private:
     Simulation_context const& ctx_;
+    Hubbard_matrix const& u_matrix_;
+
     /// Potential correction matrix for a given k-point.
     /** Constructed from local and non-local parts of Hubbard U matrix. */
     std::array<mdarray<std::complex<T>, 2>, 4> um_;
-    std::vector<int> offset_;
-    std::vector<std::pair<int, int>> atomic_orbitals_;
+    //std::vector<int> offset_;
+    //std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
     r3::vector<double> vk_;
 
@@ -70,16 +72,21 @@ class U_operator
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, r3::vector<double> vk__);
     ~U_operator() = default;
 
-    inline auto
-    atomic_orbitals() const
+    //inline auto
+    //atomic_orbitals() const
+    //{
+    //    return atomic_orbitals_;
+    //}
+    inline auto const&
+    u_matrix() const
     {
-        return atomic_orbitals_;
+        return u_matrix_;
     }
 
     inline auto
-    atomic_orbitals(const int idx__) const
+    atomic_orbital(const int idx__) const
     {
-        return atomic_orbitals_[idx__];
+        return u_matrix_.atomic_orbital(idx__);
     }
     inline auto
     nhwf() const
@@ -90,7 +97,7 @@ class U_operator
     inline auto
     offset(int ia__) const
     {
-        return offset_[ia__];
+        return u_matrix_.offset(ia__);
     }
 
     std::complex<T> const&

@@ -15,7 +15,6 @@
 #define __HUBBARD_MATRIX_HPP__
 
 #include "context/simulation_context.hpp"
-#include <xc.h>
 
 namespace sirius {
 
@@ -26,16 +25,17 @@ class Hubbard_matrix
     Simulation_context const& ctx_;
     int num_steps_{0};
     double constraint_error_{1.0};
+    int num_atomic_levels_{0};
     /// Table indicating if we should apply constraints on the hubbard occupation
     /// to given atomic orbital group
-    std::vector<bool> apply_constraints_;
+    std::vector<bool> active_constraints_;
     /// Local part of Hubbard matrix
     std::vector<mdarray<std::complex<double>, 3>> local_;
     /// Non-local part of Hubbard matrix.
     std::vector<mdarray<std::complex<double>, 3>> nonlocal_;
     /// occupancy matrix for each atomic orbital (n,l) contributing to the hubbard correction
     std::vector<mdarray<std::complex<double>, 3>> local_constraints_;
-    /// "lagrange" multipliers
+    /// "Lagrange" multipliers
     std::vector<mdarray<std::complex<double>, 3>> multipliers_constraints_;
     std::vector<std::pair<int, int>> atomic_orbitals_;
     std::vector<int> offset_;
@@ -74,13 +74,6 @@ class Hubbard_matrix
     void
     zero();
 
-    /// Return a vector containing the occupation numbers for each atomic orbital.
-    auto&
-    local() const
-    {
-        return local_;
-    }
-
     /// Return local occupation matrix for a given composite atomic level (atom + local n,l).
     auto&
     local(int idx__)
@@ -96,12 +89,6 @@ class Hubbard_matrix
     }
 
     auto&
-    nonlocal() const
-    {
-        return nonlocal_;
-    }
-
-    auto&
     nonlocal(int idx__)
     {
         return nonlocal_[idx__];
@@ -114,13 +101,7 @@ class Hubbard_matrix
     }
 
     const auto&
-    atomic_orbitals() const
-    {
-        return atomic_orbitals_;
-    }
-
-    const auto&
-    atomic_orbitals(const int idx__) const
+    atomic_orbital(const int idx__) const
     {
         return atomic_orbitals_[idx__];
     }
@@ -131,10 +112,11 @@ class Hubbard_matrix
         return num_steps_;
     }
 
-    void
+    int
     num_steps(const int num_steps__)
     {
         num_steps_ = num_steps__;
+        return num_steps_;
     }
 
     double
@@ -143,95 +125,48 @@ class Hubbard_matrix
         return constraint_error_;
     }
 
-    auto&
-    constraint_error()
-    {
-        return constraint_error_;
-    }
-
-    int
-    constraint_number_of_iterations() const
-    {
-        return num_steps_;
-    }
-    auto&
-    constraint_number_of_iterations()
-    {
-        return num_steps_;
-    }
-
     int
     offset(const int idx__) const
     {
         return offset_[idx__];
     }
 
-    const auto&
-    offset() const
-    {
-        return offset_;
-    }
-
-    auto&
-    local_constraints() const
-    {
-        return local_constraints_;
-    }
-
-    auto&
-    local_constraints(int idx__)
+    auto const&
+    local_constraint(int idx__) const
     {
         return local_constraints_[idx__];
     }
 
     auto const&
-    local_constraints(int idx__) const
+    active_constraints() const
     {
-        return local_constraints_[idx__];
+        return active_constraints_;
+    }
+
+    bool
+    active_constraint(int idx__) const
+    {
+        return active_constraints_[idx__];
     }
 
     auto&
+    multipliers_constraint(int idx__)
+    {
+        return multipliers_constraints_[idx__];
+    }
+
+    auto const&
+    multipliers_constraint(int idx__) const
+    {
+        return multipliers_constraints_[idx__];
+    }
+
+    bool
     apply_constraints() const
     {
-        return apply_constraints_;
-    }
-
-    auto&
-    apply_constraints()
-    {
-        return apply_constraints_;
-    }
-
-    bool
-    apply_constraints(int idx__) const
-    {
-        return apply_constraints_[idx__];
-    }
-
-    auto&
-    multipliers_constraints() const
-    {
-        return multipliers_constraints_;
-    }
-
-    auto&
-    multipliers_constraints(int idx__)
-    {
-        return multipliers_constraints_[idx__];
-    }
-
-    auto const&
-    multipliers_constraints(int idx__) const
-    {
-        return multipliers_constraints_[idx__];
-    }
-
-    bool
-    apply_constraint() const
-    {
-        return (this->constraint_error_ > ctx_.cfg().hubbard().constraint_error()) &&
-               (this->num_steps_ < ctx_.cfg().hubbard().constraint_max_iteration()) &&
-               ctx_.cfg().hubbard().constrained_calculation();
+        return (this->constraint_error_ > ctx_.cfg().hubbard().constraint().error()) &&
+               (this->num_steps_ < ctx_.cfg().hubbard().constraint().maxiter()) &&
+               ctx_.hubbard_constrained_calculation();
     }
 
     auto const&
@@ -289,22 +224,37 @@ class Hubbard_matrix
         }
         return sum;
     }
+
+    /// Number of atomic levels to which U correction is applied.
+    /** Defines the size of local, active_constraints, local_constraints, and
+     *  multipliers_constraints arrays. */
+    inline auto
+    num_atomic_levels() const
+    {
+        return num_atomic_levels_;
+    }
+
+    inline auto
+    num_nonlocal() const
+    {
+        return static_cast<int>(nonlocal_.size());
+    }
 };
 
 inline void
 copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
-    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+    for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
         copy(src__.local(at_lvl), dest__.local(at_lvl));
     }
 
-    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
-        copy(src__.nonlocal(at_lvl), dest__.nonlocal(at_lvl));
+    for (int i = 0; i < src__.num_nonlocal(); i++) {
+        copy(src__.nonlocal(i), dest__.nonlocal(i));
     }
 
-    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
-        for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
-            copy(src__.multipliers_constraints(at_lvl), dest__.multipliers_constraints(at_lvl));
+    if (src__.ctx().hubbard_constrained_calculation()) {
+        for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
+            copy(src__.multipliers_constraint(at_lvl), dest__.multipliers_constraint(at_lvl));
         }
     }
 }
@@ -312,22 +262,22 @@ copy(Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 inline void
 axpy(const double alpha__, Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 {
-    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+    for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
         for (size_t i = 0; i < src__.local(at_lvl).size(); i++) {
             dest__.local(at_lvl)[i] = alpha__ * src__.local(at_lvl)[i] + dest__.local(at_lvl)[i];
         }
     }
-    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
-        for (size_t i = 0; i < src__.nonlocal(at_lvl).size(); i++) {
-            dest__.nonlocal(at_lvl)[i] = alpha__ * src__.nonlocal(at_lvl)[i] + dest__.nonlocal(at_lvl)[i];
+    for (int j = 0; j < src__.num_nonlocal(); j++) {
+        for (size_t i = 0; i < src__.nonlocal(j).size(); i++) {
+            dest__.nonlocal(j)[i] = alpha__ * src__.nonlocal(j)[i] + dest__.nonlocal(j)[i];
         }
     }
 
-    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
-        for (size_t at_lvl = 0; at_lvl < src__.multipliers_constraints().size(); at_lvl++) {
-            for (size_t i = 0; i < src__.multipliers_constraints(at_lvl).size(); i++) {
-                dest__.multipliers_constraints(at_lvl)[i] =
-                        alpha__ * src__.multipliers_constraints(at_lvl)[i] + dest__.multipliers_constraints(at_lvl)[i];
+    if (src__.ctx().hubbard_constrained_calculation()) {
+        for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
+            for (size_t i = 0; i < src__.multipliers_constraint(at_lvl).size(); i++) {
+                dest__.multipliers_constraint(at_lvl)[i] =
+                        alpha__ * src__.multipliers_constraint(at_lvl)[i] + dest__.multipliers_constraint(at_lvl)[i];
             }
         }
     }
@@ -336,7 +286,7 @@ axpy(const double alpha__, Hubbard_matrix const& src__, Hubbard_matrix& dest__)
 inline void
 rotate(double c__, double s__, Hubbard_matrix& src__, Hubbard_matrix& dest__)
 {
-    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+    for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
         for (size_t i = 0; i < src__.local(at_lvl).size(); i++) {
             auto xi                 = src__.local(at_lvl)[i];
             auto yi                 = dest__.local(at_lvl)[i];
@@ -345,22 +295,22 @@ rotate(double c__, double s__, Hubbard_matrix& src__, Hubbard_matrix& dest__)
         }
     }
 
-    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
-        for (size_t i = 0; i < src__.nonlocal(at_lvl).size(); i++) {
-            auto xi                    = src__.nonlocal(at_lvl)[i];
-            auto yi                    = dest__.nonlocal(at_lvl)[i];
-            src__.nonlocal(at_lvl)[i]  = xi * c__ + yi * s__;
-            dest__.nonlocal(at_lvl)[i] = yi * c__ - xi * s__;
+    for (int j = 0; j < src__.num_nonlocal(); j++) {
+        for (size_t i = 0; i < src__.nonlocal(j).size(); i++) {
+            auto xi                    = src__.nonlocal(j)[i];
+            auto yi                    = dest__.nonlocal(j)[i];
+            src__.nonlocal(j)[i]  = xi * c__ + yi * s__;
+            dest__.nonlocal(j)[i] = yi * c__ - xi * s__;
         }
     }
 
-    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
-        for (size_t at_lvl = 0; at_lvl < src__.multipliers_constraints().size(); at_lvl++) {
-            for (size_t i = 0; i < src__.multipliers_constraints(at_lvl).size(); i++) {
-                auto xi                                   = src__.multipliers_constraints(at_lvl)[i];
-                auto yi                                   = dest__.multipliers_constraints(at_lvl)[i];
-                src__.multipliers_constraints(at_lvl)[i]  = xi * c__ + yi * s__;
-                dest__.multipliers_constraints(at_lvl)[i] = yi * c__ - xi * s__;
+    if (src__.ctx().hubbard_constrained_calculation()) {
+        for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
+            for (size_t i = 0; i < src__.multipliers_constraint(at_lvl).size(); i++) {
+                auto xi                                   = src__.multipliers_constraint(at_lvl)[i];
+                auto yi                                   = dest__.multipliers_constraint(at_lvl)[i];
+                src__.multipliers_constraint(at_lvl)[i]  = xi * c__ + yi * s__;
+                dest__.multipliers_constraint(at_lvl)[i] = yi * c__ - xi * s__;
             }
         }
     }
@@ -369,22 +319,22 @@ rotate(double c__, double s__, Hubbard_matrix& src__, Hubbard_matrix& dest__)
 inline void
 scale(double alpha__, Hubbard_matrix& src__)
 {
-    for (size_t at_lvl = 0; at_lvl < src__.local().size(); at_lvl++) {
+    for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
         for (size_t i = 0; i < src__.local(at_lvl).size(); i++) {
             src__.local(at_lvl)[i] *= alpha__;
         }
     }
 
-    for (size_t at_lvl = 0; at_lvl < src__.nonlocal().size(); at_lvl++) {
-        for (size_t i = 0; i < src__.nonlocal(at_lvl).size(); i++) {
-            src__.nonlocal(at_lvl)[i] *= alpha__;
+    for (int j = 0; j < src__.num_nonlocal(); j++) {
+        for (size_t i = 0; i < src__.nonlocal(j).size(); i++) {
+            src__.nonlocal(j)[i] *= alpha__;
         }
     }
 
-    if (src__.ctx().cfg().hubbard().constrained_calculation()) {
-        for (size_t at_lvl = 0; at_lvl < src__.multipliers_constraints().size(); at_lvl++) {
-            for (size_t i = 0; i < src__.multipliers_constraints(at_lvl).size(); i++) {
-                src__.multipliers_constraints(at_lvl)[i] *= alpha__;
+    if (src__.ctx().hubbard_constrained_calculation()) {
+        for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
+            for (size_t i = 0; i < src__.multipliers_constraint(at_lvl).size(); i++) {
+                src__.multipliers_constraint(at_lvl)[i] *= alpha__;
             }
         }
     }
