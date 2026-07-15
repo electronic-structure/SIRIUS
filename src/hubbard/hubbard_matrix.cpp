@@ -68,8 +68,7 @@ Hubbard_matrix::Hubbard_matrix(Simulation_context& ctx__)
             for (int i = 0; i < ctx_.cfg().hubbard().constraint().local().size(); i++) {
                 auto const& constraint = ctx_.cfg().hubbard().constraint().local(i);
 
-                bool const matches = constraint.atom_index() == ia &&
-                                     constraint.l() == l &&
+                bool const matches = constraint.atom_index() == ia && constraint.l() == l &&
                                      (constraint.n() == n || n < 0 || constraint.n() < 0);
                 if (!matches) {
                     continue;

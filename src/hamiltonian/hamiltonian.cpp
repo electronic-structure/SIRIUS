@@ -149,8 +149,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                                             int m2     = type.indexb(j2).m;
                                             int order1 = type.indexb(j1).order;
                                             int order2 = type.indexb(j2).order;
-                                            double ori = atom.symmetry_class().o_radial_integral(
-                                                    constraint.l, order1, order2);
+                                            double ori = atom.symmetry_class().o_radial_integral(constraint.l, order1,
+                                                                                                 order2);
                                             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                                                 hmt_[ia](j1, j2, ispn) +=
                                                         constraint.matrix[ispn][constraint.l + m1][constraint.l + m2] *

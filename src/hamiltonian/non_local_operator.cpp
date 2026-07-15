@@ -379,8 +379,8 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
         return;
     }
     /* a pair of "total number, offsets" for the Hubbard orbitals idexing */
-    auto r                 = ctx_.unit_cell().num_hubbard_wf();
-    this->nhwf_            = r.first;
+    auto r      = ctx_.unit_cell().num_hubbard_wf();
+    this->nhwf_ = r.first;
     //this->offset_          = um1__.offset_;
     //this->atomic_orbitals_ = um1__.atomic_orbitals_;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {

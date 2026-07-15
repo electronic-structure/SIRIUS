@@ -297,8 +297,8 @@ rotate(double c__, double s__, Hubbard_matrix& src__, Hubbard_matrix& dest__)
 
     for (int j = 0; j < src__.num_nonlocal(); j++) {
         for (size_t i = 0; i < src__.nonlocal(j).size(); i++) {
-            auto xi                    = src__.nonlocal(j)[i];
-            auto yi                    = dest__.nonlocal(j)[i];
+            auto xi               = src__.nonlocal(j)[i];
+            auto yi               = dest__.nonlocal(j)[i];
             src__.nonlocal(j)[i]  = xi * c__ + yi * s__;
             dest__.nonlocal(j)[i] = yi * c__ - xi * s__;
         }
@@ -307,8 +307,8 @@ rotate(double c__, double s__, Hubbard_matrix& src__, Hubbard_matrix& dest__)
     if (src__.ctx().hubbard_constrained_calculation()) {
         for (int at_lvl = 0; at_lvl < src__.num_atomic_levels(); at_lvl++) {
             for (size_t i = 0; i < src__.multipliers_constraint(at_lvl).size(); i++) {
-                auto xi                                   = src__.multipliers_constraint(at_lvl)[i];
-                auto yi                                   = dest__.multipliers_constraint(at_lvl)[i];
+                auto xi                                  = src__.multipliers_constraint(at_lvl)[i];
+                auto yi                                  = dest__.multipliers_constraint(at_lvl)[i];
                 src__.multipliers_constraint(at_lvl)[i]  = xi * c__ + yi * s__;
                 dest__.multipliers_constraint(at_lvl)[i] = yi * c__ - xi * s__;
             }

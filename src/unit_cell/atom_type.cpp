@@ -384,10 +384,9 @@ Atom_type::print_info(std::ostream& out__) const
             out__ << lo_descriptors_hub_[i];
         }
 
-        bool orthogonalize = parameters_.cfg().hubbard().subspace_method() == "orthogonalize";
-        bool full_orthogonalization =
-                parameters_.cfg().hubbard().subspace_method() == "full_orthogonalization";
-        bool normalize = parameters_.cfg().hubbard().subspace_method() == "normalize";
+        bool orthogonalize          = parameters_.cfg().hubbard().subspace_method() == "orthogonalize";
+        bool full_orthogonalization = parameters_.cfg().hubbard().subspace_method() == "full_orthogonalization";
+        bool normalize              = parameters_.cfg().hubbard().subspace_method() == "normalize";
         out__ << std::endl;
         out__ << "  orthogonalize                      : " << boolstr(orthogonalize) << std::endl
               << "  normalize                          : " << boolstr(normalize) << std::endl

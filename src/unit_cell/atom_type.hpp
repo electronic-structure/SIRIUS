@@ -1085,7 +1085,7 @@ class Atom_type
         return ((indexb(xi).am == indexb(xj).am) && (indexb(xi).idxrf == indexb(xj).idxrf));
     }
 
-    /// Return the number of Hubbard orbital descriptors for this atom type, including auxiliary orbitals used only 
+    /// Return the number of Hubbard orbital descriptors for this atom type, including auxiliary orbitals used only
     /// for full orthogonalization and excluded from the application of the Hubbard potential.
     inline auto
     num_lo_descriptors_hub() const
