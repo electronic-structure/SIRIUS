@@ -33,11 +33,10 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                                                     &potential__);
 
     if (!ctx_.full_potential()) {
-        d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(potential__));
-        q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
+        d_op_ = std::make_unique<D_operator<T>>(potential__);
+        q_op_ = std::make_unique<Q_operator<T>>(ctx_);
     }
     if (ctx_.full_potential()) {
-        static int constraints_applied_{0};
         if (precompute_lapw__) {
             potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
@@ -67,8 +66,14 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
         };
 
         /* each atom might have several constraints */
-        std::vector<std::vector<mt_constraint_t>> mt_constraints(ctx_.unit_cell().num_atoms());
-        if (ctx_.num_mag_dims() == 1 && !ctx_.cfg().control().use_second_variation()) {
+        std::vector<std::vector<mt_constraint_t>> mt_constraints;
+        if (ctx_.hubbard_constrained_calculation() &&
+            ctx_.num_mag_dims() == 1 &&
+            !ctx_.cfg().control().use_second_variation() &&
+            ctx_.num_constraints_applied() < ctx_.cfg().hubbard().constraint().maxiter()) {
+
+            mt_constraints = std::vector<std::vector<mt_constraint_t>>(ctx_.unit_cell().num_atoms());
+
             for (int i = 0; i < ctx_.cfg().hubbard().constraint().local().size(); i++) {
                 auto const& constraint = ctx_.cfg().hubbard().constraint().local(i);
                 int ia                 = constraint.atom_index();
@@ -96,6 +101,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                 }
                 mt_constraints[ia].push_back({l, std::move(matrix)});
             }
+            ctx_.num_constraints_applied(1);
         }
 
         #pragma omp parallel for
@@ -139,7 +145,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                                 hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
                                         {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
 
-                                if (constraints_applied_ < ctx_.cfg().hubbard().constraint().maxiter()) {
+                                if (!mt_constraints.empty()) {
                                     /* add constraints */
                                     int l1 = type.indexb(j1).am.l();
                                     int l2 = type.indexb(j2).am.l();
@@ -175,7 +181,6 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                 hmt_[ia].copy_to(memory_t::device);
             }
         }
-        constraints_applied_++;
     }
 }
 
