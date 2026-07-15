@@ -67,8 +67,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
 
         /* each atom might have several constraints */
         std::vector<std::vector<mt_constraint_t>> mt_constraints;
-        if (ctx_.hubbard_constrained_calculation() &&
-            ctx_.num_mag_dims() == 1 &&
+        if (ctx_.hubbard_constrained_calculation() && ctx_.num_mag_dims() == 1 &&
             !ctx_.cfg().control().use_second_variation() &&
             ctx_.num_constraints_applied() < ctx_.cfg().hubbard().constraint().maxiter()) {
 
