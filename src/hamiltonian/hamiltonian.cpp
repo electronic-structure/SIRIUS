@@ -37,6 +37,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
         q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
     }
     if (ctx_.full_potential()) {
+        static int constraints_applied_{0};
         if (precompute_lapw__) {
             potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
@@ -58,6 +59,45 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                 hmt_[ia].allocate(memory_t::device);
             }
         }
+
+        struct mt_constraint_t
+        {
+            int l;
+            std::vector<std::vector<std::vector<double>>> matrix;
+        };
+
+        /* each atom might have several constraints */
+        std::vector<std::vector<mt_constraint_t>> mt_constraints(ctx_.unit_cell().num_atoms());
+        if (ctx_.num_mag_dims() == 1 && !ctx_.cfg().control().use_second_variation()) {
+            for (int i = 0; i < ctx_.cfg().hubbard().constraint().local().size(); i++) {
+                auto const& constraint = ctx_.cfg().hubbard().constraint().local(i);
+                int ia                 = constraint.atom_index();
+                int l                  = constraint.l();
+                if (ia < 0 || ia >= ctx_.unit_cell().num_atoms()) {
+                    RTE_THROW("wrong atom index in local Hubbard constraint");
+                }
+                if (l < 0) {
+                    RTE_THROW("wrong angular momentum in local Hubbard constraint");
+                }
+
+                int mmax = 2 * l + 1;
+
+                auto matrix = constraint.occupancy();
+
+                for (auto const& spin_block : matrix) {
+                    if (static_cast<int>(spin_block.size()) != mmax) {
+                        RTE_THROW("wrong number of rows in local Hubbard constraint");
+                    }
+                    for (auto const& row : spin_block) {
+                        if (static_cast<int>(row.size()) != mmax) {
+                            RTE_THROW("wrong number of columns in local Hubbard constraint");
+                        }
+                    }
+                }
+                mt_constraints[ia].push_back({l, std::move(matrix)});
+            }
+        }
+
         #pragma omp parallel for
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             auto& atom = ctx_.unit_cell().atom(ia);
@@ -98,6 +138,27 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                                         {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                                 hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
                                         {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+
+                                if (constraints_applied_ < ctx_.cfg().hubbard().constraint().maxiter()) {
+                                    /* add constraints */
+                                    int l1 = type.indexb(j1).am.l();
+                                    int l2 = type.indexb(j2).am.l();
+                                    for (auto const& constraint : mt_constraints[ia]) {
+                                        if (l1 == constraint.l && l2 == constraint.l) {
+                                            int m1     = type.indexb(j1).m;
+                                            int m2     = type.indexb(j2).m;
+                                            int order1 = type.indexb(j1).order;
+                                            int order2 = type.indexb(j2).order;
+                                            double ori = atom.symmetry_class().o_radial_integral(
+                                                    constraint.l, order1, order2);
+                                            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                                                hmt_[ia](j1, j2, ispn) +=
+                                                        constraint.matrix[ispn][constraint.l + m1][constraint.l + m2] *
+                                                        ori;
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             break;
                         }
@@ -114,6 +175,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                 hmt_[ia].copy_to(memory_t::device);
             }
         }
+        constraints_applied_++;
     }
 }
 
