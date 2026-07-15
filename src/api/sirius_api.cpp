@@ -6039,6 +6039,10 @@ sirius_linear_solver:
       type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
+    h0_handler:
+      type: H0_handler
+      attr: in, required
+      doc: K-point independent Hamiltonian handler.
     vkq:
       type: double
       attr: in, required, dimension(3)
@@ -6110,7 +6114,7 @@ sirius_linear_solver:
 @api end
 */
 void
-sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* num_gvec_kq_loc__,
+sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__, int const* num_gvec_kq_loc__,
                      int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
                      double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
                      double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
@@ -6154,7 +6158,8 @@ sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* 
                     RTE_THROW("wrong number of G+k vectors for k");
                 }
 
-                auto& H0 = gs.get_H0();
+                //auto& H0 = gs.get_H0();
+                auto& H0 = get_H0(h0_handler__)
 
                 sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
                 kp.initialize();

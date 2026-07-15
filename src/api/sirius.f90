@@ -5928,6 +5928,7 @@ end subroutine sirius_create_H0
 !
 !> @brief Interface to linear solver.
 !> @param [in] gs_handler DFT ground state handler.
+!> @param [in] h0_handler K-point independent Hamiltonian handler.
 !> @param [in] vkq K+q-point in lattice coordinates
 !> @param [in] num_gvec_kq_loc Local number of G-vectors for k+q-point
 !> @param [in] gvec_kq_loc Local list of G-vectors for k+q-point.
@@ -5945,12 +5946,13 @@ end subroutine sirius_create_H0
 !> @param [in] omega Complex frequency
 !> @param [out] niter Average number of iterations.
 !> @param [out] error_code Error code
-subroutine sirius_linear_solver(gs_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,&
-&niter,error_code)
+subroutine sirius_linear_solver(gs_handler,h0_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,&
+&dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,&
+&omega,niter,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+type(sirius_H0_handler), target, intent(in) :: h0_handler
 real(8), target, intent(in) :: vkq(3)
 integer, target, intent(in) :: num_gvec_kq_loc
 integer, target, intent(in) :: gvec_kq_loc(3, num_gvec_kq_loc)
@@ -5970,6 +5972,7 @@ integer, optional, target, intent(out) :: niter
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: h0_handler_ptr
 type(C_PTR) :: vkq_ptr
 type(C_PTR) :: num_gvec_kq_loc_ptr
 type(C_PTR) :: gvec_kq_loc_ptr
@@ -5989,12 +5992,13 @@ type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_linear_solver_aux(gs_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,dpsi,&
-&psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,&
-&niter,error_code)&
+subroutine sirius_linear_solver_aux(gs_handler,h0_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,&
+&dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,&
+&omega,niter,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
+type(C_PTR), value :: h0_handler
 type(C_PTR), value :: vkq
 type(C_PTR), value :: num_gvec_kq_loc
 type(C_PTR), value :: gvec_kq_loc
@@ -6017,6 +6021,8 @@ end interface
 !
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+h0_handler_ptr = C_NULL_PTR
+h0_handler_ptr = C_LOC(h0_handler)
 vkq_ptr = C_NULL_PTR
 vkq_ptr = C_LOC(vkq)
 num_gvec_kq_loc_ptr = C_NULL_PTR
@@ -6059,9 +6065,10 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_linear_solver_aux(gs_handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,gvec_kq_loc_ptr,&
-&dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,&
-&nbnd_occ_k_ptr,nbnd_occ_kq_ptr,tol_ptr,omega_ptr,niter_ptr,error_code_ptr)
+call sirius_linear_solver_aux(gs_handler_ptr,h0_handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,&
+&gvec_kq_loc_ptr,dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,&
+&alpha_pv_ptr,spin_ptr,nbnd_occ_k_ptr,nbnd_occ_kq_ptr,tol_ptr,omega_ptr,niter_ptr,&
+&error_code_ptr)
 end subroutine sirius_linear_solver
 
 !
