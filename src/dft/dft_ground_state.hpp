@@ -54,9 +54,6 @@ class DFT_ground_state
     /// Atomic forces.
     Force forces_;
 
-    /// K-point independent part of the Hamiltonian.
-    std::shared_ptr<Hamiltonian0<double>> H0_; // hard-code double for now
-
     /// Correction to total energy from the SCF density minimisation.
     double scf_correction_energy_{0};
 
@@ -94,14 +91,6 @@ class DFT_ground_state
     ctx() const
     {
         return ctx_;
-    }
-
-    /// Return k-independent Hamiltonian.
-    inline Hamiltonian0<double>&
-    get_H0() const
-    {
-        RTE_ASSERT(H0_ != nullptr);
-        return *H0_;
     }
 
     /// Return reference to Density instance.
@@ -142,9 +131,6 @@ class DFT_ground_state
     {
         return scf_correction_energy_;
     }
-
-    void
-    create_H0();
 
     double
     total_energy() const;

@@ -5895,37 +5895,6 @@ call sirius_add_hubbard_atom_constraint_aux(handler_ptr,atom_id_ptr,n_ptr,l_ptr,
 end subroutine sirius_add_hubbard_atom_constraint
 
 !
-!> @brief Generate H0.
-!> @param [in] gs_handler Ground state handler.
-!> @param [out] error_code Error code
-subroutine sirius_create_H0(gs_handler,error_code)
-implicit none
-!
-type(sirius_ground_state_handler), target, intent(in) :: gs_handler
-integer, optional, target, intent(out) :: error_code
-!
-type(C_PTR) :: gs_handler_ptr
-type(C_PTR) :: error_code_ptr
-!
-interface
-subroutine sirius_create_H0_aux(gs_handler,error_code)&
-&bind(C, name="sirius_create_H0")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: gs_handler
-type(C_PTR), value :: error_code
-end subroutine
-end interface
-!
-gs_handler_ptr = C_NULL_PTR
-gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
-error_code_ptr = C_NULL_PTR
-if (present(error_code)) then
-error_code_ptr = C_LOC(error_code)
-endif
-call sirius_create_H0_aux(gs_handler_ptr,error_code_ptr)
-end subroutine sirius_create_H0
-
-!
 !> @brief Interface to linear solver.
 !> @param [in] gs_handler DFT ground state handler.
 !> @param [in] h0_handler K-point independent Hamiltonian handler.
