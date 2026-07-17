@@ -325,11 +325,11 @@ Hamiltonian0<T>::generate_pw_coefs(Potential const& potential__)
                 get_fft_result(&veff_pw_(0, 3));
             }
             case 1: {
-                auto v0 = interstitial_canonical_potential(potential__, -1.0);
+                auto v0 = interstitial_canonical_potential(potential__, 1.0);
                 fft::spfft_input<T>(fft, v0);
                 get_fft_result(&veff_pw_(0, 0));
 
-                auto v1 = interstitial_canonical_potential(potential__, 1.0);
+                auto v1 = interstitial_canonical_potential(potential__, -1.0);
                 fft::spfft_input<T>(fft, v1);
                 get_fft_result(&veff_pw_(0, 1));
                 break;
