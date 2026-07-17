@@ -24,9 +24,9 @@ constexpr double speed_of_light = 137.035999139;
 // This value reproduces NIST ScRLDA total energy much better.
 // constexpr double speed_of_light = 137.0359895;
 
-constexpr double sq_alpha_half = 0.5 * std::pow(speed_of_light, -2);
+constexpr double rest_energy = speed_of_light * speed_of_light;
 
-constexpr double rest_energy = std::pow(speed_of_light, 2);
+constexpr double sq_alpha_half = 0.5 / rest_energy;
 
 /// Bohr radius in angstroms.
 constexpr double bohr_radius = 0.52917721067;

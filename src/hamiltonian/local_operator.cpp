@@ -37,6 +37,18 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             veff_vec_[j]->value(ir) = v__;
         }
     }
+
+    buf_rg_ = mdarray<std::complex<T>, 1>({fft_coarse_.local_slice_size()}, get_memory_pool(ctx_.host_memory_t()),
+                                          mdarray_label("Local_operator::buf_rg_"));
+    /* move functions to GPU */
+    if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
+        for (int j = 0; j < 6; j++) {
+            if (veff_vec_[j]) {
+                veff_vec_[j]->values().allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+            }
+        }
+        buf_rg_.allocate(get_memory_pool(memory_t::device));
+    }
 }
 
 template <typename T, typename F>
