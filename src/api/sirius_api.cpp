@@ -2753,9 +2753,9 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                         (iter_solver_tol__) ? *iter_solver_tol__ : ks.ctx().cfg().iterative_solver().energy_tolerance();
                 int steps =
                         (iter_solver_steps__) ? *iter_solver_steps__ : ks.ctx().cfg().iterative_solver().num_steps();
-                if (precompute_pw__ && *precompute_pw__) {
-                    gs.potential().generate_pw_coefs();
-                }
+                //if (precompute_pw__ && *precompute_pw__) {
+                //    gs.potential().generate_pw_coefs();
+                //}
                 if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
                     gs.potential().update_atomic_potential();
                 }

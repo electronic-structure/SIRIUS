@@ -42,7 +42,6 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
             if (ctx_.cfg().iterative_solver().type() == "exact") {
                 this->generate_pw_coefs(potential__);
             }
-            //potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
             if (update_lapw_rf__) {
                 ctx_.unit_cell().generate_radial_functions(ctx_.out());
@@ -312,8 +311,8 @@ Hamiltonian0<T>::generate_pw_coefs(Potential const& potential__)
         switch (ctx_.num_mag_dims()) {
             case 3: {
                 // spin-block index always has this order
-                // 0: V - Bz
-                // 1: V + Bz
+                // 0: V + Bz
+                // 1: V - Bz
                 // 2: Bx - i By
                 // 3: Bx + i By
                 auto v2 = interstitial_canonical_potential(potential__, std::complex<double>(0, -1));

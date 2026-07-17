@@ -66,11 +66,10 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     /* create list of XC functionals */
-
     std::vector<double> weight(ctx_.xc_functionals().size(), 1.0);
 
-    /* Check if the weights are given and if the number of elements match the number of functionals. If empty, then default to 1.0
-     */
+    /* Check if the weights are given and if the number of elements match the number of functionals.
+     * If empty, then default to 1.0 */
     if (!ctx_.xc_functionals_weight().empty() &&
         (ctx_.xc_functionals_weight().size() != ctx_.xc_functionals().size())) {
         RTE_THROW("The table containing the weight of each functional should have the same number of elements "
@@ -81,7 +80,7 @@ Potential::Potential(Simulation_context& ctx__)
         weight = ctx_.xc_functionals_weight();
     }
 
-    int i = 0;
+    int i{0};
     for (auto& xc_label : ctx_.xc_functionals()) {
         xc_func_.emplace_back(XC_functional(ctx_.spfft<double>(), ctx_.unit_cell().lattice_vectors(), xc_label,
                                             weight[i], ctx_.num_spins()));

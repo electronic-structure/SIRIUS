@@ -71,7 +71,6 @@ generate_coarse_periodic_function(F&& f__, Smooth_periodic_function<T>& ftmp__, 
     out__.fft_transform(1);
 }
 
-
 template <typename T>
 Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_transform_type<T>& fft_coarse__,
                                   std::shared_ptr<fft::Gvec_fft> gvec_coarse_p__, Potential const& potential__)
