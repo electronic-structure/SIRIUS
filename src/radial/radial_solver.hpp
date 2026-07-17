@@ -42,11 +42,7 @@ struct radial_solver_result_t
 
 namespace radial_solver_local {
 
-double const rest_energy = std::pow(speed_of_light, 2);
-
-double const alpha = 1.0 / speed_of_light;
-
-double const sq_alpha_half = 0.5 / rest_energy;
+constexpr double alpha = 1.0 / speed_of_light;
 
 template <relativity_t rel>
 inline double

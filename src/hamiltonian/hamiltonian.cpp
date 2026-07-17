@@ -11,9 +11,10 @@
  *  \brief Contains definition of sirius::Hamiltonian0 class.
  */
 
-#include "potential/potential.hpp"
-#include "local_operator.hpp"
 #include <memory>
+#include "potential/potential.hpp"
+#include "lapw/interstitial_functions.hpp"
+#include "local_operator.hpp"
 #include "hamiltonian.hpp"
 
 namespace sirius {
@@ -30,7 +31,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
     PROFILE("sirius::Hamiltonian0");
 
     local_op_ = std::make_unique<Local_operator<T>>(ctx_, ctx_.spfft_coarse<T>(), ctx_.gvec_coarse_fft_sptr(),
-                                                    &potential__);
+                                                    potential__);
 
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(potential__));
@@ -38,7 +39,10 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
     }
     if (ctx_.full_potential()) {
         if (precompute_lapw__) {
-            potential_->generate_pw_coefs();
+            if (ctx_.cfg().iterative_solver().type() == "exact") {
+                this->generate_pw_coefs(potential__);
+            }
+            //potential_->generate_pw_coefs();
             potential_->update_atomic_potential();
             if (update_lapw_rf__) {
                 ctx_.unit_cell().generate_radial_functions(ctx_.out());
@@ -247,6 +251,91 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+template <typename T>
+void
+Hamiltonian0<T>::generate_pw_coefs(Potential const& potential__)
+{
+    PROFILE("sirius::Hamiltonian0::generate_pw_coefs");
+
+    switch (ctx_.valence_relativity()) {
+        case relativity_t::iora: {
+            rm2_inv_pw_ = mdarray<std::complex<T>, 1>({ctx_.gvec().num_gvec()});
+        }
+        case relativity_t::zora: {
+            rm_inv_pw_ = mdarray<std::complex<T>, 1>({ctx_.gvec().num_gvec()});
+        }
+        default: {
+            if (ctx_.cfg().control().use_second_variation()) {
+                veff_pw_ = mdarray<std::complex<T>, 2>({ctx_.gvec().num_gvec(), 1});
+            } else {
+                veff_pw_ = mdarray<std::complex<T>, 2>({ctx_.gvec().num_gvec(), ctx_.num_mag_dims() + 1});
+            }
+        }
+    }
+
+    int gv_count = this->ctx_.gvec_fft().count();
+
+    auto& fft = this->ctx_.spfft<T>();
+
+    /* temporaty output buffer */
+    mdarray<std::complex<T>, 1> fpw_fft({gv_count});
+
+    auto get_fft_result = [&](std::complex<T>* ptr) {
+        fft.forward(SPFFT_PU_HOST, reinterpret_cast<T*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
+        ctx_.gvec_fft().gather_pw_global(&fpw_fft[0], ptr);
+    };
+
+    switch (ctx_.valence_relativity()) {
+        case relativity_t::iora: {
+            auto m = interstitial_mass<2>(potential__);
+            fft::spfft_input<T>(fft, m);
+            get_fft_result(&rm2_inv_pw_[0]);
+        }
+        case relativity_t::zora: {
+            auto m = interstitial_mass<1>(potential__);
+            fft::spfft_input<T>(fft, m);
+            get_fft_result(&rm_inv_pw_[0]);
+        }
+        default: {
+        }
+    }
+    if (ctx_.cfg().control().use_second_variation() || ctx_.num_mag_dims() == 0) {
+        auto v = interstitial_potential(potential__, 0);
+        fft::spfft_input<T>(fft, v);
+        get_fft_result(&veff_pw_[0]);
+    } else {
+        switch (ctx_.num_mag_dims()) {
+            case 3: {
+                // spin-block index always has this order
+                // 0: V - Bz
+                // 1: V + Bz
+                // 2: Bx - i By
+                // 3: Bx + i By
+                auto v2 = interstitial_canonical_potential(potential__, std::complex<double>(0, -1));
+                fft::spfft_input<T>(fft, v2);
+                get_fft_result(&veff_pw_(0, 2));
+
+                auto v3 = interstitial_canonical_potential(potential__, std::complex<double>(0, 1));
+                fft::spfft_input<T>(fft, v3);
+                get_fft_result(&veff_pw_(0, 3));
+            }
+            case 1: {
+                auto v0 = interstitial_canonical_potential(potential__, -1.0);
+                fft::spfft_input<T>(fft, v0);
+                get_fft_result(&veff_pw_(0, 0));
+
+                auto v1 = interstitial_canonical_potential(potential__, 1.0);
+                fft::spfft_input<T>(fft, v1);
+                get_fft_result(&veff_pw_(0, 1));
+                break;
+            }
+            default: {
+                break;
             }
         }
     }

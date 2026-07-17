@@ -16,12 +16,53 @@
 #include "function3d/smooth_periodic_function.hpp"
 #include "core/profiler.hpp"
 #include "core/wf/wave_functions.hpp"
+#include "lapw/interstitial_functions.hpp"
 
 namespace sirius {
 
 template <typename T>
 Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_transform_type<T>& fft_coarse__,
-                                  std::shared_ptr<fft::Gvec_fft> gvec_coarse_p__, Potential* potential__)
+                                  std::shared_ptr<fft::Gvec_fft> gvec_coarse_p__, T v__)
+    : ctx_(ctx__)
+    , fft_coarse_(fft_coarse__)
+    , gvec_coarse_p_(gvec_coarse_p__)
+
+{
+    /* allocate functions */
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        veff_vec_[j] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
+        #pragma omp parallel for schedule(static)
+        for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
+            /* this is done for debug/test purposes and is only used by the test app */
+            veff_vec_[j]->value(ir) = v__;
+        }
+    }
+}
+
+template <typename T, typename F>
+inline void
+generate_coarse_periodic_function(F&& f__, Smooth_periodic_function<T>& ftmp__, Smooth_periodic_function<T>& out__)
+{
+    for (int ir = 0; ir < ftmp__.spfft().local_slice_size(); ir++) {
+        ftmp__.value(ir) = f__(ir);
+    }
+    /* transform to plane-wave domain */
+    ftmp__.fft_transform(-1);
+
+    /* loop over local set of coarse G-vectors */
+    #pragma omp parallel for schedule(static)
+    for (int igloc = 0; igloc < out__.gvec().count(); igloc++) {
+        /* map from fine to coarse set of G-vectors */
+        out__.f_pw_local(igloc) = ftmp__.f_pw_local(ftmp__.gvec().gvec_base_mapping(igloc));
+    }
+    /* transform to real space */
+    out__.fft_transform(1);
+}
+
+
+template <typename T>
+Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_transform_type<T>& fft_coarse__,
+                                  std::shared_ptr<fft::Gvec_fft> gvec_coarse_p__, Potential const& potential__)
     : ctx_(ctx__)
     , fft_coarse_(fft_coarse__)
     , gvec_coarse_p_(gvec_coarse_p__)
@@ -32,30 +73,35 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
     /* allocate functions */
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         veff_vec_[j] = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
-        #pragma omp parallel for schedule(static)
-        for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
-            /* this is done for debug/test purposes and is only used by the test app */
-            veff_vec_[j]->value(ir) = 2.71828;
-        }
     }
-    /* map Theta(r) to the coarse mesh */
+
     if (ctx_.full_potential()) {
-        auto& gvec_dense_p = ctx_.gvec_fft();
+        auto& fft_dense  = ctx_.spfft<T>();
+
+        Smooth_periodic_function<T> ftmp(fft_dense, ctx_.gvec_fft_sptr());
+
+        /* components of the potential */
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            auto f = interstitial_potential(potential__, j);
+            generate_coarse_periodic_function(f, ftmp,  *veff_vec_[j]);
+
+            if (j == 0) {
+                v0_[0] = ftmp.f_0().real();
+            }
+        }
+
+        /* step function */
         veff_vec_[v_local_index_t::theta] =
                 std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
-        /* map unit-step function */
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
-            /* map from fine to coarse set of G-vectors */
-            veff_vec_[v_local_index_t::theta]->f_pw_local(igloc) =
-                    ctx_.theta_pw(gvec_dense_p.gvec().gvec_base_mapping(igloc) + gvec_dense_p.gvec().offset());
-        }
-        veff_vec_[v_local_index_t::theta]->fft_transform(1);
-        if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-            veff_vec_[v_local_index_t::theta]
-                    ->values()
-                    .allocate(get_memory_pool(memory_t::device))
-                    .copy_to(memory_t::device);
+        auto f_theta = interstitial_step_function(ctx_);
+        generate_coarse_periodic_function(f_theta, ftmp,  *veff_vec_[v_local_index_t::theta]);
+
+        /* inverse mass */
+        if (ctx_.valence_relativity() == relativity_t::zora) {
+            veff_vec_[v_local_index_t::rm_inv] =
+                    std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
+            auto f = interstitial_mass<1>(potential__);
+            generate_coarse_periodic_function(f, ftmp,  *veff_vec_[v_local_index_t::rm_inv]);
         }
         if (env::print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
@@ -63,95 +109,50 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             print_checksum("theta_pw", cs1, ctx_.out());
             print_checksum("theta_rg", cs2, ctx_.out());
         }
-    }
-
-    /* map potential */
-    if (potential__) {
-
-        if (ctx_.full_potential()) {
-
-            auto& fft_dense    = ctx_.spfft<T>();
-            auto& gvec_dense_p = ctx_.gvec_fft();
-
-            Smooth_periodic_function<T> ftmp(ctx_.spfft<T>(), ctx_.gvec_fft_sptr());
-
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                /* multiply potential by step function theta(r) */
-                for (int ir = 0; ir < fft_dense.local_slice_size(); ir++) {
-                    ftmp.value(ir) = potential__->component(j).rg().value(ir) * ctx_.theta(ir);
-                }
-                /* transform to plane-wave domain */
-                ftmp.fft_transform(-1);
-                if (j == 0) {
-                    v0_[0] = ftmp.f_0().real();
-                }
-                /* loop over local set of coarse G-vectors */
-                #pragma omp parallel for schedule(static)
-                for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
-                    /* map from fine to coarse set of G-vectors */
-                    veff_vec_[j]->f_pw_local(igloc) = ftmp.f_pw_local(gvec_dense_p.gvec().gvec_base_mapping(igloc));
-                }
-                /* transform to real space */
-                veff_vec_[j]->fft_transform(1);
+    } else {
+        /* pseudopotential case */
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            /* loop over local set of coarse G-vectors */
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
+                /* map from fine to coarse set of G-vectors */
+                veff_vec_[j]->f_pw_local(igloc) = potential__.component(j).rg().f_pw_local(
+                        potential__.component(j).rg().gvec().gvec_base_mapping(igloc));
             }
-            if (ctx_.valence_relativity() == relativity_t::zora) {
-                veff_vec_[v_local_index_t::rm_inv] =
-                        std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
-                /* loop over local set of coarse G-vectors */
-                #pragma omp parallel for schedule(static)
-                for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
-                    /* map from fine to coarse set of G-vectors */
-                    veff_vec_[v_local_index_t::rm_inv]->f_pw_local(igloc) = potential__->rm_inv_pw(
-                            gvec_dense_p.gvec().offset() + gvec_dense_p.gvec().gvec_base_mapping(igloc));
-                }
-                /* transform to real space */
-                veff_vec_[v_local_index_t::rm_inv]->fft_transform(1);
-            }
+            /* transform to real space */
+            veff_vec_[j]->fft_transform(1);
+        }
 
+        /* change to canonical form; in pseudopotential case canonical magnetic Hamiltonian is diagonalized */
+        if (ctx_.num_mag_dims()) {
+            #pragma omp parallel for schedule(static)
+            for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
+                T v0                                      = veff_vec_[v_local_index_t::v0]->value(ir);
+                T v1                                      = veff_vec_[v_local_index_t::v1]->value(ir);
+                veff_vec_[v_local_index_t::v0]->value(ir) = v0 + v1; // v + Bz
+                veff_vec_[v_local_index_t::v1]->value(ir) = v0 - v1; // v - Bz
+            }
+        }
+
+        if (ctx_.num_mag_dims() == 0) {
+            v0_[0] = potential__.component(0).rg().f_0().real();
         } else {
-
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                /* loop over local set of coarse G-vectors */
-                #pragma omp parallel for schedule(static)
-                for (int igloc = 0; igloc < gvec_coarse_p_->gvec().count(); igloc++) {
-                    /* map from fine to coarse set of G-vectors */
-                    veff_vec_[j]->f_pw_local(igloc) = potential__->component(j).rg().f_pw_local(
-                            potential__->component(j).rg().gvec().gvec_base_mapping(igloc));
-                }
-                /* transform to real space */
-                veff_vec_[j]->fft_transform(1);
-            }
-
-            /* change to canonical form */
-            if (ctx_.num_mag_dims()) {
-                #pragma omp parallel for schedule(static)
-                for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                    T v0                                      = veff_vec_[v_local_index_t::v0]->value(ir);
-                    T v1                                      = veff_vec_[v_local_index_t::v1]->value(ir);
-                    veff_vec_[v_local_index_t::v0]->value(ir) = v0 + v1; // v + Bz
-                    veff_vec_[v_local_index_t::v1]->value(ir) = v0 - v1; // v - Bz
-                }
-            }
-
-            if (ctx_.num_mag_dims() == 0) {
-                v0_[0] = potential__->component(0).rg().f_0().real();
-            } else {
-                v0_[0] = potential__->component(0).rg().f_0().real() + potential__->component(1).rg().f_0().real();
-                v0_[1] = potential__->component(0).rg().f_0().real() - potential__->component(1).rg().f_0().real();
-            }
+            v0_[0] = potential__.component(0).rg().f_0().real() + potential__.component(1).rg().f_0().real();
+            v0_[1] = potential__.component(0).rg().f_0().real() - potential__.component(1).rg().f_0().real();
         }
 
-        if (env::print_checksum()) {
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                auto cs1 = veff_vec_[j]->checksum_pw();
-                auto cs2 = veff_vec_[j]->checksum_rg();
-                print_checksum("veff_pw", cs1, ctx_.out());
-                print_checksum("veff_rg", cs2, ctx_.out());
-            }
+    }
+
+    if (env::print_checksum()) {
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            auto cs1 = veff_vec_[j]->checksum_pw();
+            auto cs2 = veff_vec_[j]->checksum_rg();
+            print_checksum("veff_pw", cs1, ctx_.out());
+            print_checksum("veff_rg", cs2, ctx_.out());
         }
     }
 
-    buf_rg_ = mdarray<std::complex<T>, 1>({fft_coarse_.local_slice_size()}, get_memory_pool(memory_t::host),
+    buf_rg_ = mdarray<std::complex<T>, 1>({fft_coarse_.local_slice_size()}, get_memory_pool(ctx_.host_memory_t()),
                                           mdarray_label("Local_operator::buf_rg_"));
     /* move functions to GPU */
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
@@ -507,8 +508,6 @@ Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std::sha
             print_checksum("theta_pw", cs, RTE_OUT(std::cout));
         }
     }
-
-    // auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
 
     auto spl_num_wf = phi_fft.spl_num_wf();
 

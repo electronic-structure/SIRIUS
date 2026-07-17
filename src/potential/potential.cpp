@@ -125,22 +125,6 @@ Potential::Potential(Simulation_context& ctx__)
     if (ctx_.full_potential()) {
         gvec_ylm_ =
                 mdarray<std::complex<double>, 2>({ctx_.lmmax_pot(), ctx_.gvec().count()}, mdarray_label("gvec_ylm_"));
-
-        switch (ctx_.valence_relativity()) {
-            case relativity_t::iora: {
-                rm2_inv_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
-            }
-            case relativity_t::zora: {
-                rm_inv_pw_ = mdarray<std::complex<double>, 1>({ctx_.gvec().num_gvec()});
-            }
-            default: {
-                if (ctx_.cfg().control().use_second_variation()) {
-                    veff_pw_ = mdarray<std::complex<double>, 2>({ctx_.gvec().num_gvec(), 1});
-                } else {
-                    veff_pw_ = mdarray<std::complex<double>, 2>({ctx_.gvec().num_gvec(), ctx_.num_mag_dims() + 1});
-                }
-            }
-        }
     }
 
     aux_bf_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});

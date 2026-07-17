@@ -2486,15 +2486,15 @@ sirius_set_pw_coeffs(void* const* gs_handler__, char const* label__, std::comple
                 std::string label(label__);
 
                 if (gs.ctx().full_potential()) {
-                    if (label == "veff") {
-                        gs.potential().set_veff_pw(pw_coeffs__);
-                    } else if (label == "rm_inv") {
-                        gs.potential().set_rm_inv_pw(pw_coeffs__);
-                    } else if (label == "rm2_inv") {
-                        gs.potential().set_rm2_inv_pw(pw_coeffs__);
-                    } else {
-                        RTE_THROW("wrong label: " + label);
-                    }
+                    //if (label == "veff") {
+                    //    gs.potential().set_veff_pw(pw_coeffs__);
+                    //} else if (label == "rm_inv") {
+                    //    gs.potential().set_rm_inv_pw(pw_coeffs__);
+                    //} else if (label == "rm2_inv") {
+                    //    gs.potential().set_rm2_inv_pw(pw_coeffs__);
+                    //} else {
+                    //    RTE_THROW("wrong label: " + label);
+                    //}
                 } else {
                     RTE_ASSERT(ngv__ != nullptr);
                     RTE_ASSERT(gvl__ != nullptr);

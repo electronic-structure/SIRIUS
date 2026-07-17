@@ -81,14 +81,14 @@ class Non_local_operator
 
     template <typename F, typename = std::enable_if_t<std::is_same<T, real_type<F>>::value>>
     inline F
-    value(int xi1__, int xi2__, int ia__)
+    value(int xi1__, int xi2__, int ia__) const
     {
         return this->value<F>(xi1__, xi2__, 0, ia__);
     }
 
     template <typename F, std::enable_if_t<std::is_same<T, F>::value, bool> = true>
     F
-    value(int xi1__, int xi2__, int ispn__, int ia__)
+    value(int xi1__, int xi2__, int ispn__, int ia__) const
     {
         int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
         return this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
@@ -96,7 +96,7 @@ class Non_local_operator
 
     template <typename F, std::enable_if_t<std::is_same<std::complex<T>, F>::value, bool> = true>
     F
-    value(int xi1__, int xi2__, int ispn__, int ia__)
+    value(int xi1__, int xi2__, int ispn__, int ia__) const
     {
         int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
         return std::complex<T>(this->op_(0, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__),
