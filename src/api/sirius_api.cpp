@@ -2485,78 +2485,67 @@ sirius_set_pw_coeffs(void* const* gs_handler__, char const* label__, std::comple
 
                 std::string label(label__);
 
-                if (gs.ctx().full_potential()) {
-                    //if (label == "veff") {
-                    //    gs.potential().set_veff_pw(pw_coeffs__);
-                    //} else if (label == "rm_inv") {
-                    //    gs.potential().set_rm_inv_pw(pw_coeffs__);
-                    //} else if (label == "rm2_inv") {
-                    //    gs.potential().set_rm2_inv_pw(pw_coeffs__);
-                    //} else {
-                    //    RTE_THROW("wrong label: " + label);
+                RTE_ASSERT(ngv__ != nullptr);
+                RTE_ASSERT(gvl__ != nullptr);
+                RTE_ASSERT(comm__ != nullptr);
+
+                mpi::Communicator comm(MPI_Comm_f2c(*comm__));
+                mdarray<int, 2> gvec({3, *ngv__}, gvl__);
+
+                std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
+                #pragma omp parallel for schedule(static)
+                for (int i = 0; i < *ngv__; i++) {
+                    r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                    /* skip G-vectors that are provided in the input, but exceed the cutoff length */
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
+                    // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
+                    //    continue;
                     //}
-                } else {
-                    RTE_ASSERT(ngv__ != nullptr);
-                    RTE_ASSERT(gvl__ != nullptr);
-                    RTE_ASSERT(comm__ != nullptr);
-
-                    mpi::Communicator comm(MPI_Comm_f2c(*comm__));
-                    mdarray<int, 2> gvec({3, *ngv__}, gvl__);
-
-                    std::vector<std::complex<double>> v(gs.ctx().gvec().num_gvec(), 0);
-                    #pragma omp parallel for schedule(static)
-                    for (int i = 0; i < *ngv__; i++) {
-                        r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                        // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
-                        // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
-                        //    continue;
-                        //}
-                        int ig = gs.ctx().gvec().index_by_gvec(G);
-                        if (ig >= 0) {
-                            v[ig] = pw_coeffs__[i];
-                        } else {
-                            if (gs.ctx().gamma_point()) {
-                                ig = gs.ctx().gvec().index_by_gvec(G * (-1));
-                                if (ig == -1) {
-                                    std::stringstream s;
-                                    auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
-                                                   r3::vector<double>(G[0], G[1], G[2]));
-                                    s << "wrong index of G-vector" << std::endl
-                                      << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])"
-                                      << std::endl;
-                                    RTE_THROW(s);
-                                } else {
-                                    v[ig] = std::conj(pw_coeffs__[i]);
-                                }
+                    int ig = gs.ctx().gvec().index_by_gvec(G);
+                    if (ig >= 0) {
+                        v[ig] = pw_coeffs__[i];
+                    } else {
+                        if (gs.ctx().gamma_point()) {
+                            ig = gs.ctx().gvec().index_by_gvec(G * (-1));
+                            if (ig == -1) {
+                                std::stringstream s;
+                                auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
+                                               r3::vector<double>(G[0], G[1], G[2]));
+                                s << "wrong index of G-vector" << std::endl
+                                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])"
+                                  << std::endl;
+                                RTE_THROW(s);
+                            } else {
+                                v[ig] = std::conj(pw_coeffs__[i]);
                             }
                         }
                     }
-                    comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
+                }
+                comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
 
-                    std::map<std::string, Smooth_periodic_function<double>*> func = {
-                            {"rho", &gs.density().rho().rg()},
-                            {"rhoc", &gs.density().rho_pseudo_core()},
-                            {"magz", &gs.density().mag(0).rg()},
-                            {"magx", &gs.density().mag(1).rg()},
-                            {"magy", &gs.density().mag(2).rg()},
-                            {"veff", &gs.potential().effective_potential().rg()},
-                            {"bz", &gs.potential().effective_magnetic_field(0).rg()},
-                            {"bx", &gs.potential().effective_magnetic_field(1).rg()},
-                            {"by", &gs.potential().effective_magnetic_field(2).rg()},
-                            {"vloc", &gs.potential().local_potential()},
-                            {"vxc", &gs.potential().xc_potential().rg()},
-                            {"dveff", &gs.potential().dveff()},
-                    };
+                std::map<std::string, Smooth_periodic_function<double>*> func = {
+                        {"rho", &gs.density().rho().rg()},
+                        {"rhoc", &gs.density().rho_pseudo_core()},
+                        {"magz", &gs.density().mag(0).rg()},
+                        {"magx", &gs.density().mag(1).rg()},
+                        {"magy", &gs.density().mag(2).rg()},
+                        {"veff", &gs.potential().effective_potential().rg()},
+                        {"bz", &gs.potential().effective_magnetic_field(0).rg()},
+                        {"bx", &gs.potential().effective_magnetic_field(1).rg()},
+                        {"by", &gs.potential().effective_magnetic_field(2).rg()},
+                        {"vloc", &gs.potential().local_potential()},
+                        {"vxc", &gs.potential().xc_potential().rg()},
+                        {"dveff", &gs.potential().dveff()},
+                };
 
-                    if (!func.count(label)) {
-                        RTE_THROW("wrong label: " + label);
-                    }
+                if (!func.count(label)) {
+                    RTE_THROW("wrong label: " + label);
+                }
 
-                    func.at(label)->scatter_f_pw(v);
+                func.at(label)->scatter_f_pw(v);
 
-                    if (transform_to_rg__ && *transform_to_rg__) {
-                        func.at(label)->fft_transform(1);
-                    }
+                if (transform_to_rg__ && *transform_to_rg__) {
+                    func.at(label)->fft_transform(1);
                 }
             },
             error_code__);
@@ -2608,60 +2597,56 @@ sirius_get_pw_coeffs(void* const* gs_handler__, char const* label__, std::comple
                 auto& gs = get_gs(gs_handler__);
 
                 std::string label(label__);
-                if (gs.ctx().full_potential()) {
-                    RTE_THROW("not implemented");
-                } else {
-                    RTE_ASSERT(ngv__ != NULL);
-                    RTE_ASSERT(gvl__ != NULL);
-                    RTE_ASSERT(comm__ != NULL);
+                RTE_ASSERT(ngv__ != NULL);
+                RTE_ASSERT(gvl__ != NULL);
+                RTE_ASSERT(comm__ != NULL);
 
-                    mpi::Communicator comm(MPI_Comm_f2c(*comm__));
-                    mdarray<int, 2> gvec({3, *ngv__}, gvl__);
+                mpi::Communicator comm(MPI_Comm_f2c(*comm__));
+                mdarray<int, 2> gvec({3, *ngv__}, gvl__);
 
-                    std::map<std::string, Smooth_periodic_function<double>*> func = {
-                            {"rho", &gs.density().rho().rg()},
-                            {"magz", &gs.density().mag(0).rg()},
-                            {"magx", &gs.density().mag(1).rg()},
-                            {"magy", &gs.density().mag(2).rg()},
-                            {"veff", &gs.potential().effective_potential().rg()},
-                            {"vloc", &gs.potential().local_potential()},
-                            {"rhoc", &gs.density().rho_pseudo_core()}};
+                std::map<std::string, Smooth_periodic_function<double>*> func = {
+                        {"rho", &gs.density().rho().rg()},
+                        {"magz", &gs.density().mag(0).rg()},
+                        {"magx", &gs.density().mag(1).rg()},
+                        {"magy", &gs.density().mag(2).rg()},
+                        {"veff", &gs.potential().effective_potential().rg()},
+                        {"vloc", &gs.potential().local_potential()},
+                        {"rhoc", &gs.density().rho_pseudo_core()}};
 
-                    if (!func.count(label)) {
-                        RTE_THROW("wrong label: " + label);
+                if (!func.count(label)) {
+                    RTE_THROW("wrong label: " + label);
+                }
+                auto v = func.at(label)->gather_f_pw();
+
+                for (int i = 0; i < *ngv__; i++) {
+                    r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+
+                    // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
+                    // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
+                    //    pw_coeffs__[i] = 0;
+                    //    continue;
+                    //}
+
+                    bool is_inverse{false};
+                    int ig = gs.ctx().gvec().index_by_gvec(G);
+                    if (ig == -1 && gs.ctx().gvec().reduced()) {
+                        ig         = gs.ctx().gvec().index_by_gvec(G * (-1));
+                        is_inverse = true;
                     }
-                    auto v = func.at(label)->gather_f_pw();
-
-                    for (int i = 0; i < *ngv__; i++) {
-                        r3::vector<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-
-                        // auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * r3::vector<double>(G[0], G[1],
-                        // G[2]); if (gvc.length() > gs.ctx().pw_cutoff()) {
-                        //    pw_coeffs__[i] = 0;
-                        //    continue;
-                        //}
-
-                        bool is_inverse{false};
-                        int ig = gs.ctx().gvec().index_by_gvec(G);
-                        if (ig == -1 && gs.ctx().gvec().reduced()) {
-                            ig         = gs.ctx().gvec().index_by_gvec(G * (-1));
-                            is_inverse = true;
-                        }
-                        if (ig == -1) {
-                            std::stringstream s;
-                            auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
-                                           r3::vector<double>(G[0], G[1], G[2]));
-                            s << "wrong index of G-vector" << std::endl
-                              << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                            RTE_WARNING(s);
-                            pw_coeffs__[i] = 0;
-                            // RTE_THROW(s);
+                    if (ig == -1) {
+                        std::stringstream s;
+                        auto gvc = dot(gs.ctx().unit_cell().reciprocal_lattice_vectors(),
+                                       r3::vector<double>(G[0], G[1], G[2]));
+                        s << "wrong index of G-vector" << std::endl
+                          << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                        RTE_WARNING(s);
+                        pw_coeffs__[i] = 0;
+                        // RTE_THROW(s);
+                    } else {
+                        if (is_inverse) {
+                            pw_coeffs__[i] = std::conj(v[ig]);
                         } else {
-                            if (is_inverse) {
-                                pw_coeffs__[i] = std::conj(v[ig]);
-                            } else {
-                                pw_coeffs__[i] = v[ig];
-                            }
+                            pw_coeffs__[i] = v[ig];
                         }
                     }
                 }
