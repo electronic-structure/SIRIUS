@@ -87,14 +87,14 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
     }
 
     if (ctx_.full_potential()) {
-        auto& fft_dense  = ctx_.spfft<T>();
+        auto& fft_dense = ctx_.spfft<T>();
 
         Smooth_periodic_function<T> ftmp(fft_dense, ctx_.gvec_fft_sptr());
 
         /* components of the potential */
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
             auto f = interstitial_potential(potential__, j);
-            generate_coarse_periodic_function(f, ftmp,  *veff_vec_[j]);
+            generate_coarse_periodic_function(f, ftmp, *veff_vec_[j]);
 
             if (j == 0) {
                 v0_[0] = ftmp.f_0().real();
@@ -105,14 +105,14 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         veff_vec_[v_local_index_t::theta] =
                 std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
         auto f_theta = interstitial_step_function(ctx_);
-        generate_coarse_periodic_function(f_theta, ftmp,  *veff_vec_[v_local_index_t::theta]);
+        generate_coarse_periodic_function(f_theta, ftmp, *veff_vec_[v_local_index_t::theta]);
 
         /* inverse mass */
         if (ctx_.valence_relativity() == relativity_t::zora) {
             veff_vec_[v_local_index_t::rm_inv] =
                     std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
             auto f = interstitial_mass<1>(potential__);
-            generate_coarse_periodic_function(f, ftmp,  *veff_vec_[v_local_index_t::rm_inv]);
+            generate_coarse_periodic_function(f, ftmp, *veff_vec_[v_local_index_t::rm_inv]);
         }
         if (env::print_checksum()) {
             auto cs1 = veff_vec_[v_local_index_t::theta]->checksum_pw();
@@ -151,7 +151,6 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
             v0_[0] = potential__.component(0).rg().f_0().real() + potential__.component(1).rg().f_0().real();
             v0_[1] = potential__.component(0).rg().f_0().real() - potential__.component(1).rg().f_0().real();
         }
-
     }
 
     if (env::print_checksum()) {

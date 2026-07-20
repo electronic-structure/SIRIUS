@@ -30,9 +30,7 @@ interstitial_potential(Potential const& potential__, int j__)
 inline auto
 interstitial_step_function(Simulation_context const& ctx__)
 {
-    return [&ctx__](int ir) {
-        return ctx__.theta(ir);
-    };
+    return [&ctx__](int ir) { return ctx__.theta(ir); };
 }
 
 inline auto
@@ -40,8 +38,8 @@ interstitial_canonical_potential(Potential const& potential__, double sign__)
 {
     return [&potential__, sign__](int ir) {
         // V +/- Bz
-        return (potential__.component(0).rg().value(ir) +
-                potential__.component(1).rg().value(ir) * sign__) * potential__.ctx().theta(ir);
+        return (potential__.component(0).rg().value(ir) + potential__.component(1).rg().value(ir) * sign__) *
+               potential__.ctx().theta(ir);
     };
 }
 
@@ -49,8 +47,8 @@ inline auto
 interstitial_canonical_potential(Potential const& potential__, std::complex<double> sign__)
 {
     return [&potential__, sign__](int ir) {
-        return (potential__.component(2).rg().value(ir) + 
-                potential__.component(3).rg().value(ir) * sign__) * potential__.ctx().theta(ir);
+        return (potential__.component(2).rg().value(ir) + potential__.component(3).rg().value(ir) * sign__) *
+               potential__.ctx().theta(ir);
     };
 }
 
@@ -59,7 +57,6 @@ inline auto
 interstitial_mass(Potential const& potential__)
 {
     return [&potential__](int ir) {
-
         double M = 1.0 - sq_alpha_half * potential__.effective_potential().rg().value(ir);
 
         if constexpr (P == 1) {
@@ -71,6 +68,6 @@ interstitial_mass(Potential const& potential__)
     };
 }
 
-}
+} // namespace sirius
 
 #endif

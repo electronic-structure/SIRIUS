@@ -6074,11 +6074,12 @@ sirius_linear_solver:
 @api end
 */
 void
-sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__, int const* num_gvec_kq_loc__,
-                     int const* gvec_kq_loc__, std::complex<double>* dpsi__, std::complex<double>* psi__,
-                     double* eigvals__, std::complex<double>* dvpsi__, int const* ld__, int const* num_spin_comp__,
-                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
-                     double const* tol__, std::complex<double> const* omega__, int* niter__, int* error_code__)
+sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__,
+                     int const* num_gvec_kq_loc__, int const* gvec_kq_loc__, std::complex<double>* dpsi__,
+                     std::complex<double>* psi__, double* eigvals__, std::complex<double>* dvpsi__, int const* ld__,
+                     int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
+                     int const* nbnd_occ_kq__, double const* tol__, std::complex<double> const* omega__, int* niter__,
+                     int* error_code__)
 {
     using namespace sirius;
     PROFILE("api::sirius::linear_solver");
