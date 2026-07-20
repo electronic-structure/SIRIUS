@@ -36,14 +36,14 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
     const double f = 1.0 / sym.size();
     std::vector<mdarray<std::complex<double>, 3>> local_tmp;
 
-    local_tmp.resize(om__.local().size());
+    local_tmp.resize(om__.num_atomic_levels());
 
-    for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        const int ia          = om__.atomic_orbitals(at_lvl).first;
+    for (int at_lvl = 0; at_lvl < om__.num_atomic_levels(); at_lvl++) {
+        const int ia          = om__.atomic_orbital(at_lvl).first;
         auto const& atom_type = uc.atom(ia).type();
         /* We can skip the symmetrization for this atomic level since it does not contribute
          * to the Hubbard correction (or U = 0) */
-        if (atom_type.lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
+        if (atom_type.lo_descriptor_hub(om__.atomic_orbital(at_lvl).second).use_for_calculation()) {
             local_tmp[at_lvl] =
                     mdarray<std::complex<double>, 3>({om__.local(at_lvl).size(0), om__.local(at_lvl).size(1), 4});
             copy(om__.local(at_lvl), local_tmp[at_lvl]);
@@ -52,14 +52,14 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
 
     auto const& rotms = ctx.rotm_rlm();
 
-    for (int at_lvl = 0; at_lvl < static_cast<int>(om__.local().size()); at_lvl++) {
-        int const ia     = om__.atomic_orbitals(at_lvl).first;
+    for (int at_lvl = 0; at_lvl < om__.num_atomic_levels(); at_lvl++) {
+        int const ia     = om__.atomic_orbital(at_lvl).first;
         auto const& atom = uc.atom(ia);
         om__.local(at_lvl).zero();
         /* We can skip the symmetrization for this atomic level since it does not contribute
          * to the Hubbard correction (or U = 0) */
-        if (atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
-            const int il       = atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l();
+        if (atom.type().lo_descriptor_hub(om__.atomic_orbital(at_lvl).second).use_for_calculation()) {
+            const int il       = atom.type().lo_descriptor_hub(om__.atomic_orbital(at_lvl).second).l();
             const int lmmax_at = 2 * il + 1;
             // local_[at_lvl].zero();
             mdarray<std::complex<double>, 3> dm_ia({lmmax_at, lmmax_at, 4});
@@ -71,8 +71,8 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
                 dm_ia.zero();
 
                 int at_lvl1 = om__.find_orbital_index(
-                        iap, atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).n(),
-                        atom.type().lo_descriptor_hub(om__.atomic_orbitals(at_lvl).second).l());
+                        iap, atom.type().lo_descriptor_hub(om__.atomic_orbital(at_lvl).second).n(),
+                        atom.type().lo_descriptor_hub(om__.atomic_orbital(at_lvl).second).l());
 
                 for (int ispn = 0; ispn < (ctx.num_mag_dims() == 3 ? 4 : ctx.num_spins()); ispn++) {
                     for (int m1 = 0; m1 < lmmax_at; m1++) {
@@ -236,12 +236,12 @@ symmetrize_occupation_matrix(Occupation_matrix& om__)
         }
     }
     if (ctx.cfg().settings().real_occupation_matrix()) {
-        for (size_t i = 0; i < om__.local().size(); i++) {
+        for (int i = 0; i < om__.num_atomic_levels(); i++) {
             for (size_t j = 0; j < om__.local(i).size(); j++) {
                 om__.local(i)[j] = std::real(om__.local(i)[j]);
             }
         }
-        for (size_t i = 0; i < om__.nonlocal().size(); i++) {
+        for (int i = 0; i < om__.num_nonlocal(); i++) {
             for (size_t j = 0; j < om__.nonlocal(i).size(); j++) {
                 om__.nonlocal(i)[j] = std::real(om__.nonlocal(i)[j]);
             }

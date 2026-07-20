@@ -372,16 +372,17 @@ Q_operator<T>::initialize()
 template <typename T>
 U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, r3::vector<double> vk__)
     : ctx_(ctx__)
+    , u_matrix_(um1__)
     , vk_(vk__)
 {
     if (!ctx_.hubbard_correction()) {
         return;
     }
     /* a pair of "total number, offsets" for the Hubbard orbitals idexing */
-    auto r                 = ctx_.unit_cell().num_hubbard_wf();
-    this->nhwf_            = r.first;
-    this->offset_          = um1__.offset();
-    this->atomic_orbitals_ = um1__.atomic_orbitals();
+    auto r      = ctx_.unit_cell().num_hubbard_wf();
+    this->nhwf_ = r.first;
+    //this->offset_          = um1__.offset_;
+    //this->atomic_orbitals_ = um1__.atomic_orbitals_;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         um_[j] = mdarray<std::complex<T>, 2>({r.first, r.first});
         um_[j].zero();
@@ -394,10 +395,10 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
     }
 
     /* copy local blocks */
-    for (int at_lvl = 0; at_lvl < static_cast<int>(um1__.atomic_orbitals().size()); at_lvl++) {
-        const int ia    = um1__.atomic_orbitals(at_lvl).first;
+    for (int at_lvl = 0; at_lvl < um1__.num_atomic_levels(); at_lvl++) {
+        const int ia    = um1__.atomic_orbital(at_lvl).first;
         auto& atom_type = ctx_.unit_cell().atom(ia).type();
-        int lo_ind      = um1__.atomic_orbitals(at_lvl).second;
+        int lo_ind      = um1__.atomic_orbital(at_lvl).second;
         if (atom_type.lo_descriptor_hub(lo_ind).use_for_calculation()) {
             int lmmax_at = 2 * atom_type.lo_descriptor_hub(lo_ind).l() + 1;
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -455,7 +456,7 @@ U_operator<T>::U_operator(Simulation_context const& ctx__, Hubbard_matrix const&
 template <typename T>
 void
 apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_range br__,
-                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& um__,
+                 wf::Wave_functions<T> const& hub_wf__, wf::Wave_functions<T> const& phi__, U_operator<T> const& u_op__,
                  wf::Wave_functions<T>& hphi__)
 {
     if (!ctx__.hubbard_correction()) {
@@ -484,11 +485,11 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
     if (ctx__.num_mag_dims() == 3) {
         Up.zero();
         #pragma omp parallel for schedule(static)
-        for (int at_lvl = 0; at_lvl < (int)um__.atomic_orbitals().size(); at_lvl++) {
-            const int ia     = um__.atomic_orbitals(at_lvl).first;
+        for (int at_lvl = 0; at_lvl < u_op__.u_matrix().num_atomic_levels(); at_lvl++) {
+            const int ia     = u_op__.atomic_orbital(at_lvl).first;
             auto const& atom = ctx__.unit_cell().atom(ia);
-            if (atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).use_for_calculation()) {
-                const int lmax_at = 2 * atom.type().lo_descriptor_hub(um__.atomic_orbitals(at_lvl).second).l() + 1;
+            if (atom.type().lo_descriptor_hub(u_op__.atomic_orbital(at_lvl).second).use_for_calculation()) {
+                const int lmax_at = 2 * atom.type().lo_descriptor_hub(u_op__.atomic_orbital(at_lvl).second).l() + 1;
                 // we apply the hubbard correction. For now I have no papers
                 // giving me the formula for the SO case so I rely on QE for it
                 // but I do not like it at all
@@ -499,9 +500,9 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
                                     const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
-                                    Up(um__.nhwf() * s1 + um__.offset(at_lvl) + m1, nbd) +=
-                                            um__(um__.offset(at_lvl) + m2, um__.offset(at_lvl) + m1, ind) *
-                                            dm(um__.nhwf() * s2 + um__.offset(at_lvl) + m2, nbd);
+                                    Up(u_op__.nhwf() * s1 + u_op__.offset(at_lvl) + m1, nbd) +=
+                                            u_op__(u_op__.offset(at_lvl) + m2, u_op__.offset(at_lvl) + m1, ind) *
+                                            dm(u_op__.nhwf() * s2 + u_op__.offset(at_lvl) + m2, nbd);
                                 }
                             }
                         }
@@ -510,8 +511,8 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
             }
         }
     } else {
-        la::wrap(la).gemm('N', 'N', um__.nhwf(), br__.size(), um__.nhwf(), &la::constant<std::complex<T>>::one(),
-                          um__.at(mt, 0, 0, spins__.begin().get()), um__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
+        la::wrap(la).gemm('N', 'N', u_op__.nhwf(), br__.size(), u_op__.nhwf(), &la::constant<std::complex<T>>::one(),
+                          u_op__.at(mt, 0, 0, spins__.begin().get()), u_op__.nhwf(), dm.at(mt, 0, 0), dm.ld(),
                           &la::constant<std::complex<T>>::zero(), Up.at(mt, 0, 0), Up.ld());
         if (is_device_memory(mt)) {
             Up.copy_to(memory_t::host);

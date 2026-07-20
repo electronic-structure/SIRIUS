@@ -2148,17 +2148,17 @@ class config_t
             : dict_(dict__)
         {
         }
-        /// Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions
-        inline auto hubbard_subspace_method() const
+        /// Method to use for generating the Hubbard subspace. [none] bare Hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the Hubbard subspace, [normalize] normalize the original Hubbard wave functions, [orthogonalize] orthogonalize the Hubbard wave functions
+        inline auto subspace_method() const
         {
-            return dict_.at("/hubbard/hubbard_subspace_method"_json_pointer).get<std::string>();
+            return dict_.at("/hubbard/subspace_method"_json_pointer).get<std::string>();
         }
-        inline void hubbard_subspace_method(std::string hubbard_subspace_method__)
+        inline void subspace_method(std::string subspace_method__)
         {
             if (dict_.contains("locked")) {
                 throw std::runtime_error(locked_msg);
             }
-            dict_["/hubbard/hubbard_subspace_method"_json_pointer] = hubbard_subspace_method__;
+            dict_["/hubbard/subspace_method"_json_pointer] = subspace_method__;
         }
         /// If true, simplified version of Hubbard correction is used.
         inline auto simplified() const
@@ -2171,151 +2171,6 @@ class config_t
                 throw std::runtime_error(locked_msg);
             }
             dict_["/hubbard/simplified"_json_pointer] = simplified__;
-        }
-        /// Use constrained hubbard occupations number. Occupation matrices should be given
-        inline auto constrained_calculation() const
-        {
-            return dict_.at("/hubbard/constrained_calculation"_json_pointer).get<bool>();
-        }
-        inline void constrained_calculation(bool constrained_calculation__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/constrained_calculation"_json_pointer] = constrained_calculation__;
-        }
-        /// Error between the actual and requested occupation numbers
-        inline auto constraint_error() const
-        {
-            return dict_.at("/hubbard/constraint_error"_json_pointer).get<double>();
-        }
-        inline void constraint_error(double constraint_error__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/constraint_error"_json_pointer] = constraint_error__;
-        }
-        /// Maximum number of constrained iterations before returning to the normal Hubbard scheme
-        inline auto constraint_max_iteration() const
-        {
-            return dict_.at("/hubbard/constraint_max_iteration"_json_pointer).get<int>();
-        }
-        inline void constraint_max_iteration(int constraint_max_iteration__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/constraint_max_iteration"_json_pointer] = constraint_max_iteration__;
-        }
-        /// Mixing parameters for the constrained hubbard
-        inline auto constraint_beta_mixing() const
-        {
-            return dict_.at("/hubbard/constraint_beta_mixing"_json_pointer).get<double>();
-        }
-        inline void constraint_beta_mixing(double constraint_beta_mixing__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/constraint_beta_mixing"_json_pointer] = constraint_beta_mixing__;
-        }
-        /// Amplitude of the constrained potential
-        inline auto constraint_strength() const
-        {
-            return dict_.at("/hubbard/constraint_strength"_json_pointer).get<double>();
-        }
-        inline void constraint_strength(double constraint_strength__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/constraint_strength"_json_pointer] = constraint_strength__;
-        }
-        /// criteria used during the constraining process
-        inline auto constraint_method() const
-        {
-            return dict_.at("/hubbard/constraint_method"_json_pointer).get<std::string>();
-        }
-        inline void constraint_method(std::string constraint_method__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/hubbard/constraint_method"_json_pointer] = constraint_method__;
-        }
-        /// set of matrices containing the occupation numbers a given atomic level
-        class local_constraint_t
-        {
-          private:
-            nlohmann::json& dict_;
-          public:
-            local_constraint_t(nlohmann::json& dict__)
-                : dict_(dict__)
-            {
-            }
-            auto atom_index() const
-            {
-                return dict_.at("atom_index").get<int>();
-            }
-            auto n() const
-            {
-                return dict_.at("n").get<int>();
-            }
-            auto l() const
-            {
-                return dict_.at("l").get<int>();
-            }
-            auto lm_order() const
-            {
-                return dict_.at("lm_order").get<std::vector<int>>();
-            }
-            auto occupancy() const
-            {
-                return dict_.at("occupancy").get<std::vector<std::vector<std::vector<double>>>>();
-            }
-            bool contains(std::string key__) const
-            {
-                return dict_.contains(key__);
-            }
-        };
-        class local_constraint_list_t
-        {
-          private:
-            nlohmann::json& dict_;
-          public:
-            local_constraint_list_t(nlohmann::json& dict__)
-                : dict_(dict__)
-            {
-            }
-            int size() const
-            {
-                return dict_.size();
-            }
-            void append(nlohmann::json& node__)
-            {
-                dict_.push_back(node__);
-            }
-        };
-        local_constraint_t local_constraint(int idx__)
-        {
-            nlohmann::json::json_pointer ptr("/hubbard/local_constraint");
-            return local_constraint_t(dict_.at(ptr / idx__));
-        }
-        local_constraint_t local_constraint(int idx__) const
-        {
-            nlohmann::json::json_pointer ptr("/hubbard/local_constraint");
-            return local_constraint_t(dict_.at(ptr / idx__));
-        }
-        local_constraint_list_t local_constraint()
-        {
-            nlohmann::json::json_pointer ptr("/hubbard/local_constraint");
-            return local_constraint_list_t(dict_.at(ptr));
-        }
-        local_constraint_list_t local_constraint() const
-        {
-            nlohmann::json::json_pointer ptr("/hubbard/local_constraint");
-            return local_constraint_list_t(dict_.at(ptr));
         }
         /// Description of the on-site (local) Hubbard interaction
         class local_t
@@ -2491,8 +2346,158 @@ class config_t
             nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
             return nonlocal_list_t(dict_.at(ptr));
         }
+        /// Constrained Hubbard calculation
+        /**
+            Parameters and target occupations for a constrained Hubbard calculation. The presence of this section enables constraints.
+        */
+        class constraint_t
+        {
+          public:
+            constraint_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            /// Convergence threshold for the difference between actual and requested occupations
+            inline auto error() const
+            {
+                return dict_.at("/hubbard/constraint/error"_json_pointer).get<double>();
+            }
+            inline void error(double error__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/hubbard/constraint/error"_json_pointer] = error__;
+            }
+            /// Maximum number of constrained iterations before returning to the normal Hubbard scheme
+            inline auto maxiter() const
+            {
+                return dict_.at("/hubbard/constraint/maxiter"_json_pointer).get<int>();
+            }
+            inline void maxiter(int maxiter__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/hubbard/constraint/maxiter"_json_pointer] = maxiter__;
+            }
+            /// Mixing parameter for the constraint multipliers
+            inline auto beta_mixing() const
+            {
+                return dict_.at("/hubbard/constraint/beta_mixing"_json_pointer).get<double>();
+            }
+            inline void beta_mixing(double beta_mixing__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/hubbard/constraint/beta_mixing"_json_pointer] = beta_mixing__;
+            }
+            /// Amplitude of the constraint potential
+            inline auto strength() const
+            {
+                return dict_.at("/hubbard/constraint/strength"_json_pointer).get<double>();
+            }
+            inline void strength(double strength__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/hubbard/constraint/strength"_json_pointer] = strength__;
+            }
+            /// Type of Hubbard occupation constraint
+            inline auto type() const
+            {
+                return dict_.at("/hubbard/constraint/type"_json_pointer).get<std::string>();
+            }
+            inline void type(std::string type__)
+            {
+                if (dict_.contains("locked")) {
+                    throw std::runtime_error(locked_msg);
+                }
+                dict_["/hubbard/constraint/type"_json_pointer] = type__;
+            }
+            /// Target occupation matrices for constrained atomic levels
+            class local_t
+            {
+              private:
+                nlohmann::json& dict_;
+              public:
+                local_t(nlohmann::json& dict__)
+                    : dict_(dict__)
+                {
+                }
+                auto atom_index() const
+                {
+                    return dict_.at("atom_index").get<int>();
+                }
+                auto n() const
+                {
+                    return dict_.at("n").get<int>();
+                }
+                auto l() const
+                {
+                    return dict_.at("l").get<int>();
+                }
+                auto lm_order() const
+                {
+                    return dict_.at("lm_order").get<std::vector<int>>();
+                }
+                auto occupancy() const
+                {
+                    return dict_.at("occupancy").get<std::vector<std::vector<std::vector<double>>>>();
+                }
+                bool contains(std::string key__) const
+                {
+                    return dict_.contains(key__);
+                }
+            };
+            class local_list_t
+            {
+              private:
+                nlohmann::json& dict_;
+              public:
+                local_list_t(nlohmann::json& dict__)
+                    : dict_(dict__)
+                {
+                }
+                int size() const
+                {
+                    return dict_.size();
+                }
+                void append(nlohmann::json& node__)
+                {
+                    dict_.push_back(node__);
+                }
+            };
+            local_t local(int idx__)
+            {
+                nlohmann::json::json_pointer ptr("/hubbard/constraint/local");
+                return local_t(dict_.at(ptr / idx__));
+            }
+            local_t local(int idx__) const
+            {
+                nlohmann::json::json_pointer ptr("/hubbard/constraint/local");
+                return local_t(dict_.at(ptr / idx__));
+            }
+            local_list_t local()
+            {
+                nlohmann::json::json_pointer ptr("/hubbard/constraint/local");
+                return local_list_t(dict_.at(ptr));
+            }
+            local_list_t local() const
+            {
+                nlohmann::json::json_pointer ptr("/hubbard/constraint/local");
+                return local_list_t(dict_.at(ptr));
+            }
+          private:
+            nlohmann::json& dict_;
+        };
+        inline auto const& constraint() const {return constraint_;}
+        inline auto& constraint() {return constraint_;}
       private:
         nlohmann::json& dict_;
+        constraint_t constraint_{dict_};
     };
     inline auto const& hubbard() const {return hubbard_;}
     inline auto& hubbard() {return hubbard_;}

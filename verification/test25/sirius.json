@@ -6,7 +6,7 @@
         "verbosity": 2
     },
     "hubbard": {
-        "hubbard_subspace_method": "full_orthogonalization",
+        "subspace_method": "full_orthogonalization",
         "local": [
             {
                 "atom_type": "Ni",

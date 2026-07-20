@@ -835,28 +835,28 @@ sirius_set_parameters(void* const* handler__, int const* lmax_apw__, int const* 
                 }
                 if (hubbard_full_orthogonalization__ != nullptr) {
                     if (*hubbard_full_orthogonalization__) {
-                        sim_ctx.cfg().hubbard().hubbard_subspace_method("full_orthogonalization");
+                        sim_ctx.cfg().hubbard().subspace_method("full_orthogonalization");
                     }
                 }
 
-                if (hubbard_constrained_calculation__ != nullptr) {
-                    sim_ctx.cfg().hubbard().constrained_calculation(*hubbard_constrained_calculation__);
-                }
+                //if (hubbard_constrained_calculation__ != nullptr) {
+                //    sim_ctx.cfg().hubbard().constraints_enabled(*hubbard_constrained_calculation__);
+                //}
 
                 if (hubbard_orbitals__ != nullptr) {
                     std::string s(hubbard_orbitals__);
                     std::transform(s.begin(), s.end(), s.begin(), ::tolower);
                     bool jump = false;
                     if (s == "ortho-atomic") {
-                        sim_ctx.cfg().hubbard().hubbard_subspace_method("full_orthogonalization");
+                        sim_ctx.cfg().hubbard().subspace_method("full_orthogonalization");
                         jump = true;
                     }
                     if (s == "norm-atomic") {
-                        sim_ctx.cfg().hubbard().hubbard_subspace_method("normalize");
+                        sim_ctx.cfg().hubbard().subspace_method("normalize");
                         jump = true;
                     }
                     if (!jump) {
-                        sim_ctx.cfg().hubbard().hubbard_subspace_method(s);
+                        sim_ctx.cfg().hubbard().subspace_method(s);
                     }
                 }
                 if (dftd3_correction__ != nullptr) {
@@ -5907,23 +5907,23 @@ sirius_set_hubbard_contrained_parameters(void* const* handler__, double const* h
             [&]() {
                 auto& sim_ctx = get_sim_ctx(handler__);
                 if (hubbard_conv_thr__ != nullptr) {
-                    sim_ctx.cfg().hubbard().constraint_error(*hubbard_conv_thr__);
+                    sim_ctx.cfg().hubbard().constraint().error(*hubbard_conv_thr__);
                 }
 
                 if (hubbard_mixing_beta__ != nullptr) {
-                    sim_ctx.cfg().hubbard().constraint_beta_mixing(*hubbard_mixing_beta__);
+                    sim_ctx.cfg().hubbard().constraint().beta_mixing(*hubbard_mixing_beta__);
                 }
 
                 if (hubbard_strength__ != nullptr) {
-                    sim_ctx.cfg().hubbard().constraint_strength(*hubbard_strength__);
+                    sim_ctx.cfg().hubbard().constraint().strength(*hubbard_strength__);
                 }
 
                 if (hubbard_maxstep__ != nullptr) {
-                    sim_ctx.cfg().hubbard().constraint_max_iteration(*hubbard_maxstep__);
+                    sim_ctx.cfg().hubbard().constraint().maxiter(*hubbard_maxstep__);
                 }
 
                 if (hubbard_constraint_type__ != nullptr) {
-                    sim_ctx.cfg().hubbard().constraint_method(hubbard_constraint_type__);
+                    sim_ctx.cfg().hubbard().constraint().type(hubbard_constraint_type__);
                 }
             },
             error_code__);
@@ -6000,7 +6000,7 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                     std::memcpy(lm_order_.data(), orbital_order__, sizeof(int) * (2 * *lmax_at__ + 1));
                     elem["lm_order"] = lm_order_;
                 }
-                sim_ctx.cfg().hubbard().local_constraint().append(elem);
+                sim_ctx.cfg().hubbard().constraint().local().append(elem);
             },
             error_code__);
 }

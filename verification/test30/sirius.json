@@ -5,10 +5,6 @@
         "fft_mode": "parallel",
         "gen_evp_solver_name": "lapack",
         "gvec_chunk_size": 500000,
-        "mpi_grid_dims": [
-            1,
-            1
-        ],
         "num_bands_to_print": 10,
         "ortho_rf": false,
         "output": "stdout:",
@@ -24,13 +20,7 @@
         "verification": 0
     },
     "hubbard": {
-        "constrained_calculation": true,
-        "constraint_beta_mixing": 0.4,
-        "constraint_error": 0.1,
-        "constraint_max_iteration": 100,
-        "constraint_method": "energy",
-        "constraint_strength": 1.0,
-        "hubbard_subspace_method" : "full_orthogonalization",
+        "subspace_method" : "full_orthogonalization",
         "local": [
             {
                 "atom_type": "Ni",
@@ -40,19 +30,25 @@
                 "total_initial_occupancy": 8.0
             }
         ],
-        "local_constraint": [
-            {
-                "atom_index": 0,
-                "l": 2,
-                "lm_order": [
-                    0,
-                    -1,
-                    1,
-                    -2,
-                    2
-                ],
-                "n": 3,
-                "occupancy": [
+        "constraint": {
+            "error": 0.1,
+            "maxiter": 100,
+            "beta_mixing": 0.25,
+            "strength": 1.0,
+            "type": "energy",
+            "local": [
+                {
+                    "atom_index": 0,
+                    "l": 2,
+                    "lm_order": [
+                        0,
+                        -1,
+                        1,
+                        -2,
+                        2
+                    ],
+                    "n": 3,
+                    "occupancy": [
                     [
                         [
                             0.9844772394506213,
@@ -127,9 +123,10 @@
                             0.9999999999999999
                         ]
                     ]
-                ]
-            }
-        ],
+                    ]
+                }
+            ]
+        },
         "nonlocal": [],
         "simplified": true
     },

@@ -384,14 +384,13 @@ Atom_type::print_info(std::ostream& out__) const
             out__ << lo_descriptors_hub_[i];
         }
 
-        bool orthogonalize_ = parameters_.cfg().hubbard().hubbard_subspace_method() == "orthogonalize";
-        bool full_orthogonalization_ =
-                parameters_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization";
-        bool normalize_ = parameters_.cfg().hubbard().hubbard_subspace_method() == "normalize";
+        bool orthogonalize          = parameters_.cfg().hubbard().subspace_method() == "orthogonalize";
+        bool full_orthogonalization = parameters_.cfg().hubbard().subspace_method() == "full_orthogonalization";
+        bool normalize              = parameters_.cfg().hubbard().subspace_method() == "normalize";
         out__ << std::endl;
-        out__ << "  orthogonalize                      : " << boolstr(orthogonalize_) << std::endl
-              << "  normalize                          : " << boolstr(normalize_) << std::endl
-              << "  full_orthogonalization             : " << boolstr(full_orthogonalization_) << std::endl
+        out__ << "  orthogonalize                      : " << boolstr(orthogonalize) << std::endl
+              << "  normalize                          : " << boolstr(normalize) << std::endl
+              << "  full_orthogonalization             : " << boolstr(full_orthogonalization) << std::endl
               << "  simplified                         : " << boolstr(parameters_.cfg().hubbard().simplified())
               << std::endl;
     }
@@ -1215,7 +1214,7 @@ Atom_type::read_hubbard_input()
         }
     }
 
-    if (parameters_.cfg().hubbard().hubbard_subspace_method() == "full_orthogonalization") {
+    if (parameters_.cfg().hubbard().subspace_method() == "full_orthogonalization") {
         this->hubbard_correction_ = true;
         if (lo_descriptors_hub_.empty()) {
             for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
