@@ -70,7 +70,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
-    variant("nvtx", default=False, description="Use NVTX profiler")
+    variant("nvtx", default=False, description="Use NVTX/ROCTX traces")
     variant("dftd3", default=False, description="Enable dft-d3 corrections", when="@7.9.0:")
     variant("dftd4", default=False, description="Enable dft-d4 corrections", when="@7.9.0:")
 

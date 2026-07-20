@@ -1281,7 +1281,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                 om_ref->update_nonlocal();
 
                 double diff2{0};
-                for (size_t i = 0; i < occupation_matrix_->nonlocal().size(); i++) {
+                for (int i = 0; i < occupation_matrix_->num_nonlocal(); i++) {
                     for (size_t j = 0; j < occupation_matrix_->nonlocal(i).size(); j++) {
                         diff2 = std::max(diff2, std::abs(om_ref->nonlocal(i)[j] - occupation_matrix_->nonlocal(i)[j]));
                     }
@@ -1301,8 +1301,8 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
     if (occupation_matrix_) {
         occupation_matrix_->print_occupancies(2);
-        // calculate the lagrange multiplier and resulting error
-        if (ctx_.cfg().hubbard().constrained_calculation()) {
+        /* calculate the lagrange multiplier and resulting error */
+        if (ctx_.hubbard_constrained_calculation()) {
             occupation_matrix_->calculate_constraints_and_error();
         }
     }
@@ -2242,10 +2242,10 @@ Density::save(std::string name__) const
             fout.create_node("occupation_matrix");
             fout["occupation_matrix"].create_node("local");
             fout["occupation_matrix"].create_node("nonlocal");
-            for (size_t i = 0; i < this->occupation_matrix().local().size(); i++) {
+            for (int i = 0; i < this->occupation_matrix().num_atomic_levels(); i++) {
                 fout["occupation_matrix"]["local"].create_node(i).write("data", this->occupation_matrix().local(i));
             }
-            for (size_t i = 0; i < this->occupation_matrix().nonlocal().size(); i++) {
+            for (int i = 0; i < this->occupation_matrix().num_nonlocal(); i++) {
                 fout["occupation_matrix"]["nonlocal"].create_node(i).write("data",
                                                                            this->occupation_matrix().nonlocal(i));
             }
@@ -2277,10 +2277,10 @@ Density::load(std::string name__)
         fin["density_matrix"][ia].read("data", this->density_matrix(ia));
     }
     if (ctx_.hubbard_correction()) {
-        for (size_t i = 0; i < this->occupation_matrix().local().size(); i++) {
+        for (int i = 0; i < this->occupation_matrix().num_atomic_levels(); i++) {
             fin["occupation_matrix"]["local"][i].read("data", this->occupation_matrix().local(i));
         }
-        for (size_t i = 0; i < this->occupation_matrix().nonlocal().size(); i++) {
+        for (int i = 0; i < this->occupation_matrix().num_nonlocal(); i++) {
             fin["occupation_matrix"]["nonlocal"][i].read("data", this->occupation_matrix().nonlocal(i));
         }
     }

@@ -310,9 +310,9 @@ Occupation_matrix::init()
                     }
                 }
             }
-            // initialize the occupancy matrices to their user provided values.
-            if (ctx_.cfg().hubbard().constrained_calculation() && apply_constraints_.size()) {
-                if (apply_constraints_[at_lvl]) {
+            /* initialize the occupancy matrices to their user provided values */
+            if (ctx_.hubbard_constrained_calculation() && active_constraints_.size()) {
+                if (active_constraints_[at_lvl]) {
                     copy(local_constraints_[at_lvl], local_[at_lvl]);
                 }
             }
@@ -324,10 +324,10 @@ Occupation_matrix::init()
 void
 Occupation_matrix::calculate_constraints_and_error()
 {
-    if (apply_constraint()) {
+    if (apply_constraints()) {
         double error_ = 0.0;
         for (int at_lvl = 0; at_lvl < static_cast<int>(local_.size()); at_lvl++) {
-            if (apply_constraints_[at_lvl]) {
+            if (active_constraints_[at_lvl]) {
                 const int ia      = atomic_orbitals_[at_lvl].first;
                 auto const& atom  = ctx_.unit_cell().atom(ia);
                 int il            = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl].second).l();
@@ -338,7 +338,7 @@ Occupation_matrix::calculate_constraints_and_error()
                             std::complex<double> tmp =
                                     this->local_[at_lvl](m2, m1, is) - this->local_constraints_[at_lvl](m2, m1, is);
                             multipliers_constraints_[at_lvl](m2, m1, is) +=
-                                    tmp * ctx_.cfg().hubbard().constraint_beta_mixing();
+                                    tmp * ctx_.cfg().hubbard().constraint().beta_mixing();
                             error_ = std::max(error_, std::abs(tmp));
                         }
                     }

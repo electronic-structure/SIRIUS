@@ -33,8 +33,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                                                     &potential__);
 
     if (!ctx_.full_potential()) {
-        d_op_ = std::unique_ptr<D_operator<T>>(new D_operator<T>(potential__));
-        q_op_ = std::unique_ptr<Q_operator<T>>(new Q_operator<T>(ctx_));
+        d_op_ = std::make_unique<D_operator<T>>(potential__);
+        q_op_ = std::make_unique<Q_operator<T>>(ctx_);
     }
     if (ctx_.full_potential()) {
         if (precompute_lapw__) {
@@ -58,6 +58,51 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                 hmt_[ia].allocate(memory_t::device);
             }
         }
+
+        struct mt_constraint_t
+        {
+            int l;
+            std::vector<std::vector<std::vector<double>>> matrix;
+        };
+
+        /* each atom might have several constraints */
+        std::vector<std::vector<mt_constraint_t>> mt_constraints;
+        if (ctx_.hubbard_constrained_calculation() && ctx_.num_mag_dims() == 1 &&
+            !ctx_.cfg().control().use_second_variation() &&
+            ctx_.num_constraints_applied() < ctx_.cfg().hubbard().constraint().maxiter()) {
+
+            mt_constraints = std::vector<std::vector<mt_constraint_t>>(ctx_.unit_cell().num_atoms());
+
+            for (int i = 0; i < ctx_.cfg().hubbard().constraint().local().size(); i++) {
+                auto const& constraint = ctx_.cfg().hubbard().constraint().local(i);
+                int ia                 = constraint.atom_index();
+                int l                  = constraint.l();
+                if (ia < 0 || ia >= ctx_.unit_cell().num_atoms()) {
+                    RTE_THROW("wrong atom index in local Hubbard constraint");
+                }
+                if (l < 0) {
+                    RTE_THROW("wrong angular momentum in local Hubbard constraint");
+                }
+
+                int mmax = 2 * l + 1;
+
+                auto matrix = constraint.occupancy();
+
+                for (auto const& spin_block : matrix) {
+                    if (static_cast<int>(spin_block.size()) != mmax) {
+                        RTE_THROW("wrong number of rows in local Hubbard constraint");
+                    }
+                    for (auto const& row : spin_block) {
+                        if (static_cast<int>(row.size()) != mmax) {
+                            RTE_THROW("wrong number of columns in local Hubbard constraint");
+                        }
+                    }
+                }
+                mt_constraints[ia].push_back({l, std::move(matrix)});
+            }
+            ctx_.num_constraints_applied(1);
+        }
+
         #pragma omp parallel for
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             auto& atom = ctx_.unit_cell().atom(ia);
@@ -98,6 +143,27 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                                         {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                                 hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
                                         {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
+
+                                if (!mt_constraints.empty()) {
+                                    /* add constraints */
+                                    int l1 = type.indexb(j1).am.l();
+                                    int l2 = type.indexb(j2).am.l();
+                                    for (auto const& constraint : mt_constraints[ia]) {
+                                        if (l1 == constraint.l && l2 == constraint.l) {
+                                            int m1     = type.indexb(j1).m;
+                                            int m2     = type.indexb(j2).m;
+                                            int order1 = type.indexb(j1).order;
+                                            int order2 = type.indexb(j2).order;
+                                            double ori = atom.symmetry_class().o_radial_integral(constraint.l, order1,
+                                                                                                 order2);
+                                            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                                                hmt_[ia](j1, j2, ispn) +=
+                                                        constraint.matrix[ispn][constraint.l + m1][constraint.l + m2] *
+                                                        ori;
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             break;
                         }

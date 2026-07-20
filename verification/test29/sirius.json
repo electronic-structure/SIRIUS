@@ -4,7 +4,7 @@
     "print_neighbors": false
   },
   "hubbard": {
-    "hubbard_subspace_method": "orthogonalize",
+    "subspace_method": "orthogonalize",
     "local": [
       {
         "J": 0,

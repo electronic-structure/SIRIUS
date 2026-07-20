@@ -296,6 +296,8 @@ class Simulation_context : public Simulation_parameters
     mutable int num_loc_op_applied_{0};
     /// Total number of iterative solver steps.
     mutable int num_itsol_steps_{0};
+    /// Number of times Hubbard constraints were applied.
+    mutable int num_constraints_applied_{0};
 
     /// True if the context is already initialized.
     bool initialized_{false};
@@ -762,6 +764,13 @@ class Simulation_context : public Simulation_parameters
     {
         num_itsol_steps_ += n;
         return num_itsol_steps_;
+    }
+
+    inline int
+    num_constraints_applied(int n = 0) const
+    {
+        num_constraints_applied_ += n;
+        return num_constraints_applied_;
     }
 
     inline auto&

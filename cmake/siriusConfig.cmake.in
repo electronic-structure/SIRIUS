@@ -1,5 +1,9 @@
 @PACKAGE_INIT@
 
+if(CMAKE_VERSION VERSION_LESS "3.25")
+  message(FATAL_ERROR "SIRIUS requires CMake 3.25 or newer.")
+endif()
+
 include(CMakeFindDependencyMacro)
 
 set(SIRIUS_USE_DFTD3 @SIRIUS_USE_DFTD3@)

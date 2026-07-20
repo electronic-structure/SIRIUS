@@ -1439,7 +1439,7 @@
             "type": "object",
             "title": "Hubbard U correction",
             "properties": {
-                "hubbard_subspace_method": {
+                "subspace_method": {
                     "type": "string",
                     "default": "none",
                     "enum": [
@@ -1448,91 +1448,12 @@
                         "normalize",
                         "orthogonalize"
                     ],
-                    "title": "Method to use for generating the hubbard subspace. [none] bare hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the hubbard subspace, [normalize] normalize the original hubbard wave functions, [orthogonalize] orthogonalize the hubbard wave functions"
+                    "title": "Method to use for generating the Hubbard subspace. [none] bare Hubbard orbitals,  [full_orthogonaliation] use all atomic wave functions to generate the Hubbard subspace, [normalize] normalize the original Hubbard wave functions, [orthogonalize] orthogonalize the Hubbard wave functions"
                 },
                 "simplified": {
                     "type": "boolean",
                     "default": false,
                     "title": "If true, simplified version of Hubbard correction is used."
-                },
-                "constrained_calculation": {
-                    "type": "boolean",
-                    "default": false,
-                    "title": "Use constrained hubbard occupations number. Occupation matrices should be given"
-                },
-                "constraint_error": {
-                    "type": "number",
-                    "default": 0.000001,
-                    "title": "Error between the actual and requested occupation numbers"
-                },
-                "constraint_max_iteration": {
-                    "type": "integer",
-                    "default": 10,
-                    "title": "Maximum number of constrained iterations before returning to the normal Hubbard scheme"
-                },
-                "constraint_beta_mixing": {
-                    "type": "number",
-                    "default": 0.4,
-                    "title": "Mixing parameters for the constrained hubbard"
-                },
-                "constraint_strength": {
-                    "type": "number",
-                    "default": 1.0,
-                    "title": "Amplitude of the constrained potential"
-                },
-                "constraint_method": {
-                    "type": "string",
-                    "default": "energy",
-                    "enum": [
-                        "energy",
-                        "occupation"
-                    ],
-                    "title": "criteria used during the constraining process"
-                },
-                "local_constraint": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "atom_index": {
-                                "type": "integer",
-                                "default": -1
-                            },
-                            "n": {
-                                "type": "integer",
-                                "default": -1,
-                                "title": "principal quantum number"
-                            },
-                            "l": {
-                                "type": "integer",
-                                "default": -1,
-                                "title": "angular momentum"
-                            },
-                            "lm_order": {
-                                "type": "array",
-                                "default": [],
-                                "items": {
-                                    "type": "integer"
-                                },
-                                "title": "Ordering of the Ylm (0,-1,1,-2,2). By default it will consider the (-1,0,1) order (example l = 1)"
-                            },
-                            "occupancy": {
-                                "type": "array",
-                                "items": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "number"
-                                        }
-                                    }
-                                },
-                                "default": []
-                            }
-                        }
-                    },
-                    "default": [],
-                    "title": "set of matrices containing the occupation numbers a given atomic level"
                 },
                 "local": {
                     "type": "array",
@@ -1633,6 +1554,91 @@
                             "V": {
                                 "type": "number",
                                 "default": 0
+                            }
+                        }
+                    }
+                },
+                "constraint": {
+                    "type": "object",
+                    "title": "Constrained Hubbard calculation",
+                    "description": "Parameters and target occupations for a constrained Hubbard calculation. The presence of this section enables constraints.",
+                    "additionalProperties": false,
+                    "properties": {
+                        "error": {
+                            "type": "number",
+                            "default": 0.000001,
+                            "exclusiveMinimum": 0,
+                            "title": "Convergence threshold for the difference between actual and requested occupations"
+                        },
+                        "maxiter": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 1,
+                            "title": "Maximum number of constrained iterations before returning to the normal Hubbard scheme"
+                        },
+                        "beta_mixing": {
+                            "type": "number",
+                            "default": 0.4,
+                            "title": "Mixing parameter for the constraint multipliers"
+                        },
+                        "strength": {
+                            "type": "number",
+                            "default": 1.0,
+                            "title": "Amplitude of the constraint potential"
+                        },
+                        "type": {
+                            "type": "string",
+                            "default": "energy",
+                            "enum": [
+                                "energy",
+                                "occupation"
+                            ],
+                            "title": "Type of Hubbard occupation constraint"
+                        },
+                        "local": {
+                            "type": "array",
+                            "default": [],
+                            "title": "Target occupation matrices for constrained atomic levels",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "atom_index": {
+                                        "type": "integer",
+                                        "default": -1
+                                    },
+                                    "n": {
+                                        "type": "integer",
+                                        "default": -1,
+                                        "title": "Principal quantum number"
+                                    },
+                                    "l": {
+                                        "type": "integer",
+                                        "default": -1,
+                                        "title": "Angular momentum"
+                                    },
+                                    "lm_order": {
+                                        "type": "array",
+                                        "default": [],
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "title": "Ordering of the Ylm orbitals"
+                                    },
+                                    "occupancy": {
+                                        "type": "array",
+                                        "default": [],
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "number"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
