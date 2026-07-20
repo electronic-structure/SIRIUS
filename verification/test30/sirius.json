@@ -33,7 +33,7 @@
         "constraint": {
             "error": 0.1,
             "maxiter": 100,
-            "beta_mixing": 0.4,
+            "beta_mixing": 0.25,
             "strength": 1.0,
             "type": "energy",
             "local": [
