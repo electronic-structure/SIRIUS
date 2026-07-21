@@ -435,7 +435,7 @@ Density::initial_density_full_pot()
 {
     /* initialize smooth density of free atoms */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        unit_cell_.atom_type(iat).init_free_atom_density(true);
+        unit_cell_.atom_type(iat).init_free_atom_density(false);
     }
 
     /* compute radial integrals */
@@ -447,7 +447,7 @@ Density::initial_density_full_pot()
 
     /* initialize density of free atoms (not smoothed) */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        unit_cell_.atom_type(iat).init_free_atom_density(false);
+        unit_cell_.atom_type(iat).init_free_atom_density(true);
     }
 
     if (env::print_checksum()) {
@@ -536,22 +536,6 @@ Density::initial_density_full_pot()
     normalize();
 
     check_num_electrons();
-
-    // FILE* fout = fopen("rho.dat", "w");
-    // for (int i = 0; i <= 10000; i++) {
-    //    r3::vector<double> v = (i / 10000.0) * r3::vector<double>({10.26, 10.26, 10.26});
-    //    double val = rho().value(v);
-    //    fprintf(fout, "%18.12f %18.12f\n", v.length(), val);
-    //}
-    // fclose(fout);
-
-    // FILE* fout2 = fopen("rho_rg.dat", "w");
-    // for (int i = 0; i <= 10000; i++) {
-    //    r3::vector<double> v = (i / 10000.0) * r3::vector<double>({10.26, 10.26, 10.26});
-    //    double val = rho().value_rg(v);
-    //    fprintf(fout2, "%18.12f %18.12f\n", v.length(), val);
-    //}
-    // fclose(fout2);
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {

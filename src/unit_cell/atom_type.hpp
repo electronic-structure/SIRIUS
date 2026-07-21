@@ -364,9 +364,9 @@ class Atom_type
     void
     init();
 
-    /// Initialize the free atom density (smooth or true).
+    /// Initialize the free atom density spline (smooth or all-electron).
     void
-    init_free_atom_density(bool smooth);
+    init_free_atom_density(bool all_electron__);
 
     /// Add a hubbard orbital to a list.
     /** All atomic functions must already be loaded prior to callinig this function. Atomic wave-functions
