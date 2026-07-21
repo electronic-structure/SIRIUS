@@ -179,23 +179,30 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
     #pragma omp parallel for schedule(dynamic, 1) default(shared)
     for (int l = 0; l < num_aw_descriptors(); l++) {
+        /* take first radial function */
+        auto rsd = aw_descriptor(l)[0];
         /* try to increase linearisation energy several times in order to find linearly independent
          * radial functions */
         compute_all_orders_result r;
-        for (int k = 0; k < 100; k++) {
-            if (l <= 3) {
-                /* for low l numbers Enu finder will find the top of the band;
-                 * in this case we need to go down in energy to remove any degeneracy of radial functions */
-                r = compute_all_orders(l, -k * 0.05);
-            } else {
-                /* for high l values, Enu is typically set in the species files and is not searched;
-                 * in case of trouble with them we need to increase linearisation energies */
-                r = compute_all_orders(l, k * 0.25);
-            }
-            if (r.success) {
-                break;
+        /* Enu for this level was searched; this should not produce degenerate radial functions */
+        double e_shift{0.0};
+        if (rsd.auto_enu) {
+            r = compute_all_orders(l, e_shift);
+        } else {
+            /* for high l values, Enu is typically set in the species files and is not searched;
+             * in case of trouble with them we need to increase linearisation energies */
+            double de{0.1};
+            for (int k = 0; k < 100; k++) {
+                r = compute_all_orders(l, e_shift);
+                if (r.success) {
+                    break;
+                } else {
+                    e_shift += de;
+                    de *= 1.1;
+                }
             }
         }
+
         if (r.success) {
             status[l] = 1;
             /* divide by r */

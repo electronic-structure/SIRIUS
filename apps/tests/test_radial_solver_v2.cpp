@@ -58,15 +58,22 @@ enu_from_potential(cmd_args const& args__)
     int ierr{0};
     if (!args__.exist("skip_enu")) {
         ierr += atom_class.find_enu(rel);
+        if (ierr) {
+            std::cout << "Enu search failed" << std::endl;
+        }
     }
 
     atom_class.write_enu(std::cout);
 
-    ierr += atom_class.generate_radial_functions(rel, false);
+    bool update_enu{false};
+    int ierr1 = atom_class.generate_radial_functions(rel, update_enu);
+    if (ierr1) {
+        std::cout << "Generation of radial function failed" << std::endl;
+    }
 
     atom_class.save_radial_functions("radial_functions_" + species_file);
 
-    return ierr;
+    return ierr + ierr1;
 }
 
 int

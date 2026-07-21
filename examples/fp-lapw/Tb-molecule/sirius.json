@@ -1,7 +1,7 @@
 {
     "control" : {
-        "processing_unit" : "cpu",
-        "verbosity" : 2
+        "verbosity" : 2,
+        "save_rf" : true
     },
 
     "parameters" : {
@@ -16,17 +16,18 @@
         "ngridk" : [1,1,1],
         "density_tol" : 1e-7,
         "energy_tol" : 1e-7,
-        "num_dft_iter" : 100,
+        "num_dft_iter" : 10,
         "lmax_apw"     : 10,
         "lmax_pot"     : 10,
-        "lmax_rho"     : 10
+        "lmax_rho"     : 10,
+        "molecule" : true
     },
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-4,
         "residual_tolerance" : 1e-5,
-        "num_steps" : 12,
-        "subspace_size" : 12,
+        "num_steps" : 20,
+        "subspace_size" : 4,
         "type" : "davidson"
     },
 
@@ -36,7 +37,7 @@
                               [0, 1, 0], 
                               [0, 0, 0.5]
                             ],
-        "lattice_vectors_scale" : 60,
+        "lattice_vectors_scale" : 40,
 
         "atom_types" : ["Tb", "N", "C", "H"],
 
@@ -175,8 +176,8 @@
     },
     
     "mixer" : {
-        "beta" : 0.9,
-        "type" : "anderson",
+        "beta" : 0.25,
+        "type" : "broyden2",
         "max_history" : 8
     }
 
