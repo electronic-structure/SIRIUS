@@ -697,13 +697,6 @@ Unit_cell::initialize()
     num_hubbard_wf_ = std::make_pair(counter, offs);
 
     update();
-
-    //== write_cif();
-
-    //== if (comm().rank() == 0) {
-    //==     std::ofstream ofs(std::string("unit_cell.json"), std::ofstream::out | std::ofstream::trunc);
-    //==     ofs << serialize().dump(4);
-    //== }
 }
 
 void
