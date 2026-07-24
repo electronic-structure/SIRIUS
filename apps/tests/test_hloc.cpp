@@ -30,7 +30,7 @@ test_hloc_impl(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
         printf("fft_mode                  : %s\n", ctx__.cfg().control().fft_mode().c_str());
     }
 
-    sirius::Local_operator<T> hloc(ctx__, fft, gvec_fft);
+    sirius::Local_operator<T> hloc(ctx__, fft, gvec_fft, 2.71828);
 
     wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), memory_t::host_pinned);
     #pragma omp parallel for

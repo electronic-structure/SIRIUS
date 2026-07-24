@@ -44,7 +44,6 @@ set(_SOURCES
   "potential/dftd3_correction.cpp"
   "potential/dftd4_correction.cpp"
   "potential/generate_d_mtrx.cpp"
-  "potential/generate_pw_coeffs.cpp"
   "potential/paw_potential.cpp"
   "potential/poisson.cpp"
   "potential/xc.cpp"
