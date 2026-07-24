@@ -239,6 +239,7 @@ class Local_operator
     mdarray<std::complex<T>, 1> buf_rg_;
 
     /// V(G=0) matrix elements.
+    /** Needed to compute diagonal matrix elements of the Hamiltonian. */
     T v0_[2];
 
   public:
@@ -255,7 +256,10 @@ class Local_operator
      *                             \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
      */
     Local_operator(Simulation_context const& ctx__, fft::spfft_transform_type<T>& fft_coarse__,
-                   std::shared_ptr<fft::Gvec_fft> gvec_coarse_fft__, Potential* potential__ = nullptr);
+                   std::shared_ptr<fft::Gvec_fft> gvec_coarse_fft__, Potential const& potential__);
+
+    Local_operator(Simulation_context const& ctx__, fft::spfft_transform_type<T>& fft_coarse__,
+                   std::shared_ptr<fft::Gvec_fft> gvec_coarse_fft__, T v__);
 
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
