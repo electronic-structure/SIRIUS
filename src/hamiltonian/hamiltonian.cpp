@@ -54,9 +54,6 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
 
             int nmt  = type.mt_basis_size();
             hmt_[ia] = mdarray<std::complex<T>, 3>({nmt, nmt, ctx_.num_mag_dims() + 1}, mdarray_label("hmt"));
-            if (pu == device_t::GPU) {
-                hmt_[ia].allocate(memory_t::device);
-            }
         }
 
         struct mt_constraint_t
@@ -177,7 +174,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
         }
         if (pu == device_t::GPU) {
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                hmt_[ia].copy_to(memory_t::device);
+                hmt_[ia].allocate(memory_t::device).copy_to(memory_t::device);
             }
         }
     }
