@@ -95,15 +95,6 @@ class Potential : public Field4D
 
     std::vector<XC_functional> xc_func_;
 
-    /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
-    mdarray<std::complex<double>, 2> veff_pw_;
-
-    /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
-    mdarray<std::complex<double>, 1> rm_inv_pw_;
-
-    /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
-    mdarray<std::complex<double>, 1> rm2_inv_pw_;
-
     /// Auxiliary form of the D_{ij} operator matrix of the pseudo-potential method.
     /** The matrix is calculated for the scalar and vector effective fields (thus, it is real and symmetric).
      *  \f[
@@ -634,10 +625,6 @@ class Potential : public Field4D
     void
     add_mt_contribution_to_pw();
 
-    /// Generate plane-wave coefficients of the potential in the interstitial region.
-    void
-    generate_pw_coefs();
-
     /// Calculate D operator from potential and augmentation charge.
     /** The following real symmetric matrix is computed:
      *  \f[
@@ -785,42 +772,6 @@ class Potential : public Field4D
     energy_vha() const
     {
         return energy_vha_;
-    }
-
-    auto const&
-    veff_pw(int ig__, int ispn__ = 0) const
-    {
-        return veff_pw_(ig__, ispn__);
-    }
-
-    void
-    set_veff_pw(std::complex<double> const* veff_pw__)
-    {
-        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
-    }
-
-    auto const&
-    rm_inv_pw(int ig__) const
-    {
-        return rm_inv_pw_(ig__);
-    }
-
-    void
-    set_rm_inv_pw(std::complex<double> const* rm_inv_pw__)
-    {
-        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
-    }
-
-    auto const&
-    rm2_inv_pw(int ig__) const
-    {
-        return rm2_inv_pw_(ig__);
-    }
-
-    inline void
-    set_rm2_inv_pw(std::complex<double> const* rm2_inv_pw__)
-    {
-        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(memory_t::host));
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.

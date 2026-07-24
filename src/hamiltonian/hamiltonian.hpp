@@ -84,6 +84,15 @@ class Hamiltonian0
     /** This quantities are k-point independent and can be precomputed when H0 is created. */
     std::vector<mdarray<std::complex<T>, 3>> hmt_;
 
+    /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
+    mdarray<std::complex<T>, 2> veff_pw_;
+
+    /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
+    mdarray<std::complex<T>, 1> rm_inv_pw_;
+
+    /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
+    mdarray<std::complex<T>, 1> rm2_inv_pw_;
+
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0<T> const& src) = delete;
     /* copy assignment operator is forbidden */
@@ -121,13 +130,13 @@ class Hamiltonian0
         return *local_op_;
     }
 
-    inline Q_operator<T>&
+    inline Q_operator<T> const&
     Q() const
     {
         return *q_op_;
     }
 
-    inline D_operator<T>&
+    inline D_operator<T> const&
     D() const
     {
         return *d_op_;
@@ -137,6 +146,24 @@ class Hamiltonian0
     hmt(int ia__) const
     {
         return hmt_[ia__];
+    }
+
+    auto const&
+    veff_pw(int ig__, int ispn__ = 0) const
+    {
+        return this->veff_pw_(ig__, ispn__);
+    }
+
+    auto const&
+    rm_inv_pw(int ig__) const
+    {
+        return this->rm_inv_pw_(ig__);
+    }
+
+    auto const&
+    rm2_inv_pw(int ig__) const
+    {
+        return this->rm2_inv_pw_(ig__);
     }
 
     /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -169,6 +196,9 @@ class Hamiltonian0
      */
     void
     apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& hpsi__) const;
+
+    void
+    generate_pw_coefs(Potential const& potential__);
 };
 
 template <typename T>

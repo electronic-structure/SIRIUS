@@ -1,7 +1,6 @@
 {
     "control" : {
-        "verbosity" : 2,
-        "save_rf" : true
+        "verbosity" : 2
     },
 
     "parameters" : {
