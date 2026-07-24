@@ -268,7 +268,6 @@ class BSpline_basis
 //    }
 //}
 
-
 //int
 //test_bspline_interp(cmd_args const& args__)
 //{
@@ -336,9 +335,9 @@ template <int order>
 static int
 hydrogen_bspline_impl(cmd_args const& args__)
 {
-    int num_points = args__.value<int>("num_points", 100);
-    int l          = args__.value<int>("l", 0);
-    int nq         = args__.value<int>("nq", 10);
+    int num_points    = args__.value<int>("num_points", 100);
+    int l             = args__.value<int>("l", 0);
+    int nq            = args__.value<int>("nq", 10);
     auto species_file = args__.value<std::string>("species");
     auto pot_file     = args__.value<std::string>("potential");
 
@@ -421,7 +420,6 @@ hydrogen_bspline_impl(cmd_args const& args__)
 
     std::vector<bspline_pair> pairs;
 
-
     for (int i = 0; i < n; i++) {
         for (int ik = 0; ik < order; ik++) {
             double ai = basis.knot(i + ik);
@@ -463,7 +461,7 @@ hydrogen_bspline_impl(cmd_args const& args__)
         }
     }
 
-    for (auto& p: basis1.basis_pairs()) {
+    for (auto& p : basis1.basis_pairs()) {
         for (int iq = 0; iq < nq; iq++) {
             double r = p.r[iq];
             double w = p.w[iq];
@@ -477,7 +475,6 @@ hydrogen_bspline_impl(cmd_args const& args__)
             double dBi = p.dBi[iq];
             double Bj  = p.Bj[iq];
             double dBj = p.dBj[iq];
-
 
             s(p.i, p.j) += w * Bi * Bj;
             h(p.i, p.j) += w * (0.5 * dBi * dBj + Bi * veff * Bj);
@@ -628,12 +625,13 @@ hydrogen_bspline(cmd_args const& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args(argn, argv, {{"species=", "(string) species file"},
-                               {"potential=", "(string) spherical potential JSON"},
-                               {"num_points=", "{int} number of interpolating grid points"},
-                               {"order=", "{int} B-spline order"},
-                               {"l=", "{int} angular momentum"},
-                               {"nq=", "{int} number of Gauss-Legendre points per knot interval"}});
+    cmd_args args(argn, argv,
+                  {{"species=", "(string) species file"},
+                   {"potential=", "(string) spherical potential JSON"},
+                   {"num_points=", "{int} number of interpolating grid points"},
+                   {"order=", "{int} B-spline order"},
+                   {"l=", "{int} angular momentum"},
+                   {"nq=", "{int} number of Gauss-Legendre points per knot interval"}});
 
     sirius::initialize(1);
     //int result = call_test("test_bspline_interp", test_bspline_interp, args);

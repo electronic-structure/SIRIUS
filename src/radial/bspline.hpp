@@ -57,8 +57,7 @@ gauss_legendre_rule(int n__, std::vector<double>& x__, std::vector<double>& w__)
     x__.resize(n__);
     w__.resize(n__);
 
-    gsl_integration_glfixed_table* table =
-        gsl_integration_glfixed_table_alloc(static_cast<size_t>(n__));
+    gsl_integration_glfixed_table* table = gsl_integration_glfixed_table_alloc(static_cast<size_t>(n__));
 
     if (table == nullptr) {
         RTE_THROW("gauss_legendre_rule: failed to allocate GSL table");
@@ -283,6 +282,6 @@ class bspline_basis
     }
 };
 
-} // namespace
+} // namespace sirius
 
 #endif

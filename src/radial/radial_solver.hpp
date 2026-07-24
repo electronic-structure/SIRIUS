@@ -937,7 +937,6 @@ class Radial_solver
         return 0.0;
     }
 
-
     inline int
     num_points() const
     {
@@ -1187,8 +1186,9 @@ struct enu_search_t
     double etop_first_pass{0};
 };
 
-enu_search_t find_enu(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
-                std::vector<double> const& v__, enu_search_t const& enu__);
+enu_search_t
+find_enu(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
+         std::vector<double> const& v__, enu_search_t const& enu__);
 
 }; // namespace sirius
 

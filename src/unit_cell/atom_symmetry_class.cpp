@@ -82,7 +82,8 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
     Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
 
-    struct compute_all_orders_result {
+    struct compute_all_orders_result
+    {
         bool success{false};
         std::string error;
     };
@@ -146,8 +147,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             /* in case of linear dependency return failure */
             if (std::abs(norm) < 1e-8) {
                 r.success = false;
-                sinfo << "  linear dependent radial function" << std::endl
-                      << "  norm : " << norm << std::endl;
+                sinfo << "  linear dependent radial function" << std::endl << "  norm : " << norm << std::endl;
                 r.error = sinfo.str();
                 return r;
             }
@@ -219,10 +219,10 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
     int ierr{0};
     std::stringstream s;
-    s  << "Atom_symmetry_class::generate_aw_radial_functions()" << std::endl
-       << "  atom symmetry class id : " << id_ << std::endl
-       << "  atom type label        : " << atom_type_.label() << std::endl
-       << "  atom symbol            : " << atom_type_.symbol() << std::endl;
+    s << "Atom_symmetry_class::generate_aw_radial_functions()" << std::endl
+      << "  atom symmetry class id : " << id_ << std::endl
+      << "  atom type label        : " << atom_type_.label() << std::endl
+      << "  atom symbol            : " << atom_type_.symbol() << std::endl;
     for (int i = 0; i < num_aw_descriptors(); i++) {
         if (!status[i]) {
             ierr++;
@@ -520,18 +520,18 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
         int l = nl_enu_vec[i].first.second;
         try {
             nl_enu_vec[i].second = sirius::find_enu(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
-                                              spherical_potential_, nl_enu_vec[i].second);
-            status[i] = 1;
+                                                    spherical_potential_, nl_enu_vec[i].second);
+            status[i]            = 1;
         } catch (std::exception const& e) {
             errors[i] = e.what();
         }
     }
     int ierr{0};
     std::stringstream s;
-    s  << "Atom_symmetry_class::find_enu()" << std::endl
-       << "  atom symmetry class id : " << id_ << std::endl
-       << "  atom type label        : " << atom_type_.label() << std::endl
-       << "  atom symbol            : " << atom_type_.symbol() << std::endl;
+    s << "Atom_symmetry_class::find_enu()" << std::endl
+      << "  atom symmetry class id : " << id_ << std::endl
+      << "  atom type label        : " << atom_type_.label() << std::endl
+      << "  atom symbol            : " << atom_type_.symbol() << std::endl;
     for (size_t i = 0; i < nl_enu_vec.size(); i++) {
         if (status[i]) {
             enu_search_[nl_enu_vec[i].first] = nl_enu_vec[i].second;
