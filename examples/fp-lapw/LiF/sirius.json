@@ -12,6 +12,8 @@
 
       "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
+      "valence_relativity" : "none",
+
       "smearing_width" : 0.025,
 
       "use_symmetry" : true,

@@ -63,6 +63,8 @@ class Atom_symmetry_class
     /// Spin-orbit interaction integrals.
     mdarray<double, 3> so_radial_integrals_;
 
+    std::map<std::pair<int, int>, enu_search_t> enu_search_;
+
     /// List of radial descriptor sets used to construct augmented waves.
     mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
 
@@ -91,11 +93,11 @@ class Atom_symmetry_class
     set_spherical_potential(std::vector<double> const& vs__);
 
     /// Save spherical potential for debugging purposes.
-    inline void
+    void
     save_spherical_potential() const;
 
     /// Save radial functions.
-    inline void
+    void
     save_radial_functions(std::string const& fname__) const;
 
     /// Generate APW and LO radial functions.

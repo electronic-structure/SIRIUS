@@ -54,6 +54,24 @@ Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
     for (int i = 0; i < atom_type_.num_lo_descriptors(); i++) {
         lo_descriptors_.push_back(atom_type_.lo_descriptor(i));
     }
+
+    /* find which aw functions need auto enu */
+    for (int l = 0; l < num_aw_descriptors(); l++) {
+        for (auto const& d : aw_descriptor(l)) {
+            if (d.auto_enu) {
+                enu_search_[{d.n, d.l}] = enu_search_t{d.enu, d.enu, d.enu, d.auto_enu};
+            }
+        }
+    }
+
+    /* find which lo functions need auto enu */
+    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
+        for (auto const& d : lo_descriptor(idxlo).rsd_set) {
+            if (d.auto_enu) {
+                enu_search_[{d.n, d.l}] = enu_search_t{d.enu, d.enu, d.enu, d.auto_enu};
+            }
+        }
+    }
 }
 
 int
@@ -64,23 +82,40 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
     Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
 
-    auto compute_all_orders = [&](int l, double enu_shift) -> bool {
+    struct compute_all_orders_result
+    {
+        bool success{false};
+        std::string error;
+    };
+
+    auto compute_all_orders = [&](int l, double enu_shift) -> compute_all_orders_result {
         Spline<double> s(atom_type_.radial_grid());
 
+        compute_all_orders_result r;
+        std::stringstream sinfo;
+        sinfo << " l = " << l << ", enu_shift = " << enu_shift << std::endl;
+
         for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
+            sinfo << "  order = " << order << std::endl;
             auto rsd = aw_descriptor(l)[order];
 
             auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
 
-            /* integrate radial equation forward and find radial solution */
-            auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift);
-
-            for (int ir = 0; ir < nmtp; ir++) {
-                rf__(ir, idxrf, 0) = result.p[ir];
-                rf__(ir, idxrf, 1) = result.rdudr[ir];
-            }
-            for (int i : {0, 1, 2}) {
-                sd__(i, idxrf) = result.uderiv[i];
+            try {
+                /* integrate radial equation forward and find radial solution */
+                auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    rf__(ir, idxrf, 0) = result.p[ir];
+                    rf__(ir, idxrf, 1) = result.rdudr[ir];
+                }
+                for (int i : {0, 1, 2}) {
+                    sd__(i, idxrf) = result.uderiv[i];
+                }
+            } catch (std::exception const& e) {
+                r.success = false;
+                sinfo << e.what();
+                r.error = sinfo.str();
+                return r;
             }
 
             /* orthogonalize to previous radial functions */
@@ -111,7 +146,10 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
             /* in case of linear dependency return failure */
             if (std::abs(norm) < 1e-8) {
-                return false;
+                r.success = false;
+                sinfo << "  linear dependent radial function" << std::endl << "  norm : " << norm << std::endl;
+                r.error = sinfo.str();
+                return r;
             }
 
             norm = 1.0 / std::sqrt(norm);
@@ -122,37 +160,51 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
             }
             /* aw radial function can't be zero at MT boundary */
             if (std::abs(rf__(nmtp - 1, idxrf, 0)) < 1e-2) {
-                return false;
+                r.success = false;
+                sinfo << "  radial function is zero at the muffin-tin boundary"
+                      << "  value : " << rf__(nmtp - 1, idxrf, 0);
+                r.error = sinfo.str();
+                return r;
             }
             for (int i : {0, 1, 2}) {
                 sd__(i, idxrf) *= norm;
             }
         } // order
-        return true;
+        r.success = true;
+        return r;
     };
 
-    bool found{true};
+    std::vector<std::string> errors(num_aw_descriptors());
+    std::vector<int> status(num_aw_descriptors(), 0);
 
     #pragma omp parallel for schedule(dynamic, 1) default(shared)
     for (int l = 0; l < num_aw_descriptors(); l++) {
+        /* take first radial function */
+        auto rsd = aw_descriptor(l)[0];
         /* try to increase linearisation energy several times in order to find linearly independent
          * radial functions */
-        bool success{false};
-        for (int k = 0; k < 100; k++) {
-            if (l <= 3) {
-                /* for low l numbers Enu finder will find the top of the band;
-                 * in this case we need to go down in energy to remove any degeneracy of radial functions */
-                success = compute_all_orders(l, -k * 0.05);
-            } else {
-                /* for high l values, Enu is typically set in the species files and is not searched;
-                 * in case of trouble with them we need to increase linearisation energies */
-                success = compute_all_orders(l, k * 0.25);
-            }
-            if (success) {
-                break;
+        compute_all_orders_result r;
+        /* Enu for this level was searched; this should not produce degenerate radial functions */
+        double e_shift{0.0};
+        if (rsd.auto_enu) {
+            r = compute_all_orders(l, e_shift);
+        } else {
+            /* for high l values, Enu is typically set in the species files and is not searched;
+             * in case of trouble with them we need to increase linearisation energies */
+            double de{0.1};
+            for (int k = 0; k < 100; k++) {
+                r = compute_all_orders(l, e_shift);
+                if (r.success) {
+                    break;
+                } else {
+                    e_shift += de;
+                    de *= 1.1;
+                }
             }
         }
-        if (success) {
+
+        if (r.success) {
+            status[l] = 1;
             /* divide by r */
             for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
                 auto idxrf = atom_type_.indexr().index_of(angular_momentum(l), order);
@@ -161,10 +213,26 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
                 }
             }
         } else {
-            found = false;
+            errors[l] = r.error;
         }
     } // l
-    return found ? 0 : 1;
+
+    int ierr{0};
+    std::stringstream s;
+    s << "Atom_symmetry_class::generate_aw_radial_functions()" << std::endl
+      << "  atom symmetry class id : " << id_ << std::endl
+      << "  atom type label        : " << atom_type_.label() << std::endl
+      << "  atom symbol            : " << atom_type_.symbol() << std::endl;
+    for (int i = 0; i < num_aw_descriptors(); i++) {
+        if (!status[i]) {
+            ierr++;
+            s << errors[i] << std::endl;
+        }
+    }
+    if (ierr) {
+        RTE_WARNING(s);
+    }
+    return ierr;
 }
 
 int
@@ -440,54 +508,52 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
 {
     PROFILE("sirius::Atom_symmetry_class::find_enu");
 
-    /* {n,l} -> enu map */
-    std::map<std::pair<int, int>, double> nl_enu;
-
-    /* find which aw functions need auto enu */
-    for (int l = 0; l < num_aw_descriptors(); l++) {
-        for (auto const& d : aw_descriptor(l)) {
-            if (d.auto_enu) {
-                nl_enu[{d.n, d.l}] = d.enu;
-            }
-        }
-    }
-
-    /* find which lo functions need auto enu */
-    for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-        for (auto const& d : lo_descriptor(idxlo).rsd_set) {
-            if (d.auto_enu) {
-                nl_enu[{d.n, d.l}] = d.enu;
-            }
-        }
-    }
-
     /* unroll {n,l} -> enu map to enable omp for loop */
-    std::vector<std::pair<std::pair<int, int>, double>> nl_enu_vec(nl_enu.begin(), nl_enu.end());
+    std::vector<std::pair<std::pair<int, int>, enu_search_t>> nl_enu_vec(enu_search_.begin(), enu_search_.end());
 
-    int ierr{0};
-    #pragma omp parallel for reduction(+:ierr)
+    std::vector<std::string> errors(nl_enu_vec.size());
+    std::vector<int> status(nl_enu_vec.size(), 0);
+
+    #pragma omp parallel for
     for (size_t i = 0; i < nl_enu_vec.size(); i++) {
+        int n = nl_enu_vec[i].first.first;
+        int l = nl_enu_vec[i].first.second;
         try {
-            int n                = nl_enu_vec[i].first.first;
-            int l                = nl_enu_vec[i].first.second;
-            nl_enu_vec[i].second = Enu_finder(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
-                                              spherical_potential_, nl_enu_vec[i].second, 1)
-                                           .enu();
+            nl_enu_vec[i].second = sirius::find_enu(rel__, atom_type_.zn(), n, l, atom_type_.radial_grid(),
+                                                    spherical_potential_, nl_enu_vec[i].second);
+            status[i]            = 1;
         } catch (std::exception const& e) {
-            std::cout << e.what() << std::endl;
-            ierr++;
+            errors[i] = e.what();
         }
     }
+    int ierr{0};
+    std::stringstream s;
+    s << "Atom_symmetry_class::find_enu()" << std::endl
+      << "  atom symmetry class id : " << id_ << std::endl
+      << "  atom type label        : " << atom_type_.label() << std::endl
+      << "  atom symbol            : " << atom_type_.symbol() << std::endl;
+    for (size_t i = 0; i < nl_enu_vec.size(); i++) {
+        if (status[i]) {
+            enu_search_[nl_enu_vec[i].first] = nl_enu_vec[i].second;
+        } else {
+            ierr++;
+            s << errors[i] << std::endl;
+        }
+    }
+    if (ierr) {
+        RTE_WARNING(s);
+    }
+
     /* update the {n,l} -> enu map */
     for (auto& e : nl_enu_vec) {
-        nl_enu[e.first] = e.second;
+        enu_search_[e.first] = e.second;
     }
 
     /* update AW linearization energies */
     for (int l = 0; l < num_aw_descriptors(); l++) {
         for (auto& d : aw_descriptor(l)) {
             if (d.auto_enu) {
-                d.enu = nl_enu[{d.n, d.l}];
+                d.enu = enu_search_[{d.n, d.l}].enu;
             }
         }
     }
@@ -495,7 +561,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
         for (auto& d : lo_descriptor(idxlo).rsd_set) {
             if (d.auto_enu) {
-                d.enu = nl_enu[{d.n, d.l}];
+                d.enu = enu_search_[{d.n, d.l}].enu;
             }
         }
     }
@@ -514,15 +580,10 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
     rf.zero();
 
     if (update_enu__) {
-        auto ierr_enu = find_enu(rel__);
-        if (ierr_enu) {
-            std::stringstream s;
-            s << "find_enu() failed for atom class " << id_;
-            RTE_WARNING(s);
-            /* write spherical potential */
-            if (atom_type().parameters().cfg().control().save_rf()) {
-                save_spherical_potential();
-            }
+        auto ierr_enu = this->find_enu(rel__);
+        /* write spherical potential */
+        if (ierr_enu && atom_type().parameters().cfg().control().save_rf()) {
+            save_spherical_potential();
         }
     }
 
@@ -723,10 +784,10 @@ void
 Atom_symmetry_class::save_spherical_potential() const
 {
     nlohmann::json dict;
-    dict["x"]    = atom_type_.radial_grid().values();
-    dict["veff"] = spherical_potential_;
-    dict["z"]    = atom_type_.zn();
-    dict["rmt"]  = atom_type_.mt_radius();
+    dict["x"]                   = atom_type_.radial_grid().values();
+    dict["z"]                   = atom_type_.zn();
+    dict["rmt"]                 = atom_type_.mt_radius();
+    dict["spherical_potential"] = spherical_potential_;
     write_json_to_file(dict, "spherical_potential_" + std::to_string(id_) + ".json");
 }
 

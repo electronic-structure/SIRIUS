@@ -185,9 +185,6 @@ Atom_type::init()
         rf_coef_.allocate(memory_t::device);
         vrf_coef_.allocate(memory_t::device);
     }
-    if (parameters_.processing_unit() == device_t::GPU) {
-        radial_grid_.copy_to_device();
-    }
 
     if (this->spin_orbit_coupling()) {
         this->generate_f_coefficients();
@@ -221,7 +218,7 @@ Atom_type::init()
     }
     /* restrore free atom potential from spherical density */
     if (parameters_.full_potential()) {
-        init_free_atom_density(false);
+        init_free_atom_density(true);
         free_atom_potential_spline_ = Spline<double>(free_atom_radial_grid_);
         XC_functional_base Ex("XC_LDA_X", 1.0, 1);
         XC_functional_base Ec("XC_LDA_C_VWN", 1.0, 1);
@@ -264,11 +261,11 @@ Atom_type::init()
 }
 
 void
-Atom_type::init_free_atom_density(bool smooth)
+Atom_type::init_free_atom_density(bool all_electron__)
 {
-    free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_);
+    free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
     /* smooth free atom density inside the muffin-tin sphere */
-    if (smooth) {
+    if (!all_electron__) {
         /* find point on the grid close to the muffin-tin radius */
         int irmt = free_atom_radial_grid_.index_of(mt_radius());
         /* interpolate at this point near MT radius */
@@ -281,22 +278,8 @@ Atom_type::init_free_atom_density(bool smooth)
             // std::pow(free_atom_radial_grid(i), 3);
             free_atom_density_spline_(i) = free_atom_density_[i] * 0.5 * (1 + std::erf((x / R - 0.5) * 10));
         }
-
-        ///* write smoothed density */
-        // sstr.str("");
-        // sstr << "free_density_modified_" << id_ << ".dat";
-        // fout = fopen(sstr.str().c_str(), "w");
-
-        // for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
-        //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density(ir));
-        //}
-        // fclose(fout);
-    } else {
-        for (int i = 0; i < free_atom_radial_grid_.num_points(); i++) {
-            free_atom_density_spline_(i) = free_atom_density_[i];
-        }
+        free_atom_density_spline_.interpolate();
     }
-    free_atom_density_spline_.interpolate();
 }
 
 void

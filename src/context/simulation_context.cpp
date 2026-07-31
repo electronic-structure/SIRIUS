@@ -644,13 +644,8 @@ Simulation_context::print_info(std::ostream& out__) const
                << "lmax_pot                           : " << lmax_pot() << std::endl;
             std::string reln[]  = {"valence relativity                 : ", "core relativity                    : "};
             relativity_t relt[] = {valence_relativity_, core_relativity_};
-            std::map<relativity_t, std::string> const relm = {{relativity_t::none, "none"},
-                                                              {relativity_t::koelling_harmon, "Koelling-Harmon"},
-                                                              {relativity_t::zora, "zora"},
-                                                              {relativity_t::iora, "iora"},
-                                                              {relativity_t::dirac, "Dirac"}};
             for (int i = 0; i < 2; i++) {
-                os << reln[i] << relm.at(relt[i]) << std::endl;
+                os << reln[i] << get_relativity(relt[i]) << std::endl;
             }
         } else {
             os << "total number of beta projectors    : " << unit_cell().mt_aw_basis_size() << std::endl

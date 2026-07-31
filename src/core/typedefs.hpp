@@ -98,6 +98,23 @@ get_relativity_t(std::string name__)
     return m.at(name__);
 }
 
+inline auto
+get_relativity(relativity_t rel__)
+{
+    std::map<relativity_t, std::string> const m = {{relativity_t::none, "none"},
+                                                   {relativity_t::koelling_harmon, "Koelling-Harmon"},
+                                                   {relativity_t::zora, "zora"},
+                                                   {relativity_t::iora, "iora"},
+                                                   {relativity_t::dirac, "Dirac"}};
+
+    if (m.count(rel__) == 0) {
+        std::stringstream s;
+        s << "get_relativity(): wrong type of the relativity_t enumerator";
+        throw std::runtime_error(s.str());
+    }
+    return m.at(rel__);
+}
+
 /// Describes radial solution.
 struct radial_solution_descriptor
 {

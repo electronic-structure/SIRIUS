@@ -13,7 +13,7 @@
         "valence_relativity" : "koelling_harmon",
         "xc_functionals": ["XC_LDA_X", "XC_LDA_C_PW"],
         "num_fv_states" : 4,
-        "pw_cutoff" : 12.00,
+        "pw_cutoff" : 20.00,
         "aw_cutoff":  7.00,
         "use_symmetry": true,
         "ngridk" : [2,2,2],

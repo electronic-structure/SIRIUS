@@ -549,11 +549,6 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
         }
         RTE_OUT(out__) << s.str();
     }
-    //if (parameters_.cfg().control().save_rf() && comm_.rank() == 0) {
-    //    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-    //        atom_symmetry_class(ic).dump_lo();
-    //    }
-    //}
 }
 
 void
@@ -702,13 +697,6 @@ Unit_cell::initialize()
     num_hubbard_wf_ = std::make_pair(counter, offs);
 
     update();
-
-    //== write_cif();
-
-    //== if (comm().rank() == 0) {
-    //==     std::ofstream ofs(std::string("unit_cell.json"), std::ofstream::out | std::ofstream::trunc);
-    //==     ofs << serialize().dump(4);
-    //== }
 }
 
 void

@@ -61,6 +61,7 @@ set(_SOURCES
   "k_point/k_point.cpp"
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
+  "radial/radial_solver.cpp"
   "mixer/mixer_functions.cpp"
   "nlcglib/adaptor.cpp"
   "context/simulation_context.cpp"

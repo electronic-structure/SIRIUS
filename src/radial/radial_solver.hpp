@@ -683,63 +683,6 @@ class Radial_solver
         return nn;
     }
 
-    inline double
-    integrate_forward_until(relativity_t rel__, double enu__, int l__, int k__, Spline<double>& chi_p__,
-                            Spline<double>& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
-                            std::vector<double>& q__, std::vector<double>& dqdr__, bool bound_state__,
-                            std::function<bool(int, int, double&)> condition__)
-    {
-
-        auto integrate_forward = [&](double enu__) -> int {
-            int nn{0};
-            switch (rel__) {
-                case relativity_t::none: {
-                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                   dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, k__, chi_p__, chi_q__, p__,
-                                                                              dpdr__, q__, dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::zora: {
-                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                   dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::iora: {
-                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                   dqdr__, bound_state__);
-                    break;
-                }
-                case relativity_t::dirac: {
-                    nn = integrate_forward_gsl<relativity_t::dirac>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
-                                                                    dqdr__, bound_state__);
-                    break;
-                }
-                default: {
-                    RTE_THROW("unsupported relativity type");
-                }
-            }
-            return nn;
-        };
-
-        for (int i = 0; i < 1000; i++) {
-            int nn = integrate_forward(enu__);
-            if (condition__(i, nn, enu__)) {
-                return enu__;
-            }
-        }
-        std::stringstream s;
-        s << "integrate_forward_until(): condition is not achieved in 1000 iterations" << std::endl
-          << "  curent value of enu: " << enu__ << std::endl
-          << "  l, k : " << l__ << " " << k__ << std::endl
-          << "  zn : " << zn_;
-        RTE_THROW(s);
-        return 0.0;
-    }
-
   public:
     Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid<double> const& radial_grid__,
                   double epsabs__ = 1e-3, double epsrel__ = 1e-3)
@@ -935,6 +878,63 @@ class Radial_solver
         uderiv[2] = (sdpdr.deriv(1, nr - 1) - 2 * dpdr.back().back() / R + 2 * p.back().back() / std::pow(R, 2)) / R;
 
         return radial_solver_result_t{nn, p.back(), rdudr, uderiv};
+    }
+
+    inline double
+    integrate_forward_until(relativity_t rel__, double enu__, int l__, int k__, Spline<double>& chi_p__,
+                            Spline<double>& chi_q__, std::vector<double>& p__, std::vector<double>& dpdr__,
+                            std::vector<double>& q__, std::vector<double>& dqdr__, bool bound_state__,
+                            std::function<bool(int, int, double&)> condition__)
+    {
+
+        auto integrate_forward = [&](double enu__) -> int {
+            int nn{0};
+            switch (rel__) {
+                case relativity_t::none: {
+                    nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::koelling_harmon: {
+                    nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, k__, chi_p__, chi_q__, p__,
+                                                                              dpdr__, q__, dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::zora: {
+                    nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::iora: {
+                    nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                   dqdr__, bound_state__);
+                    break;
+                }
+                case relativity_t::dirac: {
+                    nn = integrate_forward_gsl<relativity_t::dirac>(enu__, l__, k__, chi_p__, chi_q__, p__, dpdr__, q__,
+                                                                    dqdr__, bound_state__);
+                    break;
+                }
+                default: {
+                    RTE_THROW("unsupported relativity type");
+                }
+            }
+            return nn;
+        };
+
+        for (int i = 0; i < 1000; i++) {
+            int nn = integrate_forward(enu__);
+            if (condition__(i, nn, enu__)) {
+                return enu__;
+            }
+        }
+        std::stringstream s;
+        s << "integrate_forward_until(): condition is not achieved in 1000 iterations" << std::endl
+          << "  curent value of enu: " << enu__ << std::endl
+          << "  l, k : " << l__ << " " << k__ << std::endl
+          << "  zn : " << zn_;
+        RTE_THROW(s);
+        return 0.0;
     }
 
     inline int
@@ -1177,190 +1177,18 @@ class Bound_state : public Radial_solver
     }
 };
 
-class Enu_finder : public Radial_solver
+struct enu_search_t
 {
-  private:
-    int n_;
-
-    int l_;
-
-    double enu_;
-
-    double etop_;
-    double ebot_;
-
-    void
-    find_enu(relativity_t rel__, double enu_start__, int auto_enu__)
-    {
-        int np = num_points();
-
-        Spline<double> chi_p(radial_grid());
-        Spline<double> chi_q(radial_grid());
-
-        std::vector<double> p(np);
-        std::vector<double> q(np);
-        std::vector<double> dpdr(np);
-        std::vector<double> dqdr(np);
-
-        std::stringstream sinfo;
-
-        auto compute_etop = [&]() -> int {
-            /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
-             * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
-             * of the band. */
-            int s{1};
-            int sp;
-            double denu{1e-6};
-            double e1;
-            sinfo << "find_enu(): find top enery" << std::endl
-                  << "  n         : " << n_ << ", l : " << l_ << std::endl
-                  << "  enu_start : " << enu_start__ << std::endl;
-            try {
-                /* 1st pass: estimate upper and lower boundaries of the etop */
-                e1 = integrate_forward_until(rel__, enu_start__, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                             [&s, &sp, &denu, this](int iter, int nn, double& enu) {
-                                                 sp = s;
-                                                 s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
-                                                 if (s != sp && iter > 0) {
-                                                     return true;
-                                                 }
-                                                 denu = std::min(0.1, denu * 2);
-                                                 enu += s * denu;
-                                                 return false;
-                                             });
-            } catch (std::exception const& e) {
-                sinfo << e.what() << std::endl << "denu : " << denu;
-                return 1;
-            }
-
-            double e2 = e1 - sp * denu;
-
-            /* e1 is bottom, e2 is top energy */
-            if (e1 > e2) {
-                std::swap(e1, e2);
-            }
-
-            sinfo << "find_enu(): refine top energy" << std::endl
-                  << "  e1 : " << e1 << ", e2 : " << e2 << std::endl
-                  << "  enu_start : " << (e1 + e2) / 2 << std::endl;
-
-            try {
-                /* 2nd pass: refine by bisection */
-                etop_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                                [&e1, &e2, this](int iter, int nn, double& enu) {
-                                                    if (nn > (n_ - l_ - 1)) {
-                                                        e2 = enu;
-                                                    } else {
-                                                        e1 = enu;
-                                                    }
-                                                    enu = (e1 + e2) / 2.0;
-                                                    return std::abs(e1 - e2) < 1e-9;
-                                                });
-            } catch (std::exception const& e) {
-                sinfo << e.what() << std::endl;
-                return 1;
-            }
-            return 0;
-        };
-
-        if (compute_etop() != 0) {
-            sinfo << "find_enu(): top of the linearization energy interval is not found";
-            RTE_THROW(sinfo);
-        }
-
-        enu_ = etop_;
-
-        auto surface_deriv = [this, &dpdr, &p]() {
-            if (true) {
-                /* return  p'(R) */
-                return dpdr.back();
-            } else {
-                /* return R*u'(R) */
-                return dpdr.back() - p.back() / radial_grid_.last();
-            }
-        };
-
-        /* Now we go down in energy and search for enu such that the wave-function derivative is zero
-         * at the muffin-tin boundary. This will be the bottom of the band. Here we look at a sign change
-         * of the derivative. */
-        double denu{1e-6};
-        try {
-            sinfo << "find_enu(): find bottom energy" << std::endl << "  enu_start : " << etop_ << std::endl;
-            double sd = surface_deriv();
-            double e1 = integrate_forward_until(rel__, etop_, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                                [this, &denu, sd, &surface_deriv, &p](int iter, int nn, double& enu) {
-                                                    if (surface_deriv() * sd < 0) {
-                                                        return true;
-                                                    }
-                                                    /* do not allow step in energy to grow too much */
-                                                    denu = std::min(0.01, denu * 1.1);
-                                                    enu -= denu;
-                                                    return false;
-                                                });
-
-            /* refine bottom energy */
-            double e2 = e1 + denu;
-            sinfo << "find_enu(): refine bottom energy" << std::endl << "  enu_start : " << (e1 + e2) / 2 << std::endl;
-            ebot_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
-                                            [this, &e1, &e2, sd, &surface_deriv](int iter, int nn, double& enu) {
-                                                if (surface_deriv() * sd > 0) {
-                                                    e2 = enu;
-                                                } else {
-                                                    e1 = enu;
-                                                }
-                                                enu = (e1 + e2) / 2.0;
-                                                return std::abs(surface_deriv()) < 1e-8;
-                                            });
-            switch (auto_enu__) {
-                case 1: {
-                    enu_ = (ebot_ + etop_) / 2.0;
-                    break;
-                }
-                case 2: {
-                    enu_ = ebot_;
-                    break;
-                }
-                default: {
-                    RTE_THROW("wrong type of auto_enu");
-                }
-            }
-        } catch (std::exception const& e) {
-            sinfo << e.what() << std::endl << "denu : " << denu << std::endl;
-        }
-    }
-
-  public:
-    /// Constructor
-    Enu_finder(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
-               std::vector<double> const& v__, double enu_start__, int auto_enu__)
-        : Radial_solver(zn__, v__, radial_grid__)
-        , n_(n__)
-        , l_(l__)
-    {
-        if (l_ >= n_) {
-            RTE_THROW("wrong orbital quantum number");
-        }
-        find_enu(rel__, enu_start__, auto_enu__);
-    }
-
-    inline double
-    enu() const
-    {
-        return enu_;
-    }
-
-    inline double
-    ebot() const
-    {
-        return ebot_;
-    }
-
-    inline double
-    etop() const
-    {
-        return etop_;
-    }
+    double enu{0.0};
+    double ebot{0.0};
+    double etop{0.0};
+    int auto_enu{1};
+    double etop_first_pass{0};
 };
+
+enu_search_t
+find_enu(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> const& radial_grid__,
+         std::vector<double> const& v__, enu_search_t const& enu__);
 
 }; // namespace sirius
 
