@@ -318,7 +318,8 @@ if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   # write siriusConfig.cmake for F90 API
   configure_package_config_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
     "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sirius)
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius"
+    PATH_VARS CMAKE_INSTALL_LIBDIR)
   install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
                 "${PROJECT_BINARY_DIR}/siriusConfigVersion.cmake"
                 DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
