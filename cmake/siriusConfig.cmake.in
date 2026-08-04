@@ -12,10 +12,31 @@ set(SIRIUS_USE_NLCGLIB @SIRIUS_USE_NLCGLIB@)
 set(SIRIUS_USE_VCSQNM @SIRIUS_USE_VCSQNM@)
 
 set(SIRIUS_BUILD_SHARED_LIBS @BUILD_SHARED_LIBS@)
+
 if(NOT SIRIUS_BUILD_SHARED_LIBS)
+  # Static archives need the complete transitive link closure.
   find_dependency(sirius_cxx CONFIG)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/siriusTargets.cmake")
+
+if(SIRIUS_BUILD_SHARED_LIBS)
+  # libsirius_cxx is an implementation dependency of libsirius,
+  # not part of the public Fortran usage requirements.
+  find_library(
+    _SIRIUS_CXX_LIBRARY
+    NAMES sirius_cxx
+    PATHS @PACKAGE_CMAKE_INSTALL_LIBDIR@
+    NO_DEFAULT_PATH
+    NO_CACHE
+    REQUIRED
+  )
+  set_property(
+    TARGET sirius::sirius
+    APPEND PROPERTY IMPORTED_LINK_DEPENDENT_LIBRARIES
+    "${_SIRIUS_CXX_LIBRARY}"
+  )
+  unset(_SIRIUS_CXX_LIBRARY)
+endif()
 
 check_required_components(sirius)
