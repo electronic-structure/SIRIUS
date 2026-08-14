@@ -18,6 +18,7 @@
 #include "core/rte/rte.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
+#include "lapw/lapw_radial_basis.hpp"
 
 namespace sirius {
 
@@ -196,6 +197,12 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     density_.print_info(ctx_.out(1));
 
+    std::shared_ptr<LAPW_radial_basis> lapw_basis;
+    if (ctx_.full_potential()) {
+        lapw_basis = std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(),
+                potential_.get_spherical_potential());
+    }
+
     for (int iter = 0; iter < num_dft_iter__; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
         std::stringstream s;
@@ -317,8 +324,20 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             density_.check_num_electrons();
         }
 
+        bool transform_to_rg{true};
         /* compute new potential */
-        potential_.generate(density_, ctx_.use_symmetry(), true);
+        potential_.generate(density_, ctx_.use_symmetry(), transform_to_rg);
+
+        if (ctx_.full_potential()) {
+            std::shared_ptr<LAPW_radial_basis> lapw_basis_new;
+            try {
+                lapw_basis_new = std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(),
+                        potential_.get_spherical_potential());
+                lapw_basis = lapw_basis_new;
+            } catch (std::exception const& e) {
+                RTE_WARNING("LAPW basis is not updated");
+            }
+        }
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             if (ctx_.verbosity() >= 1) {
