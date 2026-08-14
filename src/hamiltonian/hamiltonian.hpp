@@ -22,6 +22,7 @@
 #include "core/la/dmatrix.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
+#include "lapw/lapw_radial_basis.hpp"
 
 namespace sirius {
 /* forward declaration */
@@ -102,6 +103,8 @@ class Hamiltonian0
   public:
     /// Constructor.
     Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__ = true);
+
+    Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radial_basis> lapw_basis__ = nullptr);
 
     ~Hamiltonian0();
 
