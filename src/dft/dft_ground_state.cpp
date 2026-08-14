@@ -199,8 +199,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     std::shared_ptr<LAPW_radial_basis> lapw_basis;
     if (ctx_.full_potential()) {
-        lapw_basis = std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(),
-                potential_.get_spherical_potential());
+        lapw_basis = std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(), potential_.get_spherical_potential(),
+                potential_.mt_components());
     }
 
     for (int iter = 0; iter < num_dft_iter__; iter++) {
@@ -332,7 +332,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             std::shared_ptr<LAPW_radial_basis> lapw_basis_new;
             try {
                 lapw_basis_new = std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(),
-                        potential_.get_spherical_potential());
+                        potential_.get_spherical_potential(), potential_.mt_components());
                 lapw_basis = lapw_basis_new;
             } catch (std::exception const& e) {
                 RTE_WARNING("LAPW basis is not updated");
