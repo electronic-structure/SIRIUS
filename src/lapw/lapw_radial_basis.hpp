@@ -15,7 +15,6 @@
 #define __LAPW_RADIAL_BASIS_HPP__
 
 #include "unit_cell/atom_type.hpp"
-#include "function3d/spheric_function_set.hpp"
 
 namespace sirius {
 
@@ -784,217 +783,13 @@ struct lapw_radial_basis_t
     }
 };
 
-using mt_field_t = Spheric_function_set<double, atom_index_t>;
-
 class LAPW_radial_basis 
 {
   private:
     std::vector<lapw_radial_basis_t> radial_basis_of_symmetry_class;
 
-    void
-    generate_atom_radial_integrals(Atom const& atom__, std::vector<mt_field_t*> const& vns__,
-            int ia__, mdarray<double, 4>& h_L__)
-    {
-        PROFILE("sirius::LAPW_radial_basis::generate_atom_radial_integrals");
-
-        auto const& type = atom__.type();
-        auto const& rb   = radial_basis_of_symmetry_class[atom__.symmetry_class_id()];
-
-        int lmax_pot     = type.parameters().lmax_pot();
-        int lmmax        = sf::lmmax(lmax_pot);
-        int nmtp         = type.num_mt_points();
-        //int nrf          = type.indexr().size();
-        int num_mag_dims = type.parameters().num_mag_dims();
-
-        std::array<int, 3> idx_map({1, 0, 0});
-        if (num_mag_dims == 3) {
-            idx_map = std::array<int, 3>({3, 1, 2});
-        }
-
-        auto l_by_lm = sf::l_by_lm(lmax_pot);
-
-        h_L__.zero();
-
-        //if (type.parameters().cfg().settings().simple_lapw_ri()) {
-            #pragma omp parallel for
-            for (int lm = 0; lm < lmmax; lm++) {
-                int l = l_by_lm[lm];
-
-                for (int i2 = 0; i2 < type.indexr().size(); i2++) {
-                    int l2 = type.indexr(i2).am.l();
-                    for (int i1 = 0; i1 <= i2; i1++) {
-                        int l1 = type.indexr(i1).am.l();
-                        if ((l + l1 + l2) % 2 == 0) {
-                            if (lm) {
-                                Spline<double> s(type.radial_grid());
-                                for (int ir = 0; ir < nmtp; ir++) {
-                                    auto const& veff = (*vns__[0])[ia__](lm, ir);
-                                    s(ir) = veff * rb.radial_functions_(ir, i1, 0) *
-                                            rb.radial_functions_(ir, i2, 0) * std::pow(type.radial_grid(ir), 2);
-                                }
-                                h_L__(lm, i1, i2, 0) = h_L__(lm, i2, i1, 0) = s.interpolate().integrate(0);
-                            } else {
-                                /* copy spherical part */
-                                h_L__(lm, i1, i2, 0) = rb.h_spherical_integrals_(i1, i2);
-                                h_L__(lm, i2, i1, 0) = rb.h_spherical_integrals_(i2, i1);
-                            }
-                            for (int j = 0; j < num_mag_dims; j++) {
-                                Spline<double> s(type.radial_grid());
-                                for (int ir = 0; ir < nmtp; ir++) {
-                                    auto const& beff = (*vns__[idx_map[j]])[ia__](lm, ir);
-                                    s(ir) = beff * rb.radial_functions_(ir, i1, 0) *
-                                            rb.radial_functions_(ir, i2, 0) * std::pow(type.radial_grid(ir), 2);
-                                }
-                                h_L__(lm, i1, i2, 1 + j) = h_L__(lm, i2, i1, 1 + j) = s.interpolate().integrate(0);
-                            }
-                        }
-                    }
-                }
-            }
-            return;
-        //}
-
-//        /* copy radial functions to spline objects */
-//        std::vector<Spline<double>> rf_spline(nrf);
-//        #pragma omp parallel for
-//        for (int i = 0; i < nrf; i++) {
-//            rf_spline[i] = Spline<double>(type.radial_grid());
-//            for (int ir = 0; ir < nmtp; ir++) {
-//                rf_spline[i](ir) = rb.radial_functions_(ir, i, 0);
-//            }
-//        }
-//
-//        /* copy effective potential components to spline objects */
-//        std::vector<Spline<double>> v_spline(lmmax * (1 + num_mag_dims));
-//        #pragma omp parallel for
-//        for (int lm = 0; lm < lmmax; lm++) {
-//            v_spline[lm] = Spline<double>(type.radial_grid());
-//            for (int ir = 0; ir < nmtp; ir++) {
-//                v_spline[lm](ir) = veff(lm, ir);
-//            }
-//
-//            for (int j = 0; j < num_mag_dims; j++) {
-//                auto const& beff = potential__.effective_magnetic_field(j).mt()[ia__];
-//                v_spline[lm + (j + 1) * lmmax] = Spline<double>(type.radial_grid());
-//                for (int ir = 0; ir < nmtp; ir++) {
-//                    v_spline[lm + (j + 1) * lmmax](ir) = beff(lm, ir);
-//                }
-//            }
-//        }
-//
-//        /* interpolate potential multiplied by a radial function */
-//        std::vector<Spline<double>> vrf_spline(lmmax * nrf * (1 + num_mag_dims));
-//
-//        auto& idx_ri = type.idx_radial_integrals();
-//
-//        mdarray<double, 1> result({idx_ri.size(1)});
-//
-//        if (potential__.ctx().processing_unit() == device_t::GPU) {
-//#if defined(SIRIUS_GPU)
-//            auto& rgrid    = type.radial_grid();
-//            auto& rf_coef  = type.rf_coef();
-//            auto& vrf_coef = type.vrf_coef();
-//
-//            PROFILE_START("sirius::LAPW_radial_basis::generate_atom_radial_integrals|interp");
-//            #pragma omp parallel
-//            {
-//                #pragma omp for
-//                for (int i = 0; i < nrf; i++) {
-//                    rf_spline[i].interpolate();
-//                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
-//                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4,
-//                              rf_coef.at(memory_t::host, 0, 0, i));
-//                }
-//                #pragma omp for
-//                for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
-//                    v_spline[i].interpolate();
-//                }
-//            }
-//            rf_coef.copy_to(memory_t::device, acc::stream_id(-1));
-//
-//            #pragma omp parallel for
-//            for (int lm = 0; lm < lmmax; lm++) {
-//                for (int i = 0; i < nrf; i++) {
-//                    for (int j = 0; j < num_mag_dims + 1; j++) {
-//                        int idx         = lm + lmmax * i + lmmax * nrf * j;
-//                        vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-//                        std::memcpy(vrf_coef.at(memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
-//                                    nmtp * 4 * sizeof(double));
-//                    }
-//                }
-//            }
-//            vrf_coef.copy_to(memory_t::device);
-//            PROFILE_STOP("sirius::LAPW_radial_basis::generate_atom_radial_integrals|interp");
-//
-//            result.allocate(memory_t::device);
-//            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
-//                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
-//                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
-//                                        result.at(memory_t::device));
-//            acc::sync();
-//            result.copy_to(memory_t::host);
-//            result.deallocate(memory_t::device);
-//#endif
-//        }
-//        if (potential__.ctx().processing_unit() == device_t::CPU) {
-//            PROFILE_START("sirius::LAPW_radial_basis::generate_atom_radial_integrals|interp");
-//            #pragma omp parallel
-//            {
-//                #pragma omp for
-//                for (int i = 0; i < nrf; i++) {
-//                    rf_spline[i].interpolate();
-//                }
-//                #pragma omp for
-//                for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
-//                    v_spline[i].interpolate();
-//                }
-//
-//                #pragma omp for
-//                for (int lm = 0; lm < lmmax; lm++) {
-//                    for (int i = 0; i < nrf; i++) {
-//                        for (int j = 0; j < num_mag_dims + 1; j++) {
-//                            vrf_spline[lm + lmmax * i + lmmax * nrf * j] =
-//                                    rf_spline[i] * v_spline[lm + j * lmmax];
-//                        }
-//                    }
-//                }
-//            }
-//            PROFILE_STOP("sirius::LAPW_radial_basis::generate_atom_radial_integrals|interp");
-//
-//            PROFILE("sirius::LAPW_radial_basis::generate_atom_radial_integrals|inner");
-//            #pragma omp parallel for
-//            for (int j = 0; j < (int)idx_ri.size(1); j++) {
-//                result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
-//            }
-//        }
-//
-//        int n{0};
-//        for (int lm = 0; lm < lmmax; lm++) {
-//            int l = l_by_lm[lm];
-//
-//            for (int i2 = 0; i2 < type.indexr().size(); i2++) {
-//                int l2 = type.indexr(i2).am.l();
-//                for (int i1 = 0; i1 <= i2; i1++) {
-//                    int l1 = type.indexr(i1).am.l();
-//                    if ((l + l1 + l2) % 2 == 0) {
-//                        if (lm) {
-//                            h_L__(lm, i1, i2) = h_L__(lm, i2, i1) = result(n++);
-//                        } else {
-//                            h_L__(0, i1, i2) = rb.h_spherical_integrals_(i1, i2);
-//                            h_L__(0, i2, i1) = rb.h_spherical_integrals_(i2, i1);
-//                        }
-//                        for (int j = 0; j < num_mag_dims; j++) {
-//                            b_L__(lm, i1, i2, j) = b_L__(lm, i2, i1, j) = result(n++);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-    }
-
   public:
-    LAPW_radial_basis(Unit_cell const& unit_cell__, relativity_t rel__, std::vector<std::vector<double>> vs__,
-            std::vector<mt_field_t*> vns__)
+    LAPW_radial_basis(Unit_cell const& unit_cell__, relativity_t rel__, std::vector<std::vector<double>> vs__)
     {
         for (int ic = 0; ic < unit_cell__.num_atom_symmetry_classes(); ic++) {
             radial_basis_of_symmetry_class.emplace_back(unit_cell__.atom_symmetry_class(ic).atom_type(), rel__, vs__[ic]);
@@ -1021,37 +816,13 @@ class LAPW_radial_basis
             radial_basis_of_symmetry_class[ic].sync_radial_functions(unit_cell__.comm(), rank);
             radial_basis_of_symmetry_class[ic].sync_radial_integrals(unit_cell__.comm(), rank);
         }
-        for (auto it : unit_cell__.spl_num_atoms()) {
-            auto const& atom = unit_cell__.atom(it.i);
-            auto const& type = atom.type();
-            int lmmax        = sf::lmmax(type.parameters().lmax_pot());
-            int nrf          = type.indexr().size();
-            int num_mag_dims = type.parameters().num_mag_dims();
-
-            mdarray<double, 4> h_L({lmmax, nrf, nrf, num_mag_dims + 1});
-            generate_atom_radial_integrals(atom, vns__, it.i, h_L);
-        }
     }
 
-    //LAPW_radial_basis(Potential const& potential__)
-    //    : LAPW_radial_basis(potential__.ctx().unit_cell(), potential__.ctx().valence_relativity(),
-    //                        potential__.get_spherical_potential())
-    //{
-    //    auto const& unit_cell = potential__.ctx().unit_cell();
-    //    for (auto it : unit_cell.spl_num_atoms()) {
-    //        auto const& type = unit_cell.atom(it.i).type();
-    //        int lmmax        = sf::lmmax(type.parameters().lmax_pot());
-    //        int nrf          = type.indexr().size();
-    //        int num_mag_dims = type.parameters().num_mag_dims();
-
-    //        mdarray<double, 3> h_L({lmmax, nrf, nrf});
-    //        mdarray<double, 4> b_L;
-    //        if (num_mag_dims) {
-    //            b_L = mdarray<double, 4>({lmmax, nrf, nrf, num_mag_dims});
-    //        }
-    //        generate_atom_radial_integrals(potential__, it.i, h_L, b_L);
-    //    }
-    //}
+    lapw_radial_basis_t const&
+    radial_basis(int symmetry_class_id__) const
+    {
+        return radial_basis_of_symmetry_class[symmetry_class_id__];
+    }
 };
 
 }

@@ -23,6 +23,71 @@ namespace sirius {
 //       externally by the host code
 
 template <typename T>
+mdarray<double, 4>
+Hamiltonian0<T>::generate_h_L(Atom const& atom__,
+                              std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__,
+                              LAPW_radial_basis const& lapw_basis__) const
+{
+    PROFILE("sirius::Hamiltonian0::generate_h_L");
+
+    auto const& type = atom__.type();
+    auto const& rb   = lapw_basis__.radial_basis(atom__.symmetry_class_id());
+
+    int lmax_pot     = type.parameters().lmax_pot();
+    int lmmax        = sf::lmmax(lmax_pot);
+    int nmtp         = type.num_mt_points();
+    int nrf          = type.indexr().size();
+    int num_mag_dims = type.parameters().num_mag_dims();
+
+    mdarray<double, 4> h_L({lmmax, nrf, nrf, num_mag_dims + 1});
+    h_L.zero();
+
+    std::array<int, 3> idx_map({1, 0, 0});
+    if (num_mag_dims == 3) {
+        idx_map = std::array<int, 3>({3, 1, 2});
+    }
+
+    auto l_by_lm = sf::l_by_lm(lmax_pot);
+
+    #pragma omp parallel for
+    for (int lm = 0; lm < lmmax; lm++) {
+        int l = l_by_lm[lm];
+
+        for (int i2 = 0; i2 < type.indexr().size(); i2++) {
+            int l2 = type.indexr(i2).am.l();
+            for (int i1 = 0; i1 <= i2; i1++) {
+                int l1 = type.indexr(i1).am.l();
+                if ((l + l1 + l2) % 2 == 0) {
+                    if (lm) {
+                        Spline<double> s(type.radial_grid());
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            auto const& veff = (*vns__[0])[ia__](lm, ir);
+                            s(ir) = veff * rb.radial_functions_(ir, i1, 0) * rb.radial_functions_(ir, i2, 0) *
+                                    std::pow(type.radial_grid(ir), 2);
+                        }
+                        h_L(lm, i1, i2, 0) = h_L(lm, i2, i1, 0) = s.interpolate().integrate(0);
+                    } else {
+                        /* copy spherical part */
+                        h_L(lm, i1, i2, 0) = rb.h_spherical_integrals_(i1, i2);
+                        h_L(lm, i2, i1, 0) = rb.h_spherical_integrals_(i2, i1);
+                    }
+                    for (int j = 0; j < num_mag_dims; j++) {
+                        Spline<double> s(type.radial_grid());
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            auto const& beff = (*vns__[idx_map[j]])[ia__](lm, ir);
+                            s(ir) = beff * rb.radial_functions_(ir, i1, 0) * rb.radial_functions_(ir, i2, 0) *
+                                    std::pow(type.radial_grid(ir), 2);
+                        }
+                        h_L(lm, i1, i2, 1 + j) = h_L(lm, i2, i1, 1 + j) = s.interpolate().integrate(0);
+                    }
+                }
+            }
+        }
+    }
+    return h_L;
+}
+
+template <typename T>
 Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__)
     : ctx_(potential__.ctx())
     , potential_(&potential__)
@@ -196,6 +261,16 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
 
     if (ctx_.cfg().iterative_solver().type() == "exact") {
         this->generate_pw_coefs(potential__);
+    }
+
+    if (!lapw_basis__) {
+        RTE_THROW("LAPW radial basis is not provided");
+    }
+
+    auto vns = potential__.mt_components();
+    for (auto it : unit_cell_.spl_num_atoms()) {
+        auto h_L = generate_h_L(unit_cell_.atom(it.i), vns, it.i, *lapw_basis__);
+        (void)h_L;
     }
 
     auto pu = ctx_.processing_unit();
