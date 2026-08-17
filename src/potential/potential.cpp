@@ -15,6 +15,7 @@
 #include "xc_functional.hpp"
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
+#include "lapw/lapw_radial_basis.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
 #include "dft/energy.hpp"
 #include "core/power.hpp"
@@ -480,6 +481,16 @@ Potential::poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__
 
     ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
     return qmt;
+}
+
+std::shared_ptr<LAPW_radial_basis>
+Potential::create_lapw_basis() const
+{
+    if (!ctx_.full_potential()) {
+        return nullptr;
+    }
+
+    return std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(), this->get_spherical_potential());
 }
 
 } // namespace sirius

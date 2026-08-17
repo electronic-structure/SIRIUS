@@ -269,7 +269,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         density.generate_paw_density();
         potential.generate(density, ctx.use_symmetry(), true);
         if (!ctx.full_potential()) {
-            Hamiltonian0<double> H0(potential, true);
+            Hamiltonian0<double> H0(potential);
             initialize_subspace(kset, H0);
         }
     } else {
@@ -537,7 +537,7 @@ run_k_point_path_task(cmd_args const& args, std::string const& fname)
     // density.initial_density();
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
-    Hamiltonian0<double> H0(potential, true);
+    Hamiltonian0<double> H0(potential, potential.create_lapw_basis());
     if (!ctx->full_potential()) {
         initialize_subspace(ks, H0);
         if (ctx->hubbard_correction()) {
@@ -611,7 +611,7 @@ run_plot_wf_task(cmd_args const& args, std::string const& fname)
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
     /* we need to create Hamiltonian to recompute radial functions */
-    Hamiltonian0<double> H0(potential, true);
+    Hamiltonian0<double> H0(potential, potential.create_lapw_basis());
 
     bool const reduce_kp = ctx->use_symmetry() && ctx->cfg().parameters().use_ibz();
     K_point_set kset(*ctx, ctx->cfg().parameters().ngridk(), ctx->cfg().parameters().shiftk(), reduce_kp);

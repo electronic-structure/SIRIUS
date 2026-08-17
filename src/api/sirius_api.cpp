@@ -2680,7 +2680,7 @@ sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__,
             [&]() {
                 auto& gs = get_gs(gs_handler__);
                 auto& ks = get_ks(ks_handler__);
-                Hamiltonian0<double> H0(gs.potential(), true);
+                Hamiltonian0<double> H0(gs.potential());
                 initialize_subspace(ks, H0);
             },
             error_code__);
@@ -2741,16 +2741,16 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 //if (precompute_pw__ && *precompute_pw__) {
                 //    gs.potential().generate_pw_coefs();
                 //}
-                if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
-                    gs.potential().update_atomic_potential();
-                }
-                if (precompute_rf__ && *precompute_rf__) {
-                    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
-                }
-                if (precompute_ri__ && *precompute_ri__) {
-                    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
-                }
-                Hamiltonian0<double> H0(gs.potential(), false);
+                //if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
+                //    gs.potential().update_atomic_potential();
+                //}
+                //if (precompute_rf__ && *precompute_rf__) {
+                //    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
+                //}
+                //if (precompute_ri__ && *precompute_ri__) {
+                //    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
+                //}
+                Hamiltonian0<double> H0(gs.potential(), gs.potential().create_lapw_basis());
                 diagonalize<double, double>(H0, ks, tol, steps);
             },
             error_code__);
@@ -6982,8 +6982,7 @@ sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* e
                 // We assume that the GS density is up to date
                 bool transform_to_rg{true};
                 gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), transform_to_rg);
-                bool precompute_lapw{false};
-                *H0_handler__ = new any_ptr(new Hamiltonian0<double>(gs.potential(), precompute_lapw));
+                *H0_handler__ = new any_ptr(new Hamiltonian0<double>(gs.potential(), gs.potential().create_lapw_basis()));
             },
             error_code__);
 }

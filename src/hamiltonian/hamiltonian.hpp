@@ -86,10 +86,6 @@ class Hamiltonian0
     /** This quantities are k-point independent and can be precomputed when H0 is created. */
     std::vector<mdarray<std::complex<T>, 3>> hmt_;
 
-    //mdarray<double, 4>
-    //generate_h_L(Atom const& atom__, std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__,
-    //             LAPW_radial_basis const& lapw_basis__) const;
-
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
     mdarray<std::complex<T>, 2> veff_pw_;
 
@@ -106,9 +102,10 @@ class Hamiltonian0
     operator=(Hamiltonian0<T> const& src) = delete;
 
   public:
-    /// Constructor.
-    Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__ = true);
+    /// Constructor for pseudopotential case.
+    //Hamiltonian0(Potential& potential__);
 
+    /// Constructor.
     Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radial_basis> lapw_basis__ = nullptr);
 
     ~Hamiltonian0();

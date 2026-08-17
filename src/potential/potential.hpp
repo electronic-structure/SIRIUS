@@ -31,6 +31,9 @@ double
 xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional> const& xc_func__,
       int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__, bool use_lalp__);
 
+/* Forward declartaion */
+class LAPW_radial_basis;
+
 /// Generate effective potential from charge density and magnetization.
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.
@@ -883,16 +886,21 @@ class Potential : public Field4D
     {
         return vdw_stress_kernel_;
     }
+
     inline auto&
     vdw_stress_gradient()
     {
         return vdw_stress_gradient_;
     }
+
     inline auto&
     vdw_stress_potential()
     {
         return vdw_stress_potential_;
     }
+
+    std::shared_ptr<LAPW_radial_basis>
+    create_lapw_basis() const;
 };
 
 inline void

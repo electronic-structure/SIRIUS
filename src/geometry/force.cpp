@@ -256,7 +256,10 @@ Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0<double> H0(potential_, false);
+    auto lapw_basis = std::make_shared<LAPW_radial_basis>(ctx_.unit_cell(), ctx_.valence_relativity(),
+                                                        potential_.get_spherical_potential());
+
+    Hamiltonian0<double> H0(potential_, lapw_basis);
     for (auto it : kset_.spl_num_kpoints()) {
         auto hk = H0(*kset_.get<double>(it.i));
         add_ibs_force(kset_.get<double>(it.i), hk, ffac, forces_ibs_);
