@@ -86,9 +86,9 @@ class Hamiltonian0
     /** This quantities are k-point independent and can be precomputed when H0 is created. */
     std::vector<mdarray<std::complex<T>, 3>> hmt_;
 
-    mdarray<double, 4>
-    generate_h_L(Atom const& atom__, std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__,
-                 LAPW_radial_basis const& lapw_basis__) const;
+    //mdarray<double, 4>
+    //generate_h_L(Atom const& atom__, std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__,
+    //             LAPW_radial_basis const& lapw_basis__) const;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
     mdarray<std::complex<T>, 2> veff_pw_;
