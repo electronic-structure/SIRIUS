@@ -1182,12 +1182,12 @@ Density::check_num_electrons() const
 
 template <typename T>
 void
-Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
+Density::generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
 {
     PROFILE("sirius::Density::generate");
     power::Profile p1("generate_dens");
 
-    generate_valence<T>(ks__);
+    generate_valence<T>(ks__, lapw_basis__);
 
     if (ctx_.full_potential()) {
         if (add_core__) {
@@ -1310,6 +1310,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
         sirius::symmetrize_density_matrix(unit_cell_, ctx_.rotm_ylm(), *density_matrix_, ctx_.num_mag_comp());
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             auto& type = ctx_.unit_cell().atom(ia).type();
+            auto const& rb = lapw_basis__.radial_basis(atom_index_t::global(ia));
             out << "atom : " << ia << std::endl;
             for (int l = 0; l < 4; l++) {
                 int nrf = type.indexr().max_order(l);
@@ -1326,8 +1327,7 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
                                     dm_ylm(l + m1, l + m2) +=
                                             (*density_matrix_)[ia](type.indexb_by_l_m_order(l, m1, order1),
                                                                    type.indexb_by_l_m_order(l, m2, order2), is) *
-                                            ctx_.unit_cell().atom(ia).symmetry_class().o_radial_integral(l, order1,
-                                                                                                         order2);
+                                            rb.o_radial_integral(l, order1, order2);
                                 }
                             }
                         }
@@ -1387,10 +1387,12 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 }
 
 template void
-Density::generate<double>(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
+Density::generate<double>(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__,
+        bool add_core__, bool transform_to_rg__);
 #if defined(SIRIUS_USE_FP32)
 template void
-Density::generate<float>(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
+Density::generate<float>(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__,
+        bool add_core__, bool transform_to_rg__);
 #endif
 
 void
@@ -1415,7 +1417,7 @@ Density::augment()
 
 template <typename T>
 void
-Density::generate_valence(K_point_set const& ks__)
+Density::generate_valence(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__)
 {
     PROFILE("sirius::Density::generate_valence");
 
@@ -1555,7 +1557,7 @@ Density::generate_valence(K_point_set const& ks__)
 
     /* for muffin-tin part */
     if (ctx_.full_potential()) {
-        generate_valence_mt();
+        generate_valence_mt(lapw_basis__);
     }
 }
 
@@ -1765,7 +1767,7 @@ Density::reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::comple
 }
 
 void
-Density::generate_valence_mt()
+Density::generate_valence_mt(LAPW_radial_basis const& lapw_basis__)
 {
     PROFILE("sirius::Density::generate_valence_mt");
 
@@ -1838,6 +1840,8 @@ Density::generate_valence_mt()
     for (auto it : unit_cell_.spl_num_atoms()) {
         auto& atom_type = unit_cell_.atom(it.i).type();
 
+        auto const& rb = lapw_basis__.radial_basis(it.i);
+
         int nmtp         = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
 
@@ -1866,9 +1870,7 @@ Density::generate_valence_mt()
                 /* off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2 */
                 int n = (idxrf1 == idxrf2) ? 1 : 2;
                 for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
-                    rf_pairs(ir, offs + idxrf1) = n *
-                                                  unit_cell_.atom(it.i).symmetry_class().radial_function(ir, idxrf1) *
-                                                  unit_cell_.atom(it.i).symmetry_class().radial_function(ir, idxrf2);
+                    rf_pairs(ir, offs + idxrf1) = n * rb.radial_function(ir, idxrf1) * rb.radial_function(ir, idxrf2);
                 }
             }
         }
