@@ -36,144 +36,15 @@ class Atom_symmetry_class
     /// Reference to atom type.
     Atom_type const& atom_type_;
 
-    /// Spherical part of the effective potential.
-    /** Used by the LAPW radial solver. Actual value is stored, not the Y00 component. */
-    std::vector<double> spherical_potential_;
-
-    /// List of radial functions for the LAPW basis.
-    /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions
-     *  are multiplied by \f$ x \f$.\n
-     *  1-st dimension: index of radial point \n
-     *  2-nd dimension: index of radial function \n
-     *  3-nd dimension: 0 - function itself, 1 - radial derivative r*(du/dr) */
-    mdarray<double, 3> radial_functions_;
-
-    /// Surface derivatives of AW radial functions.
-    mdarray<double, 2> surface_derivatives_;
-
-    /// Spherical part of radial integral.
-    mdarray<double, 2> h_spherical_integrals_;
-
-    /// Overlap integrals.
-    mdarray<double, 3> o_radial_integrals_;
-
-    /// Overlap integrals for IORA relativistic treatment.
-    mdarray<double, 2> o1_radial_integrals_;
-
-    /// Spin-orbit interaction integrals.
-    mdarray<double, 3> so_radial_integrals_;
-
-    std::map<std::pair<int, int>, enu_search_t> enu_search_;
-
-    /// List of radial descriptor sets used to construct augmented waves.
-    mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
-
-    /// List of radial descriptor sets used to construct local orbitals.
-    mutable std::vector<local_orbital_descriptor> lo_descriptors_;
-
-    /// Generate radial functions for augmented waves
-    int
-    generate_aw_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__, mdarray<double, 2>& sd__) const;
-
-    /// Generate local orbital raidal functions
-    int
-    generate_lo_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__) const;
-
-    /// Orthogonalize the radial functions.
-    void
-    orthogonalize_radial_functions();
-
   public:
     /// Constructor
-    Atom_symmetry_class(int id_, Atom_type const& atom_type_);
-
-    /// Set the spherical component of the potential
-    /** Atoms belonging to the same symmetry class have the same spherical potential. */
-    void
-    set_spherical_potential(std::vector<double> const& vs__);
-
-    /// Save spherical potential for debugging purposes.
-    void
-    save_spherical_potential() const;
-
-    /// Save radial functions.
-    void
-    save_radial_functions(std::string const& fname__) const;
-
-    /// Generate APW and LO radial functions.
-    int
-    generate_radial_functions(relativity_t rel__, bool update_enu__ = true);
-
-    void
-    sync_radial_functions(mpi::Communicator const& comm__, int const rank__);
-
-    void
-    sync_radial_integrals(mpi::Communicator const& comm__, int const rank__);
-
-    /// Check if local orbitals are linearly independent
-    std::vector<int>
-    check_lo_linear_independence(double etol__) const;
-
-    /// Find linearization energy.
-    int
-    find_enu(relativity_t rel__);
-
-    template <typename T>
-    inline void
-    write_enu(T& pout) const
+    Atom_symmetry_class(int id_, Atom_type const& atom_type_)
+        : id_(id__)
+        , atom_type_(atom_type__)
     {
-        pout << "Atom : " << atom_type_.symbol() << ", class id : " << id_ << std::endl;
-        pout << "augmented waves" << std::endl;
-        for (int l = 0; l < num_aw_descriptors(); l++) {
-            for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
-                auto& rsd = aw_descriptor(l)[order];
-                if (rsd.auto_enu) {
-                    pout << rsd << std::endl;
-                }
-            }
+        if (!atom_type_.initialized()) {
+            RTE_THROW("atom type is not initialized");
         }
-
-        pout << "local orbitals" << std::endl;
-        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
-            for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
-                auto& rsd = lo_descriptor(idxlo).rsd_set[order];
-                if (rsd.auto_enu) {
-                    pout << rsd << std::endl;
-                }
-            }
-        }
-        pout << std::endl;
-    }
-
-    /// Generate radial overlap and SO integrals
-    /** In the case of spin-orbit interaction the following integrals are computed:
-     *  \f[
-     *      \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
-     *  \f]
-     *
-     *  Relativistic mass M is defined as
-     *  \f[
-     *      M = 1 - \frac{1}{2 c^2} V
-     *  \f]
-     */
-    void
-    generate_radial_integrals(relativity_t rel__);
-
-    /// Get m-th order radial derivative of AW functions at the MT surface.
-    inline double
-    aw_surface_deriv(int l__, int order__, int dm__) const
-    {
-        RTE_ASSERT(dm__ <= 2);
-        auto idxrf = atom_type_.indexr().index_of(angular_momentum(l__), order__);
-        return surface_derivatives_(dm__, idxrf);
-    }
-
-    /// Set surface derivative of AW radial functions.
-    inline void
-    aw_surface_deriv(int l__, int order__, int dm__, double deriv__)
-    {
-        RTE_ASSERT(dm__ <= 2);
-        surface_derivatives_(dm__, atom_type_.indexr().index_of(angular_momentum(l__), order__)) = deriv__;
     }
 
     /// Return symmetry class id.
@@ -203,119 +74,10 @@ class Atom_symmetry_class
         return atom_id_[idx];
     }
 
-    /// Get a value of the radial functions.
-    inline double
-    radial_function(int ir, int idx) const
-    {
-        return radial_functions_(ir, idx, 0);
-    }
-
-    /// Set radial function.
-    inline void
-    radial_function(int idx__, std::vector<double> f__)
-    {
-        for (int ir = 0; ir < this->atom_type().num_mt_points(); ir++) {
-            radial_functions_(ir, idx__, 0) = f__[ir];
-        }
-    }
-
-    /// Set radial function derivative r*(du/dr).
-    inline void
-    radial_function_derivative(int idx__, std::vector<double> f__)
-    {
-        for (int ir = 0; ir < this->atom_type().num_mt_points(); ir++) {
-            radial_functions_(ir, idx__, 1) = f__[ir];
-        }
-    }
-
-    inline double
-    h_spherical_integral(int i1, int i2) const
-    {
-        return h_spherical_integrals_(i1, i2);
-    }
-
-    inline double const&
-    o_radial_integral(int l, int order1, int order2) const
-    {
-        return o_radial_integrals_(l, order1, order2);
-    }
-
-    inline void
-    set_o_radial_integral(int l, int order1, int order2, double oint__)
-    {
-        o_radial_integrals_(l, order1, order2) = oint__;
-    }
-
-    inline double const&
-    o1_radial_integral(int xi1__, int xi2__) const
-    {
-        return o1_radial_integrals_(xi1__, xi2__);
-    }
-
-    inline void
-    set_o1_radial_integral(int idxrf1__, int idxrf2__, double val__)
-    {
-        o1_radial_integrals_(idxrf1__, idxrf2__) = val__;
-    }
-
-    inline double
-    so_radial_integral(int l, int order1, int order2) const
-    {
-        return so_radial_integrals_(l, order1, order2);
-    }
-
     inline Atom_type const&
     atom_type() const
     {
         return atom_type_;
-    }
-
-    inline int
-    num_aw_descriptors() const
-    {
-        return static_cast<int>(aw_descriptors_.size());
-    }
-
-    inline radial_solution_descriptor_set&
-    aw_descriptor(int idx__) const
-    {
-        return aw_descriptors_[idx__];
-    }
-
-    inline int
-    num_lo_descriptors() const
-    {
-        return static_cast<int>(lo_descriptors_.size());
-    }
-
-    inline local_orbital_descriptor&
-    lo_descriptor(int idx__) const
-    {
-        return lo_descriptors_[idx__];
-    }
-
-    inline void
-    set_aw_enu(int l, int order, double enu)
-    {
-        aw_descriptors_[l][order].enu = enu;
-    }
-
-    inline double
-    get_aw_enu(int l, int order) const
-    {
-        return aw_descriptors_[l][order].enu;
-    }
-
-    inline void
-    set_lo_enu(int idxlo, int order, double enu)
-    {
-        lo_descriptors_[idxlo].rsd_set[order].enu = enu;
-    }
-
-    inline double
-    get_lo_enu(int idxlo, int order) const
-    {
-        return lo_descriptors_[idxlo].rsd_set[order].enu;
     }
 };
 
