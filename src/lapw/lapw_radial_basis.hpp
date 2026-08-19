@@ -117,6 +117,7 @@ struct lapw_radial_basis_t
         }
     }
 
+    /// Find linearization energy.
     int
     find_enu()
     {
@@ -491,6 +492,7 @@ struct lapw_radial_basis_t
         return ierr;
     }
 
+    /// Check if local orbitals are linearly independent
     std::vector<int>
     check_lo_linear_independence(double tol__) const
     {
@@ -577,6 +579,7 @@ struct lapw_radial_basis_t
         return inc;
     }
 
+    /// Generate APW and LO radial functions.
     int
     generate_radial_functions()
     {
@@ -629,16 +632,11 @@ struct lapw_radial_basis_t
         return ierr_aw + ierr_lo;
     }
 
-    void generate_radial_integrals()
+    inline void
+    generate_h_spherical_integrals()
     {
-        PROFILE("sirius::lapw_radial_basis_t::generate_radial_integrals");
-
         int nmtp = atom_type_.num_mt_points();
-
-        double a2 = sq_alpha_half;
-        if (rel_ == relativity_t::none) {
-            a2 = 0;
-        }
+        double a2 = (rel_ == relativity_t::none) ? 0 : sq_alpha_half;
 
         h_spherical_integrals_.zero();
         #pragma omp parallel default(shared)
@@ -665,6 +663,12 @@ struct lapw_radial_basis_t
                 }
             }
         }
+    }
+
+    inline void
+    generate_o_radial_integrals()
+    {
+        int nmtp = atom_type_.num_mt_points();
 
         o_radial_integrals_.zero();
         #pragma omp parallel default(shared)
@@ -698,67 +702,103 @@ struct lapw_radial_basis_t
                 }
             }
         }
-        if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
-            o1_radial_integrals_.zero();
-            #pragma omp parallel for
-            for (int i1 = 0; i1 < atom_type_.mt_radial_basis_size(); i1++) {
-                Spline<double> s(atom_type_.radial_grid());
-                for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
-                    /* for spherical part of potential integrals are diagonal in l */
-                    if (atom_type_.indexr(i1).am.l() == atom_type_.indexr(i2).am.l()) {
-                        int ll = atom_type_.indexr(i1).am.l() * (atom_type_.indexr(i1).am.l() + 1);
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            double Minv2 = std::pow(1 - spherical_potential_[ir] * a2, -2);
-                            /* u_1(r) * u_2(r) */
-                            double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
-                            /* r*u'_1(r) * r*u'_2(r) */
-                            double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                            s(ir)     = a2 * 0.5 * Minv2 * (t1 + t0 * ll);
-                        }
-                        o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
+    }
+
+    inline void
+    generate_o1_radial_integrals()
+    {
+        int nmtp = atom_type_.num_mt_points();
+        double a2 = (rel_ == relativity_t::none) ? 0 : sq_alpha_half;
+
+        o1_radial_integrals_.zero();
+        #pragma omp parallel for
+        for (int i1 = 0; i1 < atom_type_.mt_radial_basis_size(); i1++) {
+            Spline<double> s(atom_type_.radial_grid());
+            for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
+                /* for spherical part of potential integrals are diagonal in l */
+                if (atom_type_.indexr(i1).am.l() == atom_type_.indexr(i2).am.l()) {
+                    int ll = atom_type_.indexr(i1).am.l() * (atom_type_.indexr(i1).am.l() + 1);
+                    for (int ir = 0; ir < nmtp; ir++) {
+                        double Minv2 = std::pow(1 - spherical_potential_[ir] * a2, -2);
+                        /* u_1(r) * u_2(r) */
+                        double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
+                        /* r*u'_1(r) * r*u'_2(r) */
+                        double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
+                        s(ir)     = a2 * 0.5 * Minv2 * (t1 + t0 * ll);
                     }
+                    o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                 }
             }
         }
+    }
 
-        if (atom_type_.parameters().so_correction()) {
-            double soc = std::pow(2 * speed_of_light, -2);
+    void
+    generate_so_radial_integrals()
+    {
+        int nmtp = atom_type_.num_mt_points();
+        double soc = std::pow(2 * speed_of_light, -2);
 
-            Spline<double> s(atom_type_.radial_grid());
-            Spline<double> s1(atom_type_.radial_grid());
-            Spline<double> ve(atom_type_.radial_grid());
+        Spline<double> s(atom_type_.radial_grid());
+        Spline<double> s1(atom_type_.radial_grid());
+        Spline<double> ve(atom_type_.radial_grid());
 
-            for (int i = 0; i < nmtp; i++) {
-                ve(i) = spherical_potential_[i] + atom_type_.zn() / atom_type_.radial_grid(i);
-            }
-            ve.interpolate();
+        for (int i = 0; i < nmtp; i++) {
+            ve(i) = spherical_potential_[i] + atom_type_.zn() / atom_type_.radial_grid(i);
+        }
+        ve.interpolate();
 
-            so_radial_integrals_.zero();
-            for (int l = 0; l <= atom_type_.indexr().lmax(); l++) {
-                int nrf = atom_type_.indexr().max_order(l);
+        so_radial_integrals_.zero();
+        for (int l = 0; l <= atom_type_.indexr().lmax(); l++) {
+            int nrf = atom_type_.indexr().max_order(l);
 
-                for (int order1 = 0; order1 < nrf; order1++) {
-                    auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
-                    for (int order2 = 0; order2 < nrf; order2++) {
-                        auto idxrf2 = atom_type_.indexr().index_of(angular_momentum(l), order2);
+            for (int order1 = 0; order1 < nrf; order1++) {
+                auto idxrf1 = atom_type_.indexr().index_of(angular_momentum(l), order1);
+                for (int order2 = 0; order2 < nrf; order2++) {
+                    auto idxrf2 = atom_type_.indexr().index_of(angular_momentum(l), order2);
 
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            double M = 1.0 - 2 * soc * spherical_potential_[ir];
-                            /* first part <f| dVe / dr |f'> */
-                            s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * soc *
-                                    ve.deriv(1, ir) / pow(M, 2);
+                    for (int ir = 0; ir < nmtp; ir++) {
+                        double M = 1.0 - 2 * soc * spherical_potential_[ir];
+                        /* first part <f| dVe / dr |f'> */
+                        s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * soc *
+                                ve.deriv(1, ir) / pow(M, 2);
 
-                            /* second part <f| d(z/r) / dr |f'> */
-                            s1(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * soc *
-                                     atom_type_.zn() / pow(M, 2);
-                        }
-                        s.interpolate();
-                        s1.interpolate();
-
-                        so_radial_integrals_(l, order1, order2) = s.integrate(1) + s1.integrate(-1);
+                        /* second part <f| d(z/r) / dr |f'> */
+                        s1(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * soc *
+                                 atom_type_.zn() / pow(M, 2);
                     }
+                    s.interpolate();
+                    s1.interpolate();
+
+                    so_radial_integrals_(l, order1, order2) = s.integrate(1) + s1.integrate(-1);
                 }
             }
+        }
+    }
+
+    /// Generate radial overlap and SO integrals
+    /** In the case of spin-orbit interaction the following integrals are computed:
+     *  \f[
+     *      \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
+     *  \f]
+     *
+     *  Relativistic mass M is defined as
+     *  \f[
+     *      M = 1 - \frac{1}{2 c^2} V
+     *  \f]
+     */
+    void generate_radial_integrals()
+    {
+        PROFILE("sirius::lapw_radial_basis_t::generate_radial_integrals");
+
+        generate_h_spherical_integrals();
+        generate_o_radial_integrals();
+
+        if (rel_ == relativity_t::iora) {
+            generate_o1_radial_integrals();
+        }
+
+        if (atom_type_.parameters().so_correction()) {
+            generate_so_radial_integrals();
         }
     }
 
@@ -781,15 +821,132 @@ struct lapw_radial_basis_t
             comm__.bcast(o1_radial_integrals_.at(memory_t::host), (int)o1_radial_integrals_.size(), rank__);
         }
     }
+
+    inline double
+    h_spherical_integral(int i1__, int i2__) const
+    {
+        return h_spherical_integrals_(i1__, i2__);
+    }
+
+    inline double
+    o_radial_integral(int l__, int order1__, int order2__) const
+    {
+        return o_radial_integrals_(l__, order1__, order2__);
+    }
+
+    inline double
+    o1_radial_integral(int i1__, int i2__) const
+    {
+        return o1_radial_integrals_(i1__, i2__);
+    }
+
+    inline double
+    so_radial_integral(int l__, int order1__, int order2__) const
+    {
+        return so_radial_integrals_(l__, order1__, order2__);
+    }
+
+    /// Get m-th order radial derivative of AW functions at the MT surface.
+    inline double
+    aw_surface_deriv(int l__, int order__, int dm__) const
+    {
+        RTE_ASSERT(dm__ <= 2);
+        auto idxrf = atom_type_.indexr().index_of(angular_momentum(l__), order__);
+        return surface_derivatives_(dm__, idxrf);
+    }
+
+    /// Get a value of the radial functions.
+    inline double
+    radial_function(int ir__, int idx__) const
+    {
+        return radial_functions_(ir__, idx__, 0);
+    }
+
+    template <typename T>
+    inline void
+    write_enu(T& pout) const
+    {
+        pout << "Atom : " << atom_type_.symbol() << std::endl;
+        pout << "augmented waves" << std::endl;
+        for (int l = 0; l < atom_type_.num_aw_descriptors(); l++) {
+            for (size_t order = 0; order < aw_descriptors_[l].size(); order++) {
+                auto& rsd = aw_descriptors_[l][order];
+                if (rsd.auto_enu) {
+                    pout << rsd << std::endl;
+                }
+            }
+        }
+
+        pout << "local orbitals" << std::endl;
+        for (int idxlo = 0; idxlo < atom_type_.num_lo_descriptors(); idxlo++) {
+            for (size_t order = 0; order < lo_descriptors_[idxlo].rsd_set.size(); order++) {
+                auto& rsd = lo_descriptors_[idxlo].rsd_set[order];
+                if (rsd.auto_enu) {
+                    pout << rsd << std::endl;
+                }
+            }
+        }
+        pout << std::endl;
+    }
+
+    void
+    save_spherical_potential() const
+    {
+        nlohmann::json dict;
+        dict["x"]                   = atom_type_.radial_grid().values();
+        dict["z"]                   = atom_type_.zn();
+        dict["rmt"]                 = atom_type_.mt_radius();
+        dict["spherical_potential"] = spherical_potential_;
+        write_json_to_file(dict, "spherical_potential_" + atom_type_.label() + ".json");
+    }
+
+    void
+    save_radial_functions(std::string const& fname__) const
+    {
+        nlohmann::json dict;
+        dict["x"]                   = atom_type_.radial_grid().values();
+        dict["z"]                   = atom_type_.zn();
+        dict["rmt"]                 = atom_type_.mt_radius();
+        dict["spherical_potential"] = spherical_potential_;
+    
+        std::vector<double> veff(spherical_potential_.size());
+        for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+            veff[ir] = spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir);
+        }
+        dict["spherical_potential_el"] = veff;
+    
+        dict["radial_functions"] = nlohmann::json::array();
+        for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
+            std::vector<double> u(atom_type_.num_mt_points());
+            std::vector<double> rdudr(atom_type_.num_mt_points());
+    
+            for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
+                u[ir]     = radial_functions_(ir, idxrf, 0);
+                rdudr[ir] = radial_functions_(ir, idxrf, 1);
+            }
+    
+            auto const& rfd = atom_type_.indexr(idxrf);
+            dict["radial_functions"].push_back({{"idxrf", idxrf},
+                                                {"l", rfd.am.l()},
+                                                {"order", rfd.order},
+                                                {"idxlo", static_cast<int>(rfd.idxlo)},
+                                                {"u", u},
+                                                {"rdudr", rdudr}});
+        }
+
+        write_json_to_file(dict, fname__);
+    }
 };
 
 class LAPW_radial_basis 
 {
   private:
     std::vector<lapw_radial_basis_t> radial_basis_of_symmetry_class;
+    Unit_cell const& unit_cell_;
 
   public:
     LAPW_radial_basis(Unit_cell const& unit_cell__, relativity_t rel__, std::vector<std::vector<double>> vs__)
+        : unit_cell_{unit_cell__}
     {
         for (int ic = 0; ic < unit_cell__.num_atom_symmetry_classes(); ic++) {
             radial_basis_of_symmetry_class.emplace_back(unit_cell__.atom_symmetry_class(ic).atom_type(), rel__, vs__[ic]);
@@ -819,9 +976,26 @@ class LAPW_radial_basis
     }
 
     lapw_radial_basis_t const&
-    radial_basis(int symmetry_class_id__) const
+    radial_basis(typename atom_index_t::global ia__) const
     {
-        return radial_basis_of_symmetry_class[symmetry_class_id__];
+        int icls = unit_cell_.atom(ia__).symmetry_class().id();
+        return radial_basis_of_symmetry_class[icls];
+    }
+
+    inline void
+    write_enu(std::ostream& out__) const
+    {
+        if (unit_cell_.parameters().verbosity() >= 2) {
+            mpi::pstdout pout(unit_cell_.comm());
+            if (unit_cell_.comm().rank() == 0) {
+                pout << std::endl << "Linearization energies" << std::endl;
+            }
+
+            for (auto it : unit_cell_.spl_num_atom_symmetry_classes()) {
+                radial_basis_of_symmetry_class[it.i].write_enu(pout);
+            }
+            RTE_OUT(out__) << pout.flush(0);
+        }
     }
 };
 
