@@ -38,7 +38,7 @@ class Atom_symmetry_class
 
   public:
     /// Constructor
-    Atom_symmetry_class(int id_, Atom_type const& atom_type_)
+    Atom_symmetry_class(int id__, Atom_type const& atom_type__)
         : id_(id__)
         , atom_type_(atom_type__)
     {
