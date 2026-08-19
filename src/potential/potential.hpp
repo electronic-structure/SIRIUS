@@ -621,8 +621,8 @@ class Potential : public Field4D
     void
     generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
 
-    void
-    update_atomic_potential();
+    //void
+    //update_atomic_potential();
 
     template <device_t pu>
     void
