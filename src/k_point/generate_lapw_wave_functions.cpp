@@ -18,7 +18,8 @@ namespace sirius {
 
 template <typename T>
 void
-K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__)
+K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__,
+        LAPW_radial_basis const& lapw_basis__)
 {
     PROFILE("sirius::K_point::generate_lapw_wave_functions");
 
@@ -52,7 +53,7 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm_block<true, T>(ctx_, atom_begin, na, this->alm_coeffs_loc());
+        auto alm = generate_alm_block<true, T>(ctx_, atom_begin, na, this->alm_coeffs_loc(), lapw_basis__);
         if (pcs) {
             auto cs = alm.checksum();
             print_checksum("alm", cs, RTE_OUT(this->out(0)));
@@ -114,11 +115,12 @@ K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf
 
 template void
 K_point<double>::generate_lapw_wave_functions(wf::Wave_functions<double> const& evec__,
-                                              wf::Wave_functions<double>& wf__, int ispn__);
+                                              wf::Wave_functions<double>& wf__, int ispn__,
+                                              LAPW_radial_basis const& lapw_basis__);
 #if defined(SIRIUS_USE_FP32)
 template void
 K_point<float>::generate_lapw_wave_functions(wf::Wave_functions<float> const& evec__, wf::Wave_functions<float>& wf__,
-                                             int ispn__);
+                                             int ispn__, LAPW_radial_basis const& lapw_basis__);
 #endif
 
 } // namespace sirius

@@ -295,7 +295,8 @@ class K_point
         and local-orbital coefficients copied directly from \f$ c_{j i}^{\bf k} \f$.
      */
     void
-    generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__);
+    generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__,
+            LAPW_radial_basis const& lapw_basis__);
 
     /// Generate two-component spinor wave functions.
     /** In case of second-variational diagonalization spinor wave-functions are generated from the first-variational
