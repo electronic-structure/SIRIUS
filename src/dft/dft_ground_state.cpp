@@ -124,7 +124,9 @@ DFT_ground_state::check_scf_density()
     bool add_core{true};
     /* create new density */
     Density rho(ctx_);
-    rho.generate<double>(kset_, ctx_.use_symmetry(), add_core, transform_to_rg);
+
+    auto lapw_basis = pot.create_lapw_basis();
+    rho.generate<double>(kset_, *lapw_basis, ctx_.use_symmetry(), add_core, transform_to_rg);
 
     auto gs1 = energy_dict(ctx_, kset_, rho, pot, this->scf_correction_energy_);
 
@@ -239,7 +241,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             auto vs = potential_.get_spherical_potential();
             density_.generate_core_charge_density(vs);
             /* generate new density from the occupied wave-functions */
-            density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
+            density_.generate<double>(kset_, *lapw_basis, ctx_.use_symmetry(), true, true);
         }
 
         double e1 = energy_potential(density_, potential_);
