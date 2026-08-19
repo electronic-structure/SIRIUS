@@ -548,7 +548,8 @@ diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
         if (ctx.valence_relativity() == relativity_t::iora) {
             normalize_for_iora(Hk__, kp__);
         }
-        kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.spinor_wave_functions(), ispn);
+        kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.spinor_wave_functions(), ispn,
+                Hk__.H0().lapw_basis());
         if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
             h[ispn].deallocate(memory_t::device);
             o[ispn].deallocate(memory_t::device);
@@ -572,12 +573,12 @@ diagonalize_fp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
         } else if (itso.type() == "davidson") {
             /* generate Alm coefficients once */
             if (kp__.alm_coeffs_loc().all_atoms()) {
-                kp__.alm_coeffs_loc().generate();
+                kp__.alm_coeffs_loc().generate(Hk__.H0().lapw_basis());
             }
             diagonalize_fp_fv_davidson(Hk__, kp__, itsol_tol__);
         }
         /* generate first-variational states */
-        kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.fv_states(), 0);
+        kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.fv_states(), 0, Hk__.H0().lapw_basis());
         /* solve magnetic Hamiltonian */
         diagonalize_fp_sv(Hk__, kp__);
         /* generate spinor wave-functions */
