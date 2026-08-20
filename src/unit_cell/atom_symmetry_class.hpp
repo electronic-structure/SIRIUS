@@ -74,7 +74,7 @@ class Atom_symmetry_class
         return atom_id_[idx];
     }
 
-    inline Atom_type const&
+    inline auto const&
     atom_type() const
     {
         return atom_type_;

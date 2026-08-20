@@ -74,7 +74,7 @@ class Hamiltonian0
     std::shared_ptr<LAPW_radial_basis> lapw_basis_;
 
     /// Alias for unit cell.
-    Unit_cell& unit_cell_;
+    Unit_cell const& unit_cell_;
 
     /// Local part of the Hamiltonian operator.
     std::unique_ptr<Local_operator<T>> local_op_;

@@ -248,9 +248,6 @@ class Atom_type
 
     mdarray<int, 2> idx_radial_integrals_;
 
-    mutable mdarray<double, 3> rf_coef_;
-    mutable mdarray<double, 3> vrf_coef_;
-
     /// Non-zero Gaunt coefficients.
     std::unique_ptr<Gaunt_coefficients<std::complex<double>>> gaunt_coefs_{nullptr};
 
@@ -1010,18 +1007,6 @@ class Atom_type
     idx_radial_integrals() const
     {
         return idx_radial_integrals_;
-    }
-
-    inline auto&
-    rf_coef() const
-    {
-        return rf_coef_;
-    }
-
-    inline auto&
-    vrf_coef() const
-    {
-        return vrf_coef_;
     }
 
     inline auto const&

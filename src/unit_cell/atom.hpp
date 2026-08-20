@@ -53,13 +53,6 @@ class Atom
         return type_;
     }
 
-    /// Return reference to corresponding atom symmetry class.
-    inline auto&
-    symmetry_class()
-    {
-        return *symmetry_class_;
-    }
-
     /// Return const referenced to atom symmetry class.
     inline auto const&
     symmetry_class() const
