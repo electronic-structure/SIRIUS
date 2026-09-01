@@ -23,12 +23,13 @@ generate_sbessel_mt(Simulation_context const& ctx__, int lmax__)
     PROFILE("sirius::generate_sbessel_mt");
 
     mdarray<double, 3> sbessel_mt({lmax__ + 1, ctx__.gvec().count(), ctx__.unit_cell().num_atom_types()});
+    int ngv = ctx__.gvec().count();
     for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
         #pragma omp parallel for schedule(static)
-        for (auto it : ctx__.gvec()) {
-            auto gv = ctx__.gvec().gvec_cart(it.igloc);
+        for (int igloc = 0; igloc < ngv; igloc++) {
+            auto gv = ctx__.gvec().gvec_cart(gvec_index_t::local(igloc));
             gsl_sf_bessel_jl_array(lmax__, gv.length() * ctx__.unit_cell().atom_type(iat).mt_radius(),
-                                   &sbessel_mt(0, it.igloc, iat));
+                                   &sbessel_mt(0, igloc, iat));
         }
     }
     return sbessel_mt;

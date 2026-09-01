@@ -86,9 +86,10 @@ Radial_integrals_aug<jl_deriv>::generate()
             }
         }
 
+        int nq = spl_q_.local_size();
         #pragma omp parallel for
-        for (auto it : spl_q_) {
-            int iq = it.i;
+        for (int iqloc = 0; iqloc < nq; iqloc++) {
+            int iq = spl_q_.global_index(iqloc);
 
             sf::Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
 
@@ -145,9 +146,10 @@ Radial_integrals_rho_pseudo::generate()
 
         Spline<double> rho(atom_type.radial_grid(), atom_type.ps_total_charge_density());
 
+        int nq = spl_q_.local_size();
         #pragma omp parallel for
-        for (auto it : spl_q_) {
-            int iq = it.i;
+        for (int iqloc = 0; iqloc < nq; iqloc++) {
+            int iq = spl_q_.global_index(iqloc);
             sf::Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
 
             values_(iat)(iq) = sirius::inner(jl[0], rho, 0, atom_type.num_mt_points()) / fourpi;
@@ -174,9 +176,10 @@ Radial_integrals_rho_core_pseudo<jl_deriv>::generate()
 
         Spline<double> ps_core(atom_type.radial_grid(), atom_type.ps_core_charge_density());
 
+        int nq = spl_q_.local_size();
         #pragma omp parallel for
-        for (auto it : spl_q_) {
-            int iq = it.i;
+        for (int iqloc = 0; iqloc < nq; iqloc++) {
+            int iq = spl_q_.global_index(iqloc);
             sf::Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
 
             if (jl_deriv) {
@@ -209,9 +212,10 @@ Radial_integrals_beta<jl_deriv>::generate()
             values_(idxrf, iat) = Spline<double>(grid_q_);
         }
 
+        int nq = spl_q_.local_size();
         #pragma omp parallel for
-        for (auto it : spl_q_) {
-            int iq = it.i;
+        for (int iqloc = 0; iqloc < nq; iqloc++) {
+            int iq = spl_q_.global_index(iqloc);
             sf::Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 int l = atom_type.indexr(idxrf).am.l();
@@ -269,9 +273,10 @@ Radial_integrals_vloc<jl_deriv>::generate()
 
         auto rg = atom_type.radial_grid().segment(np);
 
+        int nq = spl_q_.local_size();
         #pragma omp parallel for
-        for (auto it : spl_q_) {
-            int iq = it.i;
+        for (int iqloc = 0; iqloc < nq; iqloc++) {
+            int iq = spl_q_.global_index(iqloc);
             Spline<double> s(rg);
             double g = grid_q_[iq];
 

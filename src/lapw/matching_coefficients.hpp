@@ -126,18 +126,19 @@ class Matching_coefficients // TODO: compute on GPU
         {
             std::vector<std::complex<double>> ylm(lmmax_apw);
 
+            int ngk = gkvec_.count();
             #pragma omp for
-            for (auto it : gkvec_) {
-                auto gkvec_cart = gkvec_.gkvec_cart(it.igloc);
+            for (int igloc = 0; igloc < ngk; igloc++) {
+                auto gkvec_cart = gkvec_.gkvec_cart(gvec_index_t::local(igloc));
                 /* get r, theta, phi */
                 auto vs = r3::spherical_coordinates(gkvec_cart);
 
-                gkvec_len_[it.igloc] = vs[0];
+                gkvec_len_[igloc] = vs[0];
                 /* get spherical harmonics */
                 sf::spherical_harmonics(lmax_apw, vs[1], vs[2], &ylm[0]);
 
                 for (int lm = 0; lm < lmmax_apw; lm++) {
-                    gkvec_ylm_(it.igloc, lm) = ylm[lm];
+                    gkvec_ylm_(igloc, lm) = ylm[lm];
                 }
             }
         }
