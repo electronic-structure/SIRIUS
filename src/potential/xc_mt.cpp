@@ -352,23 +352,25 @@ Potential::xc_mt(Density const& density__, bool use_lapl__)
 {
     PROFILE("sirius::Potential::xc_mt");
 
+    int nat_loc = unit_cell_.spl_num_atoms().local_size();
     #pragma omp parallel for
-    for (auto it : unit_cell_.spl_num_atoms()) {
-        auto& rgrid = unit_cell_.atom(it.i).radial_grid();
+    for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
+        int ia      = unit_cell_.spl_num_atoms().global_index(atom_index_t::local(ialoc));
+        auto& rgrid = unit_cell_.atom(ia).radial_grid();
         std::vector<Flm const*> rho(ctx_.num_mag_dims() + 1);
         std::vector<Flm*> vxc(ctx_.num_mag_dims() + 1);
-        rho[0] = &density__.rho().mt()[it.i];
-        vxc[0] = &xc_potential_->mt()[it.i];
+        rho[0] = &density__.rho().mt()[ia];
+        vxc[0] = &xc_potential_->mt()[ia];
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            rho[j + 1] = &density__.mag(j).mt()[it.i];
-            vxc[j + 1] = &effective_magnetic_field(j).mt()[it.i];
+            rho[j + 1] = &density__.mag(j).mt()[ia];
+            vxc[j + 1] = &effective_magnetic_field(j).mt()[ia];
         }
 
         auto rhomin = sirius::xc_mt(rgrid, *sht_, xc_func_, ctx_.num_mag_dims(), rho, vxc,
-                                    &xc_energy_density_->mt()[it.i], use_lapl__);
+                                    &xc_energy_density_->mt()[ia], use_lapl__);
         if (rhomin < 0.0) {
             std::stringstream s;
-            s << "[xc_mt] negative charge density " << rhomin << " for atom " << it.i << std::endl
+            s << "[xc_mt] negative charge density " << rhomin << " for atom " << ia << std::endl
               << "  current Rlm expansion of the charge density may be not sufficient, try to increase lmax"
               << std::endl
               << "  sht.lmax       : " << sht_->lmax() << std::endl
@@ -381,8 +383,8 @@ Potential::xc_mt(Density const& density__, bool use_lapl__)
         /* add auxiliary magnetic field antiparallel to starting magnetization */
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                effective_magnetic_field(j).mt()[it.i](0, ir) -=
-                        aux_bf_(j, it.i) * ctx_.unit_cell().atom(it.i).vector_field()[comp_map[j]];
+                effective_magnetic_field(j).mt()[ia](0, ir) -=
+                        aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]];
             }
         }
     } // ialoc

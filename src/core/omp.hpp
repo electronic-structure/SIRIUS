@@ -20,9 +20,13 @@
 
 #include <omp.h>
 
+/* NVC++ does not support user-defined OpenMP reductions ("declare reduction for user defined
+ * reductions" is not part of the "NVIDIA subset" of OpenMP); guard it out for that compiler. */
+#if !defined(__NVCOMPILER)
 #pragma omp declare reduction( \
     complex_double_plus : std::complex<double> : omp_out += omp_in \
 ) initializer(omp_priv = std::complex<double>{0.0, 0.0})
+#endif
 
 #else
 inline int

@@ -88,10 +88,12 @@ Potential::generate_PAW_effective_potential(Density const& density)
     sirius::symmetrize_mt_function(unit_cell_, ctx_.rotm_rlm(), ctx_.mpi_grid_mt_sym(), 0, ps_comp);
 
     /* calculate PAW Dij matrix */
+    int n_paw_atoms_loc = unit_cell_.spl_num_paw_atoms().local_size();
     #pragma omp parallel for
-    for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        auto ia = unit_cell_.paw_atom_index(it.i);
-        calc_PAW_local_Dij(ia, d_mtrx_paw_[it.i]);
+    for (int ialoc = 0; ialoc < n_paw_atoms_loc; ialoc++) {
+        auto i  = unit_cell_.spl_num_paw_atoms().global_index(paw_atom_index_t::local(ialoc));
+        auto ia = unit_cell_.paw_atom_index(i);
+        calc_PAW_local_Dij(ia, d_mtrx_paw_[i]);
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));
@@ -327,9 +329,11 @@ Potential::PAW_xc_total_energy(Density const& density__) const
     }
     /* compute contribution from the core */
     double ecore{0};
+    int n_paw_atoms_loc = unit_cell_.spl_num_paw_atoms().local_size();
     #pragma omp parallel for reduction(+:ecore)
-    for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        auto ia = unit_cell_.paw_atom_index(it.i);
+    for (int ialoc = 0; ialoc < n_paw_atoms_loc; ialoc++) {
+        auto i  = unit_cell_.spl_num_paw_atoms().global_index(paw_atom_index_t::local(ialoc));
+        auto ia = unit_cell_.paw_atom_index(i);
 
         auto& atom = unit_cell_.atom(ia);
 
@@ -356,11 +360,13 @@ double
 Potential::PAW_one_elec_energy(Density const& density__) const
 {
     double e{0};
+    int n_paw_atoms_loc = unit_cell_.spl_num_paw_atoms().local_size();
     #pragma omp parallel for reduction(+:e)
-    for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        auto ia = unit_cell_.paw_atom_index(it.i);
+    for (int ialoc = 0; ialoc < n_paw_atoms_loc; ialoc++) {
+        auto i  = unit_cell_.spl_num_paw_atoms().global_index(paw_atom_index_t::local(ialoc));
+        auto ia = unit_cell_.paw_atom_index(i);
         auto dm = density__.density_matrix_aux(atom_index_t::global(ia));
-        e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), dm, d_mtrx_paw_[it.i]);
+        e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), dm, d_mtrx_paw_[i]);
     }
     comm_.allreduce(&e, 1);
     return e;
