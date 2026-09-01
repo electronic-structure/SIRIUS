@@ -33,8 +33,7 @@ namespace {
 template <typename T>
 void
 accumulate_pw_diag(mdarray<T, 2>& diag__, matrix<std::complex<T>> const& beta_gk_tmp__,
-                    matrix<std::complex<T>> const& beta_gk_t__, int offs__, int nbf__, int ispn__,
-                    int num_gkvec_loc__)
+                   matrix<std::complex<T>> const& beta_gk_t__, int offs__, int nbf__, int ispn__, int num_gkvec_loc__)
 {
     #pragma omp parallel for schedule(static)
     for (int ig_loc = 0; ig_loc < num_gkvec_loc__; ig_loc++) {
@@ -909,7 +908,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         /* dispatch one async gemm per atom, round-robin over the available GPU streams;
          * gemm calls are non-blocking, so a plain serial loop still saturates the GPU */
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
-            int sid    = ialoc % acc::num_streams();
+            int sid = ialoc % acc::num_streams();
             /* local atom index */
             auto aidx  = atom_index_t::local(ialoc);
             int ia     = spl_atoms.global_index(aidx);
@@ -1042,8 +1041,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         return nops;
     };
 
-    auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms,
-                             nat_loc](wf::Wave_functions_mt<T> const& alm_phi__, wf::Wave_functions<T>& hphi__) {
+    auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms, nat_loc](wf::Wave_functions_mt<T> const& alm_phi__,
+                                                                             wf::Wave_functions<T>& hphi__) {
         /* dispatch one async gemm per atom, round-robin over GPU streams */
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
             int sid    = ialoc % acc::num_streams();
@@ -1064,8 +1063,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
     };
 
-    auto apply_omt_lo_apw = [this, &ctx, mem, &b__, &spl_atoms,
-                             nat_loc](wf::Wave_functions_mt<T> const& alm_phi__, wf::Wave_functions<T>& ophi__) {
+    auto apply_omt_lo_apw = [this, &ctx, mem, &b__, &spl_atoms, nat_loc](wf::Wave_functions_mt<T> const& alm_phi__,
+                                                                         wf::Wave_functions<T>& ophi__) {
         #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
             auto aidx  = atom_index_t::local(ialoc);
