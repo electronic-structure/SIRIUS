@@ -484,8 +484,9 @@ apply_U_operator(Simulation_context& ctx__, wf::spin_range spins__, wf::band_ran
 
     if (ctx__.num_mag_dims() == 3) {
         Up.zero();
+        int n_at_lvl__ = u_op__.u_matrix().num_atomic_levels();
         #pragma omp parallel for schedule(static)
-        for (int at_lvl = 0; at_lvl < u_op__.u_matrix().num_atomic_levels(); at_lvl++) {
+        for (int at_lvl = 0; at_lvl < n_at_lvl__; at_lvl++) {
             const int ia     = u_op__.atomic_orbital(at_lvl).first;
             auto const& atom = ctx__.unit_cell().atom(ia);
             if (atom.type().lo_descriptor_hub(u_op__.atomic_orbital(at_lvl).second).use_for_calculation()) {

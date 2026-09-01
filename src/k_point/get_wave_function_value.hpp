@@ -48,7 +48,8 @@ get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> 
             sf::spherical_harmonics(atom.type().lmax_apw(), tp[0], tp[1], &ylm[0]);
 
             // iterate over all atomic basis functions (apw and lo)
-            #pragma omp parallel for reduction(complex_double_plus:val)
+            double re{0}, im{0};
+            #pragma omp parallel for reduction(+:re, im)
             for (int xi = 0; xi < atom.mt_basis_size(); xi++) {
                 // expansion coefficient
                 auto c = wf__.mt_coeffs(xi, loc.index_local, spin_idx__, band_idx__);
@@ -61,21 +62,29 @@ get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> 
                            atom.symmetry_class().radial_function(jr, idxrf)) /
                           atom.type().radial_grid().dx(jr);
 
-                val += c * ylm[lm] * (atom.symmetry_class().radial_function(jr, idxrf) + f1 * dr);
+                auto v = c * ylm[lm] * (atom.symmetry_class().radial_function(jr, idxrf) + f1 * dr);
+                re += v.real();
+                im += v.imag();
             }
+            val += std::complex<double>(re, im);
         }
         // broadcast from the rank which computed the sum
         wf__.comm().bcast(&val, 1, loc.ib);
 
     } else {
         // sum over local set of G+k-vectors
-        #pragma omp parallel for reduction(complex_double_plus:val)
-        for (int igloc = 0; igloc < kp__.gkvec().count(); igloc++) {
+        double re{0}, im{0};
+        int ngkloc = kp__.gkvec().count();
+        #pragma omp parallel for reduction(+:re, im)
+        for (int igloc = 0; igloc < ngkloc; igloc++) {
             // G+k vector in Cartesian coordinates
             auto vgc = kp__.gkvec().gvec_cart(gvec_index_t::local(igloc));
             // plane-wave expansion
-            val += wf__.pw_coeffs(igloc, spin_idx__, band_idx__) * std::exp(std::complex<double>(0.0, dot(r__, vgc)));
+            auto v = wf__.pw_coeffs(igloc, spin_idx__, band_idx__) * std::exp(std::complex<double>(0.0, dot(r__, vgc)));
+            re += v.real();
+            im += v.imag();
         }
+        val += std::complex<double>(re, im);
         kp__.gkvec().comm().allreduce(&val, 1);
         val /= std::sqrt(uc.omega());
     }

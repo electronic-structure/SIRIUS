@@ -361,8 +361,11 @@ symmetrize_pw_function_impl_v2(Crystal_symmetry const& sym__, fft::Gvec_sym cons
 
     PROFILE_START("sirius::symmetrize|fpw|local");
 
+    auto const& gvec_shells = gvec_sym__.gvec_shells();
+    int n_gvec_shells       = static_cast<int>(gvec_shells.size());
     #pragma omp parallel for schedule(static, 1)
-    for (auto& e : gvec_sym__.gvec_shells()) {
+    for (int ishell = 0; ishell < n_gvec_shells; ishell++) {
+        auto const& e = gvec_shells[ishell];
 
         std::unordered_map<r3::vector<int>, char, fft::r3_int_hash> is_done;
         for (auto igloc : e) {
