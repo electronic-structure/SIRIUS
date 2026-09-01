@@ -24,6 +24,30 @@
 
 namespace sirius {
 
+namespace {
+
+/* accumulate <G+k|beta_xi1> X_{xi1, xi2} <beta_xi2|G+k> into diag(ig_loc, ispn); factored out of
+ * Hamiltonian_k<T>::get_h_o_diag_pw() and templated on T only (rather than inline in a function
+ * also templated on <F, what>) to keep the number of TU-level instantiations carrying this
+ * OpenMP loop small. */
+template <typename T>
+void
+accumulate_pw_diag(mdarray<T, 2>& diag__, matrix<std::complex<T>> const& beta_gk_tmp__,
+                    matrix<std::complex<T>> const& beta_gk_t__, int offs__, int nbf__, int ispn__,
+                    int num_gkvec_loc__)
+{
+    #pragma omp parallel for schedule(static)
+    for (int ig_loc = 0; ig_loc < num_gkvec_loc__; ig_loc++) {
+        T sum{0};
+        for (int xi = 0; xi < nbf__; xi++) {
+            sum += std::real(beta_gk_tmp__(ig_loc, xi) * std::conj(beta_gk_t__(ig_loc, offs__ + xi)));
+        }
+        diag__(ig_loc, ispn__) += sum;
+    }
+}
+
+} // namespace
+
 template <typename T>
 Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__)
     : H0_(H0__)
@@ -144,15 +168,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                         .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &la::constant<std::complex<T>>::one(),
                               &beta_gk_t(0, offs), beta_gk_t.ld(), &d_sum(0, 0), d_sum.ld(),
                               &la::constant<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
-                #pragma omp parallel
-                for (int xi = 0; xi < nbf; xi++) {
-                    #pragma omp for schedule(static) nowait
-                    for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
-                        /* compute <G+k|beta_xi1> D_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
-                        h_diag(ig_loc, ispn) +=
-                                std::real(beta_gk_tmp(ig_loc, xi) * std::conj(beta_gk_t(ig_loc, offs + xi)));
-                    }
-                }
+                accumulate_pw_diag(h_diag, beta_gk_tmp, beta_gk_t, offs, nbf, ispn, kp_.num_gkvec_loc());
             }
 
             if (what & 2) {
@@ -160,15 +176,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                         .gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf, &la::constant<std::complex<T>>::one(),
                               &beta_gk_t(0, offs), beta_gk_t.ld(), &q_sum(0, 0), q_sum.ld(),
                               &la::constant<std::complex<T>>::zero(), &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
-                #pragma omp parallel
-                for (int xi = 0; xi < nbf; xi++) {
-                    #pragma omp for schedule(static) nowait
-                    for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
-                        /* compute <G+k|beta_xi1> Q_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
-                        o_diag(ig_loc, ispn) +=
-                                std::real(beta_gk_tmp(ig_loc, xi) * std::conj(beta_gk_t(ig_loc, offs + xi)));
-                    }
-                }
+                accumulate_pw_diag(o_diag, beta_gk_tmp, beta_gk_t, offs, nbf, ispn, kp_.num_gkvec_loc());
             }
         }
     }
