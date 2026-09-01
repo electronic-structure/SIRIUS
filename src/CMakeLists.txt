@@ -90,8 +90,6 @@ set(_SOURCES
 
   # create library with .cpp, .cu and .f90 sources
 add_library(sirius_cxx "${_SOURCES};${_CUSOURCES};")
-
-
 target_compile_features(sirius_cxx PUBLIC cxx_std_17)
 target_compile_features(sirius_cxx PUBLIC c_std_99)
 target_compile_features(sirius_cxx PUBLIC cuda_std_17)
