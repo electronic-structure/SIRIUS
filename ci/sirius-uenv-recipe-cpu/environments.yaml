@@ -1,7 +1,7 @@
 gcc-env:
   compiler: [gcc]
   network:
-    mpi: cray-mpich@8.1.32
+    mpi: cray-mpich@9.1.0
     specs: ['libfabric@2.4.0']
   unify: true
   specs:
