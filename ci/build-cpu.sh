@@ -11,7 +11,7 @@ spack config --scope=spack add config:install_tree:root:/dev/shm/spack-stage
 
 spack env create -d ./spack-env
 # make sure cray-mpich is used
-spack -e ./spack-env add cray-mpich
+spack -e ./spack-env add cray-mpich@9.1.0
 
 # add local repository with current sirius recipe
 spack -e ./spack-env repo add $REPO
