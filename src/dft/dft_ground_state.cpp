@@ -327,12 +327,14 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         if (ctx_.full_potential()) {
             std::shared_ptr<LAPW_radial_basis> lapw_basis_new;
             try {
+                RTE_OUT(ctx_.out()) << "Generating new LAPW basis\n";
                 lapw_basis_new = potential_.create_lapw_basis();
                 lapw_basis = lapw_basis_new;
             } catch (std::exception const& e) {
                 RTE_WARNING("LAPW basis is not updated");
             }
         }
+        lapw_basis->write_enu(ctx_.out(2));
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             if (ctx_.verbosity() >= 1) {
