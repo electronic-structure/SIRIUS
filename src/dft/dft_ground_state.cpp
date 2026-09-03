@@ -197,6 +197,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
     density_.print_info(ctx_.out(1));
 
+    /* generate initial lapw basis */
     auto lapw_basis = potential_.create_lapw_basis();
 
     for (int iter = 0; iter < num_dft_iter__; iter++) {
