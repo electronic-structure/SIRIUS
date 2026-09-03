@@ -13,9 +13,6 @@ spack env create -d ./spack-env
 # make sure cray-mpich is used
 spack -e ./spack-env add cray-mpich@9.1.0
 
-# add local repository with current sirius recipe
-spack -e ./spack-env repo add $REPO
-
 spack -e ./spack-env add $SPEC
 
 # build sirius from source
