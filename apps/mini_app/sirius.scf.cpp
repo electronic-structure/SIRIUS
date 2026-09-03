@@ -534,7 +534,6 @@ run_k_point_path_task(cmd_args const& args, std::string const& fname)
 
     ks.initialize();
 
-    // density.initial_density();
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
     Hamiltonian0<double> H0(potential, potential.create_lapw_basis());
@@ -610,10 +609,10 @@ run_plot_wf_task(cmd_args const& args, std::string const& fname)
     /* load density */
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
-    /* we need to create Hamiltonian to recompute radial functions */
-    Hamiltonian0<double> H0(potential, potential.create_lapw_basis());
 
     auto lapw_basis = potential.create_lapw_basis();
+    /* we need to create Hamiltonian to recompute radial functions */
+    Hamiltonian0<double> H0(potential, lapw_basis);
 
     bool const reduce_kp = ctx->use_symmetry() && ctx->cfg().parameters().use_ibz();
     K_point_set kset(*ctx, ctx->cfg().parameters().ngridk(), ctx->cfg().parameters().shiftk(), reduce_kp);
