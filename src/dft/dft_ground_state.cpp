@@ -334,8 +334,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             } catch (std::exception const& e) {
                 RTE_WARNING("LAPW basis is not updated");
             }
+            lapw_basis->write_enu(ctx_.out(2));
         }
-        lapw_basis->write_enu(ctx_.out(2));
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             if (ctx_.verbosity() >= 1) {
