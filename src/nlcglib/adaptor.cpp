@@ -115,12 +115,14 @@ Energy::compute()
     int num_spins = ctx.num_spins();
     int num_bands = ctx.num_bands();
 
-    density_.generate<prec_t>(kset_, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
+    auto lapw_basis = potential_.create_lapw_basis();
+
+    density_.generate<prec_t>(kset_, *lapw_basis, ctx.use_symmetry(), true /* add core */, true /* transform to rg */);
 
     potential_.generate(density_, ctx.use_symmetry(), true);
 
     /* compute H@X and new band energies */
-    auto H0 = Hamiltonian0<double>(potential_);
+    auto H0 = Hamiltonian0<double>(potential_, lapw_basis);
 
     auto proc_mem_t = ctx.processing_unit_memory_t();
 
