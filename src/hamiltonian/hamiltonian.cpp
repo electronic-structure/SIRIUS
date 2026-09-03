@@ -38,7 +38,7 @@ namespace sirius {
  */
 auto
 generate_h_L(Atom_type const& type__, lapw_radial_basis_t const& rb__,
-        std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__)
+             std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__)
 {
     PROFILE("sirius::generate_h_L");
 
@@ -96,157 +96,156 @@ generate_h_L(Atom_type const& type__, lapw_radial_basis_t const& rb__,
             }
         }
     } else {
-//        splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
-//
-//        /* copy radial functions to spline objects */
-//        std::vector<Spline<double>> rf_spline(nrf);
-//        #pragma omp parallel for
-//        for (int i = 0; i < nrf; i++) {
-//            rf_spline[i] = Spline<double>(type().radial_grid());
-//            for (int ir = 0; ir < nmtp; ir++) {
-//                rf_spline[i](ir) = symmetry_class().radial_function(ir, i);
-//            }
-//        }
-//
-//        /* copy effective potential components to spline objects */
-//        std::vector<Spline<double>> v_spline(lmmax * (1 + num_mag_dims));
-//        #pragma omp parallel for
-//        for (int lm = 0; lm < lmmax; lm++) {
-//            v_spline[lm] = Spline<double>(type().radial_grid());
-//            for (int ir = 0; ir < nmtp; ir++) {
-//                v_spline[lm](ir) = veff_(lm, ir);
-//            }
-//
-//            for (int j = 0; j < num_mag_dims; j++) {
-//                v_spline[lm + (j + 1) * lmmax] = Spline<double>(type().radial_grid());
-//                for (int ir = 0; ir < nmtp; ir++) {
-//                    v_spline[lm + (j + 1) * lmmax](ir) = beff_[j](lm, ir);
-//                }
-//            }
-//        }
-//
-//        /* interpolate potential multiplied by a radial function */
-//        std::vector<Spline<double>> vrf_spline(lmmax * nrf * (1 + num_mag_dims));
-//
-//        auto& idx_ri = type().idx_radial_integrals();
-//
-//        mdarray<double, 1> result({idx_ri.size(1)});
-//
-//        if (pu__ == device_t::GPU) {
-//#if defined(SIRIUS_GPU)
-//            auto& rgrid    = type().radial_grid();
-//            auto& rf_coef  = type().rf_coef();
-//            auto& vrf_coef = type().vrf_coef();
-//
-//            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
-//            #pragma omp parallel
-//            {
-//                #pragma omp for
-//                for (int i = 0; i < nrf; i++) {
-//                    rf_spline[i].interpolate();
-//                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
-//                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4, rf_coef.at(memory_t::host, 0, 0, i));
-//                    // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
-//                    // sizeof(double), tid);
-//                }
-//                #pragma omp for
-//                for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
-//                    v_spline[i].interpolate();
-//                }
-//            }
-//            rf_coef.copy_to(memory_t::device, acc::stream_id(-1));
-//
-//            #pragma omp parallel for
-//            for (int lm = 0; lm < lmmax; lm++) {
-//                for (int i = 0; i < nrf; i++) {
-//                    for (int j = 0; j < num_mag_dims + 1; j++) {
-//                        int idx         = lm + lmmax * i + lmmax * nrf * j;
-//                        vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-//                        std::memcpy(vrf_coef.at(memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
-//                                    nmtp * 4 * sizeof(double));
-//                        // cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4
-//                        // *sizeof(double), tid);
-//                    }
-//                }
-//            }
-//            vrf_coef.copy_to(memory_t::device);
-//            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
-//
-//            result.allocate(memory_t::device);
-//            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
-//                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
-//                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
-//                                        result.at(memory_t::device));
-//            acc::sync();
-//            // if (type().parameters().control().print_performance_) {
-//            //     double tval = t2.stop();
-//            //     DUMP("spline GPU integration performance: %12.6f GFlops",
-//            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-//            // }
-//            result.copy_to(memory_t::host);
-//            result.deallocate(memory_t::device);
-//#endif
-//        }
-//        if (pu__ == device_t::CPU) {
-//            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
-//            #pragma omp parallel
-//            {
-//                #pragma omp for
-//                for (int i = 0; i < nrf; i++) {
-//                    rf_spline[i].interpolate();
-//                }
-//                #pragma omp for
-//                for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
-//                    v_spline[i].interpolate();
-//                }
-//
-//                #pragma omp for
-//                for (int lm = 0; lm < lmmax; lm++) {
-//                    for (int i = 0; i < nrf; i++) {
-//                        for (int j = 0; j < num_mag_dims + 1; j++) {
-//                            vrf_spline[lm + lmmax * i + lmmax * nrf * j] = rf_spline[i] * v_spline[lm + j * lmmax];
-//                        }
-//                    }
-//                }
-//            }
-//            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
-//
-//            PROFILE("sirius::Atom::generate_radial_integrals|inner");
-//            #pragma omp parallel for
-//            for (int j = 0; j < (int)idx_ri.size(1); j++) {
-//                result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
-//            }
-//            // if (type().parameters().control().print_performance_) {
-//            //     double tval = t2.stop();
-//            //     DUMP("spline CPU integration performance: %12.6f GFlops",
-//            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-//            // }
-//        }
-//
-//        int n{0};
-//        for (int lm = 0; lm < lmmax; lm++) {
-//            int l = l_by_lm[lm];
-//
-//            for (int i2 = 0; i2 < type().indexr().size(); i2++) {
-//                int l2 = type().indexr(i2).am.l();
-//                for (int i1 = 0; i1 <= i2; i1++) {
-//                    int l1 = type().indexr(i1).am.l();
-//                    if ((l + l1 + l2) % 2 == 0) {
-//                        if (lm) {
-//                            h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = result(n++);
-//                        } else {
-//                            h_radial_integrals_(0, i1, i2) = symmetry_class().h_spherical_integral(i1, i2);
-//                            h_radial_integrals_(0, i2, i1) = symmetry_class().h_spherical_integral(i2, i1);
-//                        }
-//                        for (int j = 0; j < num_mag_dims; j++) {
-//                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = result(n++);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-
+        //        splindex_block<> spl_lm(lmmax, n_blocks(comm__.size()), block_id(comm__.rank()));
+        //
+        //        /* copy radial functions to spline objects */
+        //        std::vector<Spline<double>> rf_spline(nrf);
+        //        #pragma omp parallel for
+        //        for (int i = 0; i < nrf; i++) {
+        //            rf_spline[i] = Spline<double>(type().radial_grid());
+        //            for (int ir = 0; ir < nmtp; ir++) {
+        //                rf_spline[i](ir) = symmetry_class().radial_function(ir, i);
+        //            }
+        //        }
+        //
+        //        /* copy effective potential components to spline objects */
+        //        std::vector<Spline<double>> v_spline(lmmax * (1 + num_mag_dims));
+        //        #pragma omp parallel for
+        //        for (int lm = 0; lm < lmmax; lm++) {
+        //            v_spline[lm] = Spline<double>(type().radial_grid());
+        //            for (int ir = 0; ir < nmtp; ir++) {
+        //                v_spline[lm](ir) = veff_(lm, ir);
+        //            }
+        //
+        //            for (int j = 0; j < num_mag_dims; j++) {
+        //                v_spline[lm + (j + 1) * lmmax] = Spline<double>(type().radial_grid());
+        //                for (int ir = 0; ir < nmtp; ir++) {
+        //                    v_spline[lm + (j + 1) * lmmax](ir) = beff_[j](lm, ir);
+        //                }
+        //            }
+        //        }
+        //
+        //        /* interpolate potential multiplied by a radial function */
+        //        std::vector<Spline<double>> vrf_spline(lmmax * nrf * (1 + num_mag_dims));
+        //
+        //        auto& idx_ri = type().idx_radial_integrals();
+        //
+        //        mdarray<double, 1> result({idx_ri.size(1)});
+        //
+        //        if (pu__ == device_t::GPU) {
+        //#if defined(SIRIUS_GPU)
+        //            auto& rgrid    = type().radial_grid();
+        //            auto& rf_coef  = type().rf_coef();
+        //            auto& vrf_coef = type().vrf_coef();
+        //
+        //            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
+        //            #pragma omp parallel
+        //            {
+        //                #pragma omp for
+        //                for (int i = 0; i < nrf; i++) {
+        //                    rf_spline[i].interpolate();
+        //                    std::copy(rf_spline[i].coeffs().at(memory_t::host),
+        //                              rf_spline[i].coeffs().at(memory_t::host) + nmtp * 4, rf_coef.at(memory_t::host, 0, 0, i));
+        //                    // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
+        //                    // sizeof(double), tid);
+        //                }
+        //                #pragma omp for
+        //                for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
+        //                    v_spline[i].interpolate();
+        //                }
+        //            }
+        //            rf_coef.copy_to(memory_t::device, acc::stream_id(-1));
+        //
+        //            #pragma omp parallel for
+        //            for (int lm = 0; lm < lmmax; lm++) {
+        //                for (int i = 0; i < nrf; i++) {
+        //                    for (int j = 0; j < num_mag_dims + 1; j++) {
+        //                        int idx         = lm + lmmax * i + lmmax * nrf * j;
+        //                        vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
+        //                        std::memcpy(vrf_coef.at(memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
+        //                                    nmtp * 4 * sizeof(double));
+        //                        // cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4
+        //                        // *sizeof(double), tid);
+        //                    }
+        //                }
+        //            }
+        //            vrf_coef.copy_to(memory_t::device);
+        //            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
+        //
+        //            result.allocate(memory_t::device);
+        //            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp,
+        //                                        rgrid.x().at(memory_t::device), rgrid.dx().at(memory_t::device),
+        //                                        rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device),
+        //                                        result.at(memory_t::device));
+        //            acc::sync();
+        //            // if (type().parameters().control().print_performance_) {
+        //            //     double tval = t2.stop();
+        //            //     DUMP("spline GPU integration performance: %12.6f GFlops",
+        //            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        //            // }
+        //            result.copy_to(memory_t::host);
+        //            result.deallocate(memory_t::device);
+        //#endif
+        //        }
+        //        if (pu__ == device_t::CPU) {
+        //            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
+        //            #pragma omp parallel
+        //            {
+        //                #pragma omp for
+        //                for (int i = 0; i < nrf; i++) {
+        //                    rf_spline[i].interpolate();
+        //                }
+        //                #pragma omp for
+        //                for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
+        //                    v_spline[i].interpolate();
+        //                }
+        //
+        //                #pragma omp for
+        //                for (int lm = 0; lm < lmmax; lm++) {
+        //                    for (int i = 0; i < nrf; i++) {
+        //                        for (int j = 0; j < num_mag_dims + 1; j++) {
+        //                            vrf_spline[lm + lmmax * i + lmmax * nrf * j] = rf_spline[i] * v_spline[lm + j * lmmax];
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
+        //
+        //            PROFILE("sirius::Atom::generate_radial_integrals|inner");
+        //            #pragma omp parallel for
+        //            for (int j = 0; j < (int)idx_ri.size(1); j++) {
+        //                result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
+        //            }
+        //            // if (type().parameters().control().print_performance_) {
+        //            //     double tval = t2.stop();
+        //            //     DUMP("spline CPU integration performance: %12.6f GFlops",
+        //            //          1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        //            // }
+        //        }
+        //
+        //        int n{0};
+        //        for (int lm = 0; lm < lmmax; lm++) {
+        //            int l = l_by_lm[lm];
+        //
+        //            for (int i2 = 0; i2 < type().indexr().size(); i2++) {
+        //                int l2 = type().indexr(i2).am.l();
+        //                for (int i1 = 0; i1 <= i2; i1++) {
+        //                    int l1 = type().indexr(i1).am.l();
+        //                    if ((l + l1 + l2) % 2 == 0) {
+        //                        if (lm) {
+        //                            h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = result(n++);
+        //                        } else {
+        //                            h_radial_integrals_(0, i1, i2) = symmetry_class().h_spherical_integral(i1, i2);
+        //                            h_radial_integrals_(0, i2, i1) = symmetry_class().h_spherical_integral(i2, i1);
+        //                        }
+        //                        for (int j = 0; j < num_mag_dims; j++) {
+        //                            b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = result(n++);
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        }
+        //
     }
     return h_L;
 }
@@ -262,11 +261,8 @@ generate_h_L(Atom_type const& type__, lapw_radial_basis_t const& rb__,
  */
 template <int N>
 auto
-radial_integrals_sum_L3(
-    std::array<std::complex<double>, N> const& coefficients__,
-    double const* h_L__,
-    int ld__,
-    std::vector<gaunt_L3<std::complex<double>>> const& gnt__)
+radial_integrals_sum_L3(std::array<std::complex<double>, N> const& coefficients__, double const* h_L__, int ld__,
+                        std::vector<gaunt_L3<std::complex<double>>> const& gnt__)
 {
     static_assert(N == 1 || N == 2 || N == 4, "wrong size of coefficients array");
     std::complex<double> result{0};
@@ -528,7 +524,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
         auto vns = potential__.mt_components();
         #pragma omp parallel for
         for (auto it : unit_cell_.spl_num_atoms()) {
-            int ia = it.i;
+            int ia     = it.i;
             auto& atom = ctx_.unit_cell().atom(ia);
             auto& type = atom.type();
 
@@ -543,10 +539,10 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
                 int lm2    = type.indexb(j2).lm;
                 int idxrf2 = type.indexb(j2).idxrf;
                 for (int j1 = 0; j1 < nmt; j1++) {
-                    int lm1    = type.indexb(j1).lm;
-                    int idxrf1 = type.indexb(j1).idxrf;
+                    int lm1             = type.indexb(j1).lm;
+                    int idxrf1          = type.indexb(j1).idxrf;
                     auto const* h_L_ptr = h_L.at(memory_t::host, 0, 0, idxrf1, idxrf2);
-                    auto const& gnt = type.gaunt_coefs().gaunt_vector(lm1, lm2);
+                    auto const& gnt     = type.gaunt_coefs().gaunt_vector(lm1, lm2);
                     switch (ctx_.num_mag_dims()) {
                         case 3: {
                             // spin-block index is consistent with non-local pseudopotential operator
@@ -633,7 +629,8 @@ Hamiltonian0<T>::apply_hmt_to_apw(device_t pu__, int ia__, int ispn__, int ngv__
 
 template <typename T>
 void
-Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, lapw_radial_basis_t const& rb__, int num_gkvec__, mdarray<std::complex<T>, 2>& alm__) const
+Hamiltonian0<T>::add_o1mt_to_apw(Atom const& atom__, lapw_radial_basis_t const& rb__, int num_gkvec__,
+                                 mdarray<std::complex<T>, 2>& alm__) const
 {
     // TODO: optimize for the loop layout using blocks of G-vectors
     auto const& type = atom__.type();
@@ -699,10 +696,10 @@ Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<w
     wf::spin_index s(0);
 
     for (auto it : psi__.spl_num_atoms()) {
-        auto ia    = it.i;
+        auto ia        = it.i;
         auto const& rb = lapw_basis_->radial_basis(it.i);
-        auto& atom = unit_cell_.atom(ia);
-        auto a     = it.li;
+        auto& atom     = unit_cell_.atom(ia);
+        auto a         = it.li;
 
         for (int l = 0; l <= atom.type().lmax_apw(); l++) {
             /* number of radial functions for this l */

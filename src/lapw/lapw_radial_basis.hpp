@@ -61,9 +61,9 @@ struct lapw_radial_basis_t
     std::vector<local_orbital_descriptor> lo_descriptors_;
 
     lapw_radial_basis_t(Atom_type const& atom_type__, relativity_t rel__, std::vector<double> spherical_potential__)
-      : atom_type_(atom_type__)
-      , rel_(rel__)
-      , spherical_potential_(spherical_potential__)
+        : atom_type_(atom_type__)
+        , rel_(rel__)
+        , spherical_potential_(spherical_potential__)
     {
         int nl        = atom_type_.indexr().lmax() + 1;
         int max_order = atom_type_.indexr().max_order();
@@ -72,7 +72,8 @@ struct lapw_radial_basis_t
         radial_functions_ = mdarray<double, 3>({atom_type_.num_mt_points(), nrf, 2});
         radial_functions_.zero();
 
-        surface_derivatives_ = mdarray<double, 2>({3, atom_type_.mt_radial_basis_size() - atom_type_.num_lo_descriptors()});
+        surface_derivatives_ =
+                mdarray<double, 2>({3, atom_type_.mt_radial_basis_size() - atom_type_.num_lo_descriptors()});
         surface_derivatives_.zero();
 
         h_spherical_integrals_ = mdarray<double, 2>({nrf, nrf});
@@ -143,7 +144,8 @@ struct lapw_radial_basis_t
         }
         int ierr{0};
         std::stringstream s;
-        s << "lapw_radial_basis_t::find_enu()" << std::endl
+        s << "lapw_radial_basis_t::find_enu()"
+          << std::endl
           //<< "  atom symmetry class id : " << id_ << std::endl
           << "  atom type label        : " << atom_type_.label() << std::endl
           << "  atom symbol            : " << atom_type_.symbol() << std::endl;
@@ -328,7 +330,8 @@ struct lapw_radial_basis_t
 
         int ierr{0};
         std::stringstream s;
-        s << "lapw_radial_basis_t::generate_aw_radial_functions()" << std::endl
+        s << "lapw_radial_basis_t::generate_aw_radial_functions()"
+          << std::endl
           //<< "  atom symmetry class id : " << id_ << std::endl
           << "  atom type label        : " << atom_type_.label() << std::endl
           << "  atom symbol            : " << atom_type_.symbol() << std::endl;
@@ -435,7 +438,8 @@ struct lapw_radial_basis_t
 
                 if (std::abs(radial_functions_(nmtp - 1, idxrf, 0)) > 1e-10) {
                     std::stringstream s;
-                    s << "local orbital " << idxlo << " is not zero at MT boundary" << std::endl
+                    s << "local orbital " << idxlo << " is not zero at MT boundary"
+                      << std::endl
                       //<< "  atom symmetry class id : " << id() << " (" << atom_type().symbol() << ")" << std::endl
                       << "  value : " << radial_functions_(nmtp - 1, idxrf, 0) << std::endl
                       << "  number of MT points: " << nmtp << std::endl
@@ -531,8 +535,7 @@ struct lapw_radial_basis_t
         stdevp->solve(nlo, loprod, &loprod_eval[0], loprod_evec);
 
         if (loprod_eval[0] < tol__) {
-            std::cout << "local orbitals are almost linearly dependent" << std::endl
-                      << "overlap matrix" << std::endl;
+            std::cout << "local orbitals are almost linearly dependent" << std::endl << "overlap matrix" << std::endl;
             for (int i = 0; i < nlo; i++) {
                 for (int j = 0; j < nlo; j++) {
                     std::cout << ovlp(i, j) << " ";
@@ -635,7 +638,7 @@ struct lapw_radial_basis_t
     inline void
     generate_h_spherical_integrals()
     {
-        int nmtp = atom_type_.num_mt_points();
+        int nmtp  = atom_type_.num_mt_points();
         double a2 = (rel_ == relativity_t::none) ? 0 : sq_alpha_half;
 
         h_spherical_integrals_.zero();
@@ -707,7 +710,7 @@ struct lapw_radial_basis_t
     inline void
     generate_o1_radial_integrals()
     {
-        int nmtp = atom_type_.num_mt_points();
+        int nmtp  = atom_type_.num_mt_points();
         double a2 = (rel_ == relativity_t::none) ? 0 : sq_alpha_half;
 
         o1_radial_integrals_.zero();
@@ -735,7 +738,7 @@ struct lapw_radial_basis_t
     void
     generate_so_radial_integrals()
     {
-        int nmtp = atom_type_.num_mt_points();
+        int nmtp   = atom_type_.num_mt_points();
         double soc = std::pow(2 * speed_of_light, -2);
 
         Spline<double> s(atom_type_.radial_grid());
@@ -786,7 +789,8 @@ struct lapw_radial_basis_t
      *      M = 1 - \frac{1}{2 c^2} V
      *  \f]
      */
-    void generate_radial_integrals()
+    void
+    generate_radial_integrals()
     {
         PROFILE("sirius::lapw_radial_basis_t::generate_radial_integrals");
 
@@ -908,23 +912,23 @@ struct lapw_radial_basis_t
         dict["z"]                   = atom_type_.zn();
         dict["rmt"]                 = atom_type_.mt_radius();
         dict["spherical_potential"] = spherical_potential_;
-    
+
         std::vector<double> veff(spherical_potential_.size());
         for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
             veff[ir] = spherical_potential_[ir] + atom_type_.zn() / atom_type_.radial_grid(ir);
         }
         dict["spherical_potential_el"] = veff;
-    
+
         dict["radial_functions"] = nlohmann::json::array();
         for (int idxrf = 0; idxrf < atom_type_.indexr().size(); idxrf++) {
             std::vector<double> u(atom_type_.num_mt_points());
             std::vector<double> rdudr(atom_type_.num_mt_points());
-    
+
             for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
                 u[ir]     = radial_functions_(ir, idxrf, 0);
                 rdudr[ir] = radial_functions_(ir, idxrf, 1);
             }
-    
+
             auto const& rfd = atom_type_.indexr(idxrf);
             dict["radial_functions"].push_back({{"idxrf", idxrf},
                                                 {"l", rfd.am.l()},
@@ -938,7 +942,7 @@ struct lapw_radial_basis_t
     }
 };
 
-class LAPW_radial_basis 
+class LAPW_radial_basis
 {
   private:
     std::vector<lapw_radial_basis_t> radial_basis_of_symmetry_class;
@@ -949,11 +953,13 @@ class LAPW_radial_basis
         : unit_cell_{unit_cell__}
     {
         for (int ic = 0; ic < unit_cell__.num_atom_symmetry_classes(); ic++) {
-            radial_basis_of_symmetry_class.emplace_back(unit_cell__.atom_symmetry_class(ic).atom_type(), rel__, vs__[ic]);
+            radial_basis_of_symmetry_class.emplace_back(unit_cell__.atom_symmetry_class(ic).atom_type(), rel__,
+                                                        vs__[ic]);
         }
 
-        auto spl_num_symcls = splindex_block<atom_symmetry_class_index_t>(
-            unit_cell__.num_atom_symmetry_classes(), n_blocks(unit_cell__.comm().size()), block_id(unit_cell__.comm().rank()));
+        auto spl_num_symcls = splindex_block<atom_symmetry_class_index_t>(unit_cell__.num_atom_symmetry_classes(),
+                                                                          n_blocks(unit_cell__.comm().size()),
+                                                                          block_id(unit_cell__.comm().rank()));
 
         int ierr{0};
         for (auto it : spl_num_symcls) {
@@ -999,6 +1005,6 @@ class LAPW_radial_basis
     }
 };
 
-}
+} // namespace sirius
 
 #endif

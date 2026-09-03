@@ -1182,7 +1182,8 @@ Density::check_num_electrons() const
 
 template <typename T>
 void
-Density::generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
+Density::generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__, bool add_core__,
+                  bool transform_to_rg__)
 {
     PROFILE("sirius::Density::generate");
     power::Profile p1("generate_dens");
@@ -1309,7 +1310,7 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__
         }
         sirius::symmetrize_density_matrix(unit_cell_, ctx_.rotm_ylm(), *density_matrix_, ctx_.num_mag_comp());
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            auto& type = ctx_.unit_cell().atom(ia).type();
+            auto& type     = ctx_.unit_cell().atom(ia).type();
             auto const& rb = lapw_basis__.radial_basis(atom_index_t::global(ia));
             out << "atom : " << ia << std::endl;
             for (int l = 0; l < 4; l++) {
@@ -1388,11 +1389,11 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__
 
 template void
 Density::generate<double>(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__,
-        bool add_core__, bool transform_to_rg__);
+                          bool add_core__, bool transform_to_rg__);
 #if defined(SIRIUS_USE_FP32)
 template void
 Density::generate<float>(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__,
-        bool add_core__, bool transform_to_rg__);
+                         bool add_core__, bool transform_to_rg__);
 #endif
 
 void

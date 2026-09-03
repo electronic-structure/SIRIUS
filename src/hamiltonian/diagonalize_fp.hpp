@@ -549,7 +549,7 @@ diagonalize_fp_single_variation(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
             normalize_for_iora(Hk__, kp__);
         }
         kp__.generate_lapw_wave_functions(kp__.fv_eigen_vectors_slab(), kp__.spinor_wave_functions(), ispn,
-                Hk__.H0().lapw_basis());
+                                          Hk__.H0().lapw_basis());
         if (ctx.gen_evp_solver().type() == la::ev_solver_t::cusolver) {
             h[ispn].deallocate(memory_t::device);
             o[ispn].deallocate(memory_t::device);

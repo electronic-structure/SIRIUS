@@ -296,7 +296,7 @@ class K_point
      */
     void
     generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__,
-            LAPW_radial_basis const& lapw_basis__);
+                                 LAPW_radial_basis const& lapw_basis__);
 
     /// Generate two-component spinor wave functions.
     /** In case of second-variational diagonalization spinor wave-functions are generated from the first-variational

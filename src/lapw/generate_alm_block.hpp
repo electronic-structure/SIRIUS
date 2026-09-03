@@ -62,8 +62,8 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
         int tid = omp_get_thread_num();
         #pragma omp for schedule(static, 1)
         for (int i = 0; i < num_atoms__; i++) {
-            auto& atom = ctx__.unit_cell().atom(atom_begin__ + i);
-            auto& type = atom.type();
+            auto& atom     = ctx__.unit_cell().atom(atom_begin__ + i);
+            auto& type     = atom.type();
             auto const& rb = lapw_basis__.radial_basis(atom_index_t::global(atom_begin__ + i));
             /* wrap matching coefficients of a single atom */
             mdarray<std::complex<T>, 2> alm_atom;

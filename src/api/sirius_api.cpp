@@ -2858,7 +2858,8 @@ sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool 
                 if (paw_only) {
                     gs.density().generate_paw_density();
                 } else {
-                    gs.density().generate<double>(gs.k_point_set(), *gs.potential().create_lapw_basis(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+                    gs.density().generate<double>(gs.k_point_set(), *gs.potential().create_lapw_basis(),
+                                                  gs.ctx().use_symmetry(), add_core, transform_to_rg);
                 }
             },
             error_code__);
@@ -6982,7 +6983,8 @@ sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* e
                 // We assume that the GS density is up to date
                 bool transform_to_rg{true};
                 gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), transform_to_rg);
-                *H0_handler__ = new any_ptr(new Hamiltonian0<double>(gs.potential(), gs.potential().create_lapw_basis()));
+                *H0_handler__ =
+                        new any_ptr(new Hamiltonian0<double>(gs.potential(), gs.potential().create_lapw_basis()));
             },
             error_code__);
 }

@@ -552,7 +552,7 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, int ispn__, md
                                     mdarray<std::complex<T>, 2>& alm_col__, mdarray<std::complex<T>, 2>& h__,
                                     mdarray<std::complex<T>, 2>& o__) const
 {
-    auto& type = atom__.type();
+    auto& type     = atom__.type();
     auto const& rb = H0_.lapw_basis().radial_basis(atom_index_t::global(ia__));
     /* apw-lo block */
     for (int i = 0; i < kp_.num_atom_lo_cols(ia__); i++) {

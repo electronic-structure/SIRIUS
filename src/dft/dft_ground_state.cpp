@@ -330,7 +330,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             try {
                 RTE_OUT(ctx_.out()) << "Generating new LAPW basis\n";
                 lapw_basis_new = potential_.create_lapw_basis();
-                lapw_basis = lapw_basis_new;
+                lapw_basis     = lapw_basis_new;
             } catch (std::exception const& e) {
                 RTE_WARNING("LAPW basis is not updated");
             }

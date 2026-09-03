@@ -19,7 +19,7 @@ namespace sirius {
 template <typename T>
 void
 K_point<T>::generate_lapw_wave_functions(wf::Wave_functions<T> const& evec__, wf::Wave_functions<T>& wf__, int ispn__,
-        LAPW_radial_basis const& lapw_basis__)
+                                         LAPW_radial_basis const& lapw_basis__)
 {
     PROFILE("sirius::K_point::generate_lapw_wave_functions");
 

@@ -37,8 +37,8 @@ init_operators(py::module& m)
     py::class_<Q_operator<PT>, Non_local_operator<PT>>(m, "Q_operator");
 
     py::class_<Hamiltonian0<PT>>(m, "Hamiltonian0")
-            .def(py::init<Potential&, std::shared_ptr<LAPW_radial_basis>>(), py::keep_alive<1, 2>(),
-                    "Potential"_a, "lapw_basis"_a = nullptr)
+            .def(py::init<Potential&, std::shared_ptr<LAPW_radial_basis>>(), py::keep_alive<1, 2>(), "Potential"_a,
+                 "lapw_basis"_a = nullptr)
             .def("Q", &Hamiltonian0<PT>::Q, py::return_value_policy::reference_internal)
             .def("D", &Hamiltonian0<PT>::D, py::return_value_policy::reference_internal)
             .def("Hk", &Hamiltonian0<PT>::operator(), py::keep_alive<0, 1>())
