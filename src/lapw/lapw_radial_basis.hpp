@@ -806,26 +806,6 @@ struct lapw_radial_basis_t
         }
     }
 
-    void
-    sync_radial_functions(mpi::Communicator const& comm__, int const rank__)
-    {
-        /* don't broadcast Hamiltonian radial functions, because they are used locally */
-        int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-        comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
-        comm__.bcast(surface_derivatives_.at(memory_t::host), (int)surface_derivatives_.size(), rank__);
-    }
-
-    void
-    sync_radial_integrals(mpi::Communicator const& comm__, int const rank__)
-    {
-        comm__.bcast(h_spherical_integrals_.at(memory_t::host), (int)h_spherical_integrals_.size(), rank__);
-        comm__.bcast(o_radial_integrals_.at(memory_t::host), (int)o_radial_integrals_.size(), rank__);
-        comm__.bcast(so_radial_integrals_.at(memory_t::host), (int)so_radial_integrals_.size(), rank__);
-        if (rel_ == relativity_t::iora) {
-            comm__.bcast(o1_radial_integrals_.at(memory_t::host), (int)o1_radial_integrals_.size(), rank__);
-        }
-    }
-
     inline double
     h_spherical_integral(int i1__, int i2__) const
     {
@@ -948,6 +928,34 @@ class LAPW_radial_basis
     std::vector<lapw_radial_basis_t> radial_basis_of_symmetry_class;
     Unit_cell const& unit_cell_;
 
+    void
+    sync_radial_functions(int ic__, int rank__)
+    {
+        auto& rb = radial_basis_of_symmetry_class[ic__];
+
+        unit_cell_.comm().bcast(rb.radial_functions_.at(memory_t::host),
+                                static_cast<int>(rb.radial_functions_.size()), rank__);
+        unit_cell_.comm().bcast(rb.surface_derivatives_.at(memory_t::host),
+                                static_cast<int>(rb.surface_derivatives_.size()), rank__);
+    }
+
+    void
+    sync_radial_integrals(int ic__, int rank__)
+    {
+        auto& rb = radial_basis_of_symmetry_class[ic__];
+
+        unit_cell_.comm().bcast(rb.h_spherical_integrals_.at(memory_t::host),
+                                static_cast<int>(rb.h_spherical_integrals_.size()), rank__);
+        unit_cell_.comm().bcast(rb.o_radial_integrals_.at(memory_t::host),
+                                static_cast<int>(rb.o_radial_integrals_.size()), rank__);
+        unit_cell_.comm().bcast(rb.so_radial_integrals_.at(memory_t::host),
+                                static_cast<int>(rb.so_radial_integrals_.size()), rank__);
+        if (rb.rel_ == relativity_t::iora) {
+            unit_cell_.comm().bcast(rb.o1_radial_integrals_.at(memory_t::host),
+                                    static_cast<int>(rb.o1_radial_integrals_.size()), rank__);
+        }
+    }
+
   public:
     LAPW_radial_basis(Unit_cell const& unit_cell__, relativity_t rel__, std::vector<std::vector<double>> vs__)
         : unit_cell_{unit_cell__}
@@ -976,8 +984,8 @@ class LAPW_radial_basis
 
         for (int ic = 0; ic < unit_cell__.num_atom_symmetry_classes(); ic++) {
             int rank = spl_num_symcls.location(typename atom_symmetry_class_index_t::global(ic)).ib;
-            radial_basis_of_symmetry_class[ic].sync_radial_functions(unit_cell__.comm(), rank);
-            radial_basis_of_symmetry_class[ic].sync_radial_integrals(unit_cell__.comm(), rank);
+            sync_radial_functions(ic, rank);
+            sync_radial_integrals(ic, rank);
         }
     }
 
