@@ -256,7 +256,9 @@ Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0<double> H0(potential_, false);
+    auto lapw_basis = potential_.create_lapw_basis();
+
+    Hamiltonian0<double> H0(potential_, lapw_basis);
     for (auto it : kset_.spl_num_kpoints()) {
         auto hk = H0(*kset_.get<double>(it.i));
         add_ibs_force(kset_.get<double>(it.i), hk, ffac, forces_ibs_);
@@ -800,9 +802,11 @@ Force::add_ibs_force(K_point<double>* kp__, Hamiltonian_k<double>& Hk__, mdarray
         auto& atom = uc.atom(ia);
         auto& type = atom.type();
 
+        auto const& rb = Hk__.H0().lapw_basis().radial_basis(atom_index_t::global(ia));
+
         /* generate matching coefficients for current atom */
-        kp__->alm_coeffs_row().generate<true>(atom, alm_row);
-        kp__->alm_coeffs_col().generate<false>(atom, alm_col);
+        kp__->alm_coeffs_row().generate<true>(atom, alm_row, rb);
+        kp__->alm_coeffs_col().generate<false>(atom, alm_col, rb);
 
         /* setup apw-lo and lo-apw blocks */
         Hk__.set_fv_h_o_apw_lo(atom, ia, 0, alm_row, alm_col, h, o);

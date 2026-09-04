@@ -125,7 +125,7 @@ void
 initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    Hamiltonian0<double> H0(dft_gs.potential(), false);
+    Hamiltonian0<double> H0(dft_gs.potential());
     initialize_subspace(kset, H0);
 }
 
@@ -270,7 +270,6 @@ PYBIND11_MODULE(py_sirius, m)
             .def_property_readonly("num_valence_electrons", &Unit_cell::num_valence_electrons)
             .def_property_readonly("augmented", &Unit_cell::augment)
             .def_property_readonly("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
-            .def("generate_radial_functions", &Unit_cell::generate_radial_functions)
             .def_property_readonly("min_mt_radius", &Unit_cell::min_mt_radius)
             .def_property_readonly("max_mt_radius", &Unit_cell::max_mt_radius)
             .def_property_readonly("omega", &Unit_cell::omega)
@@ -325,8 +324,11 @@ PYBIND11_MODULE(py_sirius, m)
             .def("check_num_electrons", &Density::check_num_electrons)
             .def("fft_transform", &Density::fft_transform)
             .def("mix", &Density::mix)
-            .def("generate", py::overload_cast<K_point_set const&, bool, bool, bool>(&Density::generate<double>),
-                 "kpointset"_a, "symmetrize"_a = false, "add_core"_a = true, "transform_to_rg"_a = false)
+            .def("generate",
+                 py::overload_cast<K_point_set const&, LAPW_radial_basis const&, bool, bool, bool>(
+                         &Density::generate<double>),
+                 "kpointset"_a, "lapw_basis"_a, "symmetrize"_a = false, "add_core"_a = true,
+                 "transform_to_rg"_a = false)
             .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
             .def("save", &Density::save)
             .def("check_num_electrons", &Density::check_num_electrons)

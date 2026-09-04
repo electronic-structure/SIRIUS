@@ -159,7 +159,7 @@ xc_mt_paw(std::vector<XC_functional> const& xc_func__, int lmax__, int num_mag_d
 }
 
 double
-Potential::calc_PAW_hartree_potential(Atom& atom__, Flm const& rho__, Flm& v_tot__)
+Potential::calc_PAW_hartree_potential(Atom const& atom__, Flm const& rho__, Flm& v_tot__)
 {
     auto lmmax = rho__.angular_domain_size();
 
