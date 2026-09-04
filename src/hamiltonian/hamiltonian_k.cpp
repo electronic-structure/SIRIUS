@@ -907,8 +907,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                              nat_loc](wf::Wave_functions_mt<T>& h_apw_lo__) {
         /* dispatch one async gemm per atom, round-robin over the available GPU streams;
          * gemm calls are non-blocking, so a plain serial loop still saturates the GPU */
+        #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
-            int sid = ialoc % acc::num_streams();
+            int tid = omp_get_thread_num();
             /* local atom index */
             auto aidx  = atom_index_t::local(ialoc);
             int ia     = spl_atoms.global_index(aidx);
@@ -923,7 +924,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               hmt.ld(), phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
                               phi__.ld(), &la::constant<Tc>::zero(),
                               h_apw_lo__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), h_apw_lo__.ld(),
-                              acc::stream_id(sid));
+                              acc::stream_id(tid));
         }
         if (is_device_memory(mem)) {
             h_apw_lo__.copy_to(memory_t::host);
@@ -963,8 +964,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
     auto appy_hmt_lo_lo = [this, &ctx, &phi__, la, mem, &b__, &spl_atoms, nat_loc](wf::Wave_functions<T>& hphi__) {
         /* lo-lo contribution; dispatch one async gemm per atom, round-robin over GPU streams */
+        #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
-            int sid    = ialoc % acc::num_streams();
+            int tid    = omp_get_thread_num();
             auto aidx  = atom_index_t::local(ialoc);
             auto ia    = spl_atoms.global_index(aidx);
             auto& atom = ctx.unit_cell().atom(ia);
@@ -978,7 +980,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               hmt.ld(), phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())),
                               phi__.ld(), &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
-                              acc::stream_id(sid));
+                              acc::stream_id(tid));
         }
     };
 
@@ -1020,8 +1022,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         size_t nops{0};
         int nat_loc_alm = alm_phi__.spl_num_atoms().local_size();
         /* dispatch one async gemm per atom, round-robin over GPU streams */
+        #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc_alm; ialoc++) {
-            int sid    = ialoc % acc::num_streams();
+            int tid    = omp_get_thread_num();
             auto aidx  = atom_index_t::local(ialoc);
             int ia     = atom_begin__ + alm_phi__.spl_num_atoms().global_index(aidx);
             auto& atom = ctx.unit_cell().atom(ia);
@@ -1035,7 +1038,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), alm_phi__.ld(),
                               &la::constant<Tc>::zero(),
                               halm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)), halm_phi__.ld(),
-                              acc::stream_id(sid));
+                              acc::stream_id(tid));
             nops += 8L * naw * b__.size() * naw;
         }
         return nops;
@@ -1044,8 +1047,9 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     auto apply_hmt_lo_apw = [this, &ctx, la, mem, &b__, &spl_atoms, nat_loc](wf::Wave_functions_mt<T> const& alm_phi__,
                                                                              wf::Wave_functions<T>& hphi__) {
         /* dispatch one async gemm per atom, round-robin over GPU streams */
+        #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
-            int sid    = ialoc % acc::num_streams();
+            int tid    = omp_get_thread_num();
             auto aidx  = atom_index_t::local(ialoc);
             int ia     = spl_atoms.global_index(aidx);
             auto& atom = ctx.unit_cell().atom(ia);
@@ -1059,7 +1063,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                               hmt.ld(), alm_phi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(0)),
                               alm_phi__.ld(), &la::constant<Tc>::one(),
                               hphi__.at(mem, 0, aidx, wf::spin_index(0), wf::band_index(b__.begin())), hphi__.ld(),
-                              acc::stream_id(sid));
+                              acc::stream_id(tid));
         }
     };
 
