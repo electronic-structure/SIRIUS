@@ -933,8 +933,8 @@ class LAPW_radial_basis
     {
         auto& rb = radial_basis_of_symmetry_class[ic__];
 
-        unit_cell_.comm().bcast(rb.radial_functions_.at(memory_t::host),
-                                static_cast<int>(rb.radial_functions_.size()), rank__);
+        unit_cell_.comm().bcast(rb.radial_functions_.at(memory_t::host), static_cast<int>(rb.radial_functions_.size()),
+                                rank__);
         unit_cell_.comm().bcast(rb.surface_derivatives_.at(memory_t::host),
                                 static_cast<int>(rb.surface_derivatives_.size()), rank__);
     }
