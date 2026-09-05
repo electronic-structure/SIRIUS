@@ -29,18 +29,13 @@ sirius_finalize:
       type: bool
       attr: in, optional
       doc: If .true. then cuda device is reset after shutdown.
-    call_fftw_fin:
-      type: bool
-      attr: in, optional
-      doc: If .true. then fft_cleanup must be called after the shutdown.
     error_code:
       type: int
       attr: out, optional
       doc: Error code.
 */
 void
-sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, bool const* call_fftw_fin__,
-                int* error_code__);
+sirius_finalize(bool const* call_mpi_fin__, bool const* call_device_reset__, int* error_code__);
 
 /*
 sirius_start_timer:
@@ -3025,22 +3020,6 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                                    int* const error_code__);
 
 /*
-sirius_create_H0:
-  doc: Generate H0.
-  arguments:
-    gs_handler:
-      type: gs_handler
-      attr: in, required
-      doc: Ground state handler.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code
-*/
-void
-sirius_create_H0(void* const* gs_handler__, int* error_code__);
-
-/*
 sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
@@ -3048,6 +3027,10 @@ sirius_linear_solver:
       type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
+    h0_handler:
+      type: H0_handler
+      attr: in, required
+      doc: K-point independent Hamiltonian handler.
     vkq:
       type: double
       attr: in, required, dimension(3)
@@ -3118,11 +3101,12 @@ sirius_linear_solver:
       doc: Error code
 */
 void
-sirius_linear_solver(void* const* gs_handler__, double const* vkq__, int const* num_gvec_kq_loc__,
-                     int const* gvec_kq_loc__, double complex* dpsi__, double complex* psi__,
-                     double* eigvals__, double complex* dvpsi__, int const* ld__, int const* num_spin_comp__,
-                     double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__, int const* nbnd_occ_kq__,
-                     double const* tol__, double complex const* omega__, int* niter__, int* error_code__);
+sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__,
+                     int const* num_gvec_kq_loc__, int const* gvec_kq_loc__, double complex* dpsi__,
+                     double complex* psi__, double* eigvals__, double complex* dvpsi__, int const* ld__,
+                     int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
+                     int const* nbnd_occ_kq__, double const* tol__, double complex const* omega__, int* niter__,
+                     int* error_code__);
 
 /*
 sirius_generate_rhoaug_q:
@@ -3557,212 +3541,6 @@ void
 sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* error_code__);
 
 /*
-sirius_diagonalize_hamiltonian:
-  doc: Diagonalizes the Hamiltonian.
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    gs_handler:
-      type: gs_handler
-      attr: in, required
-      doc: Ground-state context handler.
-    H0_handler:
-      type: H0_handler
-      attr: in, required
-      doc: Hamiltonian contexct handler.
-    iter_solver_tol:
-      type: double
-      attr: in, required
-      doc: Tolerance for the iterative solver.
-    max_steps:
-      type: int
-      attr: in, required
-      doc: Maximum number of steps for the iterative solver.
-    converge_by_energy:
-      type: int
-      attr: in, optional
-      doc: Whether the solver should determine convergence by checking the energy different (1), or the L2 norm of the residual (0). Default is value is 1.
-    exact_diagonalization:
-      type: bool
-      attr: in, optional
-      doc: Whether an exact diagonalization should take place (rather than iterative Davidson)
-    converged:
-      type: bool
-      attr: out, required
-      doc: Whether the iterative solver converged
-    niter:
-      type: int
-      attr: out, required
-      doc: Number of steps for the solver to converge
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_diagonalize_hamiltonian(void* const* handler__, void* const* gs_handler__, void* const* H0_handler__,
-                               double* const iter_solver_tol__, int* const max_steps__, int* converge_by_energy__,
-                               bool* const exact_diagonalization__, bool* converged__, int* niter__, int* error_code__);
-
-/*
-sirius_find_band_occupancies:
-  doc: Internally calculate the band occupancies.
-  arguments:
-    ks_handler:
-      type: ks_handler
-      attr: in, required
-      doc: Handler for the k-point set.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_find_band_occupancies(void* const* ks_handler__, int* error_code__);
-
-/*
-sirius_set_num_bands:
-  doc: Sets the number of bands in the simulation context.
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    num_bands:
-      type: int
-      attr: in, required
-      doc: Number of bands to set.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_set_num_bands(void* const* handler__, int* const num_bands__, int* error_code__);
-
-/*
-sirius_fft_transform:
-  doc: Triggers an internal FFT transform of the given field, in the given direction
-  arguments:
-    gs_handler:
-      type: gs_handler
-      attr: in, required
-      doc: Ground-state handler.
-    label:
-      type: string
-      attr: in, required
-      doc: Which field to FFT transform.
-    direction:
-      type: int
-      attr: in, required
-      doc: FFT transform direction (1 forward, -1, backward)
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_fft_transform(void* const* gs_handler__, char const* label__, int* direction__, int* error_code__);
-
-/*
-sirius_get_psi:
-  doc: Gets the wave function for a given k-point and spin (all local, no MPI communication).
-  arguments:
-    ks_handler:
-      type: ks_handler
-      attr: in, required
-      doc: Handler for the k-point set.
-    ik:
-      type: int
-      attr: in, required
-      doc: Index of the k-point.
-    ispin:
-      type: int
-      attr: in, required
-      doc: Index of the spin.
-    psi:
-      type: complex
-      attr: in, required, dimension(:)
-      doc: Pointer to the wave function coefficients.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_get_psi(void* const* ks_handler__, int* ik__, int* ispin__, double complex* psi__, int* error_code__);
-
-/*
-sirius_get_gkvec:
-  doc: Gets the G+k integer coordinates for a given k-point.
-  arguments:
-    ks_handler:
-      type: ks_handler
-      attr: in, required
-      doc: Handler for the k-point set.
-    ik:
-      type: int
-      attr: in, required
-      doc: Index of the k-point.
-    gvec:
-      type: double
-      attr: in, required, dimension(:)
-      doc: Pointer to the G+k vector coordinates.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_get_gkvec(void* const* ks_handler__, int* ik__, double* gvec__, int* error_code__);
-
-/*
-sirius_set_energy_fermi:
-  doc: Sets the SIRIUS Fermi energy.
-  arguments:
-    ks_handler:
-      type: ks_handler
-      attr: in, required
-      doc: Handler for the k-point set.
-    energy_fermi:
-      type: double
-      attr: in, required
-      doc: Fermi energy to be set.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_set_energy_fermi(void* const* ks_handler__, double* energy_fermi__, int* error_code__);
-
-/*
-sirius_set_atom_vector_field:
-  doc: Set new atomic vector field (aka initial magnetization).
-  arguments:
-    handler:
-      type: ctx_handler
-      attr: in, required
-      doc: Simulation context handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Index of atom; index starts form 1
-    vector_field:
-      type: double
-      attr: in, required, dimension(3)
-      doc: Atom vector field.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-*/
-void
-sirius_set_atom_vector_field(void* const* handler__, int const* ia__, double const* vector_field__, int* error_code__);
-
-/*
 sirius_set_dftd3_correction:
     doc: Set the parameters controlling the dftd3 correction.
     arguments:
@@ -3823,7 +3601,7 @@ sirius_set_dftd3_correction(void* const* handler__, char const* method__, char c
 
 /*
 sirius_set_dftd4_correction:
-    doc: Set the parameters controlling the dftd3 correction.
+    doc: Set the parameters controlling the dftd4 correction.
     arguments:
       handler:
         type: ctx_handler
