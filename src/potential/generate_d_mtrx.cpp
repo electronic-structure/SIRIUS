@@ -129,7 +129,7 @@ Potential::generate_d_mtrx()
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
                                                         ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
-                                                        veff_a.at(memory_t::device, 0, 0, iv), ng, 1 + iv);
+                                                        veff_a.at(memory_t::device, 0, 0, iv), veff_a.ld() / 2, 1 + iv);
 
                         la::wrap(la::lib_t::gpublas)
                                 .gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng, &la::constant<double>::one(),
