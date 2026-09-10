@@ -71,8 +71,10 @@ Potential::generate_d_mtrx()
             continue;
         }
 
+        int const max_ng = spl_ngv_loc[0];
+
         mdarray<double, 3> d_tmp({nqlm, atom_type.num_atoms(), ctx_.num_mag_dims() + 1}, mph);
-        mdarray<double, 3> veff_a({spl_ngv_loc[0] * 2, atom_type.num_atoms(), n_mag_comp}, mph);
+        mdarray<double, 3> veff_a({max_ng * 2, atom_type.num_atoms(), n_mag_comp}, mph);
         mdarray<double, 2> qpw;
 
         switch (ctx_.processing_unit()) {
@@ -83,7 +85,7 @@ Potential::generate_d_mtrx()
             case device_t::GPU: {
                 d_tmp.allocate(*mpd).zero(memory_t::device);
                 veff_a.allocate(*mpd);
-                qpw = mdarray<double, 2>({nqlm, 2 * spl_ngv_loc[0]}, *mpd, mdarray_label("qpw"));
+                qpw = mdarray<double, 2>({nqlm, 2 * max_ng}, *mpd, mdarray_label("qpw"));
                 break;
             }
         }
@@ -129,7 +131,7 @@ Potential::generate_d_mtrx()
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
                                                         ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
-                                                        veff_a.at(memory_t::device, 0, 0, iv), veff_a.ld() / 2, 1 + iv);
+                                                        veff_a.at(memory_t::device, 0, 0, iv), max_ng, 1 + iv);
 
                         la::wrap(la::lib_t::gpublas)
                                 .gemm('N', 'N', nqlm, atom_type.num_atoms(), 2 * ng, &la::constant<double>::one(),
@@ -138,9 +140,6 @@ Potential::generate_d_mtrx()
                                       d_tmp.ld(), acc::stream_id(1 + iv));
 #endif
                     } // iv
-                    //for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                    //    acc::sync_stream(acc::stream_id(1 + iv));
-                    //}
                     break;
                 }
             }
