@@ -661,9 +661,10 @@ Density::generate_paw_density()
 
     PROFILE("sirius::Density::generate_paw_density");
 
+    int n = unit_cell_.spl_num_paw_atoms().local_size();
     #pragma omp parallel for
-    for (auto it : unit_cell_.spl_num_paw_atoms()) {
-        generate_paw_density(it.li);
+    for (int i = 0; i < n; i++) {
+        generate_paw_density(paw_atom_index_t::local(i));
     }
 }
 
@@ -883,20 +884,22 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
     auto one = la::constant<std::complex<double>>::one();
 
     /* add |psi_j> n_j <psi_j| to density matrix */
+    int nat_loc = kp__.spinor_wave_functions().spl_num_atoms().local_size();
     #pragma omp parallel
     {
         mdarray<std::complex<double>, 3> wf1({uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins()});
         mdarray<std::complex<double>, 3> wf2({uc.max_mt_basis_size(), ctx__.num_bands(), ctx__.num_spins()});
         #pragma omp for
-        for (auto it : kp__.spinor_wave_functions().spl_num_atoms()) {
-            int ia            = it.i;
+        for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
+            auto li           = atom_index_t::local(ialoc);
+            int ia            = kp__.spinor_wave_functions().spl_num_atoms().global_index(li);
             int mt_basis_size = uc.atom(ia).type().mt_basis_size();
 
             for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
                 for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
                     for (int xi = 0; xi < mt_basis_size; xi++) {
-                        auto z           = kp__.spinor_wave_functions().mt_coeffs(xi, it.li, wf::spin_index(ispn),
-                                                                                  wf::band_index(j));
+                        auto z =
+                                kp__.spinor_wave_functions().mt_coeffs(xi, li, wf::spin_index(ispn), wf::band_index(j));
                         wf1(xi, j, ispn) = std::conj(z);
                         wf2(xi, j, ispn) =
                                 static_cast<std::complex<double>>(z) * kp__.band_occupancy(j, ispn) * kp__.weight();
