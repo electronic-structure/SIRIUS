@@ -244,7 +244,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na, kp_.alm_coeffs_loc());
+        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na, kp_.alm_coeffs_loc(), H0_.lapw_basis());
 
         /* apply muffin-tin APW Hamiltonian to the block of Alm coefficients */
         if (what & 1) {
@@ -426,6 +426,8 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
                 auto& type = atom.type();
                 int naw    = type.mt_aw_basis_size();
 
+                auto const& rb = this->H0().lapw_basis().radial_basis(atom_index_t::global(ia));
+
                 mdarray<std::complex<T>, 2> alm_row_atom;
                 mdarray<std::complex<T>, 2> alm_col_atom;
                 mdarray<std::complex<T>, 2> halm_col_atom;
@@ -458,7 +460,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
                     }
                 }
 
-                kp_.alm_coeffs_col().template generate<false>(atom, alm_col_atom);
+                kp_.alm_coeffs_col().template generate<false>(atom, alm_col_atom, rb);
 
                 /* can't copy alm to device now as it might be modified by the iora */
 
@@ -468,7 +470,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
                 }
 
                 /* generate conjugated matching coefficients */
-                kp_.alm_coeffs_row().template generate<true>(atom, alm_row_atom);
+                kp_.alm_coeffs_row().template generate<true>(atom, alm_row_atom, rb);
                 if (pu == device_t::GPU) {
                     alm_row_atom.copy_to(memory_t::device, acc::stream_id(tid));
                 }
@@ -480,7 +482,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
                 if (H0_.ctx().valence_relativity() == relativity_t::iora) {
                     // TODO: check if we can modify alm_col with IORA eralier and then not apply it in
                     // set_fv_h_o_apw_lo()
-                    H0_.add_o1mt_to_apw(atom, kp_.num_gkvec_col(), alm_col_atom);
+                    H0_.add_o1mt_to_apw(atom, rb, kp_.num_gkvec_col(), alm_col_atom);
                 }
 
                 if (pu == device_t::GPU) {
@@ -550,7 +552,8 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, int ispn__, md
                                     mdarray<std::complex<T>, 2>& alm_col__, mdarray<std::complex<T>, 2>& h__,
                                     mdarray<std::complex<T>, 2>& o__) const
 {
-    auto& type = atom__.type();
+    auto& type     = atom__.type();
+    auto const& rb = H0_.lapw_basis().radial_basis(atom_index_t::global(ia__));
     /* apw-lo block */
     for (int i = 0; i < kp_.num_atom_lo_cols(ia__); i++) {
         int icol = kp_.lo_col(ia__, i);
@@ -574,10 +577,10 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, int ispn__, md
         /* update O */
         for (int order1 = 0; order1 < type.aw_order(l); order1++) {
             int xi1 = type.indexb().index_by_lm_order(lm, order1);
-            T ori   = atom__.symmetry_class().o_radial_integral(l, order1, order);
+            T ori   = rb.o_radial_integral(l, order1, order);
             if (H0_.ctx().valence_relativity() == relativity_t::iora) {
                 auto idxrf1 = type.indexr().index_of(angular_momentum(l), order1);
-                ori += atom__.symmetry_class().o1_radial_integral(idxrf1, idxrf);
+                ori += rb.o1_radial_integral(idxrf1, idxrf);
             }
 
             for (int igkloc = 0; igkloc < kp_.num_gkvec_row(); igkloc++) {
@@ -617,10 +620,10 @@ Hamiltonian_k<T>::set_fv_h_o_apw_lo(Atom const& atom__, int ia__, int ispn__, md
 
         for (int order1 = 0; order1 < type.aw_order(l); order1++) {
             int xi1 = type.indexb().index_by_lm_order(lm, order1);
-            T ori   = atom__.symmetry_class().o_radial_integral(l, order, order1);
+            T ori   = rb.o_radial_integral(l, order, order1);
             if (H0_.ctx().valence_relativity() == relativity_t::iora) {
                 int idxrf1 = type.indexr().index_of(angular_momentum(l), order1);
-                ori += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1);
+                ori += rb.o1_radial_integral(idxrf, idxrf1);
             }
 
             for (int igkloc = 0; igkloc < kp_.num_gkvec_col(); igkloc++) {
@@ -651,6 +654,8 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(int ispn__, la::dmatrix<std::complex<T>>& h__
             if (ia == kp.lo_basis_descriptor_row(irow).ia) {
                 auto& atom = H0_.ctx().unit_cell().atom(ia);
 
+                auto const& rb = H0_.lapw_basis().radial_basis(atom_index_t::global(ia));
+
                 int lm1    = kp.lo_basis_descriptor_row(irow).lm;
                 int order1 = kp.lo_basis_descriptor_row(irow).order;
 
@@ -664,12 +669,12 @@ Hamiltonian_k<T>::set_fv_h_o_lo_lo(int ispn__, la::dmatrix<std::complex<T>>& h__
                     int order1 = kp.lo_basis_descriptor_row(irow).order;
                     int order2 = kp.lo_basis_descriptor_col(icol).order;
                     o__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
-                            atom.symmetry_class().o_radial_integral(l, order1, order2);
+                            rb.o_radial_integral(l, order1, order2);
                     if (H0_.ctx().valence_relativity() == relativity_t::iora) {
                         auto idxrf1 = atom.type().indexr().index_of(angular_momentum(l), order1);
                         auto idxrf2 = atom.type().indexr().index_of(angular_momentum(l), order2);
                         o__(kp.num_gkvec_row() + irow, kp.num_gkvec_col() + icol) +=
-                                atom.symmetry_class().o1_radial_integral(idxrf1, idxrf2);
+                                rb.o1_radial_integral(idxrf1, idxrf2);
                     }
                 }
             }
@@ -935,6 +940,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
+            auto const& rb = this->H0().lapw_basis().radial_basis(it.i);
+
             for (int j = 0; j < b__.size(); j++) {
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
@@ -946,7 +953,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         int xi = type.indexb_by_lm_order(lm_lo, order_aw);
                         o_apw_lo__.mt_coeffs(xi, aidx, wf::spin_index(0), wf::band_index(j)) +=
                                 phi__.mt_coeffs(ilo, aidx, wf::spin_index(0), wf::band_index(b__.begin() + j)) *
-                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo));
+                                static_cast<T>(rb.o_radial_integral(l_lo, order_aw, order_lo));
                     }
                 }
             }
@@ -986,6 +993,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
+            auto const& rb = this->H0().lapw_basis().radial_basis(it.i);
+
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
                 /* local orbital indices */
@@ -1002,7 +1011,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                         for (int i = 0; i < b__.size(); i++) {
                             ophi__.mt_coeffs(ilo, aidx, wf::spin_index(0), wf::band_index(b__.begin() + i)) +=
                                     phi__.mt_coeffs(jlo, aidx, wf::spin_index(0), wf::band_index(b__.begin() + i)) *
-                                    static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1));
+                                    static_cast<T>(rb.o_radial_integral(l_lo, order_lo, order1));
                         }
                     }
                 }
@@ -1071,6 +1080,8 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
 
             auto aidx = it.li;
 
+            auto const& rb = this->H0().lapw_basis().radial_basis(it.i);
+
             for (int ilo = 0; ilo < nlo; ilo++) {
                 int xi_lo = naw + ilo;
                 /* local orbital indices */
@@ -1081,7 +1092,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     /* lo-APW contribution to ophi */
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                         ophi__.mt_coeffs(ilo, aidx, wf::spin_index(0), wf::band_index(b__.begin() + i)) +=
-                                static_cast<T>(atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw)) *
+                                static_cast<T>(rb.o_radial_integral(l_lo, order_lo, order_aw)) *
                                 alm_phi__.mt_coeffs(type.indexb_by_lm_order(lm_lo, order_aw), aidx, wf::spin_index(0),
                                                     wf::band_index(i));
                     }
@@ -1227,7 +1238,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         }
 
         /* generate complex conjugated Alm coefficients for a block of atoms */
-        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na, kp_.alm_coeffs_loc());
+        auto alm = generate_alm_block<true, T>(ctx, atom_begin, na, kp_.alm_coeffs_loc(), this->H0().lapw_basis());
 
         /* if there is APW part */
         if (!phi_is_lo__) {

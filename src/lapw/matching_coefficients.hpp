@@ -17,6 +17,7 @@
 #include <gsl/gsl_sf_bessel.h>
 #include "unit_cell/unit_cell.hpp"
 #include "core/fft/gvec.hpp"
+#include "lapw/lapw_radial_basis.hpp"
 
 namespace sirius {
 
@@ -230,7 +231,7 @@ class Matching_coefficients // TODO: compute on GPU
      */
     template <bool conjugate, typename T, typename = std::enable_if_t<!std::is_scalar<T>::value>>
     void
-    generate(Atom const& atom__, mdarray<T, 2>& alm__) const
+    generate(Atom const& atom__, mdarray<T, 2>& alm__, lapw_radial_basis_t const& rb__) const
     {
         auto& type = atom__.type();
 
@@ -254,7 +255,7 @@ class Matching_coefficients // TODO: compute on GPU
             /* create matrix of radial derivatives */
             for (int order = 0; order < num_aw; order++) {
                 for (int dm = 0; dm < num_aw; dm++) {
-                    A(dm, order) = atom__.symmetry_class().aw_surface_deriv(l, order, dm);
+                    A(dm, order) = rb__.aw_surface_deriv(l, order, dm);
                 }
             }
 
@@ -335,7 +336,7 @@ class Matching_coefficients // TODO: compute on GPU
 
     /// Generate matching coefficients for all atoms.
     inline void
-    generate()
+    generate(LAPW_radial_basis const& rb__)
     {
         PROFILE("sirius::Matching_coefficients::generate");
 
@@ -355,7 +356,7 @@ class Matching_coefficients // TODO: compute on GPU
                                                       alm_all_atoms_.at(memory_t::host, 0, mt_aw_offset_[ia]),
                                                       mdarray_label("alm_atom"));
             /* generate conjugated LAPW matching coefficients on the CPU */
-            this->generate<true>(atom, alm_atom);
+            this->generate<true>(atom, alm_atom, rb__.radial_basis(atom_index_t::global(ia)));
         }
     }
 };

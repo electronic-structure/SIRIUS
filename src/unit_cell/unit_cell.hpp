@@ -249,12 +249,6 @@ class Unit_cell
     bool
     is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, double tp[2]) const;
 
-    void
-    generate_radial_functions(std::ostream& out__);
-
-    void
-    generate_radial_integrals();
-
     /// Get a simple simple chemical formula bases on the total unit cell.
     /** Atoms of each type are counted and packed in a string. For example, O2Ni2 or La2O4Cu */
     std::string

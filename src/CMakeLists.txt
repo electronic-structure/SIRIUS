@@ -52,7 +52,6 @@ set(_SOURCES
   "potential/check_xc_potential.cpp"
   "unit_cell/unit_cell.cpp"
   "unit_cell/atom_type.cpp"
-  "unit_cell/atom_symmetry_class.cpp"
   "symmetry/crystal_symmetry.cpp"
   "geometry/force.cpp"
   "geometry/stress.cpp"

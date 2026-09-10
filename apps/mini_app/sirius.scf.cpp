@@ -269,7 +269,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
         density.generate_paw_density();
         potential.generate(density, ctx.use_symmetry(), true);
         if (!ctx.full_potential()) {
-            Hamiltonian0<double> H0(potential, true);
+            Hamiltonian0<double> H0(potential);
             initialize_subspace(kset, H0);
         }
     } else {
@@ -534,10 +534,9 @@ run_k_point_path_task(cmd_args const& args, std::string const& fname)
 
     ks.initialize();
 
-    // density.initial_density();
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
-    Hamiltonian0<double> H0(potential, true);
+    Hamiltonian0<double> H0(potential, potential.create_lapw_basis());
     if (!ctx->full_potential()) {
         initialize_subspace(ks, H0);
         if (ctx->hubbard_correction()) {
@@ -610,8 +609,10 @@ run_plot_wf_task(cmd_args const& args, std::string const& fname)
     /* load density */
     density.load(storage_file_name);
     potential.generate(density, ctx->use_symmetry(), true);
+
+    auto lapw_basis = potential.create_lapw_basis();
     /* we need to create Hamiltonian to recompute radial functions */
-    Hamiltonian0<double> H0(potential, true);
+    Hamiltonian0<double> H0(potential, lapw_basis);
 
     bool const reduce_kp = ctx->use_symmetry() && ctx->cfg().parameters().use_ibz();
     K_point_set kset(*ctx, ctx->cfg().parameters().ngridk(), ctx->cfg().parameters().shiftk(), reduce_kp);
@@ -627,7 +628,7 @@ run_plot_wf_task(cmd_args const& args, std::string const& fname)
         r3::vector<double> rc = x * (ctx->unit_cell().lattice_vector(0) + ctx->unit_cell().lattice_vector(1) +
                                      ctx->unit_cell().lattice_vector(2));
         auto val = get_wave_function_value(*kset.get<double>(0), kset.get<double>(0)->spinor_wave_functions(), rc,
-                                           wf::band_index(0), wf::spin_index(0));
+                                           wf::band_index(0), wf::spin_index(0), *lapw_basis);
 
         t.push_back(rc.length());
         val_abs.push_back(std::abs(val));

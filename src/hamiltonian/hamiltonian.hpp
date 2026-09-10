@@ -20,8 +20,10 @@
 #include "core/typedefs.hpp"
 #include "core/fft/fft.hpp"
 #include "core/la/dmatrix.hpp"
+#include "function3d/spheric_function_set.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
+#include "lapw/lapw_radial_basis.hpp"
 
 namespace sirius {
 /* forward declaration */
@@ -68,8 +70,11 @@ class Hamiltonian0
     /// Alias for the potential.
     Potential* potential_{nullptr};
 
+    /// Pointer to LAPW radial basis.
+    std::shared_ptr<LAPW_radial_basis> lapw_basis_;
+
     /// Alias for unit cell.
-    Unit_cell& unit_cell_;
+    Unit_cell const& unit_cell_;
 
     /// Local part of the Hamiltonian operator.
     std::unique_ptr<Local_operator<T>> local_op_;
@@ -101,7 +106,7 @@ class Hamiltonian0
 
   public:
     /// Constructor.
-    Hamiltonian0(Potential& potential__, bool precompute_lapw__, bool update_lapw_rf__ = true);
+    Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radial_basis> lapw_basis__ = nullptr);
 
     ~Hamiltonian0();
 
@@ -166,6 +171,12 @@ class Hamiltonian0
         return this->rm2_inv_pw_(ig__);
     }
 
+    auto const&
+    lapw_basis() const
+    {
+        return *lapw_basis_;
+    }
+
     /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
     /** The following matrix is computed:
      *  \f[
@@ -181,7 +192,7 @@ class Hamiltonian0
 
     /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
     void
-    add_o1mt_to_apw(Atom const& atom__, int num_gkvec__,
+    add_o1mt_to_apw(Atom const& atom__, lapw_radial_basis_t const& rb__, int num_gkvec__,
                     mdarray<std::complex<T>, 2>& alm__) const; // TODO: documentation
 
     /// Apply muffin-tin part of magnetic filed to the wave-functions.

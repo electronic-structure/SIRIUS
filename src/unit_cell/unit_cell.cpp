@@ -508,87 +508,6 @@ Unit_cell::is_point_in_mt(r3::vector<double> vc, int& ja, int& jr, double& dr, d
     return false;
 }
 
-void
-Unit_cell::generate_radial_functions(std::ostream& out__)
-{
-    PROFILE("sirius::Unit_cell::generate_radial_functions");
-
-    for (auto it : spl_num_atom_symmetry_classes()) {
-        atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity());
-    }
-
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-        int rank = spl_num_atom_symmetry_classes().location(typename atom_symmetry_class_index_t::global(ic)).ib;
-        atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
-    }
-
-    if (parameters_.verbosity() >= 2) {
-        mpi::pstdout pout(comm_);
-        if (comm_.rank() == 0) {
-            pout << std::endl << "Linearization energies" << std::endl;
-        }
-
-        for (auto it : spl_num_atom_symmetry_classes()) {
-            atom_symmetry_class(it.i).write_enu(pout);
-        }
-        RTE_OUT(out__) << pout.flush(0);
-    }
-    if (parameters_.verbosity() >= 3) {
-        std::stringstream s;
-        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            s << "Atom symmetry class : " << ic << std::endl;
-            for (int l = 0; l < this->lmax_apw(); l++) {
-                for (int o = 0; o < atom_symmetry_class(ic).atom_type().aw_order(l); o++) {
-                    s << "l = " << l << ", o = " << o << ", deriv =";
-                    for (int m = 0; m <= 2; m++) {
-                        s << " " << atom_symmetry_class(ic).aw_surface_deriv(l, o, m);
-                    }
-                    s << std::endl;
-                }
-            }
-        }
-        RTE_OUT(out__) << s.str();
-    }
-}
-
-void
-Unit_cell::generate_radial_integrals()
-{
-    PROFILE("sirius::Unit_cell::generate_radial_integrals");
-
-    try {
-        for (auto it : spl_num_atom_symmetry_classes()) {
-            atom_symmetry_class(it.i).generate_radial_integrals(parameters_.valence_relativity());
-        }
-
-        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            int rank = spl_num_atom_symmetry_classes().location(typename atom_symmetry_class_index_t::global(ic)).ib;
-            atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
-        }
-    } catch (std::exception const& e) {
-        std::stringstream s;
-        s << e.what() << std::endl;
-        s << "Error in generating atom_symmetry_class radial integrals";
-        RTE_THROW(s);
-    }
-
-    try {
-        for (auto it : spl_num_atoms_) {
-            atom(it.i).generate_radial_integrals(parameters_.processing_unit(), mpi::Communicator::self());
-        }
-
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            int rank = spl_num_atoms().location(typename atom_index_t::global(ia)).ib;
-            atom(ia).sync_radial_integrals(comm_, rank);
-        }
-    } catch (std::exception const& e) {
-        std::stringstream s;
-        s << e.what() << std::endl;
-        s << "Error in generating atom radial integrals";
-        RTE_THROW(s);
-    }
-}
-
 std::string
 Unit_cell::chemical_formula() const
 {
@@ -661,11 +580,6 @@ Unit_cell::initialize()
     /* initialize atom types */
     for (int iat = 0; iat < num_atom_types(); iat++) {
         atom_type(iat).init();
-    }
-
-    /* initialize atoms */
-    for (int ia = 0; ia < num_atoms(); ia++) {
-        atom(ia).init();
     }
 
     init_paw();
