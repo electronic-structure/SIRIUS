@@ -355,28 +355,34 @@ Force::calc_forces_ewald()
 
     mdarray<std::complex<double>, 1> rho_tmp({ctx_.gvec().count()});
     rho_tmp.zero();
+    int igloc0 = ctx_.gvec().skip_g0();
+    int ngv    = ctx_.gvec().count();
     #pragma omp parallel for schedule(static)
-    for (auto it : skip_g0(ctx_.gvec())) {
+    for (int igloc = igloc0; igloc < ngv; igloc++) {
 
-        double g2 = std::pow(ctx_.gvec().gvec_len(it.igloc), 2);
+        auto ig = ctx_.gvec().global_index(gvec_index_t::local(igloc));
+
+        double g2 = std::pow(ctx_.gvec().gvec_len(gvec_index_t::local(igloc)), 2);
 
         std::complex<double> rho(0, 0);
 
         for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
-            rho += ctx_.gvec_phase_factor(it.ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
+            rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
         }
 
-        rho_tmp[it.igloc] = prefac * std::conj(rho) * std::exp(-g2 / (4 * alpha)) / g2;
+        rho_tmp[igloc] = prefac * std::conj(rho) * std::exp(-g2 / (4 * alpha)) / g2;
     }
 
     #pragma omp parallel for
     for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
-        for (auto it : skip_g0(ctx_.gvec())) {
+        for (int igloc = igloc0; igloc < ngv; igloc++) {
+
+            auto ig = ctx_.gvec().global_index(gvec_index_t::local(igloc));
 
             /* cartesian coordinates for getting cartesian force components */
-            auto gvec_cart = ctx_.gvec().gvec_cart(it.igloc);
+            auto gvec_cart = ctx_.gvec().gvec_cart(gvec_index_t::local(igloc));
 
-            double scalar_part = (rho_tmp[it.igloc] * ctx_.gvec_phase_factor(it.ig, ja)).imag() *
+            double scalar_part = (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
                                  static_cast<double>(unit_cell.atom(ja).zn());
 
             for (int x : {0, 1, 2}) {

@@ -23,10 +23,11 @@ generate_gvec_ylm(Simulation_context const& ctx__, int lmax__)
     PROFILE("sirius::generate_gvec_ylm");
 
     mdarray<std::complex<double>, 2> gvec_ylm({sf::lmmax(lmax__), ctx__.gvec().count()}, mdarray_label("gvec_ylm"));
+    int ngv = ctx__.gvec().count();
     #pragma omp parallel for schedule(static)
-    for (auto it : ctx__.gvec()) {
-        auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart(it.igloc));
-        sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, it.igloc));
+    for (int igloc = 0; igloc < ngv; igloc++) {
+        auto rtp = r3::spherical_coordinates(ctx__.gvec().gvec_cart(gvec_index_t::local(igloc)));
+        sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;
 }

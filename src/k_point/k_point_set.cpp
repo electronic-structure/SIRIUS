@@ -451,11 +451,13 @@ K_point_set::find_band_occupancies()
     auto emin = std::numeric_limits<double>::max();
     auto emax = std::numeric_limits<double>::lowest();
 
+    int nkp_loc = spl_num_kpoints_.local_size();
     #pragma omp parallel for reduction(min : emin) reduction(max : emax)
-    for (auto it : spl_num_kpoints_) {
+    for (int ikloc = 0; ikloc < nkp_loc; ikloc++) {
+        int ik = spl_num_kpoints_.global_index(kp_index_t::local(ikloc));
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            emin = std::min(emin, this->get<T>(it.i)->band_energy(0, ispn));
-            emax = std::max(emax, this->get<T>(it.i)->band_energy(ctx_.num_bands() - 1, ispn));
+            emin = std::min(emin, this->get<T>(ik)->band_energy(0, ispn));
+            emax = std::max(emax, this->get<T>(ik)->band_energy(ctx_.num_bands() - 1, ispn));
         }
     }
     this->comm().allreduce<double, mpi::op_t::min>(&emin, 1);
