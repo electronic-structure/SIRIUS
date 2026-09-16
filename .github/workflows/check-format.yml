@@ -9,7 +9,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    container: zhongruoyu/llvm-ports:18.1.8-slim-bullseye
+    container: zhongruoyu/llvm-ports:18.1.8-slim-bookworm
     steps:
       - uses: actions/checkout@v4
       - name: Check .cpp and .hpp files

@@ -9,7 +9,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    container: zhongruoyu/llvm-ports:18.1.8-slim-bullseye
+    container: zhongruoyu/llvm-ports:18.1.8-slim-bookworm
     steps:
       - uses: actions/checkout@v4
       - name: Check API generation
@@ -17,7 +17,7 @@ jobs:
           cd ./src/api
           apt update
           apt install -y python3-pip
-          python3 -m pip install PyYAML
+          python3 -m pip install --break-system-packages PyYAML
           python3 generate_api.py sirius_api.cpp
 
 
