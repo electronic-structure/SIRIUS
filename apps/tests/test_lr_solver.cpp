@@ -207,7 +207,7 @@ solve_lr(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& pot__
         kp.band_occupancy(i, 0, 2);
     }
     /* create k-point independent Hamiltonian */
-    Hamiltonian0<T> H0(pot__, true);
+    Hamiltonian0<T> H0(pot__);
     auto Hk = H0(kp);
     /* initialize kp.spinor_wave_functions */
     sirius::initialize_subspace<T, std::complex<F>>(Hk, kp, ctx__.unit_cell().num_ps_atomic_wf().first);

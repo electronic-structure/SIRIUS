@@ -9,15 +9,16 @@
 #include "dftd3_correction.hpp"
 
 namespace sirius {
-dftd3::dftd3(Simulation_context& ctx__, Unit_cell& unit_cell__)
+dftd3::dftd3(Simulation_context& ctx__, Unit_cell const& unit_cell__)
     : ctx_(ctx__)
     , unit_cell_(unit_cell__)
 {
 #ifndef SIRIUS_USE_DFTD3
     RTE_THROW("SIRIUS is compiled without dft-d3 support");
 #endif
-    if (!ctx_.cfg().parameters().dftd3_correction())
+    if (!ctx_.cfg().parameters().dftd3_correction()) {
         return;
+    }
 
     xc_method_ = ctx_.cfg().dftd3().method();
 

@@ -9,7 +9,7 @@
 #include "dftd4_correction.hpp"
 
 namespace sirius {
-dftd4::dftd4(Simulation_context& ctx__, Unit_cell& unit_cell__)
+dftd4::dftd4(Simulation_context& ctx__, Unit_cell const& unit_cell__)
     : ctx_(ctx__)
     , unit_cell_(unit_cell__)
 {

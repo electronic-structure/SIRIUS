@@ -33,7 +33,7 @@ class dftd3
 {
   private:
     Simulation_context& ctx_;
-    Unit_cell& unit_cell_;
+    Unit_cell const& unit_cell_;
     // cartesian coordinates of the atoms in bohr
     std::vector<double> atom_positions_;
     // lattice vectors in bohr
@@ -55,7 +55,7 @@ class dftd3
     dftd3_param param_{nullptr};
 
   public:
-    dftd3(Simulation_context& ctx__, Unit_cell& unit_cell__);
+    dftd3(Simulation_context& ctx__, Unit_cell const& unit_cell__);
 
     /* forbid assignment operator */
     dftd3&
