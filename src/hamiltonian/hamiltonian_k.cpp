@@ -943,7 +943,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
             auto aidx  = atom_index_t::local(ialoc);
-            auto ia     = spl_atoms.global_index(aidx);
+            auto ia    = spl_atoms.global_index(aidx);
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
@@ -1080,7 +1080,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         #pragma omp parallel for
         for (int ialoc = 0; ialoc < nat_loc; ialoc++) {
             auto aidx  = atom_index_t::local(ialoc);
-            auto ia     = spl_atoms.global_index(aidx);
+            auto ia    = spl_atoms.global_index(aidx);
             auto& atom = ctx.unit_cell().atom(ia);
             auto& type = atom.type();
             int naw    = type.mt_aw_basis_size();
