@@ -15,6 +15,7 @@
 #include "xc_functional.hpp"
 #include "lapw/generate_gvec_ylm.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
+#include "lapw/lapw_radial_basis.hpp"
 #include "symmetry/symmetrize_field4d.hpp"
 #include "dft/energy.hpp"
 #include "core/power.hpp"
@@ -154,11 +155,11 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     if (ctx_.cfg().parameters().dftd3_correction()) {
-        dftd3_ = std::make_unique<dftd3>(new dftd3(ctx_, unit_cell_));
+        dftd3_ = std::make_unique<dftd3>(ctx_, unit_cell_);
     }
 
     if (ctx_.cfg().parameters().dftd4_correction()) {
-        dftd4_ = std::make_unique<dftd4>(new dftd4(ctx_, unit_cell_));
+        dftd4_ = std::make_unique<dftd4>(ctx_, unit_cell_);
     }
 
     update();
@@ -434,34 +435,6 @@ Potential::get_spherical_potential() const
     return vs;
 }
 
-void
-Potential::update_atomic_potential()
-{
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-        int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
-        int nmtp = unit_cell_.atom(ia).num_mt_points();
-
-        std::vector<double> veff(nmtp);
-
-        for (int ir = 0; ir < nmtp; ir++) {
-            veff[ir] = y00 * effective_potential().mt()[ia](0, ir);
-        }
-
-        unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
-    }
-
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        double* veff = &effective_potential().mt()[ia](0, 0);
-
-        double* beff[] = {nullptr, nullptr, nullptr};
-        for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            beff[i] = &effective_magnetic_field(i).mt()[ia](0, 0);
-        }
-
-        unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
-    }
-}
-
 mdarray<std::complex<double>, 2>
 Potential::poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__) const
 {
@@ -480,6 +453,16 @@ Potential::poisson_vmt(Spheric_function_set<double, atom_index_t> const& rhomt__
 
     ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
     return qmt;
+}
+
+std::shared_ptr<LAPW_radial_basis>
+Potential::create_lapw_basis() const
+{
+    if (!ctx_.full_potential()) {
+        return nullptr;
+    }
+
+    return std::make_shared<LAPW_radial_basis>(unit_cell_, ctx_.valence_relativity(), this->get_spherical_potential());
 }
 
 } // namespace sirius

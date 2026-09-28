@@ -29,15 +29,14 @@ read_atom(cmd_args const& args__)
     atype.init();
 
     if (params.full_potential()) {
-        Atom_symmetry_class a1(0, atype);
         std::vector<double> veff(atype.radial_grid().num_points());
         for (int i = 0; i < atype.radial_grid().num_points(); i++) {
             veff[i] = -atype.zn() / atype.radial_grid().x(i);
         }
-        a1.set_spherical_potential(veff);
-
-        a1.generate_radial_functions(relativity_t::none);
-        a1.check_lo_linear_independence(1e-5);
+        lapw_radial_basis_t rb{atype, relativity_t::none, veff};
+        rb.find_enu();
+        rb.generate_radial_functions();
+        rb.check_lo_linear_independence(1e-5);
     }
     return 0;
 }

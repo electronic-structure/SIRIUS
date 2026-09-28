@@ -2680,7 +2680,7 @@ sirius_initialize_subspace(void* const* gs_handler__, void* const* ks_handler__,
             [&]() {
                 auto& gs = get_gs(gs_handler__);
                 auto& ks = get_ks(ks_handler__);
-                Hamiltonian0<double> H0(gs.potential(), true);
+                Hamiltonian0<double> H0(gs.potential());
                 initialize_subspace(ks, H0);
             },
             error_code__);
@@ -2741,16 +2741,16 @@ sirius_find_eigen_states(void* const* gs_handler__, void* const* ks_handler__, b
                 //if (precompute_pw__ && *precompute_pw__) {
                 //    gs.potential().generate_pw_coefs();
                 //}
-                if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
-                    gs.potential().update_atomic_potential();
-                }
-                if (precompute_rf__ && *precompute_rf__) {
-                    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
-                }
-                if (precompute_ri__ && *precompute_ri__) {
-                    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
-                }
-                Hamiltonian0<double> H0(gs.potential(), false);
+                //if ((precompute_rf__ && *precompute_rf__) || (precompute_ri__ && *precompute_ri__)) {
+                //    gs.potential().update_atomic_potential();
+                //}
+                //if (precompute_rf__ && *precompute_rf__) {
+                //    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_functions(gs.ctx().out());
+                //}
+                //if (precompute_ri__ && *precompute_ri__) {
+                //    const_cast<Unit_cell&>(gs.ctx().unit_cell()).generate_radial_integrals();
+                //}
+                Hamiltonian0<double> H0(gs.potential(), gs.potential().create_lapw_basis());
                 diagonalize<double, double>(H0, ks, tol, steps);
             },
             error_code__);
@@ -2858,7 +2858,8 @@ sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool 
                 if (paw_only) {
                     gs.density().generate_paw_density();
                 } else {
-                    gs.density().generate<double>(gs.k_point_set(), gs.ctx().use_symmetry(), add_core, transform_to_rg);
+                    gs.density().generate<double>(gs.k_point_set(), *gs.potential().create_lapw_basis(),
+                                                  gs.ctx().use_symmetry(), add_core, transform_to_rg);
                 }
             },
             error_code__);
@@ -4178,33 +4179,33 @@ sirius_set_h_radial_integrals(void* const* handler__, int* ia__, int* lmmax__, d
 {
     call_sirius(
             [&]() {
-                auto& sim_ctx = get_sim_ctx(handler__);
-                int ia        = *ia__ - 1;
-                int idxrf1{-1};
-                int idxrf2{-1};
-                if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
-                    (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
-                    RTE_THROW("wrong combination of radial function indices");
-                }
-                if (l1__ != nullptr && o1__ != nullptr) {
-                    idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
-                } else if (ilo1__ != nullptr) {
-                    idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
-                } else {
-                    RTE_THROW("1st radial function index is not valid");
-                }
+                //auto& sim_ctx = get_sim_ctx(handler__);
+                //int ia        = *ia__ - 1;
+                //int idxrf1{-1};
+                //int idxrf2{-1};
+                //if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
+                //    (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
+                //    RTE_THROW("wrong combination of radial function indices");
+                //}
+                //if (l1__ != nullptr && o1__ != nullptr) {
+                //    idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
+                //} else if (ilo1__ != nullptr) {
+                //    idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+                //} else {
+                //    RTE_THROW("1st radial function index is not valid");
+                //}
 
-                if (l2__ != nullptr && o2__ != nullptr) {
-                    idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *o2__ - 1);
-                } else if (ilo2__ != nullptr) {
-                    idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
-                } else {
-                    RTE_THROW("2nd radial function index is not valid");
-                }
+                //if (l2__ != nullptr && o2__ != nullptr) {
+                //    idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *o2__ - 1);
+                //} else if (ilo2__ != nullptr) {
+                //    idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+                //} else {
+                //    RTE_THROW("2nd radial function index is not valid");
+                //}
 
-                for (int lm = 0; lm < *lmmax__; lm++) {
-                    sim_ctx.unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[lm] = val__[lm];
-                }
+                //for (int lm = 0; lm < *lmmax__; lm++) {
+                //    sim_ctx.unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[lm] = val__[lm];
+                //}
             },
             error_code__);
 }
@@ -4257,37 +4258,37 @@ sirius_set_o_radial_integral(void* const* handler__, int* ia__, double* val__, i
                              int* o2__, int* ilo2__, int* error_code__)
 {
 
-    call_sirius(
-            [&]() {
-                auto& sim_ctx = get_sim_ctx(handler__);
-                int ia        = *ia__ - 1;
-                if ((o1__ != nullptr && ilo1__ != nullptr) || (o2__ != nullptr && ilo2__ != nullptr)) {
-                    RTE_THROW("wrong combination of radial function indices");
-                }
+    //call_sirius(
+    //        [&]() {
+    //            auto& sim_ctx = get_sim_ctx(handler__);
+    //            int ia        = *ia__ - 1;
+    //            if ((o1__ != nullptr && ilo1__ != nullptr) || (o2__ != nullptr && ilo2__ != nullptr)) {
+    //                RTE_THROW("wrong combination of radial function indices");
+    //            }
 
-                if (o1__ != nullptr && ilo2__ != nullptr) {
-                    int idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
-                    int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
-                    sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, *o1__ - 1, order2,
-                                                                                        *val__);
-                }
+    //            if (o1__ != nullptr && ilo2__ != nullptr) {
+    //                int idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    //                int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
+    //                sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, *o1__ - 1, order2,
+    //                                                                                    *val__);
+    //            }
 
-                if (o2__ != nullptr && ilo1__ != nullptr) {
-                    int idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
-                    int order1 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf1).order;
-                    sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, *o2__ - 1,
-                                                                                        *val__);
-                }
+    //            if (o2__ != nullptr && ilo1__ != nullptr) {
+    //                int idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    //                int order1 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf1).order;
+    //                sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, *o2__ - 1,
+    //                                                                                    *val__);
+    //            }
 
-                if (ilo1__ != nullptr && ilo2__ != nullptr) {
-                    int idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
-                    int order1 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf1).order;
-                    int idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
-                    int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
-                    sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, order2, *val__);
-                }
-            },
-            error_code__);
+    //            if (ilo1__ != nullptr && ilo2__ != nullptr) {
+    //                int idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    //                int order1 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf1).order;
+    //                int idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    //                int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
+    //                sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, order2, *val__);
+    //            }
+    //        },
+    //        error_code__);
 }
 
 /*
@@ -4341,34 +4342,34 @@ void
 sirius_set_o1_radial_integral(void* const* handler__, int* ia__, double* val__, int* l1__, int* o1__, int* ilo1__,
                               int* l2__, int* o2__, int* ilo2__, int* error_code__)
 {
-    call_sirius(
-            [&]() {
-                auto& sim_ctx = get_sim_ctx(handler__);
-                int ia        = *ia__ - 1;
-                int idxrf1{-1};
-                int idxrf2{-1};
-                if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
-                    (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
-                    RTE_THROW("wrong combination of radial function indices");
-                }
-                if (l1__ != nullptr && o1__ != nullptr) {
-                    idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
-                } else if (ilo1__ != nullptr) {
-                    idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
-                } else {
-                    RTE_THROW("1st radial function index is not valid");
-                }
+    //call_sirius(
+    //        [&]() {
+    //            auto& sim_ctx = get_sim_ctx(handler__);
+    //            int ia        = *ia__ - 1;
+    //            int idxrf1{-1};
+    //            int idxrf2{-1};
+    //            if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
+    //                (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
+    //                RTE_THROW("wrong combination of radial function indices");
+    //            }
+    //            if (l1__ != nullptr && o1__ != nullptr) {
+    //                idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
+    //            } else if (ilo1__ != nullptr) {
+    //                idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    //            } else {
+    //                RTE_THROW("1st radial function index is not valid");
+    //            }
 
-                if (l2__ != nullptr && o2__ != nullptr) {
-                    idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *o2__ - 1);
-                } else if (ilo2__ != nullptr) {
-                    idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
-                } else {
-                    RTE_THROW("2nd radial function index is not valid");
-                }
-                sim_ctx.unit_cell().atom(ia).symmetry_class().set_o1_radial_integral(idxrf1, idxrf2, *val__);
-            },
-            error_code__);
+    //            if (l2__ != nullptr && o2__ != nullptr) {
+    //                idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *o2__ - 1);
+    //            } else if (ilo2__ != nullptr) {
+    //                idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    //            } else {
+    //                RTE_THROW("2nd radial function index is not valid");
+    //            }
+    //            sim_ctx.unit_cell().atom(ia).symmetry_class().set_o1_radial_integral(idxrf1, idxrf2, *val__);
+    //        },
+    //        error_code__);
 }
 
 /*
@@ -4414,45 +4415,45 @@ void
 sirius_set_radial_function(void* const* handler__, int const* ia__, int const* deriv_order__, double const* f__,
                            int const* l__, int const* o__, int const* ilo__, int* error_code__)
 {
-    call_sirius(
-            [&]() {
-                auto& sim_ctx = get_sim_ctx(handler__);
+    //call_sirius(
+    //        [&]() {
+    //            auto& sim_ctx = get_sim_ctx(handler__);
 
-                int ia = *ia__ - 1;
+    //            int ia = *ia__ - 1;
 
-                auto& atom = sim_ctx.unit_cell().atom(ia);
-                int n      = atom.num_mt_points();
+    //            auto& atom = sim_ctx.unit_cell().atom(ia);
+    //            int n      = atom.num_mt_points();
 
-                if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
-                    RTE_THROW("wrong combination of radial function indices");
-                }
-                if (!(*deriv_order__ == 0 || *deriv_order__ == 1)) {
-                    RTE_THROW("wrond radial derivative order");
-                }
+    //            if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
+    //                RTE_THROW("wrong combination of radial function indices");
+    //            }
+    //            if (!(*deriv_order__ == 0 || *deriv_order__ == 1)) {
+    //                RTE_THROW("wrond radial derivative order");
+    //            }
 
-                int idxrf{-1};
-                if (l__ != nullptr && o__ != nullptr) {
-                    idxrf = atom.type().indexr_by_l_order(*l__, *o__ - 1);
-                } else if (ilo__ != nullptr) {
-                    idxrf = atom.type().indexr_by_idxlo(*ilo__ - 1);
-                } else {
-                    RTE_THROW("radial function index is not valid");
-                }
+    //            int idxrf{-1};
+    //            if (l__ != nullptr && o__ != nullptr) {
+    //                idxrf = atom.type().indexr_by_l_order(*l__, *o__ - 1);
+    //            } else if (ilo__ != nullptr) {
+    //                idxrf = atom.type().indexr_by_idxlo(*ilo__ - 1);
+    //            } else {
+    //                RTE_THROW("radial function index is not valid");
+    //            }
 
-                if (*deriv_order__ == 0) {
-                    atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + n));
-                } else {
-                    std::vector<double> f(n);
-                    for (int ir = 0; ir < n; ir++) {
-                        f[ir] = f__[ir] * atom.type().radial_grid()[ir];
-                    }
-                    atom.symmetry_class().radial_function_derivative(idxrf, f);
-                }
-                if (l__ != nullptr && o__ != nullptr) {
-                    atom.symmetry_class().aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
-                }
-            },
-            error_code__);
+    //            if (*deriv_order__ == 0) {
+    //                atom.symmetry_class().radial_function(idxrf, std::vector<double>(f__, f__ + n));
+    //            } else {
+    //                std::vector<double> f(n);
+    //                for (int ir = 0; ir < n; ir++) {
+    //                    f[ir] = f__[ir] * atom.type().radial_grid()[ir];
+    //                }
+    //                atom.symmetry_class().radial_function_derivative(idxrf, f);
+    //            }
+    //            if (l__ != nullptr && o__ != nullptr) {
+    //                atom.symmetry_class().aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
+    //            }
+    //        },
+    //        error_code__);
 }
 
 /*
@@ -4503,12 +4504,12 @@ sirius_update_atomic_potential:
 void
 sirius_update_atomic_potential(void* const* gs_handler__, int* error_code__)
 {
-    call_sirius(
-            [&]() {
-                auto& gs = get_gs(gs_handler__);
-                gs.potential().update_atomic_potential();
-            },
-            error_code__);
+    //call_sirius(
+    //        [&]() {
+    //            auto& gs = get_gs(gs_handler__);
+    //            gs.potential().update_atomic_potential();
+    //        },
+    //        error_code__);
 }
 
 /*
@@ -6982,8 +6983,8 @@ sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* e
                 // We assume that the GS density is up to date
                 bool transform_to_rg{true};
                 gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), transform_to_rg);
-                bool precompute_lapw{false};
-                *H0_handler__ = new any_ptr(new Hamiltonian0<double>(gs.potential(), precompute_lapw));
+                *H0_handler__ =
+                        new any_ptr(new Hamiltonian0<double>(gs.potential(), gs.potential().create_lapw_basis()));
             },
             error_code__);
 }

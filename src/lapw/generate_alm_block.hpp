@@ -18,7 +18,7 @@ namespace sirius {
 template <bool conjugate, typename T>
 auto
 generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_atoms__,
-                   Matching_coefficients const& alm__)
+                   Matching_coefficients const& alm__, LAPW_radial_basis const& lapw_basis__)
 {
     PROFILE("sirius::generate_alm_block");
 
@@ -62,8 +62,9 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
         int tid = omp_get_thread_num();
         #pragma omp for schedule(static, 1)
         for (int i = 0; i < num_atoms__; i++) {
-            auto& atom = ctx__.unit_cell().atom(atom_begin__ + i);
-            auto& type = atom.type();
+            auto& atom     = ctx__.unit_cell().atom(atom_begin__ + i);
+            auto& type     = atom.type();
+            auto const& rb = lapw_basis__.radial_basis(atom_index_t::global(atom_begin__ + i));
             /* wrap matching coefficients of a single atom */
             mdarray<std::complex<T>, 2> alm_atom;
             switch (ctx__.processing_unit()) {
@@ -93,7 +94,7 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
                 }
             } else {
                 /* generate LAPW matching coefficients on the CPU */
-                alm__.template generate<conjugate>(atom, alm_atom);
+                alm__.template generate<conjugate>(atom, alm_atom, rb);
             }
             if (ctx__.processing_unit() == device_t::GPU) {
                 alm_atom.copy_to(memory_t::device, acc::stream_id(tid));
