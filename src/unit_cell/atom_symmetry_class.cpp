@@ -13,6 +13,7 @@
 
 #include "atom_symmetry_class.hpp"
 #include "core/la/eigensolver.hpp"
+#include "radial/radial_core_solver.hpp"
 
 namespace sirius {
 
@@ -80,8 +81,6 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 {
     int nmtp = atom_type_.num_mt_points();
 
-    Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
-
     struct compute_all_orders_result
     {
         bool success{false};
@@ -103,7 +102,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
 
             try {
                 /* integrate radial equation forward and find radial solution */
-                auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift);
+                auto result = solve_radial(rel__, rsd.dme, rsd.l, rsd.enu + enu_shift);
                 for (int ir = 0; ir < nmtp; ir++) {
                     rf__(ir, idxrf, 0) = result.p[ir];
                     rf__(ir, idxrf, 1) = result.rdudr[ir];
@@ -186,7 +185,7 @@ Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__, mdarray<do
         compute_all_orders_result r;
         /* Enu for this level was searched; this should not produce degenerate radial functions */
         double e_shift{0.0};
-        if (rsd.auto_enu) {
+        if (rsd.auto_enu || !spherical_xc_derivatives_[0].empty()) {
             r = compute_all_orders(l, e_shift);
         } else {
             /* for high l values, Enu is typically set in the species files and is not searched;
@@ -240,9 +239,8 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
 {
     int nmtp = atom_type_.num_mt_points();
 
-    Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
-
     bool found{true};
+    std::vector<std::string> errors(num_lo_descriptors());
 
     #pragma omp parallel for schedule(dynamic, 1)
     for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
@@ -260,7 +258,13 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         for (int irf = 0; irf < num_rf; irf++) {
             auto rsd = lo_descriptor(idxlo).rsd_set[irf];
 
-            auto result = solver.solve(rel__, rsd.dme, rsd.l, rsd.enu);
+            radial_solver_result_t result;
+            try {
+                result = solve_radial(rel__, rsd.dme, rsd.l, rsd.enu);
+            } catch (std::exception const& e) {
+                errors[idxlo] = e.what();
+                break;
+            }
 
             u[irf]     = result.p;
             rdudr[irf] = result.rdudr;
@@ -277,6 +281,9 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
             }
         }
 
+        if (!errors[idxlo].empty()) {
+            continue;
+        }
         double b[]    = {0, 0, 0};
         b[num_rf - 1] = 1.0;
 
@@ -354,6 +361,11 @@ Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__, mdarray<do
         }
     }
 
+    for (auto const& error : errors) {
+        if (!error.empty()) {
+            RTE_THROW(error);
+        }
+    }
     if (found && atom_type_.parameters().cfg().control().verification() > 0 && num_lo_descriptors() > 0) {
         check_lo_linear_independence(0.0001);
     }
@@ -503,6 +515,116 @@ Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
     spherical_potential_ = vs__;
 }
 
+void
+Atom_symmetry_class::set_spherical_xc_derivatives(std::array<std::vector<double>, 2> const& fields__)
+{
+    for (auto const& field : fields__) {
+        if (field.size() != fields__[0].size() || (!field.empty() && field.size() != atom_type_.num_mt_points()) ||
+            !std::all_of(field.begin(), field.end(), [](double x) { return std::isfinite(x); })) {
+            RTE_THROW("invalid spherical XC derivatives");
+        }
+    }
+    spherical_xc_derivatives_ = fields__;
+}
+
+radial_solver_result_t
+Atom_symmetry_class::solve_radial(relativity_t rel__, int dme__, int l__, double energy__) const
+{
+    bool has_core{false};
+    for (int i = 0; i < atom_type_.num_atomic_levels(); i++) {
+        auto const& level = atom_type_.atomic_level(i);
+        has_core |= level.core && level.occupancy > 0 && level.l == l__;
+    }
+    // Other angular channels are already orthogonal to the core by symmetry.
+    // Their auxiliary basis can retain the ordinary local radial equation.
+    if (spherical_xc_derivatives_[0].empty() || !has_core) {
+        Radial_solver solver(atom_type_.zn(), spherical_potential_, atom_type_.radial_grid());
+        return solver.solve(rel__, dme__, l__, energy__);
+    }
+    if (rel__ != relativity_t::none) {
+        RTE_THROW("XC-dependent LAPW radial functions require nonrelativistic states");
+    }
+    std::vector<double> extra;
+    auto const& grid = atom_type_.radial_grid();
+    std::ostringstream errors;
+    for (int step = 0; step < 16; step++) {
+        Radial_core_solver coarse(grid, l__, atom_type_.zn(), spherical_potential_, 64, 0, true, extra);
+        auto previous =
+                coarse.solve_at_energy(dme__, energy__, spherical_xc_derivatives_[0], spherical_xc_derivatives_[1]);
+        auto points = coarse.breakpoints();
+        auto trial  = extra;
+        for (size_t j = 1; j < points.size(); j++) {
+            trial.push_back(0.5 * (points[j - 1] + points[j]));
+        }
+        if (64 + trial.size() > 1024) {
+            break;
+        }
+        Radial_core_solver fine(grid, l__, atom_type_.zn(), spherical_potential_, 64, 0, true, trial);
+        auto result = fine.solve_at_energy(dme__, energy__, spherical_xc_derivatives_[0], spherical_xc_derivatives_[1]);
+        // The radial basis is normalized by its caller. Compare its shape, not
+        // the arbitrary boundary normalization, which is ill-conditioned near poles.
+        Spline<double> coarse_norm(grid), fine_norm(grid), overlap(grid);
+        for (int ir = 0; ir < grid.num_points(); ir++) {
+            coarse_norm(ir) = previous.p[ir] * previous.p[ir];
+            fine_norm(ir)   = result.p[ir] * result.p[ir];
+            overlap(ir)     = previous.p[ir] * result.p[ir];
+        }
+        double nc = coarse_norm.interpolate().integrate(0), nf = fine_norm.interpolate().integrate(0);
+        double cross = overlap.interpolate().integrate(0);
+        if (!std::isfinite(nc) || !std::isfinite(nf) || !std::isfinite(cross) || nc <= 0 || nf <= 0) {
+            RTE_THROW("invalid radial basis normalization");
+        }
+        double coarse_scale = std::copysign(1.0 / std::sqrt(nc), cross), fine_scale = 1.0 / std::sqrt(nf);
+        double error{0};
+        int part{0};
+        std::vector<double> indicators(points.size() - 1, 0);
+        for (auto fields : {std::make_pair(&result.p, &previous.p), std::make_pair(&result.rdudr, &previous.rdudr)}) {
+            Spline<double> norm(grid), difference(grid);
+            for (int ir = 0; ir < grid.num_points(); ir++) {
+                norm(ir)       = std::pow(fine_scale * (*fields.first)[ir], 2);
+                difference(ir) = std::pow(fine_scale * (*fields.first)[ir] - coarse_scale * (*fields.second)[ir], 2);
+            }
+            double norm2       = norm.interpolate().integrate(0);
+            double difference2 = difference.interpolate().integrate(0);
+            if (!std::isfinite(norm2) || !std::isfinite(difference2) || norm2 <= 0 || difference2 < 0) {
+                RTE_THROW("invalid radial basis refinement norm");
+            }
+            // Resolve orbital values more tightly than sampled slopes, whose
+            // refinement is limited by the discrete XC response at the MT boundary.
+            double tolerance = part++ ? 1e-5 : 1e-7;
+            error            = std::max(error, std::sqrt(difference2 / norm2) / tolerance);
+            for (int ir = 0; ir < grid.num_points(); ir++) {
+                size_t interval =
+                        std::min(points.size() - 2,
+                                 size_t(std::upper_bound(points.begin(), points.end(), grid[ir]) - points.begin() - 1));
+                double h = 0.5 * ((ir ? grid[ir] - grid[ir - 1] : 0) +
+                                  (ir + 1 < grid.num_points() ? grid[ir + 1] - grid[ir] : 0));
+                indicators[interval] += h * difference(ir) / (norm2 * tolerance * tolerance);
+            }
+        }
+        errors << " basis=" << fine.size() << " error=" << error;
+        if (std::isfinite(error) && error <= 1) {
+            return result;
+        }
+        // Estimate error on a uniformly enriched space, but retain new knots only
+        // in the intervals carrying most of it. XC response can be sharply localized.
+        std::vector<size_t> order(indicators.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return indicators[a] > indicators[b]; });
+        double total = std::accumulate(indicators.begin(), indicators.end(), 0.0), marked{0};
+        for (auto j : order) {
+            extra.push_back(0.5 * (points[j] + points[j + 1]));
+            marked += indicators[j];
+            if (marked >= 0.8 * total) {
+                break;
+            }
+        }
+    }
+    RTE_THROW("XC-dependent LAPW radial functions did not converge for l=" + std::to_string(l__) +
+              " dme=" + std::to_string(dme__) + " energy=" + std::to_string(energy__) + ":" + errors.str());
+    return {};
+}
+
 int
 Atom_symmetry_class::find_enu(relativity_t rel__)
 {
@@ -588,6 +710,9 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
     }
 
     auto ierr_aw = generate_aw_radial_functions(rel__, rf, sd);
+    if (ierr_aw && !spherical_xc_derivatives_[0].empty()) {
+        RTE_THROW("XC-dependent LAPW radial basis construction failed");
+    }
     if (ierr_aw) {
         std::stringstream s;
         s << "generate_aw_radial_functions() failed for atom class " << id_;
@@ -629,9 +754,8 @@ Atom_symmetry_class::generate_radial_functions(relativity_t rel__, bool update_e
 void
 Atom_symmetry_class::sync_radial_functions(mpi::Communicator const& comm__, int const rank__)
 {
-    /* don't broadcast Hamiltonian radial functions, because they are used locally */
-    int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
+    // Kinetic-density and XC matrix elements need both R and rR' on every rank.
+    comm__.bcast(radial_functions_.at(memory_t::host), static_cast<int>(radial_functions_.size()), rank__);
     comm__.bcast(surface_derivatives_.at(memory_t::host), (int)surface_derivatives_.size(), rank__);
 }
 

@@ -2066,7 +2066,13 @@ sirius_add_atom_type_radial_function:
     label:
       type: string
       attr: in, required
-      doc: Label of the radial function.
+      doc: >
+        Label of the radial function. ae_paw_core_tau supplies setup-consistent,
+        spin-summed positive core kinetic density in bohr^-5, including occupations
+        and the factor 1/2, without a radial Jacobian or spherical-harmonic factor.
+        ps_core_tau supplies the distinct pseudo-core tau for ordinary meta-GGA
+        nonlinear core corrections in the same units and spin convention.
+        Supply either field after the radial grid, with a value at every grid point.
     rf:
       type: double
       attr: in, required, dimension(num_points)
@@ -2160,6 +2166,16 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                     type.add_ps_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
                 } else if (label == "ae_paw_core") {
                     type.paw_ae_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+                } else if (label == "ae_paw_core_tau") {
+                    if (*num_points__ <= 0) {
+                        RTE_THROW("PAW core kinetic density must have a nonempty radial grid");
+                    }
+                    type.paw_ae_core_kinetic_density(std::vector<double>(rf__, rf__ + *num_points__));
+                } else if (label == "ps_core_tau") {
+                    if (*num_points__ <= 0) {
+                        RTE_THROW("pseudo-core kinetic density must have a nonempty radial grid");
+                    }
+                    type.ps_core_kinetic_density(std::vector<double>(rf__, rf__ + *num_points__));
                 } else if (label == "ae_rho") {
                     type.free_atom_density(std::vector<double>(rf__, rf__ + *num_points__));
                 } else {

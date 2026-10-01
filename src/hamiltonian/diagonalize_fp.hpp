@@ -27,6 +27,30 @@ inline void
 remap_lapw_evec_to_slab(int num_gkvec__, int num_mt_lo__, int num_bands__, la::dmatrix<std::complex<double>>& evec__,
                         wf::Wave_functions<double>& evec_slab__, mpi::Communicator const& comm__)
 {
+    if (evec__.comm().size() == 1) {
+        // A serial eigensolver leaves a complete matrix on each band rank.
+        // Use one replica to keep eigenvector phases/degenerate rotations common.
+        // Its COMM_SELF layout cannot be used as a distributed COSTA source.
+        std::vector<int> offsets(evec_slab__.num_mt_coeffs().size() + 1, num_gkvec__);
+        for (size_t ia = 0; ia < evec_slab__.num_mt_coeffs().size(); ia++) {
+            offsets[ia + 1] = offsets[ia] + evec_slab__.num_mt_coeffs()[ia];
+        }
+        RTE_ASSERT(offsets.back() == num_gkvec__ + num_mt_lo__);
+        for (int b = 0; b < num_bands__; b++) {
+            comm__.bcast(evec__.at(memory_t::host, 0, b), num_gkvec__ + num_mt_lo__, 0);
+            for (int ig = 0; ig < evec_slab__.gkvec().count(); ig++) {
+                evec_slab__.pw_coeffs(ig, wf::spin_index(0), wf::band_index(b)) =
+                        evec__(evec_slab__.gkvec().offset() + ig, b);
+            }
+            for (auto atom : evec_slab__.spl_num_atoms()) {
+                for (int xi = 0; xi < evec_slab__.num_mt_coeffs()[atom.i]; xi++) {
+                    evec_slab__.mt_coeffs(xi, atom.li, wf::spin_index(0), wf::band_index(b)) =
+                            evec__(offsets[atom.i] + xi, b);
+                }
+            }
+        }
+        return;
+    }
     /* remap to slab */
     if (true) {
         /* G+k vector part */

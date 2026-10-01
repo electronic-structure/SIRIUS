@@ -20,6 +20,8 @@
 
 namespace sirius {
 
+struct radial_solver_result_t;
+
 /// Data and methods specific to the symmetry class of the atom.
 /** Atoms transforming into each other under symmetry opeartions belong to the same symmetry class. They have the
  *  same spherical part of the on-site potential and, as a consequence, the same radial functions.
@@ -39,6 +41,9 @@ class Atom_symmetry_class
     /// Spherical part of the effective potential.
     /** Used by the LAPW radial solver. Actual value is stored, not the Y00 component. */
     std::vector<double> spherical_potential_;
+
+    /// Raw spherical density/tau derivatives, also used by the radial core solver.
+    std::array<std::vector<double>, 2> spherical_xc_derivatives_;
 
     /// List of radial functions for the LAPW basis.
     /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions
@@ -71,6 +76,9 @@ class Atom_symmetry_class
     /// List of radial descriptor sets used to construct local orbitals.
     mutable std::vector<local_orbital_descriptor> lo_descriptors_;
 
+    radial_solver_result_t
+    solve_radial(relativity_t rel__, int dme__, int l__, double energy__) const;
+
     /// Generate radial functions for augmented waves
     int
     generate_aw_radial_functions(relativity_t rel__, mdarray<double, 3>& rf__, mdarray<double, 2>& sd__) const;
@@ -91,6 +99,9 @@ class Atom_symmetry_class
     /** Atoms belonging to the same symmetry class have the same spherical potential. */
     void
     set_spherical_potential(std::vector<double> const& vs__);
+
+    void
+    set_spherical_xc_derivatives(std::array<std::vector<double>, 2> const& fields__);
 
     /// Save spherical potential for debugging purposes.
     void
@@ -217,6 +228,13 @@ class Atom_symmetry_class
         for (int ir = 0; ir < this->atom_type().num_mt_points(); ir++) {
             radial_functions_(ir, idx__, 0) = f__[ir];
         }
+    }
+
+    /// Get radial function derivative r*(du/dr).
+    inline double
+    radial_function_derivative(int ir__, int idx__) const
+    {
+        return radial_functions_(ir__, idx__, 1);
     }
 
     /// Set radial function derivative r*(du/dr).

@@ -2210,7 +2210,8 @@ end subroutine sirius_set_atom_type_radial_grid_inf
 !> @brief Add one of the radial functions.
 !> @param [in] handler Simulation context handler.
 !> @param [in] atom_type Label of the atom type.
-!> @param [in] label Label of the radial function.
+!> @param [in] label Label of the radial function. ae_paw_core_tau supplies setup-consistent, spin-summed positive core kinetic density in bohr^-5, including occupations and the factor 1/2, without a radial Jacobian or spherical-harmonic factor. ps_core_tau supplies the distinct pseudo-core tau for ordinary meta-GGA nonlinear core corrections in the same units and spin convention. Supply either field after the radial grid, with a value at every grid point.
+
 !> @param [in] rf Array with radial function values.
 !> @param [in] num_points Length of radial function array.
 !> @param [in] n Orbital quantum number.

@@ -84,8 +84,11 @@ class Hamiltonian0
     /** This quantities are k-point independent and can be precomputed when H0 is created. */
     std::vector<mdarray<std::complex<T>, 3>> hmt_;
 
-    /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
+    /// Effective potential after domain restriction (no second mask on discrete XC covectors).
     mdarray<std::complex<T>, 2> veff_pw_;
+
+    /// Kinetic-density potential for exact PP or LAPW diagonalization.
+    mdarray<std::complex<T>, 2> vtau_pw_;
 
     /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
     mdarray<std::complex<T>, 1> rm_inv_pw_;
@@ -152,6 +155,12 @@ class Hamiltonian0
     veff_pw(int ig__, int ispn__ = 0) const
     {
         return this->veff_pw_(ig__, ispn__);
+    }
+
+    auto const&
+    vtau_pw(int ig__, int ispn__) const
+    {
+        return vtau_pw_(ig__, ispn__);
     }
 
     auto const&

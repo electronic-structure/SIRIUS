@@ -335,8 +335,30 @@ K_point_set::find_efermi_fixed_magn(double emin, double emax)
     };
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        auto F      = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
-        auto result = bisection_search(F, emin, emax, 1e-11);
+        if (occ[ispn] < 0 || occ[ispn] > ctx_.num_bands() * ctx_.max_occupancy()) {
+            RTE_THROW("fixed magnetic moment requests an impossible spin occupation");
+        }
+        auto F = [&compute_ne, ispn, occ, &f](double x) { return compute_ne(ispn, x, f) - occ[ispn]; };
+        // Empty or full spin channels need a chemical potential outside the spectrum.
+        double margin = std::max(1.0, 32 * ctx_.smearing_width());
+        double lo = emin - margin, hi = emax + margin;
+        double flo = F(lo), fhi = F(hi);
+        constexpr double tolerance = 1e-11;
+        for (int i = 0; i < 20 && (flo > tolerance || fhi < -tolerance); i++) {
+            margin *= 2;
+            lo  = emin - margin;
+            hi  = emax + margin;
+            flo = F(lo);
+            fhi = F(hi);
+        }
+        if (!std::isfinite(flo) || !std::isfinite(fhi) || flo > tolerance || fhi < -tolerance) {
+            RTE_THROW("failed to bracket the chemical potential for a fixed spin occupation");
+        }
+        if (std::abs(flo) < tolerance || std::abs(fhi) < tolerance) {
+            efermi[ispn] = std::abs(flo) < tolerance ? lo : hi;
+            continue;
+        }
+        auto result = bisection_search(F, lo, hi, tolerance);
         if (!result) {
             RTE_THROW(result.error());
         }

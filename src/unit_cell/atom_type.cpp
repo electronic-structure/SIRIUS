@@ -533,6 +533,10 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
     ps_core_charge_density(
             parser["pseudo_potential"].value("core_charge_density", std::vector<double>(rgrid.size(), 0)));
+    ps_core_kinetic_density_.clear();
+    if (parser["pseudo_potential"].contains("core_kinetic_density")) {
+        ps_core_kinetic_density(parser["pseudo_potential"]["core_kinetic_density"].get<std::vector<double>>());
+    }
 
     ps_total_charge_density(parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>());
 
@@ -679,6 +683,11 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
     /* read core density and potential */
     paw_ae_core_charge_density(
             parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
+    auto const& paw_data = parser["pseudo_potential"]["paw_data"];
+    paw_ae_core_kinetic_density_.clear();
+    if (paw_data.contains("ae_core_kinetic_density")) {
+        paw_ae_core_kinetic_density(paw_data["ae_core_kinetic_density"].get<std::vector<double>>());
+    }
 
     /* read occupations */
     paw_wf_occ(parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>());
@@ -816,6 +825,8 @@ Atom_type::read_pseudo_uspp(pugi::xml_node const& upf)
     } else {
         ps_core_charge_density(std::vector<double>(rgrid.size(), 0.0));
     }
+    // PP_NLCC specifies charge, not positive orbital-gradient kinetic density.
+    ps_core_kinetic_density_.clear();
 
     ps_total_charge_density(vec_from_str<double>(upf.child("PP_RHOATOM").child_value()));
 
@@ -986,6 +997,8 @@ void
 Atom_type::read_pseudo_paw(pugi::xml_node const& upf)
 {
     is_paw_ = true;
+    // UPF core charge alone does not specify positive orbital-gradient tau.
+    paw_ae_core_kinetic_density_.clear();
 
     /* read core energy */
     if (!upf.child("PP_PAW").attribute("core_energy").empty()) {
@@ -1299,8 +1312,11 @@ Atom_type::serialize() const
     dict["radial_grid"]              = radial_grid().values();
     dict["local_potential"]          = local_potential();
     dict["core_charge_density"]      = ps_core_charge_density();
-    dict["total_charge_density"]     = ps_total_charge_density();
-    dict["atomic_wave_functions"]    = nlohmann::json::array();
+    if (has_ps_core_kinetic_density()) {
+        dict["core_kinetic_density"] = ps_core_kinetic_density();
+    }
+    dict["total_charge_density"]  = ps_total_charge_density();
+    dict["atomic_wave_functions"] = nlohmann::json::array();
     for (auto& e : ps_atomic_wfs_) {
         auto o                        = nlohmann::json::object();
         o["angular_momentum"]         = e.am.l();
@@ -1339,15 +1355,19 @@ Atom_type::serialize() const
         }
     }
     if (is_paw()) {
-        auto paw                      = nlohmann::json::object();
-        paw["ae_core_charge_density"] = paw_ae_core_charge_density();
-        paw["ae_wfc"]                 = nlohmann::json::array();
+        auto paw                          = nlohmann::json::object();
+        dict["header"]["paw_core_energy"] = paw_core_energy();
+        paw["ae_core_charge_density"]     = paw_ae_core_charge_density();
+        if (has_paw_core_kinetic_density()) {
+            paw["ae_core_kinetic_density"] = paw_ae_core_kinetic_density();
+        }
+        paw["ae_wfc"] = nlohmann::json::array();
         for (auto& e : ae_paw_wfs_) {
             auto o               = nlohmann::json::object();
             o["radial_function"] = e;
             paw["ae_wfc"].push_back(o);
         }
-        paw["pw_wfc"] = nlohmann::json::array();
+        paw["ps_wfc"] = nlohmann::json::array();
         for (auto& e : ps_paw_wfs_) {
             auto o               = nlohmann::json::object();
             o["radial_function"] = e;

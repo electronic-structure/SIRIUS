@@ -168,13 +168,24 @@ class bspline_basis
 
     /// Constructor.
     bspline_basis(Radial_grid<double> const& rgrid__, int num_inner_points__, int nq__)
-        : knots_(make_interp_knots(rgrid__, order, num_inner_points__))
+        : bspline_basis(make_interp_knots(rgrid__, order, num_inner_points__), nq__)
     {
+    }
+
+    /// Construct on a prescribed nondecreasing knot sequence, including repeated end knots.
+    bspline_basis(std::vector<double> knots__, int nq__, bool include_boundary__ = false)
+        : knots_(std::move(knots__))
+    {
+        if (knots_.size() < 2 * order ||
+            !std::all_of(knots_.begin(), knots_.end(), [](double x) { return std::isfinite(x); }) ||
+            !std::is_sorted(knots_.begin(), knots_.end()) || knots_.front() == knots_.back()) {
+            RTE_THROW("bspline_basis: invalid knot sequence");
+        }
         std::vector<double> xg;
         std::vector<double> wg;
         gauss_legendre_rule(nq__, xg, wg);
 
-        int n = this->size() - 1;
+        int n = this->size() - (include_boundary__ ? 0 : 1);
 
         for (int i = 0; i < n; i++) {
             for (int ik = 0; ik < order; ik++) {
@@ -184,7 +195,7 @@ class bspline_basis
                     continue;
                 }
 
-                for (int j = 0; j < n; j++) {
+                for (int j = std::max(0, i - order + 1); j < std::min(n, i + order); j++) {
                     for (int jk = 0; jk < order; jk++) {
                         double a = std::max(ai, this->knot(j + jk));
                         double b = std::min(bi, this->knot(j + jk + 1));

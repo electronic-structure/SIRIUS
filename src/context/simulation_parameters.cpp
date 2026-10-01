@@ -14,12 +14,25 @@
 #include "simulation_parameters.hpp"
 #include "core/mpi/communicator.hpp"
 #include "context/input_schema.hpp"
+#include "potential/xc_functional_base.hpp"
 
 #include <unordered_set>
 #include <iterator>
 #include <sstream>
 
 namespace sirius {
+
+bool
+Simulation_parameters::meta_gga() const
+{
+    for (auto const& label : xc_functionals()) {
+        if (XC_functional_base(label, 1.0, num_spins()).is_meta_gga()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 template <typename T>
 static std::ostringstream
 option_print_vector__(const std::vector<T>& vec)

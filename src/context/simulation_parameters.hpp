@@ -505,6 +505,10 @@ class Simulation_parameters
         return cfg().parameters().xc_functionals();
     }
 
+    /// True when a configured Libxc functional belongs to the meta-GGA family.
+    bool
+    meta_gga() const;
+
     inline auto
     xc_functionals_weight() const
     {
