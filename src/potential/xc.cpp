@@ -576,6 +576,15 @@ Potential::xc(Density const& density__)
     for (int i = 0; i < ctx_.num_mag_dims(); i++) {
         effective_magnetic_field(i).zero();
     }
+    if (kinetic_potential_) {
+        kinetic_potential_->zero();
+        if (ctx_.full_potential()) {
+            xc_lapw_meta(density__);
+        } else {
+            xc_rg_meta(density__);
+        }
+        return;
+    }
     /* quick return */
     if (xc_func_.size() == 0) {
         return;

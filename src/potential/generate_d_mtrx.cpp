@@ -25,6 +25,17 @@ mul_veff_with_phase_factors_gpu(int num_atoms__, int num_gvec_loc__, std::comple
 void
 Potential::generate_d_mtrx()
 {
+    std::vector<Periodic_function<double> const*> fields;
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        fields.push_back(&component(j));
+    }
+    generate_d_mtrx(fields, d_mtrx_);
+}
+
+void
+Potential::generate_d_mtrx(std::vector<Periodic_function<double> const*> const& fields__,
+                           std::vector<mdarray<double, 3>>& result__)
+{
     PROFILE("sirius::Potential::generate_d_mtrx");
 
     /* local number of G-vectors */
@@ -47,7 +58,7 @@ Potential::generate_d_mtrx()
             n_mag_comp = ctx_.num_mag_dims() + 1;
             veff       = mdarray<std::complex<double>, 2>({gvec_count, n_mag_comp}, mph);
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                std::copy(&component(j).rg().f_pw_local(0), &component(j).rg().f_pw_local(0) + gvec_count, &veff(0, j));
+                std::copy(&fields__[j]->rg().f_pw_local(0), &fields__[j]->rg().f_pw_local(0) + gvec_count, &veff(0, j));
             }
             veff.allocate(*mpd).copy_to(memory_t::device);
             break;
@@ -66,7 +77,7 @@ Potential::generate_d_mtrx()
         if (!atom_type.augment()) {
             for (int i = 0; i < atom_type.num_atoms(); i++) {
                 auto ia = atom_type.atom_id(i);
-                d_mtrx_[ia].zero();
+                result__[ia].zero();
             }
             continue;
         }
@@ -107,7 +118,7 @@ Potential::generate_d_mtrx()
                             for (int g = 0; g < ng; g++) {
                                 int ig = ctx_.gvec().offset() + g_begin + g;
                                 /* V(G) * exp(i * G * r_{alpha}) */
-                                auto z = component(iv).rg().f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
+                                auto z = fields__[iv]->rg().f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
                                 veff_a(2 * g, i, 0)     = z.real();
                                 veff_a(2 * g + 1, i, 0) = z.imag();
                             }
@@ -162,7 +173,7 @@ Potential::generate_d_mtrx()
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nqlm; j++) {
                             d_tmp(j, i, iv) -=
-                                    component(iv).rg().f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
+                                    fields__[iv]->rg().f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 }
@@ -194,7 +205,7 @@ Potential::generate_d_mtrx()
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
                         /* D-matix is symmetric */
-                        d_mtrx_[ia](xi1, xi2, iv) = d_mtrx_[ia](xi2, xi1, iv) =
+                        result__[ia](xi1, xi2, iv) = result__[ia](xi2, xi1, iv) =
                                 d_tmp(idx12, i, iv) * unit_cell_.omega();
                     }
                 }

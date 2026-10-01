@@ -524,8 +524,10 @@ class Radial_solver
                         y[0] = 2 * x * zn_;
                         y[1] = -std::pow(zn_, 2) * x;
                     } else {
-                        y[0] = std::pow(x, l__ + 1) / (2 * l__ + 1);
-                        y[1] = std::pow(x, l__) / 4;
+                        // Regular Coulomb solution p ~ r^(l+1)(1-Zr/(l+1)), q=(p'-p/r)/2.
+                        double a = 1.0 / (2 * l__ + 1);
+                        y[0]     = a * std::pow(x, l__ + 1) * (1 - zn_ * x / (l__ + 1));
+                        y[1]     = 0.5 * a * std::pow(x, l__) * (l__ - zn_ * x);
                     }
                     break;
                 }
@@ -661,7 +663,10 @@ class Radial_solver
                     break;
                 }
                 case relativity_t::dirac: {
-                    /* Dirac equation is only solved for core states and p' and q' are not needed */
+                    int kappa = k__ == l__ ? k__ : -k__;
+                    double ec = (enu__ - V) / speed_of_light;
+                    dpdr__[i] = (ec + 2 * speed_of_light) * q__[i] - kappa * p__[i] * radial_grid_.x_inv(i);
+                    dqdr__[i] = -ec * p__[i] + kappa * q__[i] * radial_grid_.x_inv(i);
                     break;
                 }
             }
@@ -986,6 +991,8 @@ class Bound_state : public Radial_solver
 
     Spline<double> rho_;
 
+    Spline<double> tau_;
+
     std::vector<double> dpdr_;
 
     inline void
@@ -1112,10 +1119,19 @@ class Bound_state : public Radial_solver
 
         for (int i = 0; i < np - 1; i++) {
             rho_(i) += std::pow(u_(i), 2);
+            double rinv = radial_grid_.x_inv(i);
+            double du   = rdudr_(i) * rinv;
+            tau_(i)     = 0.5 * (du * du + l_ * (l_ + 1) * std::pow(u_(i) * rinv, 2));
             if (rel__ == relativity_t::dirac) {
-                rho_(i) += std::pow(q_(i) * radial_grid_.x_inv(i), 2);
+                double small = q_(i) * rinv;
+                double ds    = (norm * dqdr[i] - small) * rinv;
+                // The lower spinor component has orbital angular momentum 2j-l.
+                int small_l = 2 * k_ - l_ - 1;
+                rho_(i) += small * small;
+                tau_(i) += 0.5 * (ds * ds + small_l * (small_l + 1) * std::pow(small * rinv, 2));
             }
         }
+        tau_.interpolate();
     }
 
   public:
@@ -1132,6 +1148,7 @@ class Bound_state : public Radial_solver
         , u_(radial_grid__)
         , rdudr_(radial_grid__)
         , rho_(radial_grid__)
+        , tau_(radial_grid__)
     {
         try {
             solve(rel__, enu_start__, alpha0__, alpha1__);
@@ -1156,6 +1173,18 @@ class Bound_state : public Radial_solver
         return rho_;
     }
 
+    /// Positive orbital-gradient kinetic density of this normalized radial state.
+    /** Multiply by occupation/(4*pi) for a spherical shell. Dirac states include
+     *  both spinor components, with their respective angular momenta. For scalar
+     *  equations only the physical radial orbital contributes, not the auxiliary
+     *  first-order variable q. This is not the relativistic kinetic-energy density.
+     */
+    Spline<double> const&
+    positive_kinetic_density() const
+    {
+        return tau_;
+    }
+
     /// Return radial function.
     Spline<double> const&
     u() const
@@ -1168,6 +1197,13 @@ class Bound_state : public Radial_solver
     p() const
     {
         return p_;
+    }
+
+    /// Small Dirac radial component, or the auxiliary variable for scalar equations.
+    Spline<double> const&
+    q() const
+    {
+        return q_;
     }
 
     std::vector<double> const&

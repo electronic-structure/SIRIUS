@@ -93,6 +93,64 @@ Potential::Potential(Simulation_context& ctx__)
     using pf  = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
+    if (ctx_.meta_gga()) {
+        int invalid{0};
+        std::string error;
+        try {
+            if (ctx_.processing_unit() != device_t::CPU || ctx_.spfft<double>().processing_unit() != SPFFT_PU_HOST ||
+                ctx_.spfft_coarse<double>().processing_unit() != SPFFT_PU_HOST || ctx_.num_mag_dims() == 3 ||
+                ctx_.so_correction() || ctx_.cfg().parameters().precision_wf() != "fp64" || ctx_.veff_callback() ||
+                ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
+                RTE_THROW("Libxc meta-GGA SCF currently requires CPU scalar/collinear fp64 orbitals");
+            }
+            if (ctx_.full_potential() &&
+                (ctx_.use_symmetry() || ctx_.cfg().settings().sht_coverage() != 0 ||
+                 ctx_.valence_relativity() != relativity_t::none ||
+                 (unit_cell_.num_core_electrons() != 0 && ctx_.core_relativity() != relativity_t::none))) {
+                RTE_THROW("LAPW meta-GGA currently requires nonrelativistic states, Lebedev quadrature and "
+                          "disabled symmetry reduction");
+            }
+            if (unit_cell_.num_paw_atoms() && (ctx_.use_symmetry() || ctx_.cfg().settings().sht_coverage() != 0)) {
+                RTE_THROW("PAW meta-GGA currently requires Lebedev quadrature and disabled symmetry reduction");
+            }
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                auto const& type = unit_cell_.atom_type(iat);
+                if (type.augment() && !type.is_paw()) {
+                    RTE_THROW("Libxc meta-GGA ultrasoft augmentation requires its kinetic-density augmentation data");
+                }
+                type.check_ps_core_kinetic_density();
+                if (type.is_paw()) {
+                    auto const& rho = type.paw_ae_core_charge_density();
+                    if (rho.size() != static_cast<size_t>(type.num_mt_points()) ||
+                        std::any_of(rho.begin(), rho.end(), [](double v) { return !std::isfinite(v) || v < 0; })) {
+                        RTE_THROW("PAW meta-GGA requires a finite nonnegative AE core density on the radial grid");
+                    }
+                    type.paw_ae_core_kinetic_density();
+                }
+            }
+            for (auto& functional : xc_func_) {
+                if (functional.is_meta_gga()) {
+                    // Validate capabilities without evaluating any grid points.
+                    functional.get_meta(0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                } else if (!functional.is_lda() && !functional.is_gga()) {
+                    RTE_THROW(
+                            "Libxc meta-GGA combinations currently support LDA, GGA and tau-dependent meta-GGA terms");
+                }
+            }
+        } catch (std::exception const& e) {
+            invalid = 1;
+            error   = e.what();
+        }
+        comm_.allreduce<int, mpi::op_t::max>(&invalid, 1);
+        if (invalid) {
+            RTE_THROW("invalid Libxc meta-GGA configuration on a context rank: " + error);
+        }
+    }
+    if (ctx_.meta_gga()) {
+        kinetic_potential_ = std::make_unique<Field4D>(ctx_, lmax_t(ctx_.lmax_pot()));
+        kinetic_potential_->zero();
+    }
+
     if (ctx_.full_potential()) {
         hartree_potential_ = std::make_unique<pf>(
                 ctx_, [&](int ia) { return lmax_t(ctx_.lmax_pot()); }, &ctx_.unit_cell().spl_num_atoms());
@@ -257,7 +315,7 @@ Potential::is_gradient_correction() const
 {
     bool is_gga{false};
     for (auto& ixc : xc_func_) {
-        if (ixc.is_gga() || ixc.is_vdw()) {
+        if (ixc.is_gga() || ixc.is_meta_gga() || ixc.is_vdw()) {
             is_gga = true;
         }
     }
@@ -269,6 +327,13 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
 {
     PROFILE("sirius::Potential::generate");
     power::Profile p1("generate_pot");
+
+    if ((ctx_.full_potential() || unit_cell_.num_paw_atoms()) && ctx_.meta_gga() && use_symmetry__) {
+        RTE_THROW("PAW/LAPW meta-GGA cannot symmetrize discrete XC operators independently of their quadrature");
+    }
+    lapw_xc_derivatives_.reset();
+    lapw_xc_energy_.reset();
+    paw_meta_grid_energy_.reset();
 
     if (!ctx_.full_potential()) {
         /* save current effective potential */
@@ -335,6 +400,10 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     if (use_symmetry__) {
         /* symmetrize potential and effective magnetic field */
         symmetrize_field4d(*this);
+        if (kinetic_potential_) {
+            symmetrize_field4d(*kinetic_potential_);
+            kinetic_potential_->fft_transform(1);
+        }
         if (transform_to_rg__) {
             /* transform potential to real space after symmetrization */
             this->fft_transform(1);
@@ -437,6 +506,7 @@ Potential::get_spherical_potential() const
 void
 Potential::update_atomic_potential()
 {
+    auto core_xc = get_core_xc_derivatives();
     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
         int ia   = unit_cell_.atom_symmetry_class(ic).atom_id(0);
         int nmtp = unit_cell_.atom(ia).num_mt_points();
@@ -448,6 +518,8 @@ Potential::update_atomic_potential()
         }
 
         unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
+        unit_cell_.atom_symmetry_class(ic).set_spherical_xc_derivatives(
+                core_xc.empty() ? std::array<std::vector<double>, 2>{} : core_xc[ic]);
     }
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {

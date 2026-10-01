@@ -14,6 +14,7 @@
 #ifndef __DFT_GROUND_STATE_HPP__
 #define __DFT_GROUND_STATE_HPP__
 
+#include <array>
 #include "k_point/k_point_set.hpp"
 #include "core/json.hpp"
 #include "hubbard/hubbard.hpp"
@@ -160,6 +161,12 @@ class DFT_ground_state
     /// A quick check of self-constent density in case of pseudopotential.
     json
     check_scf_density();
+    /// Fixed-basis PW/LO orbital derivatives of LAPW XC.
+    /** Returns Hamiltonian and central-difference derivatives at step__ and step__/2.
+     *  Core states, occupations, radial basis and ground-state fields are preserved.
+     */
+    std::array<std::array<double, 3>, 2>
+    check_lapw_xc_derivative(double step__);
 };
 
 } // namespace sirius

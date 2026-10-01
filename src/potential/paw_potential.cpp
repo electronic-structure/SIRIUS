@@ -12,6 +12,8 @@
  */
 
 #include "potential.hpp"
+#include "density/paw_local_fields.hpp"
+#include "xc_mt_meta.hpp"
 #include "symmetry/symmetrize_mt_function.hpp"
 
 namespace sirius {
@@ -54,8 +56,11 @@ Potential::generate_PAW_effective_potential(Density const& density)
     }
 
     paw_potential_->zero();
+    paw_ae_exc_->zero();
+    paw_ps_exc_->zero();
 
     paw_hartree_total_energy_ = 0.0;
+    paw_meta_energy_          = 0.0;
 
     /* calculate xc and hartree for atoms */
     for (auto it : unit_cell_.spl_num_paw_atoms()) {
@@ -94,6 +99,60 @@ Potential::generate_PAW_effective_potential(Density const& density)
         auto i  = unit_cell_.spl_num_paw_atoms().global_index(paw_atom_index_t::local(ialoc));
         auto ia = unit_cell_.paw_atom_index(i);
         calc_PAW_local_Dij(ia, d_mtrx_paw_[i]);
+    }
+    if (ctx_.meta_gga()) {
+        // Remove Q*Vxc from the nonlocal operator. Keeping the correction in the
+        // PAW matrix also removes it from the one-electron double-counting term.
+        xc_potential_->rg().fft_transform(-1);
+        std::vector<Periodic_function<double> const*> xc_fields{xc_potential_.get()};
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            xc_fields.push_back(&effective_magnetic_field(j));
+        }
+        std::vector<mdarray<double, 3>> qxc;
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            int n = unit_cell_.atom(ia).mt_basis_size();
+            qxc.push_back(mdarray<double, 3>({n, n, ctx_.num_mag_dims() + 1}));
+        }
+        generate_d_mtrx(xc_fields, qxc);
+        int invalid{0};
+        std::string error;
+        try {
+            for (auto it : unit_cell_.spl_num_paw_atoms()) {
+                auto ia          = unit_cell_.paw_atom_index(it.i);
+                auto const& type = unit_cell_.atom(ia).type();
+                auto& d          = d_mtrx_paw_[it.i];
+                for (size_t i = 0; i < d.size(); i++) {
+                    d[i] -= qxc[ia][i];
+                }
+                for (bool ae : {true, false}) {
+                    PAW_local_fields map(type, ae, false);
+                    auto fields = map.fields(density.density_matrix(ia));
+                    auto xc     = xc_mt_meta(*sht_, xc_func_, fields[0], fields[1]);
+                    double sign = ae ? 1 : -1;
+                    paw_meta_energy_ += sign * xc.energy;
+                    for (int s = 0; s < ctx_.num_spins(); s++) {
+                        auto matrix = map.matrix_elements(xc.fields[0][s], xc.fields[1][s]);
+                        for (int j = 0; j < type.indexb().size(); j++) {
+                            for (int i = 0; i < type.indexb().size(); i++) {
+                                double v = sign * matrix(i, j) / ctx_.num_spins();
+                                d(i, j, 0) += v;
+                                if (ctx_.num_spins() == 2) {
+                                    d(i, j, 1) += (1 - 2 * s) * v;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (std::exception const& e) {
+            invalid = 1;
+            error   = e.what();
+        }
+        comm_.allreduce<int, mpi::op_t::max>(&invalid, 1);
+        if (invalid) {
+            RTE_THROW("PAW meta-GGA failed on a context rank: " + error);
+        }
+        comm_.allreduce(&paw_meta_energy_, 1);
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));
@@ -197,16 +256,18 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
         vxc.emplace_back(sf::lmmax(l_max), rgrid);
     }
 
-    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc,
-                      (*paw_ae_exc_)[ia__], ctx_.cfg().settings().xc_use_lapl());
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        paw_potential_->ae_component(i)[ia__] += vxc[i];
-    }
+    if (!ctx_.meta_gga()) {
+        sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc,
+                          (*paw_ae_exc_)[ia__], ctx_.cfg().settings().xc_use_lapl());
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            paw_potential_->ae_component(i)[ia__] += vxc[i];
+        }
 
-    sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density__, ps_core, vxc,
-                      (*paw_ps_exc_)[ia__], ctx_.cfg().settings().xc_use_lapl());
-    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        paw_potential_->ps_component(i)[ia__] += vxc[i];
+        sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ps_density__, ps_core, vxc,
+                          (*paw_ps_exc_)[ia__], ctx_.cfg().settings().xc_use_lapl());
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            paw_potential_->ps_component(i)[ia__] += vxc[i];
+        }
     }
 
     auto eha = calc_PAW_hartree_potential(atom, *ae_density__[0], paw_potential_->ae_component(0)[ia__]) -
@@ -326,6 +387,9 @@ Potential::PAW_xc_total_energy(Density const& density__) const
 {
     if (!unit_cell_.num_paw_atoms()) {
         return 0;
+    }
+    if (ctx_.meta_gga()) {
+        return paw_meta_energy_;
     }
     /* compute contribution from the core */
     double ecore{0};

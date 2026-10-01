@@ -236,7 +236,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             ne_diff = kset_.find_band_occupancies<double>();
 
             auto vs = potential_.get_spherical_potential();
-            density_.generate_core_charge_density(vs);
+            density_.generate_core_charge_density(vs, potential_.get_core_xc_derivatives());
             /* generate new density from the occupied wave-functions */
             density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
         }

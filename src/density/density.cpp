@@ -24,6 +24,9 @@
 #include "lapw/sum_fg_fl_yg.hpp"
 #include "lapw/generate_sbessel_mt.hpp"
 #include "density.hpp"
+#include "radial/radial_core_solver.hpp"
+#include <exception>
+#include <map>
 
 namespace sirius {
 
@@ -33,9 +36,11 @@ namespace sirius {
  *  with alpha/r + beta tail. Bound states are found and accumulated in the core charge density. */
 static auto
 generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel__, std::vector<double> const& vs__,
-                             std::vector<double>& rho_core__)
+                             std::vector<double>& rho_core__, std::vector<double>& tau_core__,
+                             std::array<std::vector<double>, 2> const* core_xc__)
 {
     std::fill(rho_core__.begin(), rho_core__.end(), 0.0);
+    std::fill(tau_core__.begin(), tau_core__.end(), 0.0);
 
     struct result_t
     {
@@ -47,6 +52,9 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
     /* nothing to do */
     if (atom_type__.num_core_electrons() == 0.0) {
         return result_t();
+    }
+    if (core_xc__ && core_rel__ != relativity_t::none) {
+        RTE_THROW("tau-dependent radial core response currently requires nonrelativistic core states");
     }
 
     int nmtp = atom_type__.num_mt_points();
@@ -100,20 +108,114 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
     }
 
     mdarray<double, 2> rho_t({rgrid.num_points(), atom_type__.num_atomic_levels()});
+    mdarray<double, 2> tau_t({nmtp, atom_type__.num_atomic_levels()});
     rho_t.zero();
-    #pragma omp parallel for
-    for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
-        if (atom_type__.atomic_level(ist).core) {
-            /* serch for the bound state */
-            Bound_state bs(core_rel__, zn, atom_type__.atomic_level(ist).n, atom_type__.atomic_level(ist).l,
-                           atom_type__.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
-
-            auto& rho = bs.rho();
-            for (int i = 0; i < rgrid.num_points(); i++) {
-                rho_t(i, ist) = atom_type__.atomic_level(ist).occupancy * rho(i) / fourpi;
+    tau_t.zero();
+    if (core_xc__) {
+        std::array<std::vector<double>, 2> fields = *core_xc__;
+        for (auto& field : fields) {
+            field.resize(rgrid.num_points(), 0);
+        }
+        std::map<int, int> states_per_l;
+        for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+            auto const& level = atom_type__.atomic_level(ist);
+            if (level.core) {
+                states_per_l[level.l] = std::max(states_per_l[level.l], level.n - level.l);
             }
+        }
+        for (auto const& [l, count] : states_per_l) {
+            std::vector<radial_core_state_t> previous, states;
+            bool converged{false};
+            std::ostringstream convergence;
+            for (int nb : {64, 128, 192, 256, 384}) {
+                Radial_core_solver solver(rgrid, l, zn, veff, nb, atom_type__.mt_radius());
+                states = solver.solve(count, fields[0], fields[1]);
+                if (!previous.empty()) {
+                    double energy_error{0}, field_error{0};
+                    int worst_state{0}, worst_ir{0}, worst_part{0};
+                    for (int j = 0; j < count; j++) {
+                        energy_error =
+                                std::max(energy_error, std::abs(states[j].energy - previous[j].energy) /
+                                                               (1e-10 * std::max(1.0, std::abs(states[j].energy))));
+                        int part{0};
+                        for (auto pair : {std::make_pair(&states[j].rho, &previous[j].rho),
+                                          std::make_pair(&states[j].tau, &previous[j].tau)}) {
+                            double peak = *std::max_element(pair.first->begin(), pair.first->end());
+                            for (int ir = 0; ir < nmtp; ir++) {
+                                double error = std::abs((*pair.first)[ir] - (*pair.second)[ir]) /
+                                               (1e-6 * std::max(peak, 1e-30));
+                                if (error > field_error) {
+                                    field_error = error;
+                                    worst_state = j;
+                                    worst_ir    = ir;
+                                    worst_part  = part;
+                                }
+                            }
+                            part++;
+                        }
+                    }
+                    convergence << " basis=" << nb << " energy=" << energy_error << " fields=" << field_error
+                                << " state=" << worst_state << " part=" << worst_part << " r=" << rgrid[worst_ir];
+                    if (std::max(energy_error, field_error) <= 1) {
+                        converged = true;
+                        break;
+                    }
+                }
+                previous = std::move(states);
+            }
+            if (!converged) {
+                RTE_THROW("tau-dependent radial core solve did not converge with basis refinement; scaled errors:" +
+                          convergence.str());
+            }
+            for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+                auto const& level = atom_type__.atomic_level(ist);
+                if (level.core && level.l == l) {
+                    auto const& state = states[level.n - level.l - 1];
+                    if (state.energy >= veff.back()) {
+                        RTE_THROW("tau-dependent core state is not bound within the extended radial domain");
+                    }
+                    level_energy[ist] = state.energy;
+                    for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                        rho_t(ir, ist) = level.occupancy * state.rho[ir];
+                    }
+                    for (int ir = 0; ir < nmtp; ir++) {
+                        tau_t(ir, ist) = level.occupancy * state.tau[ir];
+                    }
+                }
+            }
+        }
+    } else {
+        std::exception_ptr error;
+        #pragma omp parallel for
+        for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
+            try {
+                if (atom_type__.atomic_level(ist).core) {
+                    /* serch for the bound state */
+                    Bound_state bs(core_rel__, zn, atom_type__.atomic_level(ist).n, atom_type__.atomic_level(ist).l,
+                                   atom_type__.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
 
-            level_energy[ist] = bs.enu();
+                    auto& rho = bs.rho();
+                    for (int i = 0; i < rgrid.num_points(); i++) {
+                        rho_t(i, ist) = atom_type__.atomic_level(ist).occupancy * rho(i) / fourpi;
+                    }
+                    for (int i = 0; i < nmtp; i++) {
+                        tau_t(i, ist) =
+                                atom_type__.atomic_level(ist).occupancy * bs.positive_kinetic_density()(i) / fourpi;
+                    }
+
+                    level_energy[ist] = bs.enu();
+                }
+            } catch (...) {
+                #pragma omp critical(radial_core_failure)
+                {
+                    if (!error) {
+                        error = std::current_exception();
+                    }
+                }
+            }
+        }
+        if (error) {
+            std::rethrow_exception(error);
         }
     }
 
@@ -124,6 +226,9 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
         if (atom_type__.atomic_level(ist).core) {
             for (int i = 0; i < rgrid.num_points(); i++) {
                 rho(i) += rho_t(i, ist);
+            }
+            for (int i = 0; i < nmtp; i++) {
+                tau_core__[i] += tau_t(i, ist);
             }
         }
     }
@@ -189,7 +294,7 @@ update_density_rg_2_gpu(int size__, std::complex<double> const* psi_rg_up__, std
 }
 #endif
 
-Density::Density(Simulation_context& ctx__)
+Density::Density(Simulation_context& ctx__, bool kinetic_density__)
     : Field4D(ctx__, lmax_t(ctx__.lmax_rho()),
               {ctx__.periodic_function_ptr("rho"), ctx__.periodic_function_ptr("magz"),
                ctx__.periodic_function_ptr("magx"), ctx__.periodic_function_ptr("magy")})
@@ -203,6 +308,16 @@ Density::Density(Simulation_context& ctx__)
 
     using spf = Smooth_periodic_function<double>;
 
+    if (kinetic_density__ || ctx_.meta_gga()) {
+        if (ctx_.processing_unit() != device_t::CPU || ctx_.spfft<double>().processing_unit() != SPFFT_PU_HOST ||
+            ctx_.spfft_coarse<double>().processing_unit() != SPFFT_PU_HOST || ctx_.num_mag_dims() == 3 ||
+            ctx_.so_correction() || (ctx_.full_potential() && ctx_.valence_relativity() != relativity_t::none)) {
+            RTE_THROW("kinetic density requires CPU FFTs and scalar nonrelativistic valence orbitals");
+        }
+        kinetic_density_ = std::make_unique<Field4D>(ctx_, lmax_t(ctx_.lmax_rho()));
+        kinetic_density_->zero();
+    }
+
     /*  allocate charge density and magnetization on a coarse grid */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         rho_mag_coarse_[i] = std::make_unique<spf>(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_fft_sptr());
@@ -211,11 +326,16 @@ Density::Density(Simulation_context& ctx__)
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
         rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+        if (ctx_.meta_gga()) {
+            tau_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
+        }
     } else {
         ae_core_charge_density_.resize(unit_cell_.num_atom_symmetry_classes());
+        ae_core_kinetic_density_.resize(unit_cell_.num_atom_symmetry_classes());
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
             ae_core_charge_density_[ic] =
                     std::vector<double>(unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points());
+            ae_core_kinetic_density_[ic].resize(ae_core_charge_density_[ic].size());
         }
         core_eval_sum_.resize(unit_cell_.num_atom_symmetry_classes());
         core_leakage_.resize(unit_cell_.num_atom_symmetry_classes());
@@ -242,6 +362,10 @@ Density::update()
     PROFILE("sirius::Density::update");
 
     if (!ctx_.full_potential()) {
+        if (tau_pseudo_core_) {
+            generate_pseudo_core_fields();
+            return;
+        }
         rho_pseudo_core_->zero();
         bool is_empty{true};
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -298,6 +422,13 @@ Density::initial_density()
     }
     if (ctx_.use_symmetry()) {
         symmetrize_field4d(*this);
+    }
+    if (kinetic_density_) {
+        initial_kinetic_density();
+        if (ctx_.use_symmetry()) {
+            symmetrize_field4d(*kinetic_density_);
+            kinetic_density_->fft_transform(1);
+        }
     }
 }
 
@@ -1192,6 +1323,25 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
     generate_valence<T>(ks__);
 
+    if (kinetic_density_) {
+        auto tau = generate_smooth_kinetic_density<T>(ks__);
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            auto up = tau[0].f_pw_local(ig);
+            auto dn = ctx_.num_spins() == 2 ? tau[1].f_pw_local(ig) : std::complex<double>(0);
+            kinetic_density_->scalar().rg().f_pw_local(ig) = up + dn;
+            if (ctx_.num_spins() == 2) {
+                kinetic_density_->vector(0).rg().f_pw_local(ig) = up - dn;
+            }
+        }
+        if (ctx_.full_potential()) {
+            generate_mt_kinetic_density(add_core__);
+        }
+        if (symmetrize__) {
+            symmetrize_field4d(*kinetic_density_);
+        }
+        kinetic_density_->fft_transform(1);
+    }
+
     if (ctx_.full_potential()) {
         if (add_core__) {
             /* add core contribution */
@@ -2014,8 +2164,24 @@ Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
     /* create mixer */
     this->mixer_ =
             mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, density_matrix_t, PAW_density<double>, Hubbard_matrix>(
-                    mixer_cfg__);
+                                 Periodic_function<double>, density_matrix_t, PAW_density<double>, Hubbard_matrix,
+                                 Periodic_function<double>, Periodic_function<double>>(mixer_cfg__);
+
+    if (kinetic_density_) {
+        if (ctx_.full_potential()) {
+            this->mixer_->initialize_function<7>(func_prop, kinetic_density_->scalar(), ctx_,
+                                                 [&](int ia) { return lmax_t(ctx_.lmax_rho()); });
+            if (ctx_.num_spins() == 2) {
+                this->mixer_->initialize_function<8>(func_prop, kinetic_density_->vector(0), ctx_,
+                                                     [&](int ia) { return lmax_t(ctx_.lmax_rho()); });
+            }
+        } else {
+            this->mixer_->initialize_function<7>(func_prop, kinetic_density_->scalar(), ctx_);
+            if (ctx_.num_spins() == 2) {
+                this->mixer_->initialize_function<8>(func_prop, kinetic_density_->vector(0), ctx_);
+            }
+        }
+    }
 
     if (ctx_.full_potential()) {
         this->mixer_->initialize_function<0>(func_prop, component(0), ctx_,
@@ -2062,6 +2228,12 @@ Density::mixer_input()
     PROFILE("sirius::Density::mixer_input");
 
     mixer_->set_input<0>(component(0));
+    if (kinetic_density_) {
+        mixer_->set_input<7>(kinetic_density_->scalar());
+        if (ctx_.num_spins() == 2) {
+            mixer_->set_input<8>(kinetic_density_->vector(0));
+        }
+    }
     if (ctx_.num_mag_dims() > 0) {
         mixer_->set_input<1>(component(1));
     }
@@ -2087,6 +2259,13 @@ Density::mixer_output()
     PROFILE("sirius::Density::mixer_output");
 
     mixer_->get_output<0>(component(0));
+    if (kinetic_density_) {
+        mixer_->get_output<7>(kinetic_density_->scalar());
+        if (ctx_.num_spins() == 2) {
+            mixer_->get_output<8>(kinetic_density_->vector(0));
+        }
+        kinetic_density_->fft_transform(-1);
+    }
     if (ctx_.num_mag_dims() > 0) {
         mixer_->get_output<1>(component(1));
     }
@@ -2107,6 +2286,15 @@ Density::mixer_output()
 
     /* transform mixed density to plane-wave domain */
     this->fft_transform(-1);
+    if (ctx_.full_potential()) {
+        // Mixer algebra operates on owned spheres; point sampling needs every sphere on every rank.
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            component(j).mt().sync(unit_cell_.spl_num_atoms());
+            if (kinetic_density_) {
+                kinetic_density_->component(j).mt().sync(unit_cell_.spl_num_atoms());
+            }
+        }
+    }
 }
 
 double
@@ -2215,6 +2403,18 @@ void
 Density::save(std::string name__) const
 {
     rho().hdf5_write(name__, "density");
+    if (kinetic_density_) {
+        if (ctx_.comm().rank() == 0) {
+            HDF5_tree fout(name__, hdf5_access_t::read_write);
+            for (int j = 0; j < ctx_.num_spins(); j++) {
+                fout.create_node("kinetic_density_" + std::to_string(j));
+            }
+        }
+        ctx_.comm().barrier();
+        for (int j = 0; j < ctx_.num_spins(); j++) {
+            kinetic_density_->component(j).hdf5_write(name__, "kinetic_density_" + std::to_string(j));
+        }
+    }
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         mag(j).hdf5_write(name__, "magnetization/" + std::to_string(j));
     }
@@ -2243,6 +2443,8 @@ Density::save(std::string name__) const
 void
 Density::load(std::string name__)
 {
+    core_kinetic_density_ready_ = false;
+
     HDF5_tree fin(name__, hdf5_access_t::read_only);
 
     int ngv;
@@ -2255,6 +2457,12 @@ Density::load(std::string name__)
 
     rho().hdf5_read(name__, "density", gv);
     rho().rg().fft_transform(1);
+    if (kinetic_density_) {
+        for (int j = 0; j < ctx_.num_spins(); j++) {
+            kinetic_density_->component(j).hdf5_read(name__, "kinetic_density_" + std::to_string(j), gv);
+        }
+        kinetic_density_->fft_transform(1);
+    }
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         mag(j).hdf5_read(name__, "magnetization/" + std::to_string(j), gv);
         mag(j).rg().fft_transform(1);
@@ -2274,23 +2482,50 @@ Density::load(std::string name__)
 }
 
 void
-Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs__)
+Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs__,
+                                      std::vector<std::array<std::vector<double>, 2>> const& core_xc__)
 {
     if (!ctx_.full_potential()) {
         return;
     }
     PROFILE("sirius::Density::generate_core_charge_density");
+    core_kinetic_density_ready_ = false;
+
+    int has_xc = !core_xc__.empty(), has_xc_min = has_xc, has_xc_max = has_xc;
+    ctx_.comm().allreduce<int, mpi::op_t::min>(&has_xc_min, 1);
+    ctx_.comm().allreduce<int, mpi::op_t::max>(&has_xc_max, 1);
+    if (has_xc_min != has_xc_max) {
+        RTE_THROW("radial core XC covector presence differs between context ranks");
+    }
 
     auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
 
+    auto rho = ae_core_charge_density_, tau = ae_core_kinetic_density_;
+    auto leakage = core_leakage_, eval_sum = core_eval_sum_;
+    std::string error;
     mpi::pstdout pout(ctx_.comm());
     try {
+        int nc = unit_cell_.num_atom_symmetry_classes();
+        if (vs__.size() != nc || (!core_xc__.empty() && core_xc__.size() != nc)) {
+            RTE_THROW("radial core solve: incompatible atom-class count");
+        }
+        for (int ic = 0; ic < nc; ic++) {
+            int nr     = unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points();
+            auto valid = [nr](std::vector<double> const& field) {
+                return field.size() == nr &&
+                       std::all_of(field.begin(), field.end(), [](double v) { return std::isfinite(v); });
+            };
+            if (!valid(vs__[ic]) || (!core_xc__.empty() && (!valid(core_xc__[ic][0]) || !valid(core_xc__[ic][1])))) {
+                RTE_THROW("radial core solve: invalid potential or XC covector");
+            }
+        }
         for (auto it : spl_idx) {
-            auto& type           = unit_cell_.atom_symmetry_class(it.i).atom_type();
-            auto result          = ::sirius::generate_core_charge_density(type, ctx_.core_relativity(), vs__[it.i],
-                                                                          ae_core_charge_density_[it.i]);
-            core_leakage_[it.i]  = result.core_leakage;
-            core_eval_sum_[it.i] = result.core_eval_sum;
+            auto& type = unit_cell_.atom_symmetry_class(it.i).atom_type();
+            auto result =
+                    ::sirius::generate_core_charge_density(type, ctx_.core_relativity(), vs__[it.i], rho[it.i],
+                                                           tau[it.i], core_xc__.empty() ? nullptr : &core_xc__[it.i]);
+            leakage[it.i]  = result.core_leakage;
+            eval_sum[it.i] = result.core_eval_sum;
             pout << "atom class : " << it.i << std::endl;
             for (int ist = 0; ist < type.num_atomic_levels(); ist++) {
                 if (type.atomic_level(ist).core) {
@@ -2300,18 +2535,28 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
                 }
             }
         }
-
-        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
-            auto rank = spl_idx.location(ic).ib;
-            ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
-                              unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
-            ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
-            ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
-        }
     } catch (std::exception const& e) {
-        RTE_OUT(ctx_.out()) << "Warning: generation of core charge density failed" << std::endl
-                            << e.what() << std::endl;
+        error = e.what();
     }
+    // Every rank reaches this reduction before any class broadcasts. Failed solves
+    // must not leave other ranks waiting or expose partially updated core fields.
+    int failed = !error.empty();
+    ctx_.comm().allreduce<int, mpi::op_t::max>(&failed, 1);
+    if (failed) {
+        RTE_THROW("generation of core density failed: " + (error.empty() ? "failure on another context rank" : error));
+    }
+    for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+        auto rank = spl_idx.location(ic).ib;
+        ctx_.comm().bcast(rho[ic].data(), unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+        ctx_.comm().bcast(tau[ic].data(), unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+        ctx_.comm().bcast(&leakage[ic], 1, rank);
+        ctx_.comm().bcast(&eval_sum[ic], 1, rank);
+    }
+    ae_core_charge_density_     = std::move(rho);
+    ae_core_kinetic_density_    = std::move(tau);
+    core_leakage_               = std::move(leakage);
+    core_eval_sum_              = std::move(eval_sum);
+    core_kinetic_density_ready_ = true;
     RTE_OUT(ctx_.out(2)) << pout.flush(0);
 }
 

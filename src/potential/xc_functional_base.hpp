@@ -1425,6 +1425,13 @@ class XC_functional_base
             if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
                 RTE_THROW("xc_func_init() failed");
             }
+#if defined(XC_FLAGS_ENFORCE_FHC)
+            if (handler_->info->family == XC_FAMILY_MGGA) {
+                // PAW augmented densities need not satisfy the orbital Fermi-hole bound.
+                // Libxc's clipping of sigma does not include its chain rule in Vxc.
+                xc_func_set_fhc_enforcement(handler_.get(), 0);
+            }
+#endif
         }
         libxc_initialized_ = true;
     }
@@ -1432,6 +1439,7 @@ class XC_functional_base
     XC_functional_base(XC_functional_base&& src__)
     {
         this->libxc_name_        = src__.libxc_name_;
+        this->weight_            = src__.weight_;
         this->num_spins_         = src__.num_spins_;
         this->handler_           = std::move(src__.handler_);
         this->libxc_initialized_ = src__.libxc_initialized_;
@@ -1487,14 +1495,20 @@ class XC_functional_base
         }
     }
 
-    xc_func_type*
-    handler()
+    xc_func_type const*
+    handler() const
     {
         if (handler_) {
             return handler_.get();
         }
 
         throw std::runtime_error("attempt to access nullptr in xc_functional_base::handler");
+    }
+
+    xc_func_type*
+    handler()
+    {
+        return const_cast<xc_func_type*>(static_cast<XC_functional_base const&>(*this).handler());
     }
 
     bool
@@ -1507,6 +1521,44 @@ class XC_functional_base
     is_gga() const
     {
         return family() == XC_FAMILY_GGA;
+    }
+
+    bool
+    is_meta_gga() const
+    {
+        return family() == XC_FAMILY_MGGA || family() == XC_FAMILY_HYB_MGGA;
+    }
+
+    /// Positive-tau meta-GGA evaluation in Libxc's point-major spin layout.
+    /** Laplacian-dependent and hybrid functionals require additional operators. */
+    void
+    get_meta(int size__, double const* rho__, double const* sigma__, double const* tau__, double* vrho__,
+             double* vsigma__, double* vtau__, double* exc__) const
+    {
+#if !defined(XC_FLAGS_ENFORCE_FHC)
+        RTE_THROW("variational meta-GGA evaluation requires Libxc 7 or newer to disable Fermi-hole clipping");
+#endif
+        if (size__ < 0 || family() != XC_FAMILY_MGGA || !handler_ ||
+            (handler_->info->flags & XC_FLAGS_NEEDS_LAPLACIAN) || !(handler_->info->flags & XC_FLAGS_HAVE_EXC) ||
+            !(handler_->info->flags & XC_FLAGS_HAVE_VXC)) {
+            RTE_THROW("meta-GGA evaluation requires a nonhybrid energy functional without a density Laplacian");
+        }
+        if (size__ == 0) {
+            return;
+        }
+        for (int i = 0; i < size__ * num_spins_; i++) {
+            if (!std::isfinite(rho__[i]) || !std::isfinite(tau__[i]) || rho__[i] < 0 || tau__[i] < 0) {
+                RTE_THROW("meta-GGA evaluation requires finite nonnegative spin densities and positive tau");
+            }
+        }
+        for (int i = 0; i < size__ * (num_spins_ == 1 ? 1 : 3); i++) {
+            if (!std::isfinite(sigma__[i])) {
+                RTE_THROW("meta-GGA evaluation requires finite gradient invariants");
+            }
+        }
+        std::vector<double> lapl(size__ * num_spins_, 0), vlapl(lapl.size());
+        xc_mgga_exc_vxc(handler_.get(), size__, rho__, sigma__, lapl.data(), tau__, exc__, vrho__, vsigma__,
+                        vlapl.data(), vtau__);
     }
 
     int

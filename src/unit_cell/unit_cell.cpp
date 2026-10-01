@@ -513,8 +513,18 @@ Unit_cell::generate_radial_functions(std::ostream& out__)
 {
     PROFILE("sirius::Unit_cell::generate_radial_functions");
 
-    for (auto it : spl_num_atom_symmetry_classes()) {
-        atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity());
+    std::string error;
+    try {
+        for (auto it : spl_num_atom_symmetry_classes()) {
+            atom_symmetry_class(it.i).generate_radial_functions(parameters_.valence_relativity());
+        }
+    } catch (std::exception const& e) {
+        error = e.what();
+    }
+    int failed = !error.empty();
+    comm_.allreduce<int, mpi::op_t::max>(&failed, 1);
+    if (failed) {
+        RTE_THROW("radial basis construction failed on a unit-cell rank: " + error);
     }
 
     for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {

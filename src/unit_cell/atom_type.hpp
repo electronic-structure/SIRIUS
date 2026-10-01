@@ -193,6 +193,11 @@ class Atom_type
     /// Pseudo-core charge density (used by PP-PW method in non-linear core correction).
     std::vector<double> ps_core_charge_density_;
 
+    /// Setup-supplied spin-summed positive pseudo-core tau for nonlinear XC corrections.
+    /** Point values in bohr^-5, including occupations and 1/2, without radial
+     *  or angular weights. This is distinct from the AE frozen-core tau. */
+    std::vector<double> ps_core_kinetic_density_;
+
     /// Total pseudo-charge density (used by PP-PW method to setup initial density).
     std::vector<double> ps_total_charge_density_;
 
@@ -203,7 +208,7 @@ class Atom_type
     bool is_paw_{false};
 
     /// Core energy of PAW.
-    bool paw_core_energy_{0};
+    double paw_core_energy_{0};
 
     /// List of all-electron wave functions of the PAW method.
     std::vector<std::vector<double>> ae_paw_wfs_;
@@ -229,6 +234,12 @@ class Atom_type
      *  pseudopotential file and is fixed during the calculation. This is different from LAPW
      *  core charge density, which is recomputed for each atom symmetry class. */
     std::vector<double> paw_ae_core_charge_density_;
+
+    /// Frozen-core positive orbital-gradient kinetic density, summed over both spins.
+    /** Setup-supplied values on radial_grid_, in bohr^-5, including occupations and
+     *  the factor 1/2 but no radial Jacobian or spherical-harmonic normalization.
+     *  An empty vector means unavailable, not a core-free setup. */
+    std::vector<double> paw_ae_core_kinetic_density_;
 
     /// True if the pseudo potential includes spin orbit coupling.
     bool spin_orbit_coupling_{false};
@@ -525,6 +536,44 @@ class Atom_type
         return ps_core_charge_density_;
     }
 
+    bool
+    has_ps_core_kinetic_density() const
+    {
+        return !ps_core_kinetic_density_.empty();
+    }
+
+    std::vector<double> const&
+    ps_core_kinetic_density() const
+    {
+        if (!has_ps_core_kinetic_density() || ps_core_kinetic_density_.size() != static_cast<size_t>(num_mt_points())) {
+            RTE_THROW("positive pseudo-core kinetic density is unavailable on the current radial grid");
+        }
+        return ps_core_kinetic_density_;
+    }
+
+    void
+    ps_core_kinetic_density(std::vector<double> values__)
+    {
+        if (values__.empty() || values__.size() != static_cast<size_t>(num_mt_points()) ||
+            std::any_of(values__.begin(), values__.end(), [](double t) { return !std::isfinite(t) || t < 0; })) {
+            RTE_THROW("positive pseudo-core kinetic density must be finite, nonnegative and cover the radial grid");
+        }
+        ps_core_kinetic_density_ = std::move(values__);
+    }
+
+    void
+    check_ps_core_kinetic_density() const
+    {
+        auto const& rho = ps_core_charge_density_;
+        if ((!rho.empty() && rho.size() != static_cast<size_t>(num_mt_points())) ||
+            std::any_of(rho.begin(), rho.end(), [](double n) { return !std::isfinite(n) || n < 0; })) {
+            RTE_THROW("pseudo-core charge density must be finite, nonnegative and cover the radial grid");
+        }
+        if (std::any_of(rho.begin(), rho.end(), [](double n) { return n != 0; }) || has_ps_core_kinetic_density()) {
+            ps_core_kinetic_density();
+        }
+    }
+
     inline std::vector<double>&
     ps_total_charge_density(std::vector<double> ps_dens__)
     {
@@ -600,6 +649,36 @@ class Atom_type
     {
         paw_ae_core_charge_density_ = inp__;
         return paw_ae_core_charge_density_;
+    }
+
+    bool
+    has_paw_core_kinetic_density() const
+    {
+        return !paw_ae_core_kinetic_density_.empty();
+    }
+
+    std::vector<double> const&
+    paw_ae_core_kinetic_density() const
+    {
+        if (!has_paw_core_kinetic_density() ||
+            paw_ae_core_kinetic_density_.size() != static_cast<size_t>(num_mt_points())) {
+            RTE_THROW("PAW positive core kinetic density is unavailable on the current radial grid");
+        }
+        return paw_ae_core_kinetic_density_;
+    }
+
+    void
+    paw_ae_core_kinetic_density(std::vector<double> values__)
+    {
+        if (values__.empty() || values__.size() != static_cast<size_t>(num_mt_points())) {
+            RTE_THROW("PAW core kinetic density must cover the atomic radial grid");
+        }
+        for (auto value : values__) {
+            if (!std::isfinite(value) || value < 0) {
+                RTE_THROW("PAW positive core kinetic density must be finite and nonnegative");
+            }
+        }
+        paw_ae_core_kinetic_density_ = std::move(values__);
     }
 
     inline auto const&

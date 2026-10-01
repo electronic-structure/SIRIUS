@@ -82,10 +82,12 @@ energy_vha(Potential const& potential)
 double
 energy_bxc(Density const& density, Potential const& potential)
 {
+    potential.check_xc_energy_available();
     double ebxc{0};
     for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
         ebxc += sirius::inner(density.mag(j), potential.effective_magnetic_field(j));
     }
+    ebxc += potential.lapw_xc_contractions(density).magnetic;
     return ebxc;
 }
 
@@ -119,13 +121,15 @@ eval_sum(Density const& density, K_point_set const& kset)
 double
 energy_veff(Density const& density, Potential const& potential)
 {
-    return sirius::inner(density.rho(), potential.effective_potential());
+    potential.check_xc_energy_available();
+    return sirius::inner(density.rho(), potential.effective_potential()) + potential.lapw_xc_contractions(density).rho;
 }
 
 double
 energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential);
+    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential) -
+           potential.energy_vtau(density);
 }
 
 double
@@ -144,6 +148,9 @@ ks_energy(Simulation_context const& ctx, std::map<std::string, double> const& en
                      energies.at("PAW_one_elec");
             tot_en += -0.5 * energies.at("vha") + energies.at("exc") + energies.at("PAW_total_energy") +
                       energies.at("ewald");
+            if (energies.count("vtau")) {
+                tot_en -= energies.at("vtau");
+            }
             if (ctx.hubbard_correction()) {
                 tot_en += energies.at("hubbard_energy") - energies.at("hubbard_one_el_contribution");
             }
@@ -217,6 +224,9 @@ total_energy_components(Simulation_context const& ctx, K_point_set const& kset, 
     }
 
     table["entropy"] = kset.entropy_sum();
+    if (potential.has_kinetic_potential() || potential.lapw_xc_derivatives()) {
+        table["vtau"] = potential.energy_vtau(density);
+    }
 
     return table;
 }
@@ -235,7 +245,8 @@ double
 one_electron_energy(Density const& density, Potential const& potential)
 {
     return energy_vha(potential) + energy_vxc(density, potential) + energy_bxc(density, potential) +
-           potential.PAW_one_elec_energy(density) + one_electron_energy_hubbard(density, potential);
+           potential.PAW_one_elec_energy(density) + one_electron_energy_hubbard(density, potential) +
+           potential.energy_vtau(density);
 }
 
 double
@@ -252,7 +263,8 @@ double
 energy_potential(Density const& density, Potential const& potential)
 {
     const double e = energy_veff(density, potential) + energy_bxc(density, potential) +
-                     potential.PAW_one_elec_energy(density) + ::sirius::hubbard_energy(density);
+                     potential.PAW_one_elec_energy(density) + ::sirius::hubbard_energy(density) +
+                     potential.energy_vtau(density);
     return e;
 }
 
