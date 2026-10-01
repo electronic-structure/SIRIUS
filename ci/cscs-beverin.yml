@@ -8,8 +8,6 @@ stages:
 
 .f7t-secrets:
   variables:
-    F7T_CLIENT_ID: $F7T_CLIENT_ID
-    F7T_CLIENT_SECRET: $F7T_CLIENT_SECRET
     F7T_URL: "https://api.cscs.ch/beverin/firecrest/v2"
     F7T_TOKEN_URL: "https://auth.cscs.ch/auth/realms/firecrest-clients/protocol/openid-connect/token"
 
