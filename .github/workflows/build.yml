@@ -19,6 +19,12 @@ jobs:
           spack -e /sirius-env concretize -f
           spack -e /sirius-env install
       - name: Run unit tests
+        # The disposable CI container runs as root; permit its MPI test launcher.
+        env:
+          OMPI_ALLOW_RUN_AS_ROOT: '1'
+          OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: '1'
+          PRTE_ALLOW_RUN_AS_ROOT: '1'
+          PRTE_ALLOW_RUN_AS_ROOT_CONFIRM: '1'
         run: |
           cd $(spack -e /sirius-env location -b sirius)
           spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure --label-exclude integration_test
