@@ -6,8 +6,13 @@ stages:
   - build
   - test
 
+.f7t-secrets:
+  variables:
+    F7T_CLIENT_ID: $F7T_TDS_CLIENT_ID
+    F7T_CLIENT_SECRET: $F7T_TDS_CLIENT_SECRET
+
 build base uenv mi300:
-  extends: [.uenv-builder-beverin-mi300]
+  extends: [.uenv-builder-beverin-mi300, .f7t-secrets]
   stage: baseimage
   timeout: 24h
   variables:
@@ -17,7 +22,7 @@ build base uenv mi300:
     SLURM_TIMELIMIT: 600
 
 build sirius mi300:
-  extends: [.uenv-runner-beverin-mi300]
+  extends: [.uenv-runner-beverin-mi300, .f7t-secrets]
   stage: build
   needs: ["build base uenv mi300"]
   image: sirius-mi300/v1:$CI_PIPELINE_ID
