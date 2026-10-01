@@ -924,6 +924,31 @@ void
 sirius_check_scf_density(void* const* gs_handler__, int* error_code__);
 
 /*
+sirius_check_external_xc_derivative:
+  doc: Check the external XC orbital derivative at fixed geometry and occupations, restoring the input state.
+  arguments:
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: Initialized ground-state handler with CPU fp64 NC, PAW or nonrelativistic LAPW orbitals and an external XC evaluator.
+    step:
+      type: double
+      attr: in, required
+      doc: Positive phase-rotation step, identical on all context ranks.
+    derivatives:
+      type: double
+      attr: out, required, dimension(3, 2)
+      doc: Hamiltonian derivative and central differences at step and step/2 for two orbital rotations. LAPW tests PW/AW and LO coefficients separately at fixed radial basis and core states.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_check_external_xc_derivative(void* const* gs_handler__, double const* step__, double* derivatives__,
+                                    int* error_code__);
+
+/*
 sirius_update_ground_state:
   doc: Update a ground state object after change of atomic coordinates or lattice vectors.
   arguments:
@@ -1342,8 +1367,8 @@ sirius_get_pw_coeffs:
       doc: Error code.
 */
 void
-sirius_get_pw_coeffs(void* const* gs_handler__, char const* label__, double complex* pw_coeffs__,
-                     int const* ngv__, int* gvl__, int const* comm__, int* error_code__);
+sirius_get_pw_coeffs(void* const* gs_handler__, char const* label__, double complex* pw_coeffs__, int const* ngv__,
+                     int* gvl__, int const* comm__, int* error_code__);
 
 /*
 sirius_initialize_subspace:
@@ -1698,8 +1723,8 @@ sirius_get_wave_functions:
 */
 void
 sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int const* spin__, int const* num_gvec_loc__,
-                          int const* gvec_loc__, double complex* evec__, int const* ld__,
-                          int const* num_spin_comp__, int* error_code__);
+                          int const* gvec_loc__, double complex* evec__, int const* ld__, int const* num_spin_comp__,
+                          int* error_code__);
 
 /*
 sirius_add_atom_type_aw_descriptor:
@@ -1851,7 +1876,7 @@ sirius_generate_coulomb_potential(void* const* gs_handler__, double* vh_el__, in
 
 /*
 sirius_generate_xc_potential:
-  doc: Generate XC potential using LibXC
+  doc: Generate XC potential using LibXC or the registered external evaluator.
   arguments:
     gs_handler:
       type: gs_handler
@@ -2582,8 +2607,8 @@ sirius_get_fv_eigen_vectors:
       doc: Error code
 */
 void
-sirius_get_fv_eigen_vectors(void* const* ks_handler__, int const* ik__, double complex* fv_evec__,
-                            int const* ld__, int const* num_fv_states__, int* error_code__);
+sirius_get_fv_eigen_vectors(void* const* ks_handler__, int const* ik__, double complex* fv_evec__, int const* ld__,
+                            int const* num_fv_states__, int* error_code__);
 
 /*
 sirius_get_fv_eigen_values:
@@ -2803,6 +2828,131 @@ sirius_get_kpoint_properties:
 void
 sirius_get_kpoint_properties(void* const* ks_handler__, int const* ik__, double* weight__, double* coordinates__,
                              int* error_code__);
+
+/*
+sirius_set_xc_callback:
+  doc: >-
+    Register an external XC evaluator before initializing the context.
+    The callback is collective on the context communicator and has the C signature
+    void callback(void* user_data, int nr, int ns, const int* grid_dims,
+    int z_offset, int fcomm_context, int fcomm_fft,
+    const double* lattice, double weight, const double* rho,
+    const double* gradient, const double* tau, double* energy,
+    double* vrho, double* vgradient, double* vtau, int* status).
+    All fields use atomic units. Scalar arrays have Fortran shape (nr,ns),
+    gradients (nr,3,ns), and lattice (3,3) with lattice vectors in columns.
+    grid_dims contains the three global FFT dimensions. Local points are a
+    contiguous z slab starting at zero-based z_offset, with x varying fastest.
+    ns=1 denotes total density and tau, ns=2 denotes up and down channels.
+    weight is the volume per FFT point. Return the same total XC energy on
+    every context rank, including ranks with an empty slab. FFT replicas
+    must not be counted twice. fcomm_fft partitions one complete grid.
+    Return derivatives of the full discrete energy divided by weight.
+    SIRIUS applies the gradient adjoint and tau operator itself.
+    Output arrays and status are initially zero. On failure set status nonzero
+    after completing all callback collectives. Do not unwind across the C ABI.
+    The caller owns user_data and keeps it alive until the context is destroyed.
+    A null function pointer disables the callback before context initialization.
+    Currently supported for CPU norm-conserving PW calculations without core
+    charge, SOC, or noncollinear magnetism. Forces and stress are not supported.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    fptr:
+      type: func
+      attr: in, required, value
+      doc: Pointer to a C-interoperable XC callback.
+    user_data:
+      type: void*
+      attr: in, required, value
+      doc: Opaque callback state, which may be null.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_set_xc_callback(void* const* handler__, void (*fptr__)(), void* user_data__, int* error_code__);
+
+/*
+sirius_set_xc_point_callback:
+  doc: >-
+    Collectively register a reconstructed-field XC evaluator and copy its fixed point quadrature
+    before initializing the context, after defining all atoms and lattice vectors.
+    Each complete atom block is owned once across the context communicator.
+    Empty local arrays are permitted. The callback has the C signature
+    void callback(void* user_data, int nr, int ns, int nb, int fcomm,
+    const double* coordinates, const double* energy_weights,
+    const double* descriptor_weights, const int* block_sizes,
+    const double* block_centres, const double* rho, const double* gradient,
+    const double* tau, double* energy, double* drho, double* dgradient,
+    double* dtau, int* status).
+    Coordinates and block centres have Fortran shapes (3,nr) and (3,nb) in bohr.
+    Fields have shapes (nr,ns), (nr,3,ns), (nr,ns) in atomic units, with ns=1
+    total fields or ns=2 up/down fields. They are jointly reconstructed before
+    the callback. The energy and descriptor weights do not scale those fields.
+    Return raw covectors of the complete discrete energy, including model weights,
+    without dividing by quadrature weights or applying host adjoints. Return the
+    same globally summed energy on every rank, including empty ranks. Arrays and
+    status are initially zero. Set status nonzero on failure after completing
+    callback collectives. Never unwind across the C ABI. The caller retains
+    user_data until the context is destroyed. Geometry changes invalidate the
+    supplied quadrature. CPU scalar/collinear PW and PAW are supported, without
+    symmetry reduction. PAW requires explicitly supplied positive core tau.
+    Full potential, forces, stress and SOC are not supported by this point path.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    fptr:
+      type: func
+      attr: in, required, value
+      doc: C-interoperable point callback. Null disables external XC.
+    user_data:
+      type: void*
+      attr: in, required, value
+      doc: Opaque callback state, which may be null.
+    num_points:
+      type: int
+      attr: in, required
+      doc: Number of local point rows.
+    num_blocks:
+      type: int
+      attr: in, required
+      doc: Number of complete local atom blocks.
+    coordinates:
+      type: double
+      attr: in, required, dimension(3,num_points)
+      doc: Cartesian target coordinates.
+    energy_weights:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Energy quadrature and partition weights.
+    descriptor_weights:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Independent descriptor quadrature weights.
+    block_sizes:
+      type: int
+      attr: in, required, dimension(num_blocks)
+      doc: Positive consecutive row counts summing to num_points.
+    block_centres:
+      type: double
+      attr: in, required, dimension(3,num_blocks)
+      doc: Cartesian centres of the atom blocks.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_set_xc_point_callback(void* const* handler__, void (*fptr__)(), void* user_data__, int const* num_points__,
+                             int const* num_blocks__, double const* coordinates__, double const* energy_weights__,
+                             double const* descriptor_weights__, int const* block_sizes__,
+                             double const* block_centres__, int* error_code__);
 
 /*
 sirius_set_callback_function:
@@ -3174,9 +3324,8 @@ sirius_generate_rhoaug_q:
 void
 sirius_generate_rhoaug_q(void* const* gs_handler__, int const* iat__, int const* num_atoms__, int const* num_gvec_loc__,
                          int const* num_spin_comp__, double complex const* qpw__, int const* ldq__,
-                         double complex const* phase_factors_q__, int const* mill__,
-                         double complex const* dens_mtrx__, int const* ldd__, double complex* rho_aug__,
-                         int* error_code__);
+                         double complex const* phase_factors_q__, int const* mill__, double complex const* dens_mtrx__,
+                         int const* ldd__, double complex* rho_aug__, int* error_code__);
 
 /*
 sirius_generate_d_operator_matrix:
@@ -3264,8 +3413,8 @@ sirius_access_density_matrix:
       doc: Error code.
 */
 void
-sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__,
-                             double complex* dm__, int const* ld__, int* error_code__);
+sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__, double complex* dm__,
+                             int const* ld__, int* error_code__);
 
 /*
 sirius_access_local_occupation_matrix:
@@ -3310,8 +3459,8 @@ sirius_access_local_occupation_matrix:
 */
 void
 sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__,
-                                      int const* l__, int const* spin__, double complex* occ_mtrx__,
-                                      int const* ld__, int* error_code__);
+                                      int const* l__, int const* spin__, double complex* occ_mtrx__, int const* ld__,
+                                      int* error_code__);
 
 /*
 sirius_access_nonlocal_occupation_matrix:
@@ -3662,4 +3811,3 @@ void
 sirius_set_dftd4_correction(void* const* handler__, char const* method__, char const* damping__, bool const* atm__,
                             char* const damping_term__, double const* s6__, double const* s8__, double const* s9__,
                             double const* a1__, double const* a2__, double const* alp__, int* error_code__);
-

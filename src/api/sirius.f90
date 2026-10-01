@@ -1967,6 +1967,50 @@ call sirius_check_scf_density_aux(gs_handler_ptr,error_code_ptr)
 end subroutine sirius_check_scf_density
 
 !
+!> @brief Check the external XC orbital derivative at fixed geometry and occupations, restoring the input state.
+!> @param [in] gs_handler Initialized ground-state handler with CPU fp64 NC, PAW or nonrelativistic LAPW orbitals and an external XC evaluator.
+!> @param [in] step Positive phase-rotation step, identical on all context ranks.
+!> @param [out] derivatives Hamiltonian derivative and central differences at step and step/2 for two orbital rotations. LAPW tests PW/AW and LO coefficients separately at fixed radial basis and core states.
+!> @param [out] error_code Error code.
+subroutine sirius_check_external_xc_derivative(gs_handler,step,derivatives,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+real(8), target, intent(in) :: step
+real(8), target, intent(out) :: derivatives(3, 2)
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: step_ptr
+type(C_PTR) :: derivatives_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_check_external_xc_derivative_aux(gs_handler,step,derivatives,error_code)&
+&bind(C, name="sirius_check_external_xc_derivative")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: step
+type(C_PTR), value :: derivatives
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+step_ptr = C_NULL_PTR
+step_ptr = C_LOC(step)
+derivatives_ptr = C_NULL_PTR
+derivatives_ptr = C_LOC(derivatives)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_check_external_xc_derivative_aux(gs_handler_ptr,step_ptr,derivatives_ptr,&
+&error_code_ptr)
+end subroutine sirius_check_external_xc_derivative
+
+!
 !> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
 !> @param [in] gs_handler Ground-state handler.
 !> @param [out] error_code Error code
@@ -3735,7 +3779,7 @@ call sirius_generate_coulomb_potential_aux(gs_handler_ptr,vh_el_ptr,error_code_p
 end subroutine sirius_generate_coulomb_potential
 
 !
-!> @brief Generate XC potential using LibXC
+!> @brief Generate XC potential using LibXC or the registered external evaluator.
 !> @param [in] gs_handler Ground state handler
 !> @param [out] error_code Error code
 subroutine sirius_generate_xc_potential(gs_handler,error_code)
@@ -5491,6 +5535,126 @@ endif
 call sirius_get_kpoint_properties_aux(ks_handler_ptr,ik_ptr,weight_ptr,coordinates_ptr,&
 &error_code_ptr)
 end subroutine sirius_get_kpoint_properties
+
+!
+!> @brief Register an external XC evaluator before initializing the context. The callback is collective on the context communicator and has the C signature void callback(void* user_data, int nr, int ns, const int* grid_dims, int z_offset, int fcomm_context, int fcomm_fft, const double* lattice, double weight, const double* rho, const double* gradient, const double* tau, double* energy, double* vrho, double* vgradient, double* vtau, int* status). All fields use atomic units. Scalar arrays have Fortran shape (nr,ns), gradients (nr,3,ns), and lattice (3,3) with lattice vectors in columns. grid_dims contains the three global FFT dimensions. Local points are a contiguous z slab starting at zero-based z_offset, with x varying fastest. ns=1 denotes total density and tau, ns=2 denotes up and down channels. weight is the volume per FFT point. Return the same total XC energy on every context rank, including ranks with an empty slab. FFT replicas must not be counted twice. fcomm_fft partitions one complete grid. Return derivatives of the full discrete energy divided by weight. SIRIUS applies the gradient adjoint and tau operator itself. Output arrays and status are initially zero. On failure set status nonzero after completing all callback collectives. Do not unwind across the C ABI. The caller owns user_data and keeps it alive until the context is destroyed. A null function pointer disables the callback before context initialization. Currently supported for CPU norm-conserving PW calculations without core charge, SOC, or noncollinear magnetism. Forces and stress are not supported.
+!> @param [in] handler Simulation context handler.
+!> @param [in] fptr Pointer to a C-interoperable XC callback.
+!> @param [in] user_data Opaque callback state, which may be null.
+!> @param [out] error_code Error code.
+subroutine sirius_set_xc_callback(handler,fptr,user_data,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+type(C_FUNPTR), value, intent(in) :: fptr
+type(C_PTR), value, intent(in) :: user_data
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_xc_callback_aux(handler,fptr,user_data,error_code)&
+&bind(C, name="sirius_set_xc_callback")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_FUNPTR), value :: fptr
+type(C_PTR), value :: user_data
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_xc_callback_aux(handler_ptr,fptr,user_data,error_code_ptr)
+end subroutine sirius_set_xc_callback
+
+!
+!> @brief Collectively register a reconstructed-field XC evaluator and copy its fixed point quadrature before initializing the context, after defining all atoms and lattice vectors. Each complete atom block is owned once across the context communicator. Empty local arrays are permitted. The callback has the C signature void callback(void* user_data, int nr, int ns, int nb, int fcomm, const double* coordinates, const double* energy_weights, const double* descriptor_weights, const int* block_sizes, const double* block_centres, const double* rho, const double* gradient, const double* tau, double* energy, double* drho, double* dgradient, double* dtau, int* status). Coordinates and block centres have Fortran shapes (3,nr) and (3,nb) in bohr. Fields have shapes (nr,ns), (nr,3,ns), (nr,ns) in atomic units, with ns=1 total fields or ns=2 up/down fields. They are jointly reconstructed before the callback. The energy and descriptor weights do not scale those fields. Return raw covectors of the complete discrete energy, including model weights, without dividing by quadrature weights or applying host adjoints. Return the same globally summed energy on every rank, including empty ranks. Arrays and status are initially zero. Set status nonzero on failure after completing callback collectives. Never unwind across the C ABI. The caller retains user_data until the context is destroyed. Geometry changes invalidate the supplied quadrature. CPU scalar/collinear PW and PAW are supported, without symmetry reduction. PAW requires explicitly supplied positive core tau. Full potential, forces, stress and SOC are not supported by this point path.
+!> @param [in] handler Simulation context handler.
+!> @param [in] fptr C-interoperable point callback. Null disables external XC.
+!> @param [in] user_data Opaque callback state, which may be null.
+!> @param [in] num_points Number of local point rows.
+!> @param [in] num_blocks Number of complete local atom blocks.
+!> @param [in] coordinates Cartesian target coordinates.
+!> @param [in] energy_weights Energy quadrature and partition weights.
+!> @param [in] descriptor_weights Independent descriptor quadrature weights.
+!> @param [in] block_sizes Positive consecutive row counts summing to num_points.
+!> @param [in] block_centres Cartesian centres of the atom blocks.
+!> @param [out] error_code Error code.
+subroutine sirius_set_xc_point_callback(handler,fptr,user_data,num_points,num_blocks,&
+&coordinates,energy_weights,descriptor_weights,block_sizes,block_centres,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+type(C_FUNPTR), value, intent(in) :: fptr
+type(C_PTR), value, intent(in) :: user_data
+integer, target, intent(in) :: num_points
+integer, target, intent(in) :: num_blocks
+real(8), target, intent(in) :: coordinates(3,num_points)
+real(8), target, intent(in) :: energy_weights(num_points)
+real(8), target, intent(in) :: descriptor_weights(num_points)
+integer, target, intent(in) :: block_sizes(num_blocks)
+real(8), target, intent(in) :: block_centres(3,num_blocks)
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_points_ptr
+type(C_PTR) :: num_blocks_ptr
+type(C_PTR) :: coordinates_ptr
+type(C_PTR) :: energy_weights_ptr
+type(C_PTR) :: descriptor_weights_ptr
+type(C_PTR) :: block_sizes_ptr
+type(C_PTR) :: block_centres_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_set_xc_point_callback_aux(handler,fptr,user_data,num_points,num_blocks,&
+&coordinates,energy_weights,descriptor_weights,block_sizes,block_centres,error_code)&
+&bind(C, name="sirius_set_xc_point_callback")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_FUNPTR), value :: fptr
+type(C_PTR), value :: user_data
+type(C_PTR), value :: num_points
+type(C_PTR), value :: num_blocks
+type(C_PTR), value :: coordinates
+type(C_PTR), value :: energy_weights
+type(C_PTR), value :: descriptor_weights
+type(C_PTR), value :: block_sizes
+type(C_PTR), value :: block_centres
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+num_points_ptr = C_NULL_PTR
+num_points_ptr = C_LOC(num_points)
+num_blocks_ptr = C_NULL_PTR
+num_blocks_ptr = C_LOC(num_blocks)
+coordinates_ptr = C_NULL_PTR
+coordinates_ptr = C_LOC(coordinates)
+energy_weights_ptr = C_NULL_PTR
+energy_weights_ptr = C_LOC(energy_weights)
+descriptor_weights_ptr = C_NULL_PTR
+descriptor_weights_ptr = C_LOC(descriptor_weights)
+block_sizes_ptr = C_NULL_PTR
+block_sizes_ptr = C_LOC(block_sizes)
+block_centres_ptr = C_NULL_PTR
+block_centres_ptr = C_LOC(block_centres)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_xc_point_callback_aux(handler_ptr,fptr,user_data,num_points_ptr,&
+&num_blocks_ptr,coordinates_ptr,energy_weights_ptr,descriptor_weights_ptr,block_sizes_ptr,&
+&block_centres_ptr,error_code_ptr)
+end subroutine sirius_set_xc_point_callback
 
 !
 !> @brief Set callback function to compute various radial integrals.

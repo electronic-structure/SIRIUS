@@ -93,6 +93,10 @@ Potential::Potential(Simulation_context& ctx__)
     using pf  = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
+    if (ctx_.cb().external_xc_) {
+        validate_external_xc_context(ctx_);
+        external_xc_registered_ = true;
+    }
     if (ctx_.meta_gga()) {
         int invalid{0};
         std::string error;
@@ -146,7 +150,7 @@ Potential::Potential(Simulation_context& ctx__)
             RTE_THROW("invalid Libxc meta-GGA configuration on a context rank: " + error);
         }
     }
-    if (ctx_.meta_gga()) {
+    if (external_xc_registered_ || ctx_.meta_gga()) {
         kinetic_potential_ = std::make_unique<Field4D>(ctx_, lmax_t(ctx_.lmax_pot()));
         kinetic_potential_->zero();
     }
@@ -328,6 +332,12 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     PROFILE("sirius::Potential::generate");
     power::Profile p1("generate_pot");
 
+    if (bool(ctx_.cb().external_xc_) != external_xc_registered_) {
+        RTE_THROW("external XC registration cannot change after constructing the potential");
+    }
+    if (ctx_.cb().external_xc_ && ctx_.cb().external_xc_points_ && use_symmetry__) {
+        RTE_THROW("external XC point quadrature cannot symmetrize the potential without its quadrature symmetry map");
+    }
     if ((ctx_.full_potential() || unit_cell_.num_paw_atoms()) && ctx_.meta_gga() && use_symmetry__) {
         RTE_THROW("PAW/LAPW meta-GGA cannot symmetrize discrete XC operators independently of their quadrature");
     }

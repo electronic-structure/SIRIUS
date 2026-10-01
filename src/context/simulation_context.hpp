@@ -19,6 +19,7 @@
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
+#include "xc_callback.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
@@ -109,6 +110,10 @@ struct callback_functions_t
 
     /// Callback function to compute effective potential.
     std::function<void(void)> veff_{nullptr};
+
+    /// External XC evaluation, leaving Poisson and ionic potentials in SIRIUS.
+    xc_callback_t external_xc_{nullptr};
+    std::shared_ptr<xc_point_set_t const> external_xc_points_;
 };
 
 /// Store all radial integrals in one place.

@@ -57,10 +57,19 @@ class Potential : public Field4D
 
     /// Derivatives conjugate to total tau and its collinear spin difference.
     std::unique_ptr<Field4D> kinetic_potential_;
+    bool external_xc_registered_{false};
+    double external_xc_energy_{0};
+    std::vector<mdarray<double, 3>> external_paw_d_mtrx_;
     std::unique_ptr<lapw_xc_field_adjoint_t> lapw_xc_derivatives_;
     std::optional<double> lapw_xc_energy_;
     /// Grid XC energy using the PAW orbital density without compensation charge.
     std::optional<double> paw_meta_grid_energy_;
+
+    void
+    xc_external(Density const& density__);
+
+    void
+    xc_external_points(Density const& density__);
 
     void
     xc_rg_meta(Density const& density__, lapw_xc_field_adjoint_t* lapw__ = nullptr);
@@ -779,8 +788,8 @@ class Potential : public Field4D
     auto&
     xc_energy_density()
     {
-        if (lapw_xc_derivatives_) {
-            RTE_THROW("discrete LAPW XC supplies a total energy, not an energy per particle");
+        if (external_xc_registered_ || lapw_xc_derivatives_) {
+            RTE_THROW("external XC supplies a total energy, not an energy per particle");
         }
         return *xc_energy_density_;
     }
@@ -788,8 +797,8 @@ class Potential : public Field4D
     auto const&
     xc_energy_density() const
     {
-        if (lapw_xc_derivatives_) {
-            RTE_THROW("discrete LAPW XC supplies a total energy, not an energy per particle");
+        if (external_xc_registered_ || lapw_xc_derivatives_) {
+            RTE_THROW("external XC supplies a total energy, not an energy per particle");
         }
         return *xc_energy_density_;
     }
@@ -902,6 +911,9 @@ class Potential : public Field4D
         check_xc_energy_available();
         if (lapw_xc_energy_) {
             return *lapw_xc_energy_;
+        }
+        if (external_xc_registered_) {
+            return external_xc_energy_;
         }
         if (paw_meta_grid_energy_) {
             return *paw_meta_grid_energy_;

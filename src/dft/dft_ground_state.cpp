@@ -27,6 +27,69 @@ DFT_ground_state::initial_state()
     PROFILE("sirius::DFT_ground_state::initial_state");
 
     density_.initial_density();
+    if (ctx_.cb().external_xc_ && ctx_.cb().external_xc_points_) {
+        // Independent density/tau guesses need not represent the same orbitals,
+        // and Fourier interpolation can make them negative at XC points. This
+        // auxiliary Hamiltonian seeds all fields from occupied orbitals instead.
+        Potential seed(ctx_);
+        seed.zero();
+        seed.poisson(density_.rho());
+        seed.effective_potential() += seed.hartree_potential();
+        if (!ctx_.full_potential()) {
+            seed.effective_potential().rg() += seed.local_potential();
+        } else {
+            seed.effective_potential().mt().sync(ctx_.unit_cell().spl_num_atoms());
+        }
+        // An antiparallel seed field preserves the requested initial spin pattern.
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            seed.effective_magnetic_field(j).rg() += density_.mag(j).rg();
+            seed.effective_magnetic_field(j).rg() *= -1;
+            if (ctx_.full_potential()) {
+                auto& field = seed.effective_magnetic_field(j).mt();
+                for (auto it : ctx_.unit_cell().spl_num_atoms()) {
+                    for (size_t i = 0; i < field[it.i].size(); ++i) {
+                        field[it.i][i] = -density_.mag(j).mt()[it.i][i];
+                    }
+                }
+                field.sync(ctx_.unit_cell().spl_num_atoms());
+            }
+        }
+        seed.fft_transform(-1);
+        if (ctx_.full_potential()) {
+            Hamiltonian0<double> H0(seed, true);
+            auto result = diagonalize<double, double>(H0, kset_, ctx_.cfg().iterative_solver().min_tolerance(),
+                                                      ctx_.cfg().iterative_solver().num_steps());
+            if (!result.converged) {
+                RTE_THROW("external XC LAPW orbital initialization did not converge");
+            }
+            kset_.find_band_occupancies<double>();
+            density_.generate_core_charge_density(seed.get_spherical_potential());
+            density_.generate<double>(kset_, false, true, true);
+            potential_.generate(density_, false, true);
+            // Atom potential views must outlive the temporary seed Hamiltonian.
+            potential_.update_atomic_potential();
+            return;
+        }
+        seed.generate_d_mtrx();
+        auto initialize_orbitals = [&](auto precision) {
+            using T = decltype(precision);
+            Hamiltonian0<T> H0(seed, false);
+            initialize_subspace(kset_, H0, false);
+            kset_.find_band_occupancies<T>();
+            density_.generate<T>(kset_, false, true, true);
+        };
+        if (ctx_.cfg().parameters().precision_wf() == "fp32") {
+#if defined(SIRIUS_USE_FP32)
+            initialize_orbitals(float{});
+#else
+            RTE_THROW("not compiled with FP32 support");
+#endif
+        } else {
+            initialize_orbitals(double{});
+        }
+        potential_.generate(density_, false, true);
+        return;
+    }
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {
@@ -62,7 +125,7 @@ DFT_ground_state::energy_kin_sum_pw() const
     for (auto it : kset_.spl_num_kpoints()) {
         auto kp = kset_.get<double>(it.i);
 
-        #pragma omp parallel for schedule(static) reduction(+:ekin)
+        #pragma omp parallel for schedule(static) reduction(+ : ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
             auto Gk = kp->gkvec().gkvec_cart(gvec_index_t::local(igloc));
 
@@ -94,6 +157,141 @@ json
 DFT_ground_state::serialize()
 {
     return energy_dict(ctx_, kset_, density_, potential_, this->scf_correction_energy_);
+}
+
+std::array<std::array<double, 3>, 2>
+DFT_ground_state::check_external_xc_derivative(double step__)
+{
+    int invalid = !ctx_.cb().external_xc_ || ctx_.cfg().parameters().precision_wf() != "fp64" ||
+                  ctx_.hubbard_correction() || !std::isfinite(step__) || step__ <= 0;
+    ctx_.comm().allreduce<int, mpi::op_t::max>(&invalid, 1);
+    if (invalid) {
+        RTE_THROW("XC derivative check requires an external evaluator, fp64 orbitals, no Hubbard term and a "
+                  "positive step");
+    }
+    validate_external_xc_context(ctx_);
+    double lo = step__, hi = step__;
+    ctx_.comm().allreduce<double, mpi::op_t::min>(&lo, 1);
+    ctx_.comm().allreduce<double, mpi::op_t::max>(&hi, 1);
+    if (lo != hi) {
+        RTE_THROW("XC derivative check requires the same step on every rank");
+    }
+    if (ctx_.full_potential()) {
+        return check_lapw_xc_derivative(step__);
+    }
+
+    std::vector<std::vector<std::complex<double>>> saved;
+    for (auto it : kset_.spl_num_kpoints()) {
+        auto kp = kset_.get<double>(it.i);
+        saved.emplace_back();
+        for (int s = 0; s < ctx_.num_spins(); s++) {
+            for (int b = 0; b < kp->num_occupied_bands(s); b++) {
+                for (int ig = 0; ig < kp->gkvec().count(); ig++) {
+                    saved.back().push_back(
+                            kp->spinor_wave_functions().pw_coeffs(ig, wf::spin_index(s), wf::band_index(b)));
+                }
+            }
+        }
+    }
+    // Odd real phases preserve conjugate symmetry for reduced-G Gamma states.
+    // Nonlinear G dependence changes the shape, not just the position, of an orbital.
+    auto phase = [](r3::vector<int> const& g, int direction) {
+        return direction == 0 ? std::sin(0.41 * g[0] + 0.73 * g[1] + 0.19 * g[2])
+                              : std::sin(0.67 * g[0] - 0.23 * g[1] + 0.53 * g[2]);
+    };
+    auto set_orbitals = [&](int direction, double t) {
+        size_t ik{0};
+        for (auto it : kset_.spl_num_kpoints()) {
+            auto kp = kset_.get<double>(it.i);
+            size_t index{0};
+            for (int s = 0; s < ctx_.num_spins(); s++) {
+                for (int b = 0; b < kp->num_occupied_bands(s); b++) {
+                    for (int ig = 0; ig < kp->gkvec().count(); ig++) {
+                        auto g = kp->gkvec().gvec(gvec_index_t::local(ig));
+                        auto c = saved[ik][index++];
+                        kp->spinor_wave_functions().pw_coeffs(ig, wf::spin_index(s), wf::band_index(b)) =
+                                t == 0 ? c : c * std::polar(1.0, t * phase(g, direction));
+                    }
+                }
+            }
+            ik++;
+        }
+    };
+    auto evaluator = ctx_.cb().external_xc_;
+    auto restore   = [&]() {
+        set_orbitals(0, 0);
+        ctx_.cb().external_xc_ = evaluator;
+    };
+    std::array<std::array<double, 3>, 2> result{};
+    try {
+        Density density(ctx_);
+        Potential potential(ctx_);
+        for (int direction = 0; direction < 2; direction++) {
+            constexpr double offset{0.17};
+            auto evaluate = [&](double t) {
+                set_orbitals(direction, offset + t);
+                density.generate<double>(kset_, false, true, true);
+                potential.generate(density, false, true);
+                return potential.energy_exc(density);
+            };
+            evaluate(0);
+            auto expectation = [&]() {
+                Hamiltonian0<double> H0(potential, false);
+                double derivative{0};
+                for (auto it : kset_.spl_num_kpoints()) {
+                    auto kp = kset_.get<double>(it.i);
+                    auto Hk = H0(*kp);
+                    wf::Wave_functions<double> hphi(kp->gkvec_sptr(), wf::num_mag_dims(ctx_.num_mag_dims()),
+                                                    wf::num_bands(ctx_.num_bands()), memory_t::host);
+                    for (int s = 0; s < ctx_.num_spins(); s++) {
+                        int nb = kp->num_occupied_bands(s);
+                        if (nb == 0) {
+                            continue;
+                        }
+                        if (ctx_.gamma_point()) {
+                            Hk.apply_h_s<double>(wf::spin_range(s), wf::band_range(0, nb), kp->spinor_wave_functions(),
+                                                 &hphi, nullptr);
+                        } else {
+                            Hk.apply_h_s<std::complex<double>>(wf::spin_range(s), wf::band_range(0, nb),
+                                                               kp->spinor_wave_functions(), &hphi, nullptr);
+                        }
+                        for (int b = 0; b < nb; b++) {
+                            for (int ig = 0; ig < kp->gkvec().count(); ig++) {
+                                auto g = kp->gkvec().gvec(gvec_index_t::local(ig));
+                                auto c =
+                                        kp->spinor_wave_functions().pw_coeffs(ig, wf::spin_index(s), wf::band_index(b));
+                                auto d              = std::complex<double>(0, phase(g, direction)) * c;
+                                auto h              = hphi.pw_coeffs(ig, wf::spin_index(s), wf::band_index(b));
+                                double multiplicity = kp->gkvec().reduced() && dot(g, g) ? 2 : 1;
+                                derivative += 2 * kp->weight() * kp->band_occupancy(b, s) * multiplicity *
+                                              std::real(std::conj(d) * h);
+                            }
+                        }
+                    }
+                }
+                ctx_.comm().allreduce(&derivative, 1);
+                return derivative;
+            };
+            result[direction][0] = expectation();
+            // Subtract the same-density Hamiltonian with zero XC. This retains
+            // precisely the scalar, smooth-Q, local PAW and tau XC operators.
+            ctx_.cb().external_xc_ = [](auto const&, auto const&, auto&) {};
+            potential.generate(density, false, true);
+            result[direction][0] -= expectation();
+            ctx_.cb().external_xc_ = evaluator;
+            for (int j = 1; j <= 2; j++) {
+                double h             = step__ / j;
+                double plus          = evaluate(h);
+                double minus         = evaluate(-h);
+                result[direction][j] = (plus - minus) / (2 * h);
+            }
+        }
+    } catch (...) {
+        restore();
+        throw;
+    }
+    restore();
+    return result;
 }
 
 /// A quick check of self-constent density in case of pseudopotential.

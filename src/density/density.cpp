@@ -60,36 +60,9 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
     int nmtp = atom_type__.num_mt_points();
     int zn   = atom_type__.zn();
 
-    auto get_free_atom_grid = [&]() {
-        std::vector<double> free_atom_grid(nmtp);
-        for (int i = 0; i < nmtp; i++) {
-            free_atom_grid[i] = atom_type__.radial_grid(i);
-        }
-
-        /* extend radial grid */
-        double x  = atom_type__.radial_grid(nmtp - 1);
-        double dx = atom_type__.radial_grid().dx(nmtp - 2);
-        while (x + dx < atom_type__.free_atom_radial_grid().last()) {
-            x += dx;
-            free_atom_grid.push_back(x);
-            dx *= 1.025;
-        }
-        return Radial_grid_ext<double>(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
-    };
-
-    auto rgrid = get_free_atom_grid();
-
-    /* cook effective potential from muffin-tin part and tail */
-    double beta = vs__[nmtp - 1] - atom_type__.free_atom_potential(atom_type__.mt_radius());
-    std::vector<double> veff(rgrid.num_points());
-    for (int ir = 0; ir < nmtp; ir++) {
-        /* muffin-tin part */
-        veff[ir] = vs__[ir];
-    }
-    for (int ir = nmtp; ir < rgrid.num_points(); ir++) {
-        /* long range tail */
-        veff[ir] = atom_type__.free_atom_potential(rgrid.x(ir)) + beta;
-    }
+    auto problem      = atom_type__.core_radial_problem(vs__);
+    auto const& rgrid = problem.first;
+    auto const& veff  = problem.second;
 
     /* write spherical potential */
     if (false) {
@@ -112,10 +85,6 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
     rho_t.zero();
     tau_t.zero();
     if (core_xc__) {
-        std::array<std::vector<double>, 2> fields = *core_xc__;
-        for (auto& field : fields) {
-            field.resize(rgrid.num_points(), 0);
-        }
         std::map<int, int> states_per_l;
         for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
             auto const& level = atom_type__.atomic_level(ist);
@@ -124,49 +93,7 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
             }
         }
         for (auto const& [l, count] : states_per_l) {
-            std::vector<radial_core_state_t> previous, states;
-            bool converged{false};
-            std::ostringstream convergence;
-            for (int nb : {64, 128, 192, 256, 384}) {
-                Radial_core_solver solver(rgrid, l, zn, veff, nb, atom_type__.mt_radius());
-                states = solver.solve(count, fields[0], fields[1]);
-                if (!previous.empty()) {
-                    double energy_error{0}, field_error{0};
-                    int worst_state{0}, worst_ir{0}, worst_part{0};
-                    for (int j = 0; j < count; j++) {
-                        energy_error =
-                                std::max(energy_error, std::abs(states[j].energy - previous[j].energy) /
-                                                               (1e-10 * std::max(1.0, std::abs(states[j].energy))));
-                        int part{0};
-                        for (auto pair : {std::make_pair(&states[j].rho, &previous[j].rho),
-                                          std::make_pair(&states[j].tau, &previous[j].tau)}) {
-                            double peak = *std::max_element(pair.first->begin(), pair.first->end());
-                            for (int ir = 0; ir < nmtp; ir++) {
-                                double error = std::abs((*pair.first)[ir] - (*pair.second)[ir]) /
-                                               (1e-6 * std::max(peak, 1e-30));
-                                if (error > field_error) {
-                                    field_error = error;
-                                    worst_state = j;
-                                    worst_ir    = ir;
-                                    worst_part  = part;
-                                }
-                            }
-                            part++;
-                        }
-                    }
-                    convergence << " basis=" << nb << " energy=" << energy_error << " fields=" << field_error
-                                << " state=" << worst_state << " part=" << worst_part << " r=" << rgrid[worst_ir];
-                    if (std::max(energy_error, field_error) <= 1) {
-                        converged = true;
-                        break;
-                    }
-                }
-                previous = std::move(states);
-            }
-            if (!converged) {
-                RTE_THROW("tau-dependent radial core solve did not converge with basis refinement; scaled errors:" +
-                          convergence.str());
-            }
+            auto states = solve_radial_core_states(rgrid, l, zn, veff, count, *core_xc__, nmtp);
             for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
                 auto const& level = atom_type__.atomic_level(ist);
                 if (level.core && level.l == l) {
@@ -299,6 +226,7 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
               {ctx__.periodic_function_ptr("rho"), ctx__.periodic_function_ptr("magz"),
                ctx__.periodic_function_ptr("magx"), ctx__.periodic_function_ptr("magy")})
     , unit_cell_(ctx_.unit_cell())
+    , external_xc_registered_(bool(ctx__.cb().external_xc_))
 {
     PROFILE("sirius::Density");
 
@@ -308,7 +236,10 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
 
     using spf = Smooth_periodic_function<double>;
 
-    if (kinetic_density__ || ctx_.meta_gga()) {
+    if (ctx_.cb().external_xc_) {
+        validate_external_xc_context(ctx_);
+    }
+    if (external_xc_registered_ || kinetic_density__ || ctx_.meta_gga()) {
         if (ctx_.processing_unit() != device_t::CPU || ctx_.spfft<double>().processing_unit() != SPFFT_PU_HOST ||
             ctx_.spfft_coarse<double>().processing_unit() != SPFFT_PU_HOST || ctx_.num_mag_dims() == 3 ||
             ctx_.so_correction() || (ctx_.full_potential() && ctx_.valence_relativity() != relativity_t::none)) {
@@ -326,7 +257,7 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
         rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
-        if (ctx_.meta_gga()) {
+        if (ctx_.meta_gga() && !external_xc_registered_) {
             tau_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
         }
     } else {
@@ -1320,6 +1251,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 {
     PROFILE("sirius::Density::generate");
     power::Profile p1("generate_dens");
+
+    if (bool(ctx_.cb().external_xc_) != external_xc_registered_) {
+        RTE_THROW("external XC registration cannot change after constructing the density");
+    }
 
     generate_valence<T>(ks__);
 

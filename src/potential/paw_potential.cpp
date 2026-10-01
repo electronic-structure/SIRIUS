@@ -100,7 +100,7 @@ Potential::generate_PAW_effective_potential(Density const& density)
         auto ia = unit_cell_.paw_atom_index(i);
         calc_PAW_local_Dij(ia, d_mtrx_paw_[i]);
     }
-    if (ctx_.meta_gga()) {
+    if (ctx_.meta_gga() || ctx_.cb().external_xc_) {
         // Remove Q*Vxc from the nonlocal operator. Keeping the correction in the
         // PAW matrix also removes it from the one-electron double-counting term.
         xc_potential_->rg().fft_transform(-1);
@@ -114,6 +114,15 @@ Potential::generate_PAW_effective_potential(Density const& density)
             qxc.push_back(mdarray<double, 3>({n, n, ctx_.num_mag_dims() + 1}));
         }
         generate_d_mtrx(xc_fields, qxc);
+        for (auto it : unit_cell_.spl_num_paw_atoms()) {
+            auto ia = unit_cell_.paw_atom_index(it.i);
+            auto& d = d_mtrx_paw_[it.i];
+            for (size_t i = 0; i < d.size(); i++) {
+                d[i] -= qxc[ia][i];
+            }
+        }
+    }
+    if (ctx_.meta_gga() && !ctx_.cb().external_xc_) {
         int invalid{0};
         std::string error;
         try {
@@ -121,9 +130,6 @@ Potential::generate_PAW_effective_potential(Density const& density)
                 auto ia          = unit_cell_.paw_atom_index(it.i);
                 auto const& type = unit_cell_.atom(ia).type();
                 auto& d          = d_mtrx_paw_[it.i];
-                for (size_t i = 0; i < d.size(); i++) {
-                    d[i] -= qxc[ia][i];
-                }
                 for (bool ae : {true, false}) {
                     PAW_local_fields map(type, ae, false);
                     auto fields = map.fields(density.density_matrix(ia));
@@ -157,6 +163,26 @@ Potential::generate_PAW_effective_potential(Density const& density)
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));
         comm_.bcast(d_mtrx_paw_[i].at(memory_t::host), d_mtrx_paw_[i].size(), location.ib);
+    }
+
+    // The joint nonlocal XC energy is evaluated once on reconstructed fields.
+    // Its local matrix derivatives supplement the electrostatic PAW terms.
+    if (ctx_.cb().external_xc_) {
+        if (external_paw_d_mtrx_.size() != d_mtrx_paw_.size()) {
+            RTE_THROW("external PAW XC matrices are missing for the current potential");
+        }
+        for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
+            auto const& x = external_paw_d_mtrx_[i];
+            auto& d       = d_mtrx_paw_[i];
+            for (int j = 0; j < static_cast<int>(d.size(1)); j++) {
+                for (int k = 0; k < static_cast<int>(d.size(0)); k++) {
+                    d(k, j, 0) += ctx_.num_spins() == 1 ? x(k, j, 0) : 0.5 * (x(k, j, 0) + x(k, j, 1));
+                    if (ctx_.num_spins() == 2) {
+                        d(k, j, 1) += 0.5 * (x(k, j, 0) - x(k, j, 1));
+                    }
+                }
+            }
+        }
     }
 
     /* add paw Dij to uspp Dij */
@@ -256,7 +282,7 @@ Potential::calc_PAW_local_potential(typename atom_index_t::global ia__, std::vec
         vxc.emplace_back(sf::lmmax(l_max), rgrid);
     }
 
-    if (!ctx_.meta_gga()) {
+    if (!ctx_.cb().external_xc_ && !ctx_.meta_gga()) {
         sirius::xc_mt_paw(xc_func_, l_max, ctx_.num_mag_dims(), *sht_, rgrid, ae_density__, ae_core, vxc,
                           (*paw_ae_exc_)[ia__], ctx_.cfg().settings().xc_use_lapl());
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
@@ -385,7 +411,7 @@ Potential::calc_PAW_one_elec_energy(Atom const& atom__, mdarray<double, 2> const
 double
 Potential::PAW_xc_total_energy(Density const& density__) const
 {
-    if (!unit_cell_.num_paw_atoms()) {
+    if (!unit_cell_.num_paw_atoms() || ctx_.cb().external_xc_) {
         return 0;
     }
     if (ctx_.meta_gga()) {
@@ -394,7 +420,7 @@ Potential::PAW_xc_total_energy(Density const& density__) const
     /* compute contribution from the core */
     double ecore{0};
     int n_paw_atoms_loc = unit_cell_.spl_num_paw_atoms().local_size();
-    #pragma omp parallel for reduction(+:ecore)
+    #pragma omp parallel for reduction(+ : ecore)
     for (int ialoc = 0; ialoc < n_paw_atoms_loc; ialoc++) {
         auto i  = unit_cell_.spl_num_paw_atoms().global_index(paw_atom_index_t::local(ialoc));
         auto ia = unit_cell_.paw_atom_index(i);
@@ -425,7 +451,7 @@ Potential::PAW_one_elec_energy(Density const& density__) const
 {
     double e{0};
     int n_paw_atoms_loc = unit_cell_.spl_num_paw_atoms().local_size();
-    #pragma omp parallel for reduction(+:e)
+    #pragma omp parallel for reduction(+ : e)
     for (int ialoc = 0; ialoc < n_paw_atoms_loc; ialoc++) {
         auto i  = unit_cell_.spl_num_paw_atoms().global_index(paw_atom_index_t::local(ialoc));
         auto ia = unit_cell_.paw_atom_index(i);

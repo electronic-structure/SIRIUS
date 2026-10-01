@@ -69,6 +69,12 @@ test_radial_core_solver()
                     check("sampled tau integral",
                           std::abs(fourpi * Spline<double>(grid, state.tau).integrate(2) / state.kinetic_energy - 1),
                           2e-7);
+                    if (l == 0 && j == 1) {
+                        auto points  = grid.values();
+                        auto inside  = std::lower_bound(points.begin(), points.end(), 1.0 / z) - points.begin();
+                        auto outside = std::lower_bound(points.begin(), points.end(), 3.0 / z) - points.begin();
+                        check("signed 2s core node", state.value[inside] * state.value[outside] < 0 ? 0 : 1, 0);
+                    }
                 }
                 double maximum{0}, error_tau{0};
                 double a             = double(z) / (l + 1);
@@ -81,6 +87,66 @@ test_radial_core_solver()
                     error_tau  = std::max(error_tau, std::abs(states[0].tau[ir] - tau));
                 }
                 check("analytic positive tau", error_tau / maximum, 2e-5);
+                if (z == 1 && l <= 1) {
+                    // Include both 1s and the noded 2s core state in the s channel.
+                    auto points = grid.values();
+                    int nr      = std::upper_bound(points.begin(), points.end(), 12.0) - points.begin();
+                    Radial_grid_ext<double> mt_grid(nr, points.data());
+                    std::vector<double> mt_potential(potential.begin(), potential.begin() + nr);
+                    Radial_solver local(z, mt_potential, mt_grid);
+                    double energy     = -0.5 / std::pow(l + 4.0, 2);
+                    auto radial       = local.solve(relativity_t::none, 0, l, energy);
+                    auto boundary     = radial.uderiv;
+                    double boundary_p = radial.p.back(), boundary_d = radial.rdudr.back();
+                    orthogonalize_radial_to_core(mt_grid, states, radial);
+                    Spline<double> product(mt_grid);
+                    for (int ir = 0; ir < nr; ir++) {
+                        product(ir) = radial.p[ir] * radial.p[ir];
+                    }
+                    double norm = std::sqrt(product.interpolate().integrate(0));
+                    for (auto const& state : states) {
+                        for (int ir = 0; ir < nr; ir++) {
+                            product(ir) = state.value[ir] * radial.p[ir];
+                        }
+                        check("projected core-valence overlap", std::abs(product.interpolate().integrate(1)) / norm,
+                              1e-11);
+                    }
+                    check("projection boundary value", std::abs(radial.p.back() - boundary_p), 0);
+                    check("projection boundary slope", std::abs(radial.rdudr.back() - boundary_d), 0);
+                    for (int j = 0; j < 3; j++) {
+                        check("projection matching data", std::abs(radial.uderiv[j] - boundary[j]), 0);
+                    }
+                    auto twice = radial;
+                    orthogonalize_radial_to_core(mt_grid, states, twice);
+                    double idempotence{0};
+                    for (int ir = 0; ir < nr; ir++) {
+                        idempotence = std::max(idempotence, std::abs(radial.p[ir] - twice.p[ir]) / norm);
+                    }
+                    check("core projection idempotence", idempotence, 1e-11);
+                    // Fixed boundary normalization makes the energy derivative unique.
+                    Radial_core_solver auxiliary(mt_grid, l, z, mt_potential, 96, 0, true);
+                    std::vector<double> no_xc(nr, 0);
+                    auto derivative = auxiliary.solve_at_energy(1, energy, no_xc, no_xc);
+                    orthogonalize_radial_to_core(mt_grid, states, derivative);
+                    for (double h : {1e-5, 5e-6}) {
+                        auto plus  = auxiliary.solve_at_energy(0, energy + h, no_xc, no_xc);
+                        auto minus = auxiliary.solve_at_energy(0, energy - h, no_xc, no_xc);
+                        orthogonalize_radial_to_core(mt_grid, states, plus);
+                        orthogonalize_radial_to_core(mt_grid, states, minus);
+                        double error{0}, peak{0};
+                        for (int ir = 0; ir < nr; ir++) {
+                            for (auto fields : {std::make_tuple(&derivative.p, &plus.p, &minus.p),
+                                                std::make_tuple(&derivative.rdudr, &plus.rdudr, &minus.rdudr)}) {
+                                double d = (*std::get<0>(fields))[ir];
+                                peak     = std::max(peak, std::abs(d));
+                                error    = std::max(
+                                        error, std::abs(d - ((*std::get<1>(fields))[ir] - (*std::get<2>(fields))[ir]) /
+                                                                       (2 * h)));
+                            }
+                        }
+                        check("projected radial energy derivative", error / peak, 2e-6);
+                    }
+                }
             }
         }
     }

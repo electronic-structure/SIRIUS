@@ -789,6 +789,10 @@ class Atom_type
         return num_core_electrons_;
     }
 
+    /// Extend the spherical MT potential with the shifted free-atom tail for core states.
+    std::pair<Radial_grid<double>, std::vector<double>>
+    core_radial_problem(std::vector<double> const& spherical_potential__) const;
+
     inline double
     num_valence_electrons() const
     {

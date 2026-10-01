@@ -276,7 +276,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
 
 template <typename T>
 void
-initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__)
+initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__, bool reset_band_energies__ = true)
 {
     PROFILE("sirius::initialize_subspace_kset");
 
@@ -297,6 +297,11 @@ initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__)
         } else {
             initialize_subspace<T, std::complex<T>>(Hk, *kp, N);
         }
+    }
+
+    if (!reset_band_energies__) {
+        kset__.sync_band<T, sync_band_t::energy>();
+        return;
     }
 
     /* reset the energies for the iterative solver to do at least two steps */

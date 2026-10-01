@@ -5,6 +5,7 @@
 
 #include <sirius.hpp>
 #include <testing.hpp>
+#include <iomanip>
 #include "dft/dft_ground_state.hpp"
 
 using namespace sirius;
@@ -114,6 +115,7 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
     gs.initial_state();
     auto& density   = gs.density();
     auto& potential = gs.potential();
+    check("no external evaluator", ctx->cb().external_xc_ ? 1 : 0, 0);
     check("stored tau", density.has_kinetic_density() ? 0 : 1, 0);
     check("staged LAPW XC", potential.lapw_xc_derivatives() ? 0 : 1, 0);
     if (scf) {
@@ -149,6 +151,9 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
         double kinetic = density.kinetic_density().scalar().integrate().total;
         double direct =
                 kinetic + potential.energy_exc(density) + 0.5 * potential.energy_vha() + energy_enuc(*ctx, potential);
+        if (ctx->comm().rank() == 0) {
+            std::cout << "SCF total energy: " << std::setprecision(15) << direct << '\n';
+        }
         check("kinetic-energy identity", std::abs(kinetic - energy_kin(*ctx, ks, density, potential)), 2e-7);
         check("total-energy identity", std::abs(direct - ks_energy(*ctx, ks, density, potential)), 2e-7);
         for (auto const& d : gs.check_lapw_xc_derivative(1e-4)) {

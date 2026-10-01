@@ -23,6 +23,9 @@ struct radial_core_state_t
     double energy;
     double kinetic_energy;
     std::vector<double> coefficients;
+    /// Signed radial orbital R_l and its radial derivative.
+    std::vector<double> value;
+    std::vector<double> derivative;
     /// Spherical averages for one electron, without occupation or radial Jacobians.
     std::vector<double> rho;
     std::vector<double> tau;
@@ -303,6 +306,8 @@ class Radial_core_solver
         result.kinetic_energy = quadratic(kinetic_, coefficients__);
         result.rho.resize(samples_.size());
         result.tau.resize(samples_.size());
+        result.value.resize(samples_.size());
+        result.derivative.resize(samples_.size());
         for (size_t ir = 0; ir < samples_.size(); ir++) {
             double value{0}, derivative{0}, angular{0};
             for (auto const& s : samples_[ir]) {
@@ -310,8 +315,10 @@ class Radial_core_solver
                 derivative += coefficients__[s.index] * s.derivative;
                 angular += coefficients__[s.index] * s.angular;
             }
-            result.rho[ir] = value * value / fourpi;
-            result.tau[ir] = 0.5 * (derivative * derivative + angular * angular) / fourpi;
+            result.rho[ir]        = value * value / fourpi;
+            result.tau[ir]        = 0.5 * (derivative * derivative + angular * angular) / fourpi;
+            result.value[ir]      = value;
+            result.derivative[ir] = derivative;
         }
         return result;
     }
@@ -365,6 +372,124 @@ class Radial_core_solver
         return result;
     }
 };
+
+/// Converge the occupied core eigenstates used by both density and LAPW basis construction.
+inline std::vector<radial_core_state_t>
+solve_radial_core_states(Radial_grid<double> const& grid__, int l__, int zn__, std::vector<double> const& potential__,
+                         int count__, std::array<std::vector<double>, 2> fields__, int nmtp__)
+{
+    if (nmtp__ < 2 || nmtp__ >= grid__.num_points()) {
+        RTE_THROW("radial core solve requires an extended muffin-tin domain");
+    }
+    for (auto& field : fields__) {
+        if (field.size() != nmtp__) {
+            RTE_THROW("radial core solve: inconsistent muffin-tin XC derivatives");
+        }
+        field.resize(grid__.num_points(), 0);
+    }
+    std::vector<radial_core_state_t> previous;
+    std::ostringstream convergence;
+    for (int nb : {64, 128, 192, 256, 384, 512, 768}) {
+        Radial_core_solver solver(grid__, l__, zn__, potential__, nb, grid__[nmtp__ - 1]);
+        auto states = solver.solve(count__, fields__[0], fields__[1]);
+        if (!previous.empty()) {
+            double energy_error{0}, field_error{0};
+            int worst_state{0}, worst_ir{0}, worst_part{0};
+            for (int j = 0; j < count__; j++) {
+                energy_error = std::max(energy_error, std::abs(states[j].energy - previous[j].energy) /
+                                                              (1e-10 * std::max(1.0, std::abs(states[j].energy))));
+                int part{0};
+                for (auto pair : {std::make_pair(&states[j].rho, &previous[j].rho),
+                                  std::make_pair(&states[j].tau, &previous[j].tau)}) {
+                    double peak = *std::max_element(pair.first->begin(), pair.first->end());
+                    for (int ir = 0; ir < nmtp__; ir++) {
+                        double error =
+                                std::abs((*pair.first)[ir] - (*pair.second)[ir]) / (1e-6 * std::max(peak, 1e-30));
+                        if (error > field_error) {
+                            field_error = error;
+                            worst_state = j;
+                            worst_ir    = ir;
+                            worst_part  = part;
+                        }
+                    }
+                    part++;
+                }
+            }
+            convergence << " basis=" << nb << " energy=" << energy_error << " fields=" << field_error
+                        << " state=" << worst_state << " part=" << worst_part << " r=" << grid__[worst_ir];
+            if (std::max(energy_error, field_error) <= 1) {
+                return states;
+            }
+        }
+        previous = std::move(states);
+    }
+    RTE_THROW("tau-dependent radial core solve did not converge with basis refinement; scaled errors:" +
+              convergence.str());
+    return {};
+}
+
+/// Remove core overlaps without changing the LAPW boundary value or its first two derivatives.
+/** The compact projectors w(r) R_core(r), with w=(1-(r/R_MT)^2)^3, span
+ *  the occupied core constraints and vanish through second order at R_MT.
+ *  Projection is independent of the auxiliary radial energy, so it also applies
+ *  to energy derivatives. The caller normalizes the resulting LAPW functions.
+ */
+inline void
+orthogonalize_radial_to_core(Radial_grid<double> const& grid__, std::vector<radial_core_state_t> const& core__,
+                             radial_solver_result_t& radial__)
+{
+    if (core__.empty()) {
+        return;
+    }
+    int n = static_cast<int>(core__.size()), nr = grid__.num_points();
+    if (radial__.p.size() != nr || radial__.rdudr.size() != nr) {
+        RTE_THROW("core projection: inconsistent radial field size");
+    }
+    for (auto const& state : core__) {
+        if (state.value.size() < nr || state.derivative.size() < nr) {
+            RTE_THROW("core projection: missing signed core orbital or derivative");
+        }
+    }
+    la::dmatrix<double> overlap(n, n);
+    std::vector<double> rhs(n), weight(nr), derivative(nr);
+    double radius = grid__.last();
+    for (int ir = 0; ir < nr; ir++) {
+        double x = grid__[ir] / radius, t = 1 - x * x;
+        weight[ir]     = t * t * t;
+        derivative[ir] = -6 * x * t * t / radius;
+    }
+    Spline<double> product(grid__);
+    for (int i = 0; i < n; i++) {
+        for (int ir = 0; ir < nr; ir++) {
+            product(ir) = core__[i].value[ir] * radial__.p[ir];
+        }
+        rhs[i] = product.interpolate().integrate(1);
+        for (int j = 0; j <= i; j++) {
+            for (int ir = 0; ir < nr; ir++) {
+                product(ir) = core__[i].value[ir] * core__[j].value[ir] * weight[ir];
+            }
+            overlap(i, j) = overlap(j, i) = product.interpolate().integrate(2);
+        }
+    }
+    int info = la::wrap(la::lib_t::lapack).gesv(n, 1, overlap.at(memory_t::host), n, rhs.data(), n);
+    if (info || !std::all_of(rhs.begin(), rhs.end(), [](double x) { return std::isfinite(x); })) {
+        RTE_THROW("core projection: singular or nonfinite core overlap");
+    }
+    radial__.num_nodes = 0;
+    for (int ir = 0; ir < nr; ir++) {
+        for (int j = 0; j < n; j++) {
+            radial__.p[ir] -= rhs[j] * grid__[ir] * weight[ir] * core__[j].value[ir];
+            radial__.rdudr[ir] -= rhs[j] * grid__[ir] *
+                                  (derivative[ir] * core__[j].value[ir] + weight[ir] * core__[j].derivative[ir]);
+        }
+        if (!std::isfinite(radial__.p[ir]) || !std::isfinite(radial__.rdudr[ir])) {
+            RTE_THROW("core projection: nonfinite projected radial function");
+        }
+        if (ir && radial__.p[ir] * radial__.p[ir - 1] < 0) {
+            radial__.num_nodes++;
+        }
+    }
+}
 
 } // namespace sirius
 

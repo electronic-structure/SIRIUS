@@ -32,7 +32,7 @@ test_hloc_impl(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
 
     sirius::Local_operator<T> hloc(ctx__, fft, gvec_fft, 2.71828);
 
-    wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), memory_t::host_pinned);
+    wf::Wave_functions<T> phi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), ctx__.host_memory_t());
     #pragma omp parallel for
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.ld(); j++) {
@@ -40,7 +40,7 @@ test_hloc_impl(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
         }
         phi.pw_coeffs(0, wf::spin_index(0), wf::band_index(i)) = 1.0;
     }
-    wf::Wave_functions<T> hphi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), memory_t::host_pinned);
+    wf::Wave_functions<T> hphi(gvec, wf::num_mag_dims(0), wf::num_bands(4 * num_bands__), ctx__.host_memory_t());
 
     {
         auto mem_phi         = (use_gpu__) ? memory_t::device : memory_t::host;

@@ -9,6 +9,7 @@
 #include "density.hpp"
 #include "core/wf/kinetic_density_operator.hpp"
 #include "function3d/kinetic_density.hpp"
+#include "paw_xc_correction.hpp"
 #include <gsl/gsl_spline.h>
 
 namespace sirius {
@@ -152,8 +153,8 @@ atom_kinetic_density(Atom_type const& type__, mdarray<double, 2> const& radial__
 void
 Density::initial_kinetic_density()
 {
-    bool meta = ctx_.meta_gga();
-    auto& tau = kinetic_density();
+    bool add_von_weizsaecker = ctx_.meta_gga() || external_xc_registered_;
+    auto& tau                = kinetic_density();
     tau.zero();
     auto guess = [&](double n) {
         return 0.3 * std::pow(3 * pi * pi * ctx_.num_spins(), 2.0 / 3.0) * std::pow(std::max(0.0, n), 5.0 / 3.0);
@@ -171,7 +172,7 @@ Density::initial_kinetic_density()
             }
         }
     }
-    if (meta) {
+    if (add_von_weizsaecker) {
         // A Thomas-Fermi guess alone can violate tau >= |grad n|^2/(8 n).
         // Add the von Weizsaecker term only to the initial guess, not orbital tau.
         for (int s = 0; s < ctx_.num_spins(); s++) {
@@ -207,7 +208,7 @@ Density::initial_kinetic_density()
                 transform(sht, mag(0).mt()[it.i], m);
             }
             std::vector<Ftp> grad_n, grad_m;
-            if (meta) {
+            if (add_von_weizsaecker) {
                 auto g = gradient(rho().mt()[it.i]);
                 for (int x = 0; x < 3; x++) {
                     grad_n.push_back(transform(sht, g[x]));
@@ -226,7 +227,7 @@ Density::initial_kinetic_density()
                 for (int s = 0; s < ctx_.num_spins(); s++) {
                     double spin_n = ctx_.num_spins() == 1 ? n[i] : 0.5 * (n[i] + (1 - 2 * s) * m[i]);
                     double value  = guess(spin_n);
-                    if (meta && spin_n > 0) {
+                    if (add_von_weizsaecker && spin_n > 0) {
                         double sigma{0};
                         for (int x = 0; x < 3; x++) {
                             double g = grad_n[x][i];
@@ -319,6 +320,15 @@ Density::generate_paw_valence_kinetic_density(int ia__) const
                                          density_matrix(ia__), ctx_.num_spins(), lmax, ae_sizes),
             atom_kinetic_density<double>(type, type.ps_paw_wfs_array(), radial_wave_function_t::r_times_R,
                                          density_matrix(ia__), ctx_.num_spins(), lmax, ps_sizes)};
+}
+
+std::array<std::vector<Flm>, 2>
+Density::generate_paw_xc_correction(int ia__) const
+{
+    if (ctx_.full_potential() || ctx_.num_mag_dims() == 3) {
+        RTE_THROW("PAW XC correction requires a nonmagnetic or collinear pseudopotential context");
+    }
+    return PAW_xc_correction(unit_cell_.atom(ia__).type()).fields(density_matrix(ia__));
 }
 
 template <typename T>

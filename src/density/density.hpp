@@ -240,6 +240,8 @@ class Density : public Field4D
     /// Valence tau (plus core inside LAPW spheres) and its spin difference, mixed with rho/magnetization.
     std::unique_ptr<Field4D> kinetic_density_;
 
+    bool external_xc_registered_;
+
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
@@ -334,7 +336,7 @@ class Density : public Field4D
     generate_pseudo_core_fields();
 
   public:
-    /// Meta-GGA enables tau automatically; it can also be requested for orbital-field diagnostics.
+    /// External XC enables tau automatically; it can also be requested for orbital-field diagnostics.
     Density(Simulation_context& ctx__, bool kinetic_density__ = false);
 
     friend void
@@ -480,6 +482,16 @@ class Density : public Field4D
      */
     std::array<std::vector<Flm>, 2>
     generate_paw_valence_kinetic_density(int ia__) const;
+
+    /// Local {rho, tau} PAW corrections for a joint reconstructed XC evaluation.
+    /** Each entry has one total or two collinear spin fields. Charge includes
+     *  AE-minus-PS and the explicit AE core; tau includes AE-minus-PS
+     *  and explicit positive core tau. Combine with smooth pseudo-orbital
+     *  charge and tau, WITHOUT Q augmentation or pseudo-core density. These are
+     *  fields, not independent atom-local XC energies.
+     */
+    std::array<std::vector<Flm>, 2>
+    generate_paw_xc_correction(int ia__) const;
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.

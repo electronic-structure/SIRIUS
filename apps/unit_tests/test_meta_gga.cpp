@@ -118,6 +118,7 @@ test_meta_gga(bool gamma, int mag, bool parallel_fft, bool core, bool paw)
         }
         failures += !std::isfinite(error) || error > tolerance;
     };
+    check("no external model", ctx->cb().external_xc_ ? 1 : 0, 0);
     auto coefficient = [&](r3::vector<int> g, double angle, bool derivative) {
         std::complex<double> a{0}, b{0};
         if (g[1] == 0 && g[2] == 0 && (gamma ? std::abs(g[0]) == 2 : g[0] == 2)) {

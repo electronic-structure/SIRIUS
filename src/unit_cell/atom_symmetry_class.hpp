@@ -17,6 +17,7 @@
 #include "atom_type.hpp"
 #include "core/la/eigensolver.hpp"
 #include "core/mpi/pstdout.hpp"
+#include "radial/radial_core_solver.hpp"
 
 namespace sirius {
 
@@ -44,6 +45,9 @@ class Atom_symmetry_class
 
     /// Raw spherical density/tau derivatives, also used by the radial core solver.
     std::array<std::vector<double>, 2> spherical_xc_derivatives_;
+
+    /// Occupied radial core orbitals for explicit core-valence orthogonalization.
+    std::map<int, std::vector<radial_core_state_t>> core_radial_states_;
 
     /// List of radial functions for the LAPW basis.
     /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions

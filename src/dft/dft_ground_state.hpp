@@ -161,7 +161,23 @@ class DFT_ground_state
     /// A quick check of self-constent density in case of pseudopotential.
     json
     check_scf_density();
-    /// Fixed-basis PW/LO orbital derivatives of LAPW XC.
+
+    /// Check the external XC orbital derivative at fixed geometry and occupations.
+    /** Each row contains the Hamiltonian derivative and central differences at
+     *  step and step/2 for one of two deterministic orbital perturbations.
+     *  NC/PAW uses non-rigid PW phase rotations. LAPW uses separate PW and LO
+     *  rotations, rebuilding the matched AW coefficients at fixed radial basis.
+     *  An offset from the input state avoids testing only a stationary point.
+     *  This unconstrained derivative includes PAW augmentation and positive tau,
+     *  not occupation or overlap-constraint derivatives. CPU fp64 only.
+     *  LAPW core states are held fixed during the valence-orbital check.
+     *  Orbitals and the callback are restored, including on evaluator failure.
+     *  The ground-state density, potential, occupations and energies are untouched.
+     */
+    std::array<std::array<double, 3>, 2>
+    check_external_xc_derivative(double step__);
+
+    /// Fixed-basis PW/LO orbital derivatives of ordinary or external LAPW XC.
     /** Returns Hamiltonian and central-difference derivatives at step__ and step__/2.
      *  Core states, occupations, radial basis and ground-state fields are preserved.
      */
