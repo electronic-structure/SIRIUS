@@ -750,7 +750,7 @@ main(int argn, char** argv)
         mpi::Communicator::world().abort(-1);
     }
 
-    sirius::finalize(1);
+    sirius::finalize(true /* MPI finalize */, false /* device reset */);
 
     if (my_rank == 0) {
         bool flatten{true};
