@@ -376,6 +376,10 @@ K_point_set::find_efermi_generic(double emin, double emax) const
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
     double const ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
+    if (!std::isfinite(ne_target) || ne_target < 0 ||
+        ne_target > ctx_.num_bands() * ctx_.num_spinors() * ctx_.max_occupancy()) {
+        RTE_THROW("requested electron count exceeds the available band occupations");
+    }
     /* computes N(ef; f) = \sum_{i,k} f(ef - e_{k,i}) */
     auto compute_ne = [&](double ef, auto&& f) {
         double ne{0};
@@ -394,6 +398,28 @@ K_point_set::find_efermi_generic(double emin, double emax) const
         return ne;
     };
 
+    auto search = [&](auto&& F) -> util::expected<local::efermi_search_t, std::string> {
+        double lo = emin, hi = emax;
+        double flo = F(lo), fhi = F(hi);
+        // Partially occupied edge bands can place the chemical potential outside the spectrum.
+        double margin = std::max(1.0, 32 * ctx_.smearing_width());
+        for (int i = 0; i < 20 && (flo > tol || fhi < -tol); i++) {
+            lo  = emin - margin;
+            hi  = emax + margin;
+            flo = F(lo);
+            fhi = F(hi);
+            margin *= 2;
+        }
+        if (!std::isfinite(flo) || !std::isfinite(fhi) || flo > tol || fhi < -tol) {
+            return util::unexpected(std::string("failed to bracket the chemical potential"));
+        }
+        if (std::abs(flo) < tol || std::abs(fhi) < tol) {
+            bool lower = std::abs(flo) < tol;
+            return local::efermi_search_t{.mu = lower ? lo : hi, .ne_diff = std::abs(lower ? flo : fhi), .iter = 0};
+        }
+        return bisection_search(F, lo, hi, tol);
+    };
+
     /* smearing function */
     switch (ctx_.smearing()) {
         // non-monotic smearing types
@@ -401,7 +427,7 @@ K_point_set::find_efermi_generic(double emin, double emax) const
         case smearing::smearing_t::methfessel_paxton: {
             auto fgauss = [&](double x) { return smearing::gaussian::occupancy(x, ctx_.smearing_width()); };
             auto F      = [&compute_ne, ne_target, &fgauss](double x) { return compute_ne(x, fgauss) - ne_target; };
-            auto bgauss_init = bisection_search(F, emin, emax, 1e-11);
+            auto bgauss_init = search(F);
             if (!bgauss_init) {
                 RTE_THROW(bgauss_init.error());
             }
@@ -422,8 +448,7 @@ K_point_set::find_efermi_generic(double emin, double emax) const
                 return res_newton.value();
             } // use bisection search
 
-            auto bsearch = bisection_search(
-                    [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; }, emin, emax, 1e-11);
+            auto bsearch = search([&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; });
             if (!bsearch) {
                 RTE_THROW(bsearch.error());
             }
@@ -433,7 +458,7 @@ K_point_set::find_efermi_generic(double emin, double emax) const
         default: {
             std::function<double(double)> f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
             auto M      = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-            auto result = bisection_search(M, emin, emax, 1e-11);
+            auto result = search(M);
             if (!result) {
                 RTE_THROW(result.error());
             }

@@ -49,7 +49,8 @@ test_functional(Simulation_context const& ctx, xc_callback_input_t const& in, xc
 
 auto
 test_context(bool gamma, int mag, bool scf = false, bool exact = false, bool parallel_fft = false, bool external = true,
-             double fixed_mag = 0, bool paw = false, bool points = false)
+             double fixed_mag = 0, bool paw = false, bool points = false, std::string smearing = "gaussian",
+             double extra_charge = 0)
 {
     auto conf                          = R"({"parameters": {
         "electronic_structure_method": "pseudopotential", "use_symmetry": false,
@@ -61,6 +62,9 @@ test_context(bool gamma, int mag, bool scf = false, bool exact = false, bool par
     conf["parameters"]["gamma_point"]  = gamma;
     conf["parameters"]["num_mag_dims"] = mag;
     conf["parameters"]["fixed_mag"]    = fixed_mag;
+    conf["parameters"]["smearing"]     = smearing;
+    conf["parameters"]["extra_charge"] = extra_charge;
+    conf["settings"]["tol_ne"]         = 1e-11;
     conf["iterative_solver"]["type"]   = exact ? "exact" : "davidson";
     if (!external) {
         conf["parameters"]["xc_functionals"] = {"XC_LDA_X"};
@@ -635,10 +639,52 @@ test_fixed_spin_occupancy(double moment)
 }
 
 int
+test_generic_occupancy(int mag, std::string smearing, double electrons)
+{
+    auto ctx = test_context(false, mag, false, false, false, false, 0, false, false, smearing, 2 - electrons);
+    K_point_set ks(*ctx);
+    ks.add_kpoint({0.13, -0.17, 0.07}, 0.3);
+    ks.add_kpoint({-0.1, 0.09, 0.21}, 0.7);
+    ks.initialize();
+    for (auto it : ks.spl_num_kpoints()) {
+        auto kp = ks.get<double>(it.i);
+        for (int s = 0; s < ctx->num_spinors(); s++) {
+            for (int b = 0; b < ctx->num_bands(); b++) {
+                // Closely spaced bands put the chemical potential outside the spectrum.
+                kp->band_energy(b, s, -0.3 + 0.001 * (b + s + it.i));
+            }
+        }
+    }
+    ks.sync_band<double, sync_band_t::energy>();
+    ks.find_band_occupancies<double>();
+    double occupation{0};
+    for (auto it : ks.spl_num_kpoints()) {
+        auto kp = ks.get<double>(it.i);
+        for (int s = 0; s < ctx->num_spinors(); s++) {
+            for (int b = 0; b < ctx->num_bands(); b++) {
+                occupation += kp->weight() * kp->band_occupancy(b, s);
+            }
+        }
+    }
+    ks.comm().allreduce(&occupation, 1);
+    double error = std::abs(occupation - electrons);
+    std::cout << "Generic occupations " << smearing << ", mag=" << mag << ", electrons=" << electrons
+              << ", error=" << error << '\n';
+    return !std::isfinite(error) || error > 2e-11;
+}
+
+int
 main(int argc, char** argv)
 {
     sirius::initialize(true);
     int result{0};
+    for (int mag : {0, 1}) {
+        for (auto smearing : {"gaussian", "fermi_dirac", "cold", "methfessel_paxton"}) {
+            for (double electrons : {1.0, 7.0}) {
+                result += call_test("generic occupations", test_generic_occupancy, mag, smearing, electrons);
+            }
+        }
+    }
     for (bool gamma : {false, true}) {
         for (int mag : {0, 1}) {
             result += call_test("external XC energy and operator", test_external_xc, gamma, mag, false, false, false);
