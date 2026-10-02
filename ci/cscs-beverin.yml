@@ -83,6 +83,7 @@ beverin test gpu serial:
   variables:
     SLURM_TIMELIMIT: '60:00'
     SLURM_GPUS_PER_TASK: 1
+    SLURM_CONSTRAINT: 'amdgpu_tpx'
     SLURM_GPUS: 1
     SLURM_NTASKS: 1
     SLURM_CPU_BIND: 'verbose'
