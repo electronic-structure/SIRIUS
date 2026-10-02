@@ -15,6 +15,11 @@ endforeach()
 
 add_test(NAME "test_eigen" COMMAND "test_eigen")
 
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME test_upf_paw_core COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/apps/upf/test_paw_core.py)
+endif()
+
 if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   add_executable(test_fortran_api test_fortran_api.f90)
   target_link_libraries(test_fortran_api PRIVATE sirius MPI::MPI_Fortran)
