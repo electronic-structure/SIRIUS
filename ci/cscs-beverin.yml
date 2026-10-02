@@ -8,8 +8,8 @@ stages:
 
 .f7t-secrets:
   variables:
-    F7T_CLIENT_ID: $F7T_TDS_CLIENT_ID
-    F7T_CLIENT_SECRET: $F7T_TDS_CLIENT_SECRET
+    F7T_URL: "https://api.cscs.ch/beverin/firecrest/v2"
+    F7T_TOKEN_URL: "https://auth.cscs.ch/auth/realms/firecrest-clients/protocol/openid-connect/token"
 
 build base uenv mi300:
   extends: [.uenv-builder-beverin-mi300, .f7t-secrets]
@@ -42,7 +42,6 @@ build sirius mi300:
       bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-rocm.sh
 
 .run_tests:
-  extends: [.f7t-secrets]
   script:
     - |
       if [ $SLURM_LOCALID -eq 0 ]; then
@@ -84,11 +83,12 @@ beverin test gpu serial:
   variables:
     SLURM_TIMELIMIT: '60:00'
     SLURM_GPUS_PER_TASK: 1
+    SLURM_CONSTRAINT: 'amdgpu_tpx'
     SLURM_GPUS: 1
     SLURM_NTASKS: 1
     SLURM_CPU_BIND: 'verbose'
     USE_MPI: 'YES'
-    TEST_COMMAND: ctest -L gpu_serial_rocm
+    TEST_COMMAND: ctest -L gpu_serial
 
 beverin test gpu band parallel:
   extends: [.run_tests_beverin]
