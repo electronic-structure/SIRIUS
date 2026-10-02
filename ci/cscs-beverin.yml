@@ -32,7 +32,6 @@ build sirius mi300:
   variables:
     SPEC: sirius@develop +rocm +apps +tests +scalapack ~python +dftd4 +dftd3 +vdwxc build_type=RelWithDebInfo
     ROCM_ARCH: gfx942
-    REPO: ./ci/spack_repo/sirius_ci
   script:
     - |
       #
