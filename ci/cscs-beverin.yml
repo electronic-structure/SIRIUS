@@ -89,6 +89,18 @@ beverin test gpu serial:
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_serial
 
+beverin test cpu serial:
+  extends: [.run_tests_beverin]
+  variables:
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_CONSTRAINT: 'amdgpu_tpx'
+    SLURM_GPUS: 0
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: 'verbose'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L cpu_serial
+
 beverin test gpu band parallel:
   extends: [.run_tests_beverin]
   variables:
