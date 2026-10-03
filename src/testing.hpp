@@ -18,6 +18,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <limits>
 #include "core/la/linalg.hpp"
 #include "core/la/dmatrix.hpp"
 #include "core/wf/wave_functions.hpp"
@@ -27,6 +28,50 @@
 #include "context/simulation_context.hpp"
 
 namespace sirius {
+
+class Test_check
+{
+  private:
+    int& failures_;
+    mpi::Communicator const& comm_;
+
+  public:
+    Test_check(int& failures__, mpi::Communicator const& comm__ = mpi::Communicator::self(),
+               std::string const& label__ = "")
+        : failures_(failures__)
+        , comm_(comm__)
+    {
+        if (comm_.rank() == 0 && !label__.empty()) {
+            std::cout << label__ << '\n';
+        }
+    }
+
+    void
+    operator()(std::string const& name__, double error__, double tolerance__) const
+    {
+        if (!std::isfinite(error__)) {
+            error__ = std::numeric_limits<double>::infinity();
+        }
+        comm_.allreduce<double, mpi::op_t::max>(&error__, 1);
+        if (comm_.rank() == 0) {
+            std::cout << name__ << ": " << error__ << " (limit " << tolerance__ << ")\n";
+        }
+        failures_ += !std::isfinite(error__) || error__ > tolerance__;
+    }
+
+    template <typename F>
+    void
+    reject(std::string const& name__, F&& operation__) const
+    {
+        bool rejected{false};
+        try {
+            operation__();
+        } catch (std::exception const&) {
+            rejected = true;
+        }
+        (*this)(name__, rejected ? 0 : 1, 0);
+    }
+};
 
 template <typename F, typename... Args>
 inline int

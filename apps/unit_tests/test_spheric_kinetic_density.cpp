@@ -60,11 +60,9 @@ test_spheric_kinetic_density(bool origin__)
     op.add_density(dm, tau);
     paw_op.add_density(dm, paw_tau);
     int failures{0};
-    auto check = [&](char const* label, double error, double tolerance) {
-        std::cout << (std::is_same_v<T, double> ? "Rlm " : "Ylm ") << (origin__ ? "origin " : "positive grid ") << label
-                  << ": " << error << '\n';
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures, mpi::Communicator::self(),
+                     std::string(std::is_same_v<T, double> ? "Rlm " : "Ylm ") +
+                             (origin__ ? "origin" : "positive grid"));
     double error{0};
     for (int ir = 0; ir < grid.num_points(); ir++) {
         for (int lm = 0; lm < lmmax; lm++) {

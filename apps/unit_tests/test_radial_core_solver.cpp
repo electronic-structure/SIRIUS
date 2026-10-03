@@ -36,10 +36,7 @@ int
 test_radial_core_solver()
 {
     int failures{0};
-    auto check = [&](char const* name, double error, double tolerance) {
-        std::cout << name << ": " << error << " (limit " << tolerance << ")\n";
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures);
     for (int z : {1, 30}) {
         auto grid = Radial_grid_factory<double>(radial_grid_t::power, 5000, 1e-8 / z, 120.0 / z, 3.0);
         std::vector<double> potential(grid.num_points()), zero(grid.num_points(), 0);
@@ -141,7 +138,7 @@ test_radial_core_solver()
                                 peak     = std::max(peak, std::abs(d));
                                 error    = std::max(
                                         error, std::abs(d - ((*std::get<1>(fields))[ir] - (*std::get<2>(fields))[ir]) /
-                                                                       (2 * h)));
+                                                                    (2 * h)));
                             }
                         }
                         check("projected radial energy derivative", error / peak, 2e-6);
@@ -223,21 +220,9 @@ test_radial_core_solver()
         }
         auto invalid = dtau;
         invalid[2]   = std::numeric_limits<double>::quiet_NaN();
-        bool rejected{false};
-        try {
-            solver.solve(1, drho, invalid);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        failures += !rejected;
-        rejected = false;
+        check.reject("nonfinite core covector", [&] { solver.solve(1, drho, invalid); });
         invalid.clear();
-        try {
-            solver.solve(1, invalid, dtau);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        failures += !rejected;
+        check.reject("incompatible core covector size", [&] { solver.solve(1, invalid, dtau); });
     }
     // A localized mass variation checks resolution of a narrow core feature.
     // Construct V from R=r^l exp(-a*r), so both its energy and tau are known.

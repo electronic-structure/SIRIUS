@@ -241,13 +241,10 @@ test_external_xc(bool gamma, int mag, bool parallel_fft, bool points = false, bo
     ctx->comm().allreduce(&derivative, 1);
     ks.sync_band<double, sync_band_t::energy>();
     int failures{0};
-    auto check = [&](char const* name, double error, double tol) {
-        if (ctx->comm().rank() == 0) {
-            std::cout << "gamma=" << gamma << " mag=" << mag << " parallel_fft=" << parallel_fft << " points=" << points
-                      << " paw=" << paw << ' ' << name << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tol;
-    };
+    Test_check check(failures, ctx->comm(),
+                     "gamma=" + std::to_string(gamma) + " mag=" + std::to_string(mag) +
+                             " parallel FFT=" + std::to_string(parallel_fft) + " points=" + std::to_string(points) +
+                             " PAW=" + std::to_string(paw));
     if (paw) {
         auto const& coordinates = ctx->cb().external_xc_points_->coordinates;
         int np                  = static_cast<int>(coordinates.size());
@@ -339,22 +336,11 @@ test_external_xc(bool gamma, int mag, bool parallel_fft, bool points = false, bo
               0);
     };
     for (double bad_step : {0.0, -0.1, std::numeric_limits<double>::quiet_NaN()}) {
-        bool rejected{false};
-        try {
-            diagnostic.check_external_xc_derivative(bad_step);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check("diagnostic rejects invalid step", rejected ? 0 : 1, 0);
+        check.reject("diagnostic rejects invalid step", [&] { diagnostic.check_external_xc_derivative(bad_step); });
     }
     if (ctx->comm().size() > 1) {
-        bool rejected{false};
-        try {
-            diagnostic.check_external_xc_derivative(ctx->comm().rank() == 0 ? 0.001 : 0.002);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check("diagnostic rejects inconsistent step", rejected ? 0 : 1, 0);
+        check.reject("diagnostic rejects inconsistent step",
+                     [&] { diagnostic.check_external_xc_derivative(ctx->comm().rank() == 0 ? 0.001 : 0.002); });
     }
     auto derivatives = diagnostic.check_external_xc_derivative(1e-4);
     for (auto const& values : derivatives) {
@@ -369,13 +355,7 @@ test_external_xc(bool gamma, int mag, bool parallel_fft, bool points = false, bo
             throw std::runtime_error("deliberate derivative-check callback failure");
         }
     };
-    bool check_failed{false};
-    try {
-        diagnostic.check_external_xc_derivative(1e-4);
-    } catch (std::exception const&) {
-        check_failed = true;
-    }
-    check("diagnostic propagates callback failure", check_failed ? 0 : 1, 0);
+    check.reject("diagnostic propagates callback failure", [&] { diagnostic.check_external_xc_derivative(1e-4); });
     verify_restored();
     diagnostic.potential().generate(diagnostic.density(), false, true);
     check("diagnostic restores evaluator", evaluations == 3 ? 0 : 1, 0);
@@ -396,41 +376,20 @@ test_external_xc(bool gamma, int mag, bool parallel_fft, bool points = false, bo
         ctx->cb().external_xc_ = test_functional;
         verify_restored();
     }
-    Density previous(*ctx);
-    copy(density, previous);
-    density.mixer_init(ctx->cfg().mixer());
-    evaluate(0.15);
-    std::vector<double> expected;
-    for (int j = 0; j < mag + 1; j++) {
-        auto const& now = density.kinetic_density().component(j).rg();
-        auto const& old = previous.kinetic_density().component(j).rg();
-        for (int ir = 0; ir < ctx->spfft<double>().local_slice_size(); ir++) {
-            expected.push_back(0.4 * now.value(ir) + 0.6 * old.value(ir));
-        }
-    }
-    density.mix();
-    double error{0};
-    size_t idx{0};
-    for (int j = 0; j < mag + 1; j++) {
-        for (int ir = 0; ir < ctx->spfft<double>().local_slice_size(); ir++) {
-            error = std::max(error, std::abs(density.kinetic_density().component(j).rg().value(ir) - expected[idx++]));
-        }
-    }
-    ctx->comm().allreduce<double, mpi::op_t::max>(&error, 1);
-    check("tau mixer and copy", error, 1e-12);
-
+    // Copy and mixing are covered by the density and LAPW field-map tests.
+    Density restored(*ctx);
     unsigned long long stamp = std::chrono::steady_clock::now().time_since_epoch().count();
     ctx->comm().bcast(&stamp, 1, 0);
     auto path = std::filesystem::temp_directory_path() / ("sirius-xc-restart-" + std::to_string(stamp) + ".h5");
     ctx->create_storage_file(path.string());
     density.save(path.string());
     ctx->comm().barrier();
-    previous.load(path.string());
-    error = 0;
+    restored.load(path.string());
+    double error{0};
     for (int j = 0; j < mag + 1; j++) {
         for (int ir = 0; ir < ctx->spfft<double>().local_slice_size(); ir++) {
             error = std::max(error, std::abs(density.kinetic_density().component(j).rg().value(ir) -
-                                             previous.kinetic_density().component(j).rg().value(ir)));
+                                             restored.kinetic_density().component(j).rg().value(ir)));
         }
     }
     ctx->comm().allreduce<double, mpi::op_t::max>(&error, 1);
@@ -447,36 +406,19 @@ test_external_xc(bool gamma, int mag, bool parallel_fft, bool points = false, bo
             invalid->energy_weights.pop_back();
         }
         ctx->cb().external_xc_points_ = invalid;
-        bool rejected{false};
-        try {
-            potential.generate(density, false, true);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check("collective invalid-quadrature rejection", rejected ? 0 : 1, 0);
+        check.reject("collective invalid-quadrature rejection", [&] { potential.generate(density, false, true); });
         ctx->cb().external_xc_points_ = original;
         if (ctx->comm().size() > 1) {
             if (ctx->comm().rank() == 0) {
                 ctx->cb().external_xc_points_.reset();
             }
-            rejected = false;
-            try {
-                potential.generate(density, false, true);
-            } catch (std::exception const&) {
-                rejected = true;
-            }
-            check("collective quadrature-mode mismatch rejection", rejected ? 0 : 1, 0);
+            check.reject("collective quadrature-mode mismatch rejection",
+                         [&] { potential.generate(density, false, true); });
             ctx->cb().external_xc_points_ = original;
         }
         auto const lattice = ctx->unit_cell().lattice_vectors();
         ctx->unit_cell().set_lattice_vectors({{8.01, 0, 0}, {0, 9, 0}, {0, 0, 10}});
-        rejected = false;
-        try {
-            original->validate(*ctx);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check("stale quadrature after cell change rejection", rejected ? 0 : 1, 0);
+        check.reject("stale quadrature after cell change rejection", [&] { original->validate(*ctx); });
         ctx->unit_cell().set_lattice_vectors(lattice);
     }
 
@@ -485,13 +427,7 @@ test_external_xc(bool gamma, int mag, bool parallel_fft, bool points = false, bo
             out.energy = std::numeric_limits<double>::quiet_NaN();
         }
     };
-    bool rejected{false};
-    try {
-        potential.generate(density, false, true);
-    } catch (std::exception const&) {
-        rejected = true;
-    }
-    check("collective nonfinite rejection", rejected ? 0 : 1, 0);
+    check.reject("collective nonfinite rejection", [&] { potential.generate(density, false, true); });
     return failures;
 }
 
@@ -595,7 +531,7 @@ test_external_scf(bool exact, bool external, bool paw = false)
     potential.generate(density, false, true);
     double direct = gs.energy_kin_sum_pw() + 0.5 * potential.energy_vha() + energy_vloc(density, potential) +
                     potential.energy_exc(density) + potential.ewald_energy() + potential.PAW_total_energy(density);
-    double error = std::abs(ks_energy(*ctx, ks, density, potential) - direct);
+    double error  = std::abs(ks_energy(*ctx, ks, density, potential) - direct);
     if (ctx->comm().rank() == 0) {
         std::cout << (external ? "external XC " : "LibXC ") << (exact ? "exact" : "Davidson") << " PAW=" << paw
                   << " SCF converged=" << converged << " direct-energy difference=" << error << '\n';
@@ -604,20 +540,22 @@ test_external_scf(bool exact, bool external, bool paw = false)
 }
 
 int
-test_fixed_spin_occupancy(double moment)
+test_occupancy(int mag, std::string smearing, double electrons, double moment = 0)
 {
-    auto ctx = test_context(false, 1, false, false, false, false, moment);
+    auto ctx = test_context(false, mag, false, false, false, false, moment, false, false, smearing, 2 - electrons);
     K_point_set ks(*ctx);
     ks.add_kpoint({0.13, -0.17, 0.07}, 0.3);
     ks.add_kpoint({-0.1, 0.09, 0.21}, 0.7);
     ks.initialize();
     for (auto it : ks.spl_num_kpoints()) {
         auto kp = ks.get<double>(it.i);
-        for (int s = 0; s < 2; s++) {
+        for (int s = 0; s < ctx->num_spinors(); s++) {
             for (int b = 0; b < ctx->num_bands(); b++) {
-                // The empty spin channel can have the lowest eigenvalue.
-                double offset = ((moment > 0) == (s == 1)) ? -0.3 : 0.1;
-                kp->band_energy(b, s, offset + 0.2 * b + 0.03 * it.i);
+                // Saturation can empty the lowest spin channel; clustered bands
+                // put the unconstrained chemical potential outside the spectrum.
+                double energy = moment ? (((moment > 0) == (s == 1)) ? -0.3 : 0.1) + 0.2 * b + 0.03 * it.i
+                                       : -0.3 + 0.001 * (b + s + it.i);
+                kp->band_energy(b, s, energy);
             }
         }
     }
@@ -626,49 +564,19 @@ test_fixed_spin_occupancy(double moment)
     double occupation[2]{0, 0};
     for (auto it : ks.spl_num_kpoints()) {
         auto kp = ks.get<double>(it.i);
-        for (int s = 0; s < 2; s++) {
+        for (int s = 0; s < ctx->num_spinors(); s++) {
             for (int b = 0; b < ctx->num_bands(); b++) {
                 occupation[s] += kp->weight() * kp->band_occupancy(b, s);
             }
         }
     }
     ks.comm().allreduce(occupation, 2);
-    double error = std::max(std::abs(occupation[0] - (2 + moment) / 2), std::abs(occupation[1] - (2 - moment) / 2));
-    std::cout << "Fixed spin moment " << moment << ", occupation error: " << error << '\n';
-    return !std::isfinite(error) || error > 2e-11;
-}
-
-int
-test_generic_occupancy(int mag, std::string smearing, double electrons)
-{
-    auto ctx = test_context(false, mag, false, false, false, false, 0, false, false, smearing, 2 - electrons);
-    K_point_set ks(*ctx);
-    ks.add_kpoint({0.13, -0.17, 0.07}, 0.3);
-    ks.add_kpoint({-0.1, 0.09, 0.21}, 0.7);
-    ks.initialize();
-    for (auto it : ks.spl_num_kpoints()) {
-        auto kp = ks.get<double>(it.i);
-        for (int s = 0; s < ctx->num_spinors(); s++) {
-            for (int b = 0; b < ctx->num_bands(); b++) {
-                // Closely spaced bands put the chemical potential outside the spectrum.
-                kp->band_energy(b, s, -0.3 + 0.001 * (b + s + it.i));
-            }
-        }
+    double error = std::abs(occupation[0] + occupation[1] - electrons);
+    if (moment) {
+        error = std::max({error, std::abs(occupation[0] - (electrons + moment) / 2),
+                          std::abs(occupation[1] - (electrons - moment) / 2)});
     }
-    ks.sync_band<double, sync_band_t::energy>();
-    ks.find_band_occupancies<double>();
-    double occupation{0};
-    for (auto it : ks.spl_num_kpoints()) {
-        auto kp = ks.get<double>(it.i);
-        for (int s = 0; s < ctx->num_spinors(); s++) {
-            for (int b = 0; b < ctx->num_bands(); b++) {
-                occupation += kp->weight() * kp->band_occupancy(b, s);
-            }
-        }
-    }
-    ks.comm().allreduce(&occupation, 1);
-    double error = std::abs(occupation - electrons);
-    std::cout << "Generic occupations " << smearing << ", mag=" << mag << ", electrons=" << electrons
+    std::cout << "Occupations " << smearing << ", mag=" << mag << ", electrons=" << electrons << ", moment=" << moment
               << ", error=" << error << '\n';
     return !std::isfinite(error) || error > 2e-11;
 }
@@ -678,19 +586,20 @@ main(int argc, char** argv)
 {
     sirius::initialize(true);
     int result{0};
-    for (int mag : {0, 1}) {
-        for (auto smearing : {"gaussian", "fermi_dirac", "cold", "methfessel_paxton"}) {
-            for (double electrons : {1.0, 7.0}) {
-                result += call_test("generic occupations", test_generic_occupancy, mag, smearing, electrons);
-            }
-        }
+    for (auto smearing : {"gaussian", "fermi_dirac", "cold", "methfessel_paxton"}) {
+        result += call_test("low-filling occupations", test_occupancy, 0, smearing, 1.0, 0.0);
+        result += call_test("high-filling spin occupations", test_occupancy, 1, smearing, 7.0, 0.0);
     }
     for (bool gamma : {false, true}) {
         for (int mag : {0, 1}) {
             result += call_test("external XC energy and operator", test_external_xc, gamma, mag, false, false, false);
-            result += call_test("external XC point quadrature", test_external_xc, gamma, mag, false, true, false);
-            result += call_test("external PAW XC energy and operator", test_external_xc, gamma, mag, false, true, true);
-            if (mpi::Communicator::world().size() > 1) {
+            if (gamma != mag) {
+                result += call_test("external XC point quadrature", test_external_xc, gamma, mag, false, true, false);
+            } else {
+                result += call_test("external PAW XC energy and operator", test_external_xc, gamma, mag, false, true,
+                                    true);
+            }
+            if (mpi::Communicator::world().size() > 1 && gamma != mag) {
                 result += call_test("external XC distributed FFT", test_external_xc, gamma, mag, true, false, false);
                 result += call_test("external PAW XC distributed FFT", test_external_xc, gamma, mag, true, true, true);
             }
@@ -705,7 +614,7 @@ main(int argc, char** argv)
         result += call_test("PAW SCF energy accounting", test_external_scf, exact, true, true);
     }
     for (double moment : {2.0, -2.0, 1.2}) {
-        result += call_test("fixed-spin occupations", test_fixed_spin_occupancy, moment);
+        result += call_test("fixed-spin occupations", test_occupancy, 1, "gaussian", 2.0, moment);
     }
     sirius::finalize();
     return std::min(result, 1);

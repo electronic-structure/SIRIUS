@@ -16,10 +16,7 @@ int
 test_core_kinetic_density()
 {
     int failures{0};
-    auto check = [&](char const* name, double error, double tolerance) {
-        std::cout << name << ": " << error << '\n';
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures);
     for (int z : {1, 30}) {
         auto grid = Radial_grid_factory<double>(radial_grid_t::power, 6000, 1e-8 / z, 80.0 / z, 3.0);
         std::vector<double> potential(grid.num_points());

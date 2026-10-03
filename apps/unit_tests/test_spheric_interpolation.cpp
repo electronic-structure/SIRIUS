@@ -61,10 +61,7 @@ test_spheric_interpolation()
     std::vector<r3::vector<double>> points{{0.4, 0.3, 0.2},  {0, 0, 0.75},      {0, 0, -1.1}, {0.45, 0, 0},
                                            {0.3, -0.5, 0.7}, {-0.2, 0.4, -0.8}, {0.02, 0, 0}, {0, 3.0, 0}};
     int failures{0};
-    auto check = [&](char const* label, double error, double tolerance) {
-        std::cout << label << ": " << error << '\n';
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures);
     Flm polynomial(n, grid);
     polynomial.zero();
     double pnorm = std::sqrt(3 / fourpi);
@@ -176,13 +173,7 @@ test_spheric_interpolation()
     check("empty sample set", std::abs(empty.checksum()), 0);
     for (auto p : {r3::vector<double>({0, 0, 0}), r3::vector<double>({0.01, 0, 0}), r3::vector<double>({4, 0, 0}),
                    r3::vector<double>({std::numeric_limits<double>::quiet_NaN(), 0, 0})}) {
-        bool rejected{false};
-        try {
-            sampler.value_gradient(p);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        failures += !rejected;
+        check.reject("invalid sampling point", [&] { sampler.value_gradient(p); });
     }
     return failures;
 }

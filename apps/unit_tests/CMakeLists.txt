@@ -11,6 +11,14 @@ foreach(name ${unit_tests})
   add_test(NAME ${name} COMMAND ${name})
 endforeach()
 
+function(add_mpi_unit_test name target timeout)
+  add_test(NAME ${name}
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+            $<TARGET_FILE:${target}> ${ARGN} ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(${name} PROPERTIES
+    TIMEOUT ${timeout} PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+endfunction()
+
 add_executable(test_lapw_atom_input test_lapw_atom_input.cpp)
 target_link_libraries(test_lapw_atom_input PRIVATE sirius_cxx)
 add_test(NAME test_lapw_atom_input COMMAND test_lapw_atom_input)
@@ -49,31 +57,11 @@ if(SIRIUS_LIBXC_HAS_FHC_CONTROL)
   set_tests_properties(test_lapw_meta_gga_core PROPERTIES
     TIMEOUT 600 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
   if(MPIEXEC_EXECUTABLE)
-    add_test(NAME test_lapw_meta_gga_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:test_lapw_meta_gga> ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(test_lapw_meta_gga_mpi PROPERTIES
-      TIMEOUT 120 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-    add_test(NAME test_lapw_meta_gga_scf_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:test_lapw_meta_gga> scf ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(test_lapw_meta_gga_scf_mpi PROPERTIES
-      TIMEOUT 600 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-    add_test(NAME test_lapw_meta_gga_core_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:test_lapw_meta_gga> core spin ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(test_lapw_meta_gga_core_mpi PROPERTIES
-      TIMEOUT 600 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-    add_test(NAME test_meta_gga_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:test_meta_gga> ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(test_meta_gga_mpi PROPERTIES
-      TIMEOUT 120 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-    add_test(NAME test_meta_gga_paw_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:test_meta_gga> --paw ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(test_meta_gga_paw_mpi PROPERTIES
-      TIMEOUT 120 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+    add_mpi_unit_test(test_lapw_meta_gga_mpi test_lapw_meta_gga 120)
+    add_mpi_unit_test(test_lapw_meta_gga_scf_mpi test_lapw_meta_gga 600 scf)
+    add_mpi_unit_test(test_lapw_meta_gga_core_mpi test_lapw_meta_gga 600 core spin)
+    add_mpi_unit_test(test_meta_gga_mpi test_meta_gga 120)
+    add_mpi_unit_test(test_meta_gga_paw_mpi test_meta_gga 120 --paw)
   endif()
 endif()
 
@@ -88,22 +76,10 @@ add_test(NAME test_lapw_external_xc_core COMMAND test_lapw_external_xc core)
 set_tests_properties(test_lapw_external_xc_core PROPERTIES
   TIMEOUT 240 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 if(MPIEXEC_EXECUTABLE)
-  add_test(NAME test_lapw_external_xc_core_mpi
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-            $<TARGET_FILE:test_lapw_external_xc> core ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(test_lapw_external_xc_core_mpi PROPERTIES
-    TIMEOUT 240 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-  add_test(NAME test_paw_xc_correction_h_setup_mpi
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-            $<TARGET_FILE:test_paw_xc_correction> "${h_paw_setup}" ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(test_paw_xc_correction_h_setup_mpi PROPERTIES
-    TIMEOUT 60 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+  add_mpi_unit_test(test_lapw_external_xc_core_mpi test_lapw_external_xc 240 core)
+  add_mpi_unit_test(test_paw_xc_correction_h_setup_mpi test_paw_xc_correction 60 "${h_paw_setup}")
   foreach(name test_kinetic_density test_smooth_periodic_sampling test_paw_xc_correction test_lapw_xc_field_map test_lapw_external_xc test_core_kinetic_density test_external_xc)
-    add_test(NAME ${name}_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:${name}> ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(${name}_mpi PROPERTIES
-      TIMEOUT 60 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+    add_mpi_unit_test(${name}_mpi ${name} 60)
   endforeach()
 endif()
 
@@ -119,11 +95,7 @@ if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   set_tests_properties(test_external_xc_api PROPERTIES
     TIMEOUT 60 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
   if(MPIEXEC_EXECUTABLE)
-    add_test(NAME test_external_xc_api_mpi
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-              $<TARGET_FILE:test_external_xc_api> ${MPIEXEC_POSTFLAGS})
-    set_tests_properties(test_external_xc_api_mpi PROPERTIES
-      TIMEOUT 60 PROCESSORS 2 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+    add_mpi_unit_test(test_external_xc_api_mpi test_external_xc_api 60)
   endif()
 endif()
 

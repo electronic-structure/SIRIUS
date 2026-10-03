@@ -165,24 +165,10 @@ test_lapw_external(int mag, bool distributed_fft, bool second_variation, bool co
 {
     auto ctx = context(mag, distributed_fft, second_variation, core);
     int failures{0};
-    auto check = [&](char const* name, double error, double tolerance) {
-        ctx->comm().allreduce<double, mpi::op_t::max>(&error, 1);
-        if (ctx->comm().rank() == 0) {
-            std::cout << "external LAPW core=" << core << " spins=" << ctx->num_spins()
-                      << " distributed FFT=" << distributed_fft << " second variation=" << second_variation << " "
-                      << name << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tolerance;
-    };
-    auto reject = [&](char const* name, auto&& operation) {
-        bool rejected{false};
-        try {
-            operation();
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check(name, rejected ? 0 : 1, 0);
-    };
+    Test_check check(failures, ctx->comm(),
+                     "external LAPW core=" + std::to_string(core) + " spins=" + std::to_string(ctx->num_spins()) +
+                             " distributed FFT=" + std::to_string(distributed_fft) +
+                             " second variation=" + std::to_string(second_variation));
     K_point_set ks(*ctx);
     ks.add_kpoint({0.07, -0.03, 0.02}, 1);
     ks.initialize();
@@ -262,7 +248,8 @@ test_lapw_external(int mag, bool distributed_fft, bool second_variation, bool co
         check("XC operator is staged", potential.lapw_xc_derivatives() ? 0 : 1, 0);
     };
     check_energy();
-    reject("point potential cannot be symmetrized independently", [&] { potential.generate(density, true, true); });
+    check.reject("point potential cannot be symmetrized independently",
+                 [&] { potential.generate(density, true, true); });
 
     auto result = gs.find(1e-9, 1e-10, 1e-9, 100, false);
     check("SCF convergence", result.at("converged").get<bool>() ? 0 : 1, 0);
@@ -322,7 +309,7 @@ test_lapw_external(int mag, bool distributed_fft, bool second_variation, bool co
             throw std::runtime_error("deliberate LAPW derivative-check callback failure");
         }
     };
-    reject("orbital diagnostic propagates callback failure", [&] { gs.check_external_xc_derivative(1e-4); });
+    check.reject("orbital diagnostic propagates callback failure", [&] { gs.check_external_xc_derivative(1e-4); });
     verify_restored();
     potential.generate(density, false, true);
     check("orbital diagnostic restores evaluator", evaluations == 3 ? 0 : 1, 0);
@@ -503,10 +490,8 @@ main(int argc, char** argv)
     }
     for (int mag : {0, 1}) {
         for (bool second : {false, true}) {
-            result += call_test("external LAPW SCF", test_lapw_external, mag, false, second, false);
-            if (mpi::Communicator::world().size() > 1) {
-                result += call_test("external LAPW distributed FFT SCF", test_lapw_external, mag, true, second, false);
-            }
+            bool distributed = mpi::Communicator::world().size() > 1 && mag != second;
+            result += call_test("external LAPW SCF", test_lapw_external, mag, distributed, second, false);
         }
     }
     result += call_test("external LAPW core response guard", test_core_guard);

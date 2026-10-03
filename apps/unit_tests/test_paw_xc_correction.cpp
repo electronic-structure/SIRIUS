@@ -104,13 +104,8 @@ test_paw_xc_correction(int ns__, bool compact__)
         }
     };
     int failures{0};
-    auto check = [&](char const* label, double error, double tolerance) {
-        ctx.comm().allreduce<double, mpi::op_t::max>(&error, 1);
-        if (ctx.comm().rank() == 0) {
-            std::cout << "PAW ns=" << ns__ << " " << label << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures, ctx.comm(),
+                     "PAW spins=" + std::to_string(ns__) + " compact support=" + std::to_string(compact__));
     check("source support excludes Q", std::abs(op.support_radius() - type.radial_grid(compact__ ? 461 : nr - 1)), 0);
     if (compact__) {
         auto extended_core    = core_rho;
@@ -548,21 +543,11 @@ test_paw_xc_correction(int ns__, bool compact__)
         if (ctx.comm().rank() == 0) {
             bad.rho(0, 0) = std::numeric_limits<double>::quiet_NaN();
         }
-        bool rejected{false};
-        try {
-            map.adjoint(bad);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check("field-map collective nonfinite-covector rejection", rejected ? 0 : 1, 0);
-        rejected = false;
-        try {
+        check.reject("field-map collective nonfinite-covector rejection", [&] { map.adjoint(bad); });
+        check.reject("field-map collective spin-layout rejection", [&] {
             std::vector<Smooth_periodic_function<double>> empty;
             map.sample(ctx.comm().rank() == 0 ? empty : smooth_rho, smooth_tau);
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check("field-map collective spin-layout rejection", rejected ? 0 : 1, 0);
+        });
 
         PAW_xc_field_map empty_map(density, {});
         auto empty_fields  = empty_map.sample(smooth_rho, smooth_tau);
@@ -582,17 +567,13 @@ test_paw_xc_correction(int ns__, bool compact__)
         check("globally empty field map has zero adjoint", empty_error, 0);
     }
     // A rank-local invalid point must fail collectively rather than strand other ranks.
-    bool rejected{false};
-    try {
+    check.reject("collective exact-nucleus rejection", [&] {
         std::vector<r3::vector<double>> invalid;
         if (ctx.comm().rank() == 0) {
             invalid.push_back(r3::dot(ctx.unit_cell().lattice_vectors(), ctx.unit_cell().atom(0).position()));
         }
         PAW_xc_reconstruction map(density, invalid);
-    } catch (std::exception const&) {
-        rejected = true;
-    }
-    check("collective exact-nucleus rejection", rejected ? 0 : 1, 0);
+    });
     return failures;
 }
 

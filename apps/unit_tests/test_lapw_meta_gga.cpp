@@ -101,13 +101,9 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
     auto ctx = context(mag, distributed, second, core, scf && second ? "davidson" : "exact",
                        scf && second ? (core ? 8 : 4) : -1);
     int failures{0};
-    auto check = [&](char const* label, double error, double tolerance) {
-        if (ctx->comm().rank() == 0) {
-            std::cout << "mag=" << mag << " distributed=" << distributed << " second=" << second << " core=" << core
-                      << ' ' << label << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures, ctx->comm(),
+                     "mag=" + std::to_string(mag) + " distributed FFT=" + std::to_string(distributed) +
+                             " second variation=" + std::to_string(second) + " core=" + std::to_string(core));
     K_point_set ks(*ctx);
     ks.add_kpoint({0.07, -0.03, 0.02}, 1);
     ks.initialize();
@@ -267,13 +263,7 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
     }
     copy(reference, density);
     potential.generate(density, false, true);
-    bool rejected{false};
-    try {
-        potential.generate(density, true, true);
-    } catch (std::exception const&) {
-        rejected = true;
-    }
-    check("reject independent potential symmetrization", rejected ? 0 : 1, 0);
+    check.reject("reject independent potential symmetrization", [&] { potential.generate(density, true, true); });
     return failures;
 }
 

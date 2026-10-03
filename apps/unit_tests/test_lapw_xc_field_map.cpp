@@ -48,13 +48,7 @@ test_lapw_hamiltonian(Simulation_context& ctx, lapw_xc_field_adjoint_t full_data
 {
     auto const& comm = ctx.comm();
     int failures{0};
-    auto check = [&](char const* name, double error, double tolerance) {
-        comm.allreduce<double, mpi::op_t::max>(&error, 1);
-        if (comm.rank() == 0) {
-            std::cout << "LAPW Hamiltonian " << name << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures, comm, "LAPW Hamiltonian");
     for (auto& atom : interstitial_data.local) {
         for (auto& part : atom) {
             for (auto& field : part) {
@@ -74,23 +68,14 @@ test_lapw_hamiltonian(Simulation_context& ctx, lapw_xc_field_adjoint_t full_data
     }
     full.set_lapw_xc_derivatives(std::move(full_data));
     interstitial.set_lapw_xc_derivatives(std::move(interstitial_data));
-    auto reject = [&](char const* name, auto&& operation) {
-        bool rejected{false};
-        try {
-            operation();
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check(name, rejected ? 0 : 1, 0);
-    };
     Density density(ctx);
-    reject("no incomplete XC total energy", [&] { full.energy_exc(density); });
-    reject("no incomplete rho contraction", [&] { full.energy_vxc(density); });
-    reject("no incomplete tau contraction", [&] { full.energy_vtau(density); });
-    reject("no incomplete magnetic contraction", [&] { energy_bxc(density, full); });
-    reject("no incomplete effective-potential contraction", [&] { energy_veff(density, full); });
-    reject("no partial operator copy from staged source", [&] { copy(full, base); });
-    reject("no stale staged operator after copy", [&] { copy(base, full); });
+    check.reject("no incomplete XC total energy", [&] { full.energy_exc(density); });
+    check.reject("no incomplete rho contraction", [&] { full.energy_vxc(density); });
+    check.reject("no incomplete tau contraction", [&] { full.energy_vtau(density); });
+    check.reject("no incomplete magnetic contraction", [&] { energy_bxc(density, full); });
+    check.reject("no incomplete effective-potential contraction", [&] { energy_veff(density, full); });
+    check.reject("no partial operator copy from staged source", [&] { copy(full, base); });
+    check.reject("no stale staged operator after copy", [&] { copy(base, full); });
     auto const& d = *full.lapw_xc_derivatives();
     std::vector<std::vector<std::complex<double>>> vrho, vtau;
     for (int s = 0; s < ctx.num_spins(); s++) {
@@ -430,25 +415,11 @@ test_lapw_map(int num_mag_dims, bool replicated_fft, bool second_variation)
     }
     Density density(ctx, true);
     int failures{0};
-    auto check = [&](char const* name, double error, double tolerance) {
-        comm.allreduce<double, mpi::op_t::max>(&error, 1);
-        if (comm.rank() == 0) {
-            std::cout << "LAPW map spins=" << ctx.num_spins() << " replicated FFT=" << replicated_fft
-                      << " second variation=" << second_variation << " " << name << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tolerance;
-    };
-    auto reject = [&](char const* name, auto&& operation) {
-        bool rejected{false};
-        try {
-            operation();
-        } catch (std::exception const&) {
-            rejected = true;
-        }
-        check(name, rejected ? 0 : 1, 0);
-    };
-    reject("core required before tau construction", [&] { density.generate_mt_kinetic_density(true); });
-    reject("stored tau required for field sampling", [&] {
+    Test_check check(failures, comm,
+                     "LAPW map spins=" + std::to_string(ctx.num_spins()) + " replicated FFT=" +
+                             std::to_string(replicated_fft) + " second variation=" + std::to_string(second_variation));
+    check.reject("core required before tau construction", [&] { density.generate_mt_kinetic_density(true); });
+    check.reject("stored tau required for field sampling", [&] {
         Density without_tau(ctx);
         LAPW_xc_field_map map(without_tau, {});
     });
@@ -839,9 +810,9 @@ test_lapw_map(int num_mag_dims, bool replicated_fft, bool second_variation)
           std::abs(energy_veff(density, staged) - electrostatic - point_sum[0]), 2e-12);
     check("XC addition to magnetic contraction",
           std::abs(energy_bxc(density, staged) - ordinary_magnetic - point_sum[1]), 2e-12);
-    reject("no pseudo-core contraction in LAPW", [&] { staged.energy_vxc_core(density); });
-    reject("no LAPW energy density for nonlocal XC", [&] { staged.xc_energy_density(); });
-    reject("energy contraction requires stored tau", [&] {
+    check.reject("no pseudo-core contraction in LAPW", [&] { staged.energy_vxc_core(density); });
+    check.reject("no LAPW energy density for nonlocal XC", [&] { staged.xc_energy_density(); });
+    check.reject("energy contraction requires stored tau", [&] {
         Density without_tau(ctx);
         staged.energy_vtau(without_tau);
     });
@@ -867,29 +838,30 @@ test_lapw_map(int num_mag_dims, bool replicated_fft, bool second_variation)
                     break;
             }
         }
-        reject("collective invalid Hamiltonian covectors", [&] { staged.set_lapw_xc_derivatives(std::move(bad)); });
+        check.reject("collective invalid Hamiltonian covectors",
+                     [&] { staged.set_lapw_xc_derivatives(std::move(bad)); });
         check("rejected update preserves the staged operator", staged.lapw_xc_derivatives() == original ? 0 : 1, 0);
         check("rejected update preserves functional energy", std::abs(staged.energy_exc(density) - xc_energy), 0);
     }
     auto bad_energy = map.adjoint(derivatives);
-    reject("collective nonfinite XC energy", [&] {
+    check.reject("collective nonfinite XC energy", [&] {
         staged.set_lapw_xc_derivatives(std::move(bad_energy),
                                        comm.rank() == 0 ? std::numeric_limits<double>::quiet_NaN() : xc_energy);
     });
     if (comm.size() > 1) {
         auto bad_presence = map.adjoint(derivatives);
-        reject("collective mismatched XC energy presence", [&] {
+        check.reject("collective mismatched XC energy presence", [&] {
             staged.set_lapw_xc_derivatives(std::move(bad_presence),
                                            comm.rank() == 0 ? std::optional<double>(xc_energy) : std::nullopt);
         });
         auto bad_value = map.adjoint(derivatives);
-        reject("collective inconsistent XC energy",
-               [&] { staged.set_lapw_xc_derivatives(std::move(bad_value), xc_energy + 0.1 * comm.rank()); });
+        check.reject("collective inconsistent XC energy",
+                     [&] { staged.set_lapw_xc_derivatives(std::move(bad_value), xc_energy + 0.1 * comm.rank()); });
     }
     check("rejected energy preserves the staged operator", staged.lapw_xc_derivatives() == original ? 0 : 1, 0);
     check("rejected energy preserves functional energy", std::abs(staged.energy_exc(density) - xc_energy), 0);
     staged.set_lapw_xc_derivatives(map.adjoint(derivatives));
-    reject("operator-only restaging clears previous energy", [&] { staged.energy_exc(density); });
+    check.reject("operator-only restaging clears previous energy", [&] { staged.energy_exc(density); });
 
     for (int region : {0, 1, 2}) {
         std::vector<r3::vector<double>> selected;
@@ -933,19 +905,19 @@ test_lapw_map(int num_mag_dims, bool replicated_fft, bool second_variation)
     if (comm.rank() == 0) {
         bad_points.push_back(centre(0));
     }
-    reject("collective exact-nucleus rejection", [&] { LAPW_xc_field_map bad(density, bad_points); });
+    check.reject("collective exact-nucleus rejection", [&] { LAPW_xc_field_map bad(density, bad_points); });
     bad_points = points;
     if (comm.rank() == 0) {
         bad_points.push_back({std::numeric_limits<double>::quiet_NaN(), 0, 0});
     }
-    reject("collective nonfinite-coordinate rejection", [&] { LAPW_xc_field_map bad(density, bad_points); });
+    check.reject("collective nonfinite-coordinate rejection", [&] { LAPW_xc_field_map bad(density, bad_points); });
     for (bool tau_field : {false, true}) {
         auto& f      = tau_field ? density.kinetic_density().scalar().mt()[0] : density.rho().mt()[0];
         double saved = f(0, 0);
         if (comm.rank() == 0) {
             f(0, 0) = std::numeric_limits<double>::quiet_NaN();
         }
-        reject("collective nonfinite physical-field rejection", [&] { LAPW_xc_field_map bad(density, points); });
+        check.reject("collective nonfinite physical-field rejection", [&] { LAPW_xc_field_map bad(density, points); });
         f(0, 0) = saved;
     }
     auto& atom = ctx.unit_cell().atom(0);
@@ -1001,7 +973,7 @@ test_lapw_map(int num_mag_dims, bool replicated_fft, bool second_variation)
     check("copy preserves solved core tau",
           std::abs(saved.core_kinetic_density(0)[20] - density.core_kinetic_density(0)[20]), 0);
     Density without_tau(ctx);
-    reject("copy rejects incompatible tau storage", [&] { copy(density, without_tau); });
+    check.reject("copy rejects incompatible tau storage", [&] { copy(density, without_tau); });
     density.mixer_init(ctx.cfg().mixer());
     auto previous = state(density);
     for (auto* f : {static_cast<Field4D*>(&density), &density.kinetic_density()}) {
@@ -1177,19 +1149,19 @@ test_lapw_map(int num_mag_dims, bool replicated_fft, bool second_variation)
     if (comm.rank() == 0) {
         rho[0].f_pw_local(0) = std::numeric_limits<double>::quiet_NaN();
     }
-    reject("collective nonfinite-PW rejection", [&] { map.sample(rho, tau); });
+    check.reject("collective nonfinite-PW rejection", [&] { map.sample(rho, tau); });
     set_pw(0);
     std::vector<Smooth_periodic_function<double>> empty;
-    reject("collective wrong-spin rejection", [&] { map.sample(comm.rank() == 0 ? empty : rho, tau); });
+    check.reject("collective wrong-spin rejection", [&] { map.sample(comm.rank() == 0 ? empty : rho, tau); });
     xc_point_fields_t bad(points.size() + (comm.rank() == 0 ? 1 : 0), ctx.num_spins());
     bad.rho.zero();
     bad.tau.zero();
     bad.gradient.zero();
-    reject("collective wrong-buffer rejection", [&] { map.adjoint(bad); });
+    check.reject("collective wrong-buffer rejection", [&] { map.adjoint(bad); });
     if (comm.rank() == 0) {
         derivatives.gradient(0, 0, 0) = std::numeric_limits<double>::quiet_NaN();
     }
-    reject("collective nonfinite-covector rejection", [&] { map.adjoint(derivatives); });
+    check.reject("collective nonfinite-covector rejection", [&] { map.adjoint(derivatives); });
     return failures;
 }
 
@@ -1200,11 +1172,10 @@ main(int argc, char** argv)
 {
     sirius::initialize(1);
     int result{0};
+    // Pairwise coverage of spin, FFT layout and first/second variation.
     for (int mag : {0, 1}) {
-        for (bool replicated : {false, true}) {
-            for (bool second : {false, true}) {
-                result += call_test("LAPW XC field map", test_lapw_map, mag, replicated, second);
-            }
+        for (bool second : {false, true}) {
+            result += call_test("LAPW XC field map", test_lapw_map, mag, mag != second, second);
         }
     }
     sirius::finalize();

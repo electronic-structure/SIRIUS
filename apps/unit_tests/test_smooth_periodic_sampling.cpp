@@ -46,14 +46,9 @@ test_smooth_periodic_sampling(bool reduced__, bool replicated_fft__)
                 std::complex<double>(0.08 * std::cos(g[0] + 2 * g[1] - g[2]), 0.06 * std::sin(2 * g[0] - g[1] + g[2]));
     }
     int failures{0};
-    auto check = [&](char const* name, double error, double tolerance) {
-        comm.allreduce<double, mpi::op_t::max>(&error, 1);
-        if (comm.rank() == 0) {
-            std::cout << "Fourier sampling reduced=" << reduced__ << " replicated FFT=" << replicated_fft__ << " "
-                      << name << ": " << error << '\n';
-        }
-        failures += !std::isfinite(error) || error > tolerance;
-    };
+    Test_check check(failures, comm,
+                     "Fourier sampling reduced=" + std::to_string(reduced__) +
+                             " replicated FFT=" + std::to_string(replicated_fft__));
     auto contraction = [&](Smooth_periodic_function<double> const& p, Smooth_periodic_function<double> const& f) {
         double value{0};
         for (int ig = 0; ig < gv.count(); ig++) {
@@ -233,16 +228,10 @@ test_smooth_periodic_sampling(bool reduced__, bool replicated_fft__)
         error          = std::max(error, std::abs(potential.f_pw_local(ig) - reference));
     }
     check("FFT gradient-divergence adjoint parity", error, 3e-13);
-    bool rejected{false};
     if (comm.rank() == 0) {
         covectors[0][1] = std::numeric_limits<double>::quiet_NaN();
     }
-    try {
-        fft_map.adjoint(covectors, potential);
-    } catch (std::exception const&) {
-        rejected = true;
-    }
-    check("collective nonfinite-covector rejection", rejected ? 0 : 1, 0);
+    check.reject("collective nonfinite-covector rejection", [&] { fft_map.adjoint(covectors, potential); });
     return failures;
 }
 
