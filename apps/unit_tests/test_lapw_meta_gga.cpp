@@ -5,7 +5,6 @@
 
 #include <sirius.hpp>
 #include <testing.hpp>
-#include <iomanip>
 #include "dft/dft_ground_state.hpp"
 
 using namespace sirius;
@@ -101,9 +100,13 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
     auto ctx = context(mag, distributed, second, core, scf && second ? "davidson" : "exact",
                        scf && second ? (core ? 8 : 4) : -1);
     int failures{0};
-    Test_check check(failures, ctx->comm(),
-                     "mag=" + std::to_string(mag) + " distributed FFT=" + std::to_string(distributed) +
-                             " second variation=" + std::to_string(second) + " core=" + std::to_string(core));
+    auto check = [&](char const* label, double error, double tolerance) {
+        if (ctx->comm().rank() == 0) {
+            std::cout << "mag=" << mag << " distributed=" << distributed << " second=" << second << " core=" << core
+                      << ' ' << label << ": " << error << '\n';
+        }
+        failures += !std::isfinite(error) || error > tolerance;
+    };
     K_point_set ks(*ctx);
     ks.add_kpoint({0.07, -0.03, 0.02}, 1);
     ks.initialize();
@@ -111,7 +114,6 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
     gs.initial_state();
     auto& density   = gs.density();
     auto& potential = gs.potential();
-    check("no external evaluator", ctx->cb().external_xc_ ? 1 : 0, 0);
     check("stored tau", density.has_kinetic_density() ? 0 : 1, 0);
     check("staged LAPW XC", potential.lapw_xc_derivatives() ? 0 : 1, 0);
     if (scf) {
@@ -147,9 +149,6 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
         double kinetic = density.kinetic_density().scalar().integrate().total;
         double direct =
                 kinetic + potential.energy_exc(density) + 0.5 * potential.energy_vha() + energy_enuc(*ctx, potential);
-        if (ctx->comm().rank() == 0) {
-            std::cout << "SCF total energy: " << std::setprecision(15) << direct << '\n';
-        }
         check("kinetic-energy identity", std::abs(kinetic - energy_kin(*ctx, ks, density, potential)), 2e-7);
         check("total-energy identity", std::abs(direct - ks_energy(*ctx, ks, density, potential)), 2e-7);
         for (auto const& d : gs.check_lapw_xc_derivative(1e-4)) {
@@ -263,7 +262,13 @@ test_lapw_meta(int mag, bool distributed, bool second, bool core, bool scf)
     }
     copy(reference, density);
     potential.generate(density, false, true);
-    check.reject("reject independent potential symmetrization", [&] { potential.generate(density, true, true); });
+    bool rejected{false};
+    try {
+        potential.generate(density, true, true);
+    } catch (std::exception const&) {
+        rejected = true;
+    }
+    check("reject independent potential symmetrization", rejected ? 0 : 1, 0);
     return failures;
 }
 

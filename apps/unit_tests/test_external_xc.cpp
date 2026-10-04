@@ -531,7 +531,7 @@ test_external_scf(bool exact, bool external, bool paw = false)
     potential.generate(density, false, true);
     double direct = gs.energy_kin_sum_pw() + 0.5 * potential.energy_vha() + energy_vloc(density, potential) +
                     potential.energy_exc(density) + potential.ewald_energy() + potential.PAW_total_energy(density);
-    double error  = std::abs(ks_energy(*ctx, ks, density, potential) - direct);
+    double error = std::abs(ks_energy(*ctx, ks, density, potential) - direct);
     if (ctx->comm().rank() == 0) {
         std::cout << (external ? "external XC " : "LibXC ") << (exact ? "exact" : "Davidson") << " PAW=" << paw
                   << " SCF converged=" << converged << " direct-energy difference=" << error << '\n';

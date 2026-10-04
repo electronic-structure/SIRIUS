@@ -138,7 +138,7 @@ test_radial_core_solver()
                                 peak     = std::max(peak, std::abs(d));
                                 error    = std::max(
                                         error, std::abs(d - ((*std::get<1>(fields))[ir] - (*std::get<2>(fields))[ir]) /
-                                                                    (2 * h)));
+                                                                       (2 * h)));
                             }
                         }
                         check("projected radial energy derivative", error / peak, 2e-6);

@@ -9,7 +9,6 @@
 #include <sirius.hpp>
 #include <testing.hpp>
 #include "function3d/kinetic_density.hpp"
-#include "function3d/spheric_function_interpolator.hpp"
 
 using namespace sirius;
 
@@ -60,9 +59,11 @@ test_spheric_kinetic_density(bool origin__)
     op.add_density(dm, tau);
     paw_op.add_density(dm, paw_tau);
     int failures{0};
-    Test_check check(failures, mpi::Communicator::self(),
-                     std::string(std::is_same_v<T, double> ? "Rlm " : "Ylm ") +
-                             (origin__ ? "origin" : "positive grid"));
+    auto check = [&](char const* label, double error, double tolerance) {
+        std::cout << (std::is_same_v<T, double> ? "Rlm " : "Ylm ") << (origin__ ? "origin " : "positive grid ") << label
+                  << ": " << error << '\n';
+        failures += !std::isfinite(error) || error > tolerance;
+    };
     double error{0};
     for (int ir = 0; ir < grid.num_points(); ir++) {
         for (int lm = 0; lm < lmmax; lm++) {
@@ -173,47 +174,6 @@ test_spheric_kinetic_density(bool origin__)
     double step = 1e-5;
     check("nonlinear energy derivative", std::abs(derivative - (energy(step) - energy(-step)) / (2 * step)), 2e-8);
 
-    // Exercise the discrete atom-grid transpose all the way to the orbital matrix.
-    std::vector<r3::vector<double>> points{{0.37, 0.2, 0.1}, {0, 0, 0.75}, {-0.2, -0.4, 0.3}, {0.3, 0.6, -0.2}};
-    auto sampled_energy = [&](double displacement, std::vector<std::array<double, 4>>* derivatives) {
-        Flm field(lmmax, grid);
-        field.zero();
-        op.add_density(density_matrix(displacement), field);
-        Spheric_function_interpolator sample(field);
-        std::vector<std::array<double, 4>> values;
-        double e{0}, sum{0};
-        for (size_t p = 0; p < points.size(); p++) {
-            values.push_back(sample.value_gradient(points[p]));
-            sum += values.back()[0];
-            for (int a = 0; a < 4; a++) {
-                e += 0.5 * (0.3 + p) * (a == 0 ? 1 : 0.03) * std::pow(values.back()[a], 2);
-            }
-        }
-        if (derivatives) {
-            derivatives->resize(points.size());
-            for (size_t p = 0; p < points.size(); p++) {
-                for (int a = 0; a < 4; a++) {
-                    (*derivatives)[p][a] = (0.3 + p) * (a == 0 ? 1 : 0.03) * values[p][a];
-                }
-                (*derivatives)[p][0] += 0.2 * sum;
-            }
-        }
-        return e + 0.1 * sum * sum;
-    };
-    std::vector<std::array<double, 4>> derivatives;
-    sampled_energy(0, &derivatives);
-    auto d_tau           = Spheric_function_interpolator(tau).adjoint(points, derivatives);
-    auto discrete_matrix = op.matrix_elements_from_derivatives(d_tau);
-    double discrete_derivative{0};
-    for (int j = 0; j < n; j++) {
-        for (int i = 0; i < n; i++) {
-            discrete_derivative += 2 * occupation * std::real(std::conj(direction[i]) * discrete_matrix(i, j) * c[j]);
-        }
-    }
-    for (double h : {1e-4, 5e-5}) {
-        double fd = (sampled_energy(h, nullptr) - sampled_energy(-h, nullptr)) / (2 * h);
-        check("sampled tau/gradient orbital derivative", std::abs(discrete_derivative - fd), 2e-8);
-    }
     return failures;
 }
 

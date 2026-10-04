@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec python3 "$(dirname "$0")/upf_to_json.py" "$@"
+python $(dirname $0)/upf_to_json.py $@

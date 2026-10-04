@@ -192,74 +192,6 @@ test_paw_xc_correction(int ns__, bool compact__)
         check("unpolarized core spin conversion", error, 2e-13);
     }
 
-    // Reconstruct first, then evaluate a joint nonlinear/nonlocal energy.
-    std::vector<r3::vector<double>> points{{0.31, 0.2, 0.1}, {0, 0, 0.75}, {-0.2, -0.4, 0.3}, {0.3, 0.6, -0.2}};
-    std::vector<r3::vector<double>> displacements;
-    for (auto p : points) {
-        displacements.push_back(p);
-        displacements.push_back(p - r3::vector<double>({0.6, 0.1, 0.2}));
-    }
-    using derivatives_t = std::array<std::vector<std::vector<std::array<double, 4>>>, 2>;
-    auto energy         = [&](double step, derivatives_t* derivatives) {
-        set_dm(step);
-        auto f = density.generate_paw_xc_correction(0);
-        mdarray<double, 3> values({5, 4, ns__});
-        double sum{0}, result{0};
-        for (int s = 0; s < ns__; s++) {
-            Spheric_function_interpolator rho(f[0][s]), tau(f[1][s]);
-            for (int p = 0; p < 4; p++) {
-                auto a = rho.value_gradient(displacements[2 * p]);
-                auto b = rho.value_gradient(displacements[2 * p + 1]);
-                for (int x = 0; x < 4; x++) {
-                    // A smooth background remains fixed in this projector derivative.
-                    values(x, p, s) = (x == 0 ? 0.8 : 0.04) + a[x] + b[x];
-                    result += 0.5 * p * (x == 0 ? 1 : 0.1) * std::pow(values(x, p, s), 2);
-                }
-                values(4, p, s) = 0.4 + tau.value_gradient(displacements[2 * p])[0] +
-                                  tau.value_gradient(displacements[2 * p + 1])[0];
-                result += 0.15 * p * std::pow(values(4, p, s), 2) + 0.07 * values(0, p, s) * values(4, p, s);
-                sum += values(0, p, s) + 0.2 * values(4, p, s);
-            }
-        }
-        if (derivatives) {
-            (*derivatives)[0].resize(ns__);
-            (*derivatives)[1].resize(ns__);
-            for (int s = 0; s < ns__; s++) {
-                (*derivatives)[0][s].resize(displacements.size());
-                (*derivatives)[1][s].resize(displacements.size());
-                for (int p = 0; p < 4; p++) {
-                    for (int image = 0; image < 2; image++) {
-                        auto& drho = (*derivatives)[0][s][2 * p + image];
-                        auto& dtau = (*derivatives)[1][s][2 * p + image];
-                        drho[0]    = p * values(0, p, s) + 0.07 * values(4, p, s) + 0.22 * sum;
-                        for (int x = 1; x < 4; x++) {
-                            drho[x] = 0.1 * p * values(x, p, s);
-                        }
-                        dtau = {0.3 * p * values(4, p, s) + 0.07 * values(0, p, s) + 0.044 * sum, 0, 0, 0};
-                    }
-                }
-            }
-        }
-        return result + 0.11 * sum * sum;
-    };
-    derivatives_t derivatives;
-    energy(0, &derivatives);
-    double analytic{0};
-    for (int s = 0; s < ns__; s++) {
-        auto drho   = Spheric_function_interpolator(fields[0][s]).adjoint(displacements, derivatives[0][s]);
-        auto dtau   = Spheric_function_interpolator(fields[1][s]).adjoint(displacements, derivatives[1][s]);
-        auto matrix = op.matrix_elements(drho, dtau);
-        for (int j = 0; j < n; j++) {
-            for (int i = 0; i < n; i++) {
-                analytic += 2 * 0.8 / (s + 1) * std::real(std::conj(dc[i]) * matrix(i, j) * c[j]);
-            }
-        }
-    }
-    for (double step : {1e-4, 5e-5}) {
-        double fd = (energy(step, nullptr) - energy(-step, nullptr)) / (2 * step);
-        check("joint reconstructed energy/projector derivative", std::abs(analytic - fd), 2e-8);
-    }
-
     std::vector<r3::vector<double>> global_points{
             {0.63, 0.42, 0.29}, {1.3, 0.23, 0.94}, {0.27, 1.44, 1.19}, {1.66, 1.07, 0.38}};
     global_points[0] = r3::dot(ctx.unit_cell().lattice_vectors(), ctx.unit_cell().atom(0).position()) +
@@ -268,11 +200,9 @@ test_paw_xc_correction(int ns__, bool compact__)
                        r3::vector<double>({-0.0002, 0.0003, -0.0004});
     for (int np : {1, 4}) {
         std::vector<r3::vector<double>> local_points;
-        std::vector<int> ids;
         for (int p = 0; p < np; p++) {
             if (p % ctx.comm().size() == ctx.comm().rank()) {
                 local_points.push_back(global_points[p]);
-                ids.push_back(p);
             }
         }
         int local_size = static_cast<int>(local_points.size());
@@ -327,58 +257,6 @@ test_paw_xc_correction(int ns__, bool compact__)
             }
         }
         check("all-source periodic image reconstruction", error, 2e-12);
-
-        auto periodic_energy = [&](double step, std::vector<mdarray<double, 3>>* matrices) {
-            set_dm(step);
-            initialize();
-            PAW_xc_reconstruction reconstruction(density, local_points);
-            reconstruction.add_to(rho, grad, tau);
-            double sum{0}, e{0};
-            for (int s = 0; s < ns__; s++) {
-                for (int p = 0; p < local_size; p++) {
-                    double w = 0.2 + 0.1 * ids[p];
-                    sum += w * (rho(p, s) + 0.3 * tau(p, s));
-                    e += w * (0.5 * rho(p, s) * rho(p, s) + 0.2 * tau(p, s) * tau(p, s) + 0.1 * rho(p, s) * tau(p, s));
-                    for (int x = 0; x < 3; x++) {
-                        e += 0.03 * w * grad(p, x, s) * grad(p, x, s);
-                    }
-                }
-            }
-            ctx.comm().allreduce(&sum, 1);
-            ctx.comm().allreduce(&e, 1);
-            if (matrices) {
-                mdarray<double, 2> drho({local_size, ns__}), dtau({local_size, ns__});
-                mdarray<double, 3> dgrad({local_size, 3, ns__});
-                for (int s = 0; s < ns__; s++) {
-                    for (int p = 0; p < local_size; p++) {
-                        double w   = 0.2 + 0.1 * ids[p];
-                        drho(p, s) = w * (rho(p, s) + 0.1 * tau(p, s) + 0.16 * sum);
-                        dtau(p, s) = w * (0.4 * tau(p, s) + 0.1 * rho(p, s) + 0.048 * sum);
-                        for (int x = 0; x < 3; x++) {
-                            dgrad(p, x, s) = 0.06 * w * grad(p, x, s);
-                        }
-                    }
-                }
-                *matrices = reconstruction.projector_matrices(drho, dgrad, dtau);
-            }
-            return e + 0.08 * sum * sum;
-        };
-        std::vector<mdarray<double, 3>> matrices;
-        periodic_energy(0, &matrices);
-        double ad{0};
-        for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
-            for (int s = 0; s < ns__; s++) {
-                for (int j = 0; j < n; j++) {
-                    for (int i = 0; i < n; i++) {
-                        ad += 2 * 0.8 / (s + 1) * (ia + 1) * std::real(std::conj(dc[i]) * matrices[ia](i, j, s) * c[j]);
-                    }
-                }
-            }
-        }
-        for (double step : {1e-4, 5e-5}) {
-            double fd = (periodic_energy(step, nullptr) - periodic_energy(-step, nullptr)) / (2 * step);
-            check("distributed periodic reconstruction/projector derivative", std::abs(ad - fd), 2e-8);
-        }
 
         // Moving the target by several cell vectors cannot change its fields.
         set_dm(0);

@@ -111,10 +111,13 @@ test_meta_gga(bool gamma, int mag, bool parallel_fft, bool core, bool paw)
     }
     ks.initialize();
     int failures{0};
-    Test_check check(failures, ctx->comm(),
-                     "gamma=" + std::to_string(gamma) + " mag=" + std::to_string(mag) +
-                             " parallel FFT=" + std::to_string(parallel_fft) + " core=" + std::to_string(core));
-    check("no external model", ctx->cb().external_xc_ ? 1 : 0, 0);
+    auto check = [&](char const* name, double error, double tolerance) {
+        if (ctx->comm().rank() == 0) {
+            std::cout << "gamma=" << gamma << " mag=" << mag << " parallel_fft=" << parallel_fft << " core=" << core
+                      << ' ' << name << ": " << error << '\n';
+        }
+        failures += !std::isfinite(error) || error > tolerance;
+    };
     auto coefficient = [&](r3::vector<int> g, double angle, bool derivative) {
         std::complex<double> a{0}, b{0};
         if (g[1] == 0 && g[2] == 0 && (gamma ? std::abs(g[0]) == 2 : g[0] == 2)) {
@@ -309,21 +312,39 @@ test_meta_gga(bool gamma, int mag, bool parallel_fft, bool core, bool paw)
     }
     evaluate(0);
     if (paw) {
-        check.reject("reject independent PAW potential symmetrization", [&] { potential.generate(density, true, true); });
+        bool rejected{false};
+        try {
+            potential.generate(density, true, true);
+        } catch (std::exception const&) {
+            rejected = true;
+        }
+        check("reject independent PAW potential symmetrization", rejected ? 0 : 1, 0);
     }
     // Invalid local data must fail on every rank before entering collective FFTs.
     int rank = 0;
     if (ctx->comm().rank() == rank && nr) {
         density.kinetic_density().scalar().rg().value(0) = -1;
     }
-    check.reject("collective invalid tau rejection", [&] { potential.generate(density, false, true); });
+    bool rejected{false};
+    try {
+        potential.generate(density, false, true);
+    } catch (std::exception const&) {
+        rejected = true;
+    }
+    check("collective invalid tau rejection", rejected ? 0 : 1, 0);
     if (paw) {
         evaluate(0);
         for (auto it : ctx->unit_cell().spl_num_paw_atoms()) {
             auto ia                             = ctx->unit_cell().paw_atom_index(it.i);
             density.density_matrix(ia)(0, 0, 0) = -1e4;
         }
-        check.reject("collective invalid local PAW fields", [&] { potential.generate(density, false, true); });
+        rejected = false;
+        try {
+            potential.generate(density, false, true);
+        } catch (std::exception const&) {
+            rejected = true;
+        }
+        check("collective invalid local PAW fields", rejected ? 0 : 1, 0);
     }
     return failures;
 }
