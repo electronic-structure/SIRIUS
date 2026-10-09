@@ -14,7 +14,6 @@
 #include <memory>
 #include "potential/potential.hpp"
 #include "lapw/interstitial_functions.hpp"
-#include "density/lapw_xc_atom.hpp"
 #include "local_operator.hpp"
 #include "hamiltonian.hpp"
 
@@ -130,22 +129,22 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                             // 3: Bx + i By
 
                             // Bx - i By
-                            hmt_[ia](j1, j2, 2) = atom.template radial_integrals_sum_L3<4>(
+                            hmt_[ia](j1, j2, 2) = atom.radial_integrals_sum_L3<4>(
                                     {0, 0, 1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                             // Bx + i By
-                            hmt_[ia](j1, j2, 3) = atom.template radial_integrals_sum_L3<4>(
+                            hmt_[ia](j1, j2, 3) = atom.radial_integrals_sum_L3<4>(
                                     {0, 0, 1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                         }
                         case 1: {
                             if (ctx_.cfg().control().use_second_variation()) {
-                                hmt_[ia](j1, j2, 0) = atom.template radial_integrals_sum_L3<2>(
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
                                         {1, 0}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                hmt_[ia](j1, j2, 1) = atom.template radial_integrals_sum_L3<2>(
+                                hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
                                         {0, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
                             } else {
-                                hmt_[ia](j1, j2, 0) = atom.template radial_integrals_sum_L3<2>(
+                                hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<2>(
                                         {1, 1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                                hmt_[ia](j1, j2, 1) = atom.template radial_integrals_sum_L3<2>(
+                                hmt_[ia](j1, j2, 1) = atom.radial_integrals_sum_L3<2>(
                                         {1, -1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
 
                                 if (!mt_constraints.empty()) {
@@ -172,27 +171,8 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, bool precompute_lapw__, bo
                             break;
                         }
                         case 0: {
-                            hmt_[ia](j1, j2, 0) = atom.template radial_integrals_sum_L3<1>(
+                            hmt_[ia](j1, j2, 0) = atom.radial_integrals_sum_L3<1>(
                                     {1}, idxrf1, idxrf2, type.gaunt_coefs().gaunt_vector(lm1, lm2));
-                        }
-                    }
-                }
-            }
-        }
-        if (auto const* d = potential__.lapw_xc_derivatives()) {
-            // Contract after any radial-basis update, using raw sample covectors.
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                LAPW_xc_atom op(unit_cell_.atom(ia), ctx_.lmax_rho());
-                for (int s = 0; s < ctx_.num_spins(); s++) {
-                    auto matrix = op.matrix_elements(d->local[ia][0][s], d->local[ia][1][s]);
-                    for (int j = 0; j < unit_cell_.atom(ia).type().mt_basis_size(); j++) {
-                        for (int i = 0; i < unit_cell_.atom(ia).type().mt_basis_size(); i++) {
-                            if (ctx_.num_spins() == 2 && ctx_.cfg().control().use_second_variation()) {
-                                hmt_[ia](i, j, 0) += static_cast<std::complex<T>>(0.5 * matrix(i, j));
-                                hmt_[ia](i, j, 1) += static_cast<std::complex<T>>(0.5 * (1 - 2 * s) * matrix(i, j));
-                            } else {
-                                hmt_[ia](i, j, s) += static_cast<std::complex<T>>(matrix(i, j));
-                            }
                         }
                     }
                 }
@@ -445,22 +425,6 @@ Hamiltonian0<T>::generate_pw_coefs(Potential const& potential__)
             }
             default: {
                 break;
-            }
-        }
-    }
-    if (auto const* d = potential__.lapw_xc_derivatives()) {
-        bool second = ctx_.cfg().control().use_second_variation();
-        vtau_pw_    = mdarray<std::complex<T>, 2>({ctx_.gvec().num_gvec(), second ? 1 : ctx_.num_spins()});
-        vtau_pw_.zero();
-        for (int s = 0; s < ctx_.num_spins(); s++) {
-            auto v       = d->rho[s].gather_f_pw();
-            auto t       = d->tau[s].gather_f_pw();
-            int column   = second ? 0 : s;
-            double scale = second ? 1.0 / ctx_.num_spins() : 1.0;
-            for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
-                // These Fourier covectors already exclude the MT quadrature points.
-                veff_pw_(ig, column) += static_cast<std::complex<T>>(scale * v[ig]);
-                vtau_pw_(ig, column) += static_cast<std::complex<T>>(scale * t[ig]);
             }
         }
     }

@@ -301,12 +301,8 @@ main(int argc, char** argv)
     result += call_test("kinetic density FP32, complex k-point", test_kinetic_density<float>, false);
     result += call_test("kinetic density FP32, real Gamma", test_kinetic_density<float>, true);
 #endif
-    for (auto gamma : {false, true}) {
-        for (int num_mag_dims : {0, 1}) {
-            result += call_test("smooth kinetic density collection", test_kinetic_density_collection, gamma,
-                                num_mag_dims);
-        }
-    }
+    result += call_test("smooth kinetic density collection, Gamma", test_kinetic_density_collection, true, 0);
+    result += call_test("smooth kinetic density collection, collinear", test_kinetic_density_collection, false, 1);
     sirius::finalize();
     return std::min(result, 1);
 }

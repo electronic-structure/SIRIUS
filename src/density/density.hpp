@@ -234,10 +234,7 @@ class Density : public Field4D
      */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
-    /// Fixed pseudo-core tau, excluded from valence mixing and electron counts.
-    std::unique_ptr<Smooth_periodic_function<double>> tau_pseudo_core_;
-
-    /// Valence tau (plus core inside LAPW spheres) and its spin difference, mixed with rho/magnetization.
+    /// Valence tau and its collinear spin difference, mixed with rho/magnetization.
     std::unique_ptr<Field4D> kinetic_density_;
 
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
@@ -255,11 +252,6 @@ class Density : public Field4D
     /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
         the change of effective potential. */
     std::vector<std::vector<double>> ae_core_charge_density_;
-
-    /// Positive orbital-gradient core tau on the same radial grids as the core charge.
-    std::vector<std::vector<double>> ae_core_kinetic_density_;
-
-    bool core_kinetic_density_ready_{false};
 
     /// Core eigen-value sum.
     std::vector<double> core_eval_sum_;
@@ -329,16 +321,9 @@ class Density : public Field4D
     void
     generate_pseudo_core_charge_density();
 
-    /// Positive real-space pseudo-core charge and kinetic fields for meta-GGA XC.
-    void
-    generate_pseudo_core_fields();
-
   public:
-    /// Meta-GGA enables tau automatically; it can also be requested for orbital-field diagnostics.
+    /// Meta-GGA enables tau automatically. Other callers can request its storage explicitly.
     Density(Simulation_context& ctx__, bool kinetic_density__ = false);
-
-    friend void
-    copy(Density const& src__, Density& dest__);
 
     /// Update internal parameters after a change of lattice vectors or atomic coordinates.
     void
@@ -370,37 +355,8 @@ class Density : public Field4D
     check_num_electrons() const;
 
     /// Generate charge density of core states
-    /** Optional raw XC covectors {rho, tau} are in atom-symmetry-class order.
-     *  They differentiate spin-summed spherical core fields, without extra radial
-     *  weights. Supplying them selects the nonrelativistic variational solver.
-     */
     void
-    generate_core_charge_density(std::vector<std::vector<double>> const& vs__,
-                                 std::vector<std::array<std::vector<double>, 2>> const& core_xc__ = {});
-
-    /// Spherical total LAPW core charge, from the same solve as core tau.
-    std::vector<double> const&
-    core_charge_density(int ia__) const
-    {
-        if (!ctx_.full_potential() || !core_kinetic_density_ready_) {
-            RTE_THROW("LAPW core charge requires a successful radial core solve");
-        }
-        return ae_core_charge_density_.at(unit_cell_.atom(ia__).symmetry_class().id());
-    }
-
-    /// Spherical total core tau for an LAPW atom, including occupation/(4*pi).
-    /** Recomputed with the radial core states, not inferred from charge density.
-     *  The unpolarized core contributes half of this value to each spin channel.
-     *  This is a radial value, not the lm=0 expansion coefficient.
-     */
-    std::vector<double> const&
-    core_kinetic_density(int ia__) const
-    {
-        if (!ctx_.full_potential() || !core_kinetic_density_ready_) {
-            RTE_THROW("LAPW core kinetic density requires a successful radial core solve");
-        }
-        return ae_core_kinetic_density_.at(unit_cell_.atom(ia__).symmetry_class().id());
-    }
+    generate_core_charge_density(std::vector<std::vector<double>> const& vs__);
 
     /// Generate full charge density (valence + core) and magnetization from the wave functions.
     /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
@@ -431,14 +387,9 @@ class Density : public Field4D
     std::vector<Smooth_periodic_function<double>>
     generate_smooth_kinetic_density(K_point_set const& ks__) const;
 
-    /// Thomas-Fermi starting guess from the current physical charge and magnetization fields.
+    /// Thomas-Fermi plus von Weizsaecker starting guess from the current density.
     void
     initial_kinetic_density();
-
-    /// Store and synchronize the current LAPW orbital tau, optionally including the solved core.
-    /** Call before mixing, while the density matrix still refers to the current radial basis. */
-    void
-    generate_mt_kinetic_density(bool add_core__);
 
     bool
     has_kinetic_density() const
@@ -463,23 +414,6 @@ class Density : public Field4D
         }
         return *kinetic_density_;
     }
-
-    /// Muffin-tin valence tau from the current LAPW density matrix, in real spherical harmonics.
-    /** Returns total tau for a nonmagnetic calculation or separate up/down fields.
-     *  Core states are excluded. The density matrix must already be accumulated
-     *  over bands and k-points. Noncollinear spinors are not yet supported.
-     */
-    std::vector<Flm>
-    generate_mt_valence_kinetic_density(int ia__) const;
-
-    /// PAW partial-wave valence tau from the current projector density matrix.
-    /** Element 0 contains AE fields and element 1 pseudo fields, with the same
-     *  spin convention as generate_mt_valence_kinetic_density(). These are local
-     *  partial-wave contributions, not the smooth FFT tau or a reconstructed full
-     *  field. Charge-compensation Q functions and frozen-core tau are excluded.
-     */
-    std::array<std::vector<Flm>, 2>
-    generate_paw_valence_kinetic_density(int ia__) const;
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.
@@ -560,15 +494,6 @@ class Density : public Field4D
     rho_pseudo_core() const
     {
         return *rho_pseudo_core_;
-    }
-
-    Smooth_periodic_function<double> const&
-    tau_pseudo_core() const
-    {
-        if (!tau_pseudo_core_) {
-            RTE_THROW("pseudo-core kinetic density requires an ordinary pseudopotential meta-GGA context");
-        }
-        return *tau_pseudo_core_;
     }
 
     inline auto const&
@@ -881,17 +806,7 @@ copy(Density const& src__, Density& dest__)
         }
         if (src__.ctx().full_potential()) {
             copy(src__.component(j).mt(), dest__.component(j).mt());
-            if (src__.has_kinetic_density()) {
-                copy(src__.kinetic_density().component(j).mt(), dest__.kinetic_density().component(j).mt());
-            }
         }
-    }
-    if (src__.has_kinetic_density()) {
-        dest__.ae_core_charge_density_     = src__.ae_core_charge_density_;
-        dest__.ae_core_kinetic_density_    = src__.ae_core_kinetic_density_;
-        dest__.core_kinetic_density_ready_ = src__.core_kinetic_density_ready_;
-        dest__.core_eval_sum_              = src__.core_eval_sum_;
-        dest__.core_leakage_               = src__.core_leakage_;
     }
     for (int ia = 0; ia < src__.ctx().unit_cell().num_atoms(); ia++) {
         copy(src__.density_matrix(ia), dest__.density_matrix(ia));

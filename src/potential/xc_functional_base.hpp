@@ -1425,13 +1425,10 @@ class XC_functional_base
             if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
                 RTE_THROW("xc_func_init() failed");
             }
-#if defined(XC_FLAGS_ENFORCE_FHC)
             if (handler_->info->family == XC_FAMILY_MGGA) {
-                // PAW augmented densities need not satisfy the orbital Fermi-hole bound.
-                // Libxc's clipping of sigma does not include its chain rule in Vxc.
+                // Fermi-hole clipping does not include its chain rule in Libxc's Vxc.
                 xc_func_set_fhc_enforcement(handler_.get(), 0);
             }
-#endif
         }
         libxc_initialized_ = true;
     }
@@ -1535,9 +1532,6 @@ class XC_functional_base
     get_meta(int size__, double const* rho__, double const* sigma__, double const* tau__, double* vrho__,
              double* vsigma__, double* vtau__, double* exc__) const
     {
-#if !defined(XC_FLAGS_ENFORCE_FHC)
-        RTE_THROW("variational meta-GGA evaluation requires Libxc 7 or newer to disable Fermi-hole clipping");
-#endif
         if (size__ < 0 || family() != XC_FAMILY_MGGA || !handler_ ||
             (handler_->info->flags & XC_FLAGS_NEEDS_LAPLACIAN) || !(handler_->info->flags & XC_FLAGS_HAVE_EXC) ||
             !(handler_->info->flags & XC_FLAGS_HAVE_VXC)) {

@@ -82,12 +82,10 @@ energy_vha(Potential const& potential)
 double
 energy_bxc(Density const& density, Potential const& potential)
 {
-    potential.check_xc_energy_available();
     double ebxc{0};
     for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
         ebxc += sirius::inner(density.mag(j), potential.effective_magnetic_field(j));
     }
-    ebxc += potential.lapw_xc_contractions(density).magnetic;
     return ebxc;
 }
 
@@ -121,15 +119,13 @@ eval_sum(Density const& density, K_point_set const& kset)
 double
 energy_veff(Density const& density, Potential const& potential)
 {
-    potential.check_xc_energy_available();
-    return sirius::inner(density.rho(), potential.effective_potential()) + potential.lapw_xc_contractions(density).rho;
+    return sirius::inner(density.rho(), potential.effective_potential());
 }
 
 double
 energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential) -
-           potential.energy_vtau(density);
+    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential);
 }
 
 double
@@ -224,7 +220,7 @@ total_energy_components(Simulation_context const& ctx, K_point_set const& kset, 
     }
 
     table["entropy"] = kset.entropy_sum();
-    if (potential.has_kinetic_potential() || potential.lapw_xc_derivatives()) {
+    if (potential.has_kinetic_potential()) {
         table["vtau"] = potential.energy_vtau(density);
     }
 

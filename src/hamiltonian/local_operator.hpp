@@ -231,7 +231,9 @@ class Local_operator
      */
     std::array<std::unique_ptr<Smooth_periodic_function<T>>, 6> veff_vec_;
 
+    /// Spin-resolved dE_xc/dtau on the orbital FFT grid, allocated only for meta-GGA.
     std::array<std::unique_ptr<Smooth_periodic_function<T>>, 2> vtau_vec_;
+    /// Zero for LDA/GGA. Used in the PW Davidson diagonal preconditioner.
     std::array<T, 2> vtau0_{};
 
     /// Temporary array to store [V*phi](G)

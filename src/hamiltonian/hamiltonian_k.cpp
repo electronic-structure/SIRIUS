@@ -216,7 +216,7 @@ Hamiltonian_k<T>::get_h_o_diag_lapw() const
         if (what & 1) {
             auto gvc      = kp_.gkvec().gkvec_cart(gvec_index_t::local(igloc));
             T ekin        = 0.5 * dot(gvc, gvc);
-            h_diag[igloc] = H0_.local_op().v0(0) + ekin * (ctx.theta_pw(0).real() + H0_.local_op().vtau0(0));
+            h_diag[igloc] = H0_.local_op().v0(0) + ekin * ctx.theta_pw(0).real();
         }
         if (what & 2) {
             o_diag[igloc] = ctx.theta_pw(0).real();
@@ -710,9 +710,6 @@ Hamiltonian_k<T>::set_fv_h_o_it(int ispn__, la::dmatrix<std::complex<T>>& h__, l
 
             /* pw kinetic energy */
             double t1 = 0.5 * r3::dot(gkvec_row_cart, gkvec_col_cart);
-            if (H0().potential().lapw_xc_derivatives()) {
-                h__(igk_row, igk_col) += t1 * H0().vtau_pw(ig12, ispn__);
-            }
 
             switch (H0().ctx().valence_relativity()) {
                 case relativity_t::iora: {

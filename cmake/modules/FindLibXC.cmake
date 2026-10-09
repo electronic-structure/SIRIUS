@@ -19,7 +19,9 @@ find_path(SIRIUS_LIBXC_INCLUDE_DIR NAMES xc.h xc_f90_types_m.mod
   ENV LIBXCROOT
   )
 
-find_package_handle_standard_args(LibXC DEFAULT_MSG SIRIUS_LIBXC_LIBRARIES SIRIUS_LIBXC_INCLUDE_DIR)
+find_package_handle_standard_args(LibXC
+  REQUIRED_VARS SIRIUS_LIBXC_LIBRARIES SIRIUS_LIBXC_INCLUDE_DIR _LIBXC_VERSION
+  VERSION_VAR _LIBXC_VERSION)
 
 if(LibXC_FOUND AND NOT TARGET sirius::libxc)
   add_library(sirius::libxc INTERFACE IMPORTED)
