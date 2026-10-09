@@ -68,6 +68,10 @@ class Potential : public Field4D
     void
     xc_lapw_meta(Density const& density__);
 
+    void
+    generate_d_mtrx(std::vector<Periodic_function<double> const*> const& fields__,
+                    std::vector<mdarray<double, 3>>& result__) const;
+
     /// Local part of pseudopotential.
     std::unique_ptr<Smooth_periodic_function<double>> local_potential_;
 
@@ -337,12 +341,12 @@ class Potential : public Field4D
         double R = atom__.mt_radius();
         int nmtp = atom__.num_mt_points();
 
-        #pragma omp parallel
+#pragma omp parallel
         {
             std::vector<T> g1;
             std::vector<T> g2;
 
-            #pragma omp for
+#pragma omp for
             for (int lm = 0; lm < lmmax_rho; lm++) {
                 int l = l_by_lm_[lm];
 
@@ -666,10 +670,6 @@ class Potential : public Field4D
      */
     void
     generate_d_mtrx();
-
-    void
-    generate_d_mtrx(std::vector<Periodic_function<double> const*> const& fields__,
-                    std::vector<mdarray<double, 3>>& result__);
 
     void
     check_potential_continuity_at_mt();

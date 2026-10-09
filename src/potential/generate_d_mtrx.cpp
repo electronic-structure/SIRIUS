@@ -25,6 +25,7 @@ mul_veff_with_phase_factors_gpu(int num_atoms__, int num_gvec_loc__, std::comple
 void
 Potential::generate_d_mtrx()
 {
+    PROFILE("sirius::Potential::generate_d_mtrx");
     std::vector<Periodic_function<double> const*> fields;
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         fields.push_back(&component(j));
@@ -34,10 +35,8 @@ Potential::generate_d_mtrx()
 
 void
 Potential::generate_d_mtrx(std::vector<Periodic_function<double> const*> const& fields__,
-                           std::vector<mdarray<double, 3>>& result__)
+                           std::vector<mdarray<double, 3>>& result__) const
 {
-    PROFILE("sirius::Potential::generate_d_mtrx");
-
     /* local number of G-vectors */
     int gvec_count = ctx_.gvec().count();
     /* split local number of G-vectors into chunks */
