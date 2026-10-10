@@ -1088,6 +1088,31 @@
                     "default": true,
                     "title": "Include the three-body dispersion in the calculations"
                 },
+                "cutoff_disp2": {
+                    "type": "number",
+                    "default": 60.0,
+                    "title": "Two-body dispersion cutoff (Bohr)"
+                },
+                "cutoff_disp3": {
+                    "type": "number",
+                    "default": 40.0,
+                    "title": "Three-body dispersion cutoff (Bohr)"
+                },
+                "cutoff_cn": {
+                    "type": "number",
+                    "default": 30.0,
+                    "title": "Coordination-number cutoff (Bohr)"
+                },
+                "cutoff_width2": {
+                    "type": "number",
+                    "default": 0.05,
+                    "title": "Two-body smooth switching width (Bohr); zero disables smoothing"
+                },
+                "cutoff_width3": {
+                    "type": "number",
+                    "default": 0.0,
+                    "title": "Three-body smooth switching width (Bohr); zero disables smoothing"
+                },
                 "parameters": {
                     "type": "object",
                     "title": "parameters controlling the damping.",
@@ -1156,6 +1181,31 @@
                     "type": "boolean",
                     "default": true,
                     "title": "Include the three-body dispersion in the calculations"
+                },
+                "cutoff_disp2": {
+                    "type": "number",
+                    "default": 60.0,
+                    "title": "Two-body dispersion cutoff (Bohr)"
+                },
+                "cutoff_disp3": {
+                    "type": "number",
+                    "default": 40.0,
+                    "title": "Three-body dispersion cutoff (Bohr)"
+                },
+                "cutoff_cn": {
+                    "type": "number",
+                    "default": 40.0,
+                    "title": "Coordination-number cutoff (Bohr)"
+                },
+                "cutoff_width2": {
+                    "type": "number",
+                    "default": 0.05,
+                    "title": "Two-body smooth switching width (Bohr); zero disables smoothing"
+                },
+                "cutoff_width3": {
+                    "type": "number",
+                    "default": 0.0,
+                    "title": "Three-body smooth switching width (Bohr); zero disables smoothing"
                 },
                 "method": {
                     "type": "string",

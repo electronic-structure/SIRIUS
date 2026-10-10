@@ -20,8 +20,6 @@ dftd3::dftd3(Simulation_context& ctx__, Unit_cell const& unit_cell__)
         return;
     }
 
-    xc_method_ = ctx_.cfg().dftd3().method();
-
     update_dftd3_ctx();
 }
 
@@ -34,8 +32,6 @@ dftd3::update_dftd3_ctx()
     lattice_vectors_.resize(9);
     atom_positions_.resize(3 * unit_cell_.num_atoms());
     forces_ = mdarray<double, 2>({3, unit_cell_.num_atoms()});
-    lattice_vectors_.resize(9);
-    z_charges_.resize(unit_cell_.num_atoms());
     z_charges_.resize(unit_cell_.num_atoms());
     auto lat = unit_cell_.lattice_vectors();
     for (int i = 0; i < 3; i++) {
@@ -60,8 +56,7 @@ dftd3::update_dftd3_ctx()
     if (!error_) {
         error_ = dftd3_new_error();
     }
-    std::string buffer_error;
-    buffer_error.resize(1024, 0);
+    std::string buffer_error(1024, '\0');
     if (!mol_) {
         const bool periodic[3] = {true, true, true};
         mol_ = dftd3_new_structure(error_, ctx_.unit_cell().num_atoms(), z_charges_.data(), atom_positions_.data(),
@@ -80,6 +75,23 @@ dftd3::update_dftd3_ctx()
     }
     disp_ = dftd3_new_d3_model(error_, mol_);
 
+    if (dftd3_check_error(error_)) {
+        dftd3_get_error(error_, buffer_error.data(), nullptr);
+        RTE_THROW(buffer_error);
+    }
+
+    auto const& config = ctx_.cfg().dftd3();
+    auto disp2         = config.cutoff_disp2();
+    auto disp3         = config.cutoff_disp3();
+    auto cn            = config.cutoff_cn();
+    auto width2        = config.cutoff_width2();
+    auto width3        = config.cutoff_width3();
+    if (!(disp2 > 0 && disp3 > 0 && cn > 0 && width2 >= 0 && width2 < disp2 && width3 >= 0 && width3 < disp3)) {
+        RTE_THROW("DFTD3: Require positive cutoffs and smoothing widths in [0, cutoff) (Bohr)");
+    }
+    dftd3_set_model_realspace_cutoff_smooth(error_, disp_, disp2, disp3, cn, width2, width3);
+
+    dftd3_set_model_work_partition(error_, disp_, ctx_.comm().rank(), ctx_.comm().size());
     if (dftd3_check_error(error_)) {
         dftd3_get_error(error_, buffer_error.data(), nullptr);
         RTE_THROW(buffer_error);
@@ -176,6 +188,22 @@ dftd3::calculate_energy_forces_stress()
     std::vector<double> forces_tmp(unit_cell_.num_atoms() * 3);
     std::vector<double> stress_tmp(9);
     dftd3_get_dispersion(error_, mol_, disp_, param_, &energy_, forces_tmp.data(), stress_tmp.data());
+
+    // Sum the partial dispersion energy, gradient and virial across all ranks.
+    int local_error = dftd3_check_error(error_);
+    int errors      = local_error;
+    ctx_.comm().allreduce(&errors, 1);
+    if (errors) {
+        if (local_error) {
+            std::string message(1024, '\0');
+            dftd3_get_error(error_, message.data(), nullptr);
+            RTE_THROW(message);
+        }
+        RTE_THROW("DFTD3 dispersion calculation failed on another MPI rank");
+    }
+    ctx_.comm().allreduce(&energy_, 1);
+    ctx_.comm().allreduce(forces_tmp);
+    ctx_.comm().allreduce(stress_tmp);
 
     // the library returns the gradients NOT the forces. We need to multiply by -1 to get the forces
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
