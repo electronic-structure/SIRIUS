@@ -42,10 +42,8 @@ class dftd3
     mdarray<double, 2> forces_;
     // stress tensor
     r3::matrix<double> stress_;
-    // total number of electrons of each atom
+    // atomic numbers
     std::vector<int> z_charges_;
-    // functional. Unfortunately dft-d3 library does not use libxc numbering scheme
-    std::string xc_method_;
     // energy
     double energy_{0.0};
 
@@ -63,47 +61,6 @@ class dftd3
 
     /* forbid copy constructor */
     dftd3(const dftd3& src) = delete;
-
-    dftd3(dftd3* src__)
-        : ctx_(src__->ctx_)
-        , unit_cell_(src__->unit_cell_)
-    {
-#if defined(SIRIUS_USE_DFTD3)
-        this->lattice_vectors_ = src__->lattice_vectors_;
-        this->forces_          = std::move(src__->forces_);
-        this->stress_          = std::move(src__->stress_);
-        this->z_charges_       = std::move(src__->z_charges_);
-        this->xc_method_       = src__->xc_method_;
-        this->error_           = src__->error_;
-        this->param_           = src__->param_;
-        this->mol_             = src__->mol_;
-        this->disp_            = src__->disp_;
-        src__->error_          = nullptr;
-        src__->param_          = nullptr;
-        src__->mol_            = nullptr;
-        src__->disp_           = nullptr;
-#endif
-    }
-    dftd3(dftd3&& src__)
-        : ctx_(src__.ctx_)
-        , unit_cell_(src__.unit_cell_)
-    {
-#if defined(SIRIUS_USE_DFTD3)
-        this->lattice_vectors_ = src__.lattice_vectors_;
-        this->forces_          = std::move(src__.forces_);
-        this->stress_          = std::move(src__.stress_);
-        this->z_charges_       = std::move(src__.z_charges_);
-        this->xc_method_       = src__.xc_method_;
-        this->error_           = src__.error_;
-        this->param_           = src__.param_;
-        this->mol_             = src__.mol_;
-        this->disp_            = src__.disp_;
-        src__.error_           = nullptr;
-        src__.param_           = nullptr;
-        src__.mol_             = nullptr;
-        src__.disp_            = nullptr;
-#endif
-    }
 
     void
     update_dftd3_ctx();
@@ -128,8 +85,6 @@ class dftd3
         if (param_ != nullptr) {
             dftd3_delete_param(&param_);
         }
-        atom_positions_.clear();
-        lattice_vectors_.clear();
 #endif
     }
     double
