@@ -24,6 +24,8 @@ class MctcLib(MesonPackage, CMakePackage):
 
     version("main", branch="main")
 
+    version("0.6.1", sha256="0499733af21015c022e8af0b5c477d779d27b58843c2a4c47644a683df2f3e42")
+    version("0.5.2", sha256="a82c92deee73ee00d5ded3bb13f59677b0c543a272f488125a364a62ef943fb9")
     version("0.5.1", sha256="a93ea3e50a1950745df01601bfd672d485f0367660f7076dbe73e422e7d4e2ac")
     version("0.5.0", sha256="afd0dd4e40c3441432f077e14112962273ccc25abb00db05d7559fec3b0f1505")
     version("0.4.2", sha256="ce1e962c79d871d3705be590aef44f07ca296843b85e164307290f8324769406")
@@ -33,6 +35,7 @@ class MctcLib(MesonPackage, CMakePackage):
     version("0.3.1", sha256="a5032a0bbbbacc952037c5215b71aa6b438767a84bafb60fda25ba43c8835513")
     version("0.3.0", sha256="81f3edbf322e6e28e621730a796278498b84af0f221f785c537a315312059bf0")
 
+    variant("shared", default=True, description="Build shared libraries")
     variant("json", default=False, description="Enable support for JSON")
     variant("openmp", default=False, description="Enable OpenMP support")
 
@@ -43,7 +46,10 @@ class MctcLib(MesonPackage, CMakePackage):
     depends_on("pkgconfig", type="build")
 
     for build_system in ["cmake", "meson"]:
-        depends_on(f"jonquil build_system={build_system}", when=f"build_system={build_system}")
+        depends_on(
+            f"jonquil build_system={build_system}",
+            when=f"@0.4.2:+json build_system={build_system}",
+        )
         depends_on(
             f"toml-f build_system={build_system}", when=f"@0.4.2:+json build_system={build_system}"
         )
@@ -54,13 +60,14 @@ class CMakeBuilder(cmake.CMakeBuilder):
         return [
             self.define_from_variant("WITH_JSON", "json"),
             self.define_from_variant("WITH_OpenMP", "openmp"),
-            "-DBUILD_SHARED_LIBS=On"
+            self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
         ]
 
 
 class MesonBuilder(meson.MesonBuilder):
     def meson_args(self):
         return [
+            "-Ddefault_library={0}".format("shared" if "+shared" in self.spec else "static"),
             "-Djson={0}".format("enabled" if "+json" in self.spec else "disabled"),
             "-Dopenmp={0}".format("true" if "+openmp" in self.spec else "false"),
         ]
