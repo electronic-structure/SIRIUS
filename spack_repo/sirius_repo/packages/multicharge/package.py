@@ -33,11 +33,16 @@ class Multicharge(CMakePackage, MesonPackage):
 
     depends_on("c", type="build")
     depends_on("fortran", type="build")
+    depends_on("blas")
     depends_on("lapack")
     depends_on("mctc-lib build_system=cmake", when="build_system=cmake")
     depends_on("mctc-lib build_system=meson", when="build_system=meson")
     depends_on("mctc-lib@0.4:", when="@0.4:")
     depends_on("mctc-lib@0.3:0.4", when="@0.3")
+
+    # Link LAPACK/BLAS and OpenMP privately in shared builds, so that the
+    # installed CMake config does not need to find them again
+    patch("cmake-shared-private-deps.patch", when="@0.5.0 build_system=cmake")
 
     def url_for_version(self, version):
         if self.spec.satisfies("@:0.3.0"):
@@ -51,6 +56,8 @@ class CMakeBuilder(cmake.CMakeBuilder):
         args = [
             self.define_from_variant("WITH_OpenMP", "openmp"),
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
+            self.define("BLAS_LIBRARIES", self.spec["blas"].libs.joined(";")),
+            self.define("LAPACK_LIBRARIES", self.spec["lapack"].libs.joined(";")),
         ]
         return args
 
