@@ -166,6 +166,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     conflicts("+rocm", when="@:7.2.0")
 
     conflicts("^libxc@5.0.0")  # known to produce incorrect results
+    conflicts("libxc@7.1:+cuda") # recent libxc expects device pointers if built with +cuda
     conflicts("+single_precision", when="@:7.2.4")
     conflicts("+scalapack", when="^cray-libsci")
 
