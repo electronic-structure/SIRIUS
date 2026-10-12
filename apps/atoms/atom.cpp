@@ -803,12 +803,10 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
 
     std::cout << "=== initializing atom ===" << std::endl;
     a.init();
-    Atom_symmetry_class a1(0, a);
-    a1.set_spherical_potential(veff);
-    a1.generate_radial_functions(relativity_t::none);
-    mpi::pstdout pout(mpi::Communicator::self());
-    a1.write_enu(pout);
-    std::cout << pout.flush(0);
+    lapw_radial_basis_t rb{a, relativity_t::none, veff};
+    rb.find_enu();
+    rb.generate_radial_functions();
+    rb.write_enu(std::cout);
 
     auto lo_to_str = [](sirius::local_orbital_descriptor lod) {
         std::stringstream s;
@@ -825,17 +823,17 @@ generate_atom_file(cmd_args const& args, Free_atom& a)
         return s.str();
     };
 
-    auto inc   = a1.check_lo_linear_independence(args.value<double>("lo_tol", 0.0001));
+    auto inc   = rb.check_lo_linear_independence(args.value<double>("lo_tol", 0.0001));
     dict["lo"] = json::array();
 
     idxlo = 0;
     for (int l = 0; l < 10; l++) {
-        for (int j = 0; j < a1.num_lo_descriptors(); j++) {
-            if (a1.lo_descriptor(j).am.l() == l) {
-                auto s = lo_to_str(a1.lo_descriptor(j));
+        for (int j = 0; j < a.num_lo_descriptors(); j++) {
+            if (a.lo_descriptor(j).am.l() == l) {
+                auto s = lo_to_str(rb.lo_descriptors_[j]);
                 if (inc[j]) {
-                    dict["lo"].push_back({{"l", a1.lo_descriptor(j).am.l()}, {"basis", json::parse(s)}});
-                    std::cout << "idxlo : " << idxlo << ", l: " << a1.lo_descriptor(j).am.l() << ", basis: " << s
+                    dict["lo"].push_back({{"l", a.lo_descriptor(j).am.l()}, {"basis", json::parse(s)}});
+                    std::cout << "idxlo : " << idxlo << ", l: " << a.lo_descriptor(j).am.l() << ", basis: " << s
                               << std::endl;
                     idxlo++;
                 }
