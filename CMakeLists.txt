@@ -47,7 +47,7 @@ set_property(CACHE SIRIUS_USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
-if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+if(SIRIUS_CREATE_FORTRAN_BINDINGS OR SIRIUS_USE_DFTD3 OR SIRIUS_USE_DFTD4)
   enable_language(Fortran)
 endif()
 
