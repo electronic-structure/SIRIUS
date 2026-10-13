@@ -1,0 +1,66 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0aaed20..8475823 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -73,17 +73,28 @@ set_target_properties(
+   SOVERSION "${PROJECT_VERSION_MAJOR}"
+   Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include"
+ )
++# Shared libraries carry their own runtime dependencies, only static ones
++# must propagate LAPACK/BLAS and OpenMP to consumers
++if(BUILD_SHARED_LIBS)
++  set(link-scope PRIVATE)
++else()
++  set(link-scope PUBLIC)
++endif()
+ target_link_libraries(
+   "${PROJECT_NAME}-lib"
+   PUBLIC
+   "${lib-deps}"
++)
++target_link_libraries(
++  "${PROJECT_NAME}-lib"
++  ${link-scope}
+   "LAPACK::LAPACK"
+   "$<$<VERSION_LESS:${CMAKE_VERSION},3.20>:BLAS::BLAS>"
+ )
+ if(WITH_OpenMP)
+   target_link_libraries(
+     "${PROJECT_NAME}-lib"
+-    PUBLIC
++    ${link-scope}
+     "OpenMP::OpenMP_Fortran"
+   )
+ endif()
+diff --git a/config/template.cmake b/config/template.cmake
+index c4f831d..f51210f 100644
+--- a/config/template.cmake
++++ b/config/template.cmake
+@@ -1,6 +1,7 @@
+ @PACKAGE_INIT@
+ 
+ set("@PROJECT_NAME@_WITH_OpenMP" @WITH_OpenMP@)
++set("@PROJECT_NAME@_SHARED" @BUILD_SHARED_LIBS@)
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+ 
+ if(NOT TARGET "@PROJECT_NAME@::@PROJECT_NAME@")
+@@ -8,12 +9,14 @@ if(NOT TARGET "@PROJECT_NAME@::@PROJECT_NAME@")
+ 
+   include(CMakeFindDependencyMacro)
+ 
+-  if(NOT TARGET "OpenMP::OpenMP_Fortran" AND "@PROJECT_NAME@_WITH_OpenMP")
+-    find_dependency("OpenMP")
+-  endif()
++  if(NOT @PROJECT_NAME@_SHARED)
++    if(NOT TARGET "OpenMP::OpenMP_Fortran" AND "@PROJECT_NAME@_WITH_OpenMP")
++      find_dependency("OpenMP")
++    endif()
+ 
+-  if(NOT TARGET "LAPACK::LAPACK")
+-    find_dependency("custom-lapack")
++    if(NOT TARGET "LAPACK::LAPACK")
++      find_dependency("custom-lapack")
++    endif()
+   endif()
+ 
+   if(NOT TARGET "mctc-lib::mctc-lib")
