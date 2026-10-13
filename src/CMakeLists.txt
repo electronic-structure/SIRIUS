@@ -108,7 +108,7 @@ endif()
 
 target_link_libraries(sirius_cxx PUBLIC
   MPI::MPI_CXX
-  sirius::libxc
+  Libxc::xc
   sirius::libspg
   sirius::hdf5
   costa::costa
@@ -121,9 +121,8 @@ target_link_libraries(sirius_cxx PUBLIC
   SpFFT::spfft
   SPLA::spla
   GSL::gsl
-  $<$<BOOL:${SIRIUS_USE_DFTD3}>:sirius::dftd3>
-  $<$<BOOL:${SIRIUS_USE_DFTD4}>:sirius::dftd4 sirius::multicharge>
-  $<$<OR:$<BOOL:${SIRIUS_USE_DFTD3}>,$<BOOL:${SIRIUS_USE_DFTD4}>>:sirius::mctclib>
+  $<$<BOOL:${SIRIUS_USE_DFTD3}>:s-dftd3::s-dftd3>
+  $<$<BOOL:${SIRIUS_USE_DFTD4}>:dftd4::dftd4>
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_VCSQNM}>:Eigen3::Eigen>
