@@ -315,7 +315,7 @@ class Density : public Field4D
 
     /// Generate valence density in the muffin-tins
     void
-    generate_valence_mt();
+    generate_valence_mt(LAPW_radial_basis const& basis__);
 
     /// Generate pseudo core charge density needed for non-linear core correction.
     void
@@ -365,7 +365,24 @@ class Density : public Field4D
      */
     template <typename T>
     void
-    generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__);
+    generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__, bool symmetrize__, bool add_core__,
+             bool transform_to_rg__);
+
+    template <typename T>
+    void
+    generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__, bool add_core__,
+             bool transform_to_rg__)
+    {
+        generate<T>(ks__, &lapw_basis__, symmetrize__, add_core__, transform_to_rg__);
+    }
+
+    /// PW density generation does not require a LAPW radial basis.
+    template <typename T>
+    void
+    generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
+    {
+        generate<T>(ks__, nullptr, symmetrize__, add_core__, transform_to_rg__);
+    }
 
     /// Generate valence charge density and magnetization from the wave functions.
     /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
@@ -374,7 +391,14 @@ class Density : public Field4D
      */
     template <typename T>
     void
-    generate_valence(K_point_set const& ks__);
+    generate_valence(K_point_set const& ks__, LAPW_radial_basis const* basis__);
+
+    template <typename T>
+    void
+    generate_valence(K_point_set const& ks__, LAPW_radial_basis const& basis__)
+    {
+        generate_valence<T>(ks__, &basis__);
+    }
 
     /// Generate unsymmetrized smooth valence kinetic-energy densities from occupied orbitals.
     /** Returns one total component for a nonmagnetic calculation, or separate

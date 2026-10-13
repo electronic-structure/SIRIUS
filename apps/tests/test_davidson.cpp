@@ -64,7 +64,7 @@ diagonalize(Simulation_context& ctx__, std::array<double, 3> vk__, Potential& po
         kp.band_occupancy(i, 0, 2);
     }
 
-    Hamiltonian0<T> H0(pot__, true);
+    Hamiltonian0<T> H0(pot__);
     auto Hk = H0(kp);
     sirius::initialize_subspace<T, F>(Hk, kp, ctx__.unit_cell().num_ps_atomic_wf().first);
     for (int i = 0; i < ctx__.num_bands(); i++) {

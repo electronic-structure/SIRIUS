@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.12.0
+  VERSION 7.13.0
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -88,17 +88,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "debug" "release" "relwithdebinfo")
 endif()
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O2")
-elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
-endif()
+add_compile_options($<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang,IntelLLVM>:-Wall>)
 
 # preserve rpaths when installing and make the install folder relocatable
 # use `CMAKE_SKIP_INSTALL_RPATH` to skip this

@@ -52,27 +52,24 @@ enu_from_potential(cmd_args const& args__)
         }
     }
 
-    Atom_symmetry_class atom_class(0, atype);
-    atom_class.set_spherical_potential(veff);
+    lapw_radial_basis_t rb{atype, relativity_t::none, veff};
+    rb.write_enu(std::cout);
 
     int ierr{0};
     if (!args__.exist("skip_enu")) {
-        ierr += atom_class.find_enu(rel);
+        ierr += rb.find_enu();
         if (ierr) {
             std::cout << "Enu search failed" << std::endl;
         }
     }
+    rb.write_enu(std::cout);
 
-    atom_class.write_enu(std::cout);
-
-    bool update_enu{false};
-    int ierr1 = atom_class.generate_radial_functions(rel, update_enu);
+    int ierr1 = rb.generate_radial_functions();
     if (ierr1) {
         std::cout << "Generation of radial function failed" << std::endl;
     }
 
-    atom_class.save_radial_functions("radial_functions_" + species_file);
-
+    rb.save_radial_functions("radial_functions_" + species_file);
     return ierr + ierr1;
 }
 

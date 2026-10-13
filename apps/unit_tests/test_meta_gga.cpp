@@ -194,7 +194,7 @@ test_meta_gga(bool gamma, int mag, bool parallel_fft)
         }
     }
 
-    Hamiltonian0<double> h0(potential, false);
+    Hamiltonian0<double> h0(potential);
     double derivative{0};
     for (auto it : ks.spl_num_kpoints()) {
         auto kp = ks.get<double>(it.i);
