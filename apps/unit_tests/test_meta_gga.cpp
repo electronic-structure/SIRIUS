@@ -262,7 +262,7 @@ test_meta_scf(int mag, bool parallel_fft)
         auto const& p = ground.potential();
         double direct = d.kinetic_density().scalar().integrate().total + 0.5 * p.energy_vha() + energy_vloc(d, p) +
                         p.energy_exc(d) + p.ewald_energy();
-        double error  = std::abs(direct - ks_energy(*ctx, ks, d, p));
+        double error = std::abs(direct - ks_energy(*ctx, ks, d, p));
         failures += !std::isfinite(error) || error > 2e-7;
         if (ctx->cfg().iterative_solver().type() == "exact") {
             reference = direct;
