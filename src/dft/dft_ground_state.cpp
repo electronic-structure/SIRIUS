@@ -126,7 +126,7 @@ DFT_ground_state::check_scf_density()
     Density rho(ctx_);
 
     auto lapw_basis = pot.create_lapw_basis();
-    rho.generate<double>(kset_, *lapw_basis, ctx_.use_symmetry(), add_core, transform_to_rg);
+    rho.generate<double>(kset_, lapw_basis.get(), ctx_.use_symmetry(), add_core, transform_to_rg);
 
     auto gs1 = energy_dict(ctx_, kset_, rho, pot, this->scf_correction_energy_);
 
@@ -227,7 +227,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             /* find band occupancies */
             ne_diff = kset_.find_band_occupancies<float>();
             /* generate new density from the occupied wave-functions */
-            density_.generate<float>(kset_, ctx_.use_symmetry(), true, true);
+            density_.generate<float>(kset_, lapw_basis.get(), ctx_.use_symmetry(), true, true);
 #else
             RTE_THROW("not compiled with FP32 support");
 #endif
@@ -242,7 +242,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             auto vs = potential_.get_spherical_potential();
             density_.generate_core_charge_density(vs);
             /* generate new density from the occupied wave-functions */
-            density_.generate<double>(kset_, *lapw_basis, ctx_.use_symmetry(), true, true);
+            density_.generate<double>(kset_, lapw_basis.get(), ctx_.use_symmetry(), true, true);
         }
 
         double e1 = energy_potential(density_, potential_);

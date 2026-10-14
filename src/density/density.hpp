@@ -234,6 +234,9 @@ class Density : public Field4D
      */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
+    /// Valence tau and its collinear spin difference, mixed with rho/magnetization.
+    std::unique_ptr<Field4D> kinetic_density_;
+
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
@@ -241,7 +244,8 @@ class Density : public Field4D
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, density_matrix_t, PAW_density<double>, Hubbard_matrix>>
+                                 Periodic_function<double>, density_matrix_t, PAW_density<double>, Hubbard_matrix,
+                                 Periodic_function<double>, Periodic_function<double>>>
             mixer_;
 
     /// Core charge density.
@@ -318,8 +322,8 @@ class Density : public Field4D
     generate_pseudo_core_charge_density();
 
   public:
-    /// Constructor
-    Density(Simulation_context& ctx__);
+    /// Meta-GGA enables tau automatically. Other callers can request its storage explicitly.
+    Density(Simulation_context& ctx__, bool kinetic_density__ = false);
 
     /// Update internal parameters after a change of lattice vectors or atomic coordinates.
     void
@@ -361,8 +365,24 @@ class Density : public Field4D
      */
     template <typename T>
     void
-    generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__, bool add_core__,
+    generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__, bool symmetrize__, bool add_core__,
              bool transform_to_rg__);
+
+    template <typename T>
+    void
+    generate(K_point_set const& ks__, LAPW_radial_basis const& lapw_basis__, bool symmetrize__, bool add_core__,
+             bool transform_to_rg__)
+    {
+        generate<T>(ks__, &lapw_basis__, symmetrize__, add_core__, transform_to_rg__);
+    }
+
+    /// PW density generation does not require a LAPW radial basis.
+    template <typename T>
+    void
+    generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
+    {
+        generate<T>(ks__, nullptr, symmetrize__, add_core__, transform_to_rg__);
+    }
 
     /// Generate valence charge density and magnetization from the wave functions.
     /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
@@ -371,7 +391,53 @@ class Density : public Field4D
      */
     template <typename T>
     void
-    generate_valence(K_point_set const& ks__, LAPW_radial_basis const& basis__);
+    generate_valence(K_point_set const& ks__, LAPW_radial_basis const* basis__);
+
+    template <typename T>
+    void
+    generate_valence(K_point_set const& ks__, LAPW_radial_basis const& basis__)
+    {
+        generate_valence<T>(ks__, &basis__);
+    }
+
+    /// Generate unsymmetrized smooth valence kinetic-energy densities from occupied orbitals.
+    /** Returns one total component for a nonmagnetic calculation, or separate
+     *  up/down components for a collinear calculation, on the fine density grid
+     *  in both real and reciprocal space. PAW augmentation, muffin-tin terms,
+     *  and core contributions are not included. Currently requires CPU orbitals
+     *  and FFTs. This does not enable a tau-dependent functional in the SCF loop.
+     */
+    template <typename T>
+    std::vector<Smooth_periodic_function<double>>
+    generate_smooth_kinetic_density(K_point_set const& ks__) const;
+
+    /// Thomas-Fermi plus von Weizsaecker starting guess from the current density.
+    void
+    initial_kinetic_density();
+
+    bool
+    has_kinetic_density() const
+    {
+        return bool(kinetic_density_);
+    }
+
+    auto&
+    kinetic_density()
+    {
+        if (!kinetic_density_) {
+            RTE_THROW("kinetic density was not enabled before constructing Density");
+        }
+        return *kinetic_density_;
+    }
+
+    auto const&
+    kinetic_density() const
+    {
+        if (!kinetic_density_) {
+            RTE_THROW("kinetic density was not enabled before constructing Density");
+        }
+        return *kinetic_density_;
+    }
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.
@@ -753,8 +819,15 @@ class Density : public Field4D
 inline void
 copy(Density const& src__, Density& dest__)
 {
+    if (src__.has_kinetic_density() != dest__.has_kinetic_density() ||
+        (src__.has_kinetic_density() && &src__.ctx() != &dest__.ctx())) {
+        RTE_THROW("kinetic-density copy requires matching storage in the same context");
+    }
     for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
         copy(src__.component(j).rg(), dest__.component(j).rg());
+        if (src__.has_kinetic_density()) {
+            copy(src__.kinetic_density().component(j).rg(), dest__.kinetic_density().component(j).rg());
+        }
         if (src__.ctx().full_potential()) {
             copy(src__.component(j).mt(), dest__.component(j).mt());
         }
