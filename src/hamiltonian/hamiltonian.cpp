@@ -40,8 +40,6 @@ auto
 generate_h_L(Atom_type const& type__, lapw_radial_basis_t const& rb__,
              std::vector<Spheric_function_set<double, atom_index_t>*> const& vns__, int ia__)
 {
-    PROFILE("sirius::generate_h_L");
-
     int lmax_pot     = type__.parameters().lmax_pot();
     int lmmax        = sf::lmmax(lmax_pot);
     int nmtp         = type__.num_mt_points();
@@ -521,6 +519,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
             ctx_.num_constraints_applied(1);
         }
 
+        PROFILE_START("sirius::Hamiltonian0::hmt");
         auto vns = potential__.mt_components();
         #pragma omp parallel for
         for (auto it : unit_cell_.spl_num_atoms()) {
@@ -602,6 +601,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
                 hmt_[ia].allocate(memory_t::device).copy_to(memory_t::device);
             }
         }
+        PROFILE_STOP("sirius::Hamiltonian0::hmt");
     }
 }
 
