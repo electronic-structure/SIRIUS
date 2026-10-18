@@ -110,7 +110,7 @@ endif()
 
 target_link_libraries(sirius_cxx PUBLIC
   MPI::MPI_CXX
-  sirius::libxc
+  Libxc::xc
   sirius::libspg
   sirius::hdf5
   costa::costa
@@ -123,9 +123,8 @@ target_link_libraries(sirius_cxx PUBLIC
   SpFFT::spfft
   SPLA::spla
   GSL::gsl
-  $<$<BOOL:${SIRIUS_USE_DFTD3}>:sirius::dftd3>
-  $<$<BOOL:${SIRIUS_USE_DFTD4}>:sirius::dftd4 sirius::multicharge>
-  $<$<OR:$<BOOL:${SIRIUS_USE_DFTD3}>,$<BOOL:${SIRIUS_USE_DFTD4}>>:sirius::mctclib>
+  $<$<BOOL:${SIRIUS_USE_DFTD3}>:s-dftd3::s-dftd3>
+  $<$<BOOL:${SIRIUS_USE_DFTD4}>:dftd4::dftd4>
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_VCSQNM}>:Eigen3::Eigen>
@@ -193,7 +192,8 @@ install(TARGETS sirius_cxx
   EXPORT sirius_cxx_targets
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius_cxx")
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src"
+                       "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
 install(EXPORT sirius_cxx_targets
   FILE sirius_cxxTargets.cmake
   NAMESPACE sirius::

@@ -70,7 +70,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     variant(
         "profiler", default=True, description="Use internal profiler to measure execution time"
     )
-    variant("nvtx", default=False, description="Use NVTX profiler")
+    variant("nvtx", default=False, description="Use NVTX/ROCTX traces")
     variant("dftd3", default=False, description="Enable dft-d3 corrections", when="@7.9.0:")
     variant("dftd4", default=False, description="Enable dft-d4 corrections", when="@7.9.0:")
 
@@ -147,8 +147,8 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("nlcglib+rocm", when="+nlcglib+rocm")
     depends_on("nlcglib+cuda", when="+nlcglib+cuda")
 
-    depends_on("libvdwxc@0.3.0:+mpi", when="+vdwxc")
-
+    depends_on("libvdwxc@0.5:+mpi", when="+vdwxc")
+    depends_on("rocprofiler-sdk", when="+nvtx+rocm")
     depends_on("scalapack", when="+scalapack")
 
     with when("+dlaf"):
@@ -191,6 +191,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on("elpa+openmp", when="+elpa+openmp")
     depends_on("elpa~openmp", when="+elpa~openmp")
+    conflicts("+elpa ~scalapack")
 
     depends_on("eigen@3.4.0:", when="@7.3.2: +tests")
     depends_on("eigen@3.4.0:", when="@7.7: +vcsqnm")

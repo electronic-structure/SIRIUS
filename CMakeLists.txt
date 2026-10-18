@@ -47,7 +47,7 @@ set_property(CACHE SIRIUS_USE_FP32 PROPERTY STRINGS "AUTO" "ON" "OFF")
 
 # set language and standard
 
-if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+if(SIRIUS_CREATE_FORTRAN_BINDINGS OR SIRIUS_USE_DFTD3 OR SIRIUS_USE_DFTD4)
   enable_language(Fortran)
 endif()
 
@@ -123,23 +123,27 @@ endif()
 find_package(MPI REQUIRED)
 #set(GSL_CBLAS_LIBRARY ${BLAS_LIBRARIES} CACHE STRING "" FORCE)
 find_package(GSL REQUIRED)
-find_package(LibXC 7.0.0 REQUIRED)
+find_package(Libxc REQUIRED CONFIG)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
 find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
 
+if (Libxc_VERSION VERSION_LESS "7.0.0")
+   message(FATAL_ERROR "Libxc >= 7.0.0 is required; found version ${Libxc_VERSION}")
+endif ()
+
 if (SIRIUS_USE_PUGIXML)
    find_package(pugixml REQUIRED)
 endif()
 
 if (SIRIUS_USE_DFTD3)
-   find_package(DFTD3 REQUIRED)
+   find_package(s-dftd3 REQUIRED CONFIG)
 endif ()
 
 if (SIRIUS_USE_DFTD4)
-  find_package(DFTD4 REQUIRED)
+  find_package(dftd4 REQUIRED CONFIG)
 endif ()
 
 if (SIRIUS_USE_VCSQNM)
