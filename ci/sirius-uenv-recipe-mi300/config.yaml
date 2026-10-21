@@ -1,10 +1,10 @@
 name: sirius-uenv-base
 version: 2
 spack:
-  commit: releases/v1.1
+  commit: releases/v1.2
   repo: https://github.com/spack/spack.git
   packages:
     repo: https://github.com/spack/spack-packages.git
-    commit: 876d656ad17366f92e2233d843ba285d655150dd # March 9
+    commit: 3b1329ad767064247c088d1c927311bc3128d329
 store: /user-environment
 description: SIRIUS dependencies for SIRIUS CI
