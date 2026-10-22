@@ -53,6 +53,12 @@ class Potential : public Field4D
     /// XC energy per unit particle.
     std::unique_ptr<Periodic_function<double>> xc_energy_density_;
 
+    /// Derivatives conjugate to total tau and its collinear spin difference.
+    std::unique_ptr<Field4D> kinetic_potential_;
+
+    void
+    xc_rg_meta(Density const& density__);
+
     /// Local part of pseudopotential.
     std::unique_ptr<Smooth_periodic_function<double>> local_potential_;
 
@@ -759,6 +765,42 @@ class Potential : public Field4D
         return *xc_energy_density_;
     }
 
+    bool
+    has_kinetic_potential() const
+    {
+        return bool(kinetic_potential_);
+    }
+
+    auto&
+    kinetic_potential()
+    {
+        if (!kinetic_potential_) {
+            RTE_THROW("kinetic potential is not enabled");
+        }
+        return *kinetic_potential_;
+    }
+
+    auto const&
+    kinetic_potential() const
+    {
+        if (!kinetic_potential_) {
+            RTE_THROW("kinetic potential is not enabled");
+        }
+        return *kinetic_potential_;
+    }
+
+    double
+    energy_vtau(Density const& density__) const
+    {
+        double result{0};
+        if (kinetic_potential_) {
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                result += inner(density__.kinetic_density().component(j), kinetic_potential_->component(j));
+            }
+        }
+        return result;
+    }
+
     inline auto
     vh_el(int ia) const
     {
@@ -904,6 +946,9 @@ copy(Potential const& src__, Potential& dest__)
         copy(src__.component(j).rg(), dest__.component(j).rg());
         if (src__.ctx().full_potential()) {
             copy(src__.component(j).mt(), dest__.component(j).mt());
+        }
+        if (src__.has_kinetic_potential()) {
+            copy(src__.kinetic_potential().component(j).rg(), dest__.kinetic_potential().component(j).rg());
         }
     }
 }

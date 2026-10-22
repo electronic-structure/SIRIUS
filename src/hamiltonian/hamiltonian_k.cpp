@@ -112,7 +112,7 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
         for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
             if (what & 1) {
                 auto ekin            = 0.5 * kp_.gkvec().gkvec_cart(gvec_index_t::local(ig_loc)).length2();
-                h_diag(ig_loc, ispn) = ekin + H0_.local_op().v0(ispn);
+                h_diag(ig_loc, ispn) = ekin * (1 + H0_.local_op().vtau0(ispn)) + H0_.local_op().v0(ispn);
             }
             if (what & 2) {
                 o_diag(ig_loc, ispn) = 1;

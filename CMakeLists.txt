@@ -130,8 +130,8 @@ include(cmake/hdf5_target.cmake)
 find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
 
-if (Libxc_VERSION VERSION_LESS "4.0.0")
-   message(FATAL_ERROR "Libxc >= 4.0.0 is required; found version ${Libxc_VERSION}")
+if (Libxc_VERSION VERSION_LESS "7.0.0")
+   message(FATAL_ERROR "Libxc >= 7.0.0 is required; found version ${Libxc_VERSION}")
 endif ()
 
 if (SIRIUS_USE_PUGIXML)

@@ -54,18 +54,6 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
         ovlp.set(ig, ig, 1);
     }
 
-    auto veff = Hk__.H0().potential().effective_potential().rg().gather_f_pw();
-    std::vector<std::complex<double>> beff;
-    if (ctx.num_mag_dims() == 1) {
-        beff = Hk__.H0().potential().effective_magnetic_field(0).rg().gather_f_pw();
-        for (int ig = 0; ig < ctx.gvec().num_gvec(); ig++) {
-            auto z1  = veff[ig];
-            auto z2  = beff[ig];
-            veff[ig] = z1 + z2;
-            beff[ig] = z1 - z2;
-        }
-    }
-
     #pragma omp parallel for schedule(static)
     for (int igk_col = 0; igk_col < kp__.num_gkvec_col(); igk_col++) {
         auto gvec_col = kp__.gkvec_col().gvec(gvec_index_t::local(igk_col));
@@ -73,19 +61,18 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
             auto gvec_row = kp__.gkvec_row().gvec(gvec_index_t::local(igk_row));
             auto ig12     = ctx.gvec().index_g12_safe(gvec_row, gvec_col);
 
-            if (ispn__ == 0) {
+            if (Hk__.H0().potential().has_kinetic_potential()) {
+                auto qrow = kp__.gkvec_row().gkvec_cart(gvec_index_t::local(igk_row));
+                auto qcol = kp__.gkvec_col().gkvec_cart(gvec_index_t::local(igk_col));
+                auto v    = Hk__.H0().vtau_pw(ig12.first, ispn__);
                 if (ig12.second) {
-                    hmlt(igk_row, igk_col) += std::conj(veff[ig12.first]);
-                } else {
-                    hmlt(igk_row, igk_col) += veff[ig12.first];
+                    v = std::conj(v);
                 }
-            } else {
-                if (ig12.second) {
-                    hmlt(igk_row, igk_col) += std::conj(beff[ig12.first]);
-                } else {
-                    hmlt(igk_row, igk_col) += beff[ig12.first];
-                }
+                hmlt(igk_row, igk_col) += 0.5 * dot(qrow, qcol) * v;
             }
+
+            auto v = Hk__.H0().veff_pw(ig12.first, ispn__);
+            hmlt(igk_row, igk_col) += ig12.second ? std::conj(v) : v;
         }
     }
 
@@ -187,8 +174,24 @@ diagonalize_pp_exact(int ispn__, Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
         RTE_THROW(s);
     }
 
+    if (evec.comm().size() == 1) {
+        kp__.gkvec().comm().bcast(eval.data(), ctx.num_bands(), 0);
+    }
     for (int j = 0; j < ctx.num_bands(); j++) {
         kp__.band_energy(j, ispn__, eval[j]);
+    }
+
+    if (evec.comm().size() == 1) {
+        // Serial eigensolver matrices are replicated, not a distributed COSTA
+        // layout. Broadcast one replica to keep phases/degenerate rotations common.
+        for (int b = 0; b < ctx.num_bands(); b++) {
+            kp__.gkvec().comm().bcast(evec.at(memory_t::host, 0, b), kp__.num_gkvec(), 0);
+            for (int ig = 0; ig < kp__.gkvec().count(); ig++) {
+                kp__.spinor_wave_functions().pw_coeffs(ig, wf::spin_index(ispn__), wf::band_index(b)) =
+                        evec(kp__.gkvec().offset() + ig, b);
+            }
+        }
+        return;
     }
 
     auto layout_in = evec.grid_layout(0, 0, kp__.num_gkvec(), ctx.num_bands());

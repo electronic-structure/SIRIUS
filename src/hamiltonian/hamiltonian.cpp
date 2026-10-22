@@ -457,6 +457,9 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
     if (!ctx_.full_potential()) {
         d_op_ = std::make_unique<D_operator<T>>(potential__);
         q_op_ = std::make_unique<Q_operator<T>>(ctx_);
+        if (ctx_.cfg().iterative_solver().type() == "exact") {
+            this->generate_pw_coefs(potential__);
+        }
     } else {
         if (!lapw_basis__) {
             RTE_THROW("LAPW radial basis is not provided");
@@ -747,6 +750,30 @@ void
 Hamiltonian0<T>::generate_pw_coefs(Potential const& potential__)
 {
     PROFILE("sirius::Hamiltonian0::generate_pw_coefs");
+
+    if (!ctx_.full_potential()) {
+        // These gathers involve all context ranks, including ranks with no k-point.
+        auto gather = [&](auto const& scalar, auto const* magnetic, auto& dest) {
+            dest   = mdarray<std::complex<T>, 2>({ctx_.gvec().num_gvec(), ctx_.num_spins()});
+            auto v = scalar.gather_f_pw();
+            std::vector<std::complex<double>> b;
+            if (magnetic) {
+                b = magnetic->gather_f_pw();
+            }
+            for (int s = 0; s < ctx_.num_spins(); s++) {
+                for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
+                    dest(ig, s) = static_cast<std::complex<T>>(v[ig] + (b.empty() ? 0.0 : double(1 - 2 * s) * b[ig]));
+                }
+            }
+        };
+        gather(potential__.effective_potential().rg(),
+               ctx_.num_mag_dims() == 1 ? &potential__.effective_magnetic_field(0).rg() : nullptr, veff_pw_);
+        if (potential__.has_kinetic_potential()) {
+            auto const& t = potential__.kinetic_potential();
+            gather(t.scalar().rg(), ctx_.num_mag_dims() == 1 ? &t.vector(0).rg() : nullptr, vtau_pw_);
+        }
+        return;
+    }
 
     switch (ctx_.valence_relativity()) {
         case relativity_t::iora: {
