@@ -19,7 +19,6 @@ dftd4::dftd4(Simulation_context& ctx__, Unit_cell const& unit_cell__)
     if (!ctx_.cfg().parameters().dftd4_correction()) {
         return;
     }
-    xc_method_ = ctx_.cfg().dftd4().method();
     update_dftd4_ctx();
 }
 
@@ -58,8 +57,7 @@ dftd4::update_dftd4_ctx()
         error_ = dftd4_new_error();
     }
 
-    std::string buffer_error;
-    buffer_error.resize(1024, 0);
+    std::string buffer_error(1024, '\0');
 
     if (mol_ == nullptr) {
         const bool periodic_[3] = {true, true, true};
@@ -79,6 +77,23 @@ dftd4::update_dftd4_ctx()
     }
     disp_ = dftd4_new_d4_model(error_, mol_);
 
+    if (dftd4_check_error(error_)) {
+        dftd4_get_error(error_, buffer_error.data(), nullptr);
+        RTE_THROW(buffer_error);
+    }
+
+    auto const& config = ctx_.cfg().dftd4();
+    auto disp2         = config.cutoff_disp2();
+    auto disp3         = config.cutoff_disp3();
+    auto cn            = config.cutoff_cn();
+    auto width2        = config.cutoff_width2();
+    auto width3        = config.cutoff_width3();
+    if (!(disp2 > 0 && disp3 > 0 && cn > 0 && width2 >= 0 && width2 < disp2 && width3 >= 0 && width3 < disp3)) {
+        RTE_THROW("DFTD4: Require positive cutoffs and smoothing widths in [0, cutoff) (Bohr)");
+    }
+    dftd4_set_model_realspace_cutoff_smooth(error_, disp_, disp2, disp3, cn, width2, width3);
+
+    dftd4_set_model_work_partition(error_, disp_, ctx_.comm().rank(), ctx_.comm().size());
     if (dftd4_check_error(error_)) {
         dftd4_get_error(error_, buffer_error.data(), nullptr);
         RTE_THROW(buffer_error);
@@ -125,6 +140,22 @@ dftd4::calculate_energy_forces_stress()
     std::vector<double> forces_tmp(unit_cell_.num_atoms() * 3);
     std::vector<double> virial_tmp(9);
     dftd4_get_dispersion(error_, mol_, disp_, param_, &energy_, forces_tmp.data(), virial_tmp.data());
+
+    // Sum the partial dispersion energy, gradient and virial across all ranks.
+    int local_error = dftd4_check_error(error_);
+    int errors      = local_error;
+    ctx_.comm().allreduce(&errors, 1);
+    if (errors) {
+        if (local_error) {
+            std::string message(1024, '\0');
+            dftd4_get_error(error_, message.data(), nullptr);
+            RTE_THROW(message);
+        }
+        RTE_THROW("DFTD4 dispersion calculation failed on another MPI rank");
+    }
+    ctx_.comm().allreduce(&energy_, 1);
+    ctx_.comm().allreduce(forces_tmp);
+    ctx_.comm().allreduce(virial_tmp);
 
     // the library returns the gradients NOT the forces. We need to multiply by -1 to get the forces
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {

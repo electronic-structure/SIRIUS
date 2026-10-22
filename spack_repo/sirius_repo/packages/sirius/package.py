@@ -95,13 +95,14 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("fftw-api@3")
     depends_on("libxc@3.0.0:")
     depends_on("libxc@4.0.0:", when="@7.2.0:")
+    depends_on("libxc@7.0.0:", when="@7.12.0:")
     depends_on("libxc@:7", when="@:7.5")
     depends_on("spglib")
     depends_on("hdf5+hl")
     depends_on("pkgconfig", type="build")
     depends_on("fmt", when="@7.8:")
-    depends_on("simple-dftd3 build_system=cmake", when="+dftd3")
-    depends_on("dftd4 build_system=cmake", when="+dftd4")
+    depends_on("simple-dftd3@1.6: build_system=cmake", when="+dftd3")
+    depends_on("dftd4@4.3: build_system=cmake", when="+dftd4")
 
     # Python module
     depends_on("python", when="+python", type=("build", "run"))
