@@ -103,14 +103,16 @@ if(SIRIUS_USE_ROCM)
 endif()
 
 if(SIRIUS_USE_CUDA)
-   set_target_properties(sirius_cxx PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+  set_target_properties(sirius_cxx PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+  target_link_libraries(sirius_cxx PUBLIC CUDA::cudart CUDA::cublas
+                                          CUDA::cufft CUDA::cusolver)
 endif()
 
 target_link_libraries(sirius_cxx PUBLIC
   MPI::MPI_CXX
   Libxc::xc
   sirius::libspg
-  sirius::hdf5
+  hdf5::hdf5
   costa::costa
   $<TARGET_NAME_IF_EXISTS:sirius::elpa>
   $<$<BOOL:${SIRIUS_USE_DLAF}>:DLAF::DLAF>
@@ -129,7 +131,6 @@ target_link_libraries(sirius_cxx PUBLIC
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
   $<TARGET_NAME_IF_EXISTS:CUDA::nvtx3>
   $<TARGET_NAME_IF_EXISTS:rocprofiler-sdk-roctx::rocprofiler-sdk-roctx>
-  $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocsolver>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:roc::rocblas>
   $<$<BOOL:${SIRIUS_USE_ROCM}>:hip::host>
