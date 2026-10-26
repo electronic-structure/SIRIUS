@@ -27,7 +27,7 @@ jobs:
           spack -e /sirius-env mirror add --unsigned --autopush local-buildcache file://${GITHUB_WORKSPACE}/.spack-buildcache
           spack -e /sirius-env develop -p ${GITHUB_WORKSPACE} sirius@develop
           spack -e /sirius-env concretize -f
-          spack -e /sirius-env install
+          spack -e /sirius-env install --use-buildcache package:never,dependencies:auto
       - name: Run unit tests
         run: |
           build_dir=$(spack -e /sirius-env location -b sirius)
