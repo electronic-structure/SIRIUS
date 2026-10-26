@@ -173,11 +173,6 @@ if(SIRIUS_USE_MKL)
   set_property(CACHE MKL_LINK PROPERTY STRINGS static dynamic sdl)
 
   if(SIRIUS_USE_SCALAPACK)
-    # Request the complete cluster target from MKLConfig.cmake.  It owns the
-    # ScaLAPACK -> BLACS -> MKL link order and the --start/--end-group pair
-    # needed for static oneMKL on ELF platforms.
-    set(ENABLE_SCALAPACK ON)
-
     # Do not silently map every non-Open-MPI implementation to Intel MPI.
     # MKLConfig.cmake accepts intelmpi, openmpi, mpich, and mpich2.
     if(NOT DEFINED MKL_MPI)
@@ -200,8 +195,8 @@ if(SIRIUS_USE_MKL)
   if(SIRIUS_USE_SCALAPACK)
     if(NOT TARGET MKL::MKL_SCALAPACK)
       message(FATAL_ERROR
-        "oneMKL did not provide MKL::MKL_SCALAPACK.  Ensure ENABLE_SCALAPACK=ON, "
-        "MKL_LINK is not 'sdl', and MKL_MPI names a supported MPI family.")
+        "Intel oneMKL did not provide MKL::MKL_SCALAPACK. Ensure MKL_LINK "
+        "is not \"sdl\" and MKL_MPI names a supported MPI family.")
     endif()
     set(SIRIUS_LINALG_LIB MKL::MKL_SCALAPACK)
   else()
