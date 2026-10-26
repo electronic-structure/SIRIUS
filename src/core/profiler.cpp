@@ -12,8 +12,11 @@
  */
 
 #include "profiler.hpp"
+#include "power.hpp"
 
 namespace sirius {
+std::vector<power::Event> power::Profile::events_;
+
 ::rt_graph::Timer global_rtgraph_timer;
 
 #if defined(SIRIUS_TX)

@@ -91,7 +91,7 @@ class Profile
     {
         events_.emplace_back(label_, 0);
     }
-    inline static std::vector<Event> events_;
+    static std::vector<Event> events_;
 };
 
 inline std::string
