@@ -1,5 +1,0 @@
-find_package(CUDAToolkit REQUIRED)
-if (NOT TARGET sirius::cudalibs)
-  add_library(sirius::cudalibs INTERFACE IMPORTED)
-  target_link_libraries(sirius::cudalibs INTERFACE CUDA::cudart CUDA::cublas CUDA::cufft CUDA::cusolver)
-endif()

@@ -125,8 +125,7 @@ find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
 find_package(Libxc REQUIRED CONFIG)
 find_package(LibSPG REQUIRED)
-find_package(HDF5 REQUIRED C)
-include(cmake/hdf5_target.cmake)
+find_package(HDF5 REQUIRED COMPONENTS C)
 find_package(SpFFT 1.0.2 CONFIG REQUIRED)
 find_package(SPLA 1.4.0 CONFIG REQUIRED)
 
@@ -235,9 +234,7 @@ find_package(costa CONFIG REQUIRED)
 
 if(SIRIUS_USE_CUDA)
   enable_language(CUDA)
-  # note find cudatoolkit is called inside the include file. the
-  # sirius::cuda_libs target is also defined there
-  include(cmake/cudalibs_target.cmake)
+  find_package(CUDAToolkit REQUIRED)
   message(STATUS "CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}")
 endif(SIRIUS_USE_CUDA)
 
@@ -326,8 +323,6 @@ configure_file("${PROJECT_SOURCE_DIR}/cmake/sirius_cxxConfig.cmake.in"
                @ONLY)
 install(FILES "${PROJECT_BINARY_DIR}/sirius_cxxConfig.cmake"
               "${PROJECT_BINARY_DIR}/sirius_cxxConfigVersion.cmake"
-              "${PROJECT_SOURCE_DIR}/cmake/cudalibs_target.cmake"
-              "${PROJECT_SOURCE_DIR}/cmake/hdf5_target.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius_cxx")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius_cxx"
