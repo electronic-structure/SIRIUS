@@ -4,18 +4,12 @@
 #if defined(SIRIUS_ROCM) || defined(SIRIUS_CUDA)
 
 #include <complex>
+#include <type_traits>
+#include <vector>
 #include "core/acc/acc.hpp"
 #include "core/memory.hpp"
 #include "core/acc/acc_blas.hpp"
 #include "core/typedefs.hpp"
-
-#if defined(SIRIUS_ROCM)
-#include <rocblas/rocblas.h>
-#endif
-
-#if defined(SIRIUS_CUDA)
-#include <cublas_v2.h>
-#endif
 
 namespace sirius {
 
@@ -24,60 +18,39 @@ void
 inner_product_local_gpu(std::complex<T> const* wf1, int ld1, std::complex<T> const* wf2, int ld2, int n, int num_bands,
                         int reduced, std::vector<F>& result)
 {
-    auto mem_pool = get_memory_pool(memory_t::device);
-    auto d_work   = mem_pool.get_unique_ptr<T>(num_bands);
-    auto stream   = acc::blas::stream_handle(0);
-    std::vector<std::complex<T>> result_local(num_bands, 0);
+    using C = std::complex<T>;
 
-#if defined(SIRIUS_ROCM)
-    CALL_GPU_BLAS(rocblas_zdotc_strided_batched, (stream, n, reinterpret_cast<const rocblas_double_complex*>(wf1), 1,
-                                                  ld1, reinterpret_cast<const rocblas_double_complex*>(wf2), 1, ld2,
-                                                  num_bands, reinterpret_cast<rocblas_double_complex*>(d_work.get())));
-#elif defined(SIRIUS_CUDA)
-    T beta{0};
-    T alpha{1};
-    // https://docs.nvidia.com/cuda/cublas/#cublas-t-gemmstridedbatched
-    CALL_GPU_BLAS(cublasZgemmStridedBatched,
-                  (stream, CUBLAS_OP_C, CUBLAS_OP_N, 1, 1, n, reinterpret_cast<const cuDoubleComplex*>(&alpha),
-                   reinterpret_cast<const cuDoubleComplex*>(wf1), n, ld1, reinterpret_cast<const cuDoubleComplex*>(wf2),
-                   n, ld2, reinterpret_cast<const cuDoubleComplex*>(&beta),
-                   reinterpret_cast<cuDoubleComplex*>(d_work.get()), 1, 1, num_bands));
-#endif
+    auto mem_pool = get_memory_pool(memory_t::device);
+    auto d_work   = mem_pool.get_unique_ptr<C>(num_bands);
+    std::vector<C> result_local(num_bands, 0);
+
+    if constexpr (std::is_same_v<T, double>) {
+        acc::blas::zdotc_strided_batched(n, reinterpret_cast<acc_complex_double_t const*>(wf1), ld1,
+                                         reinterpret_cast<acc_complex_double_t const*>(wf2), ld2, num_bands,
+                                         reinterpret_cast<acc_complex_double_t*>(d_work.get()), 0 /* stream id */);
+    } else {
+        acc::blas::cdotc_strided_batched(n, reinterpret_cast<acc_complex_float_t const*>(wf1), ld1,
+                                         reinterpret_cast<acc_complex_float_t const*>(wf2), ld2, num_bands,
+                                         reinterpret_cast<acc_complex_float_t*>(d_work.get()), 0 /* stream id */);
+    }
 
     acc::copyout(result_local.data(), d_work.get(), num_bands);
-    if constexpr (std::is_same_v<F, std::complex<double>>) {
-        /* non Γ-point case */
-    } else if constexpr (std::is_same_v<F, double>) {
-        /* Γ-point case */
-        // #if defined(SIRIUS_ROCM)
-        //         rocblas_ddot_strided_batched(stream, n, reinterpret_cast<const rocblas_double*>(wf1), 1, ld1,
-        //                                      reinterpret_cast<const rocblas_double*>(wf2), 1, ld2, num_bands,
-        //                                      reinterpret_cast<rocblas_double*>(d_work.get()));
-        // #elif defined(SIRIUS_CUDA)
-        //         T beta{0};
-        //         T alpha{1};
-        //         // https://docs.nvidia.com/cuda/cublas/#cublas-t-gemmstridedbatched
-        //         cublasDgemmStridedBatched(stream, CUBLAS_OP_T, CUBLAS_OP_N, 1, 1, n, &alpha, wf1, n, ld1, wf2, n, ld2, &beta,
-        //                                   d_work.get(), 1, 1, num_bands);
-        // #endif
-        //         acc::copyout(result_local.data(), d_work.get(), num_bands);
+    if constexpr (is_real_v<F>) {
+        /* Γ-point case: only half of the G-vectors are stored */
         for (int i = 0; i < num_bands; ++i) {
-            result_local[i] = F{2} * result_local[i];
+            result_local[i] *= T{2};
         }
 
         if (reduced == 1) {
-            /* rank owns G=0 */
-            std::vector<std::complex<double>> wf1_h_g0(num_bands);
-            std::vector<std::complex<double>> wf2_h_g0(num_bands);
+            /* rank owns G=0, which was counted twice */
+            std::vector<C> wf1_h_g0(num_bands);
+            std::vector<C> wf2_h_g0(num_bands);
             // copy G=0 to host
             acc::copyout(wf1_h_g0.data(), 1, wf1, ld1, 1, num_bands);
             acc::copyout(wf2_h_g0.data(), 1, wf2, ld2, 1, num_bands);
             for (int i = 0; i < num_bands; ++i) {
                 result_local[i] -= std::conj(wf1_h_g0[i]) * wf2_h_g0[i];
             }
-        } else if (reduced == 2) {
-            /* rank doesn't own G=0  */
-            // nothing todo
         }
     }
 
