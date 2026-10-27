@@ -369,9 +369,14 @@ Simulation_context::initialize()
 
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 #if defined(SIRIUS_CUDA)
-    bool is_cuda{true};
+    bool has_gpu_solver{true};
+    std::string const gpu_solver_name{"cusolver"};
+#elif defined(SIRIUS_ROCM)
+    bool has_gpu_solver{true};
+    std::string const gpu_solver_name{"rocsolver"};
 #else
-    bool is_cuda{false};
+    bool has_gpu_solver{false};
+    std::string const gpu_solver_name;
 #endif
 #if defined(SIRIUS_MAGMA)
     bool is_magma{true};
@@ -395,8 +400,8 @@ Simulation_context::initialize()
 #endif
 
     if (processing_unit() == device_t::CPU || acc::num_devices() == 0) {
-        is_cuda  = false;
-        is_magma = false;
+        has_gpu_solver = false;
+        is_magma       = false;
     }
 
     int const npr = mpi_grid_dims()[0];
@@ -410,14 +415,14 @@ Simulation_context::initialize()
                 if (full_potential()) {
                     if (is_magma) {
                         evsn[i] = "magma";
-                    } else if (is_cuda) {
-                        evsn[i] = "cusolver";
+                    } else if (has_gpu_solver) {
+                        evsn[i] = gpu_solver_name;
                     } else {
                         evsn[i] = "lapack";
                     }
                 } else {
-                    if (is_cuda) {
-                        evsn[i] = "cusolver";
+                    if (has_gpu_solver) {
+                        evsn[i] = gpu_solver_name;
                     } else if (is_magma && num_bands() > 200) {
                         evsn[i] = "magma";
                     } else {
@@ -666,7 +671,7 @@ Simulation_context::print_info(std::ostream& out__) const
                 {la::ev_solver_t::lapack, "LAPACK"},    {la::ev_solver_t::scalapack, "ScaLAPACK"},
                 {la::ev_solver_t::elpa, "ELPA"},        {la::ev_solver_t::dlaf, "DLA-Future"},
                 {la::ev_solver_t::magma, "MAGMA"},      {la::ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
-                {la::ev_solver_t::cusolver, "cuSOLVER"}};
+                {la::ev_solver_t::cusolver, "cuSOLVER"}, {la::ev_solver_t::rocsolver, "rocSOLVER"}};
         for (int i = 0; i < 2; i++) {
             os << evsn[i] << evsm.at(evst[i]) << std::endl;
         }
