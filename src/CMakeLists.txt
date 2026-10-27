@@ -31,6 +31,7 @@ set(_SOURCES
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
   "density/density.cpp"
+  "density/kinetic_density.cpp"
   "density/augmentation_operator.cpp"
   "density/occupation_matrix.cpp"
   "dft/dft_ground_state.cpp"
@@ -47,6 +48,7 @@ set(_SOURCES
   "potential/paw_potential.cpp"
   "potential/poisson.cpp"
   "potential/xc.cpp"
+  "potential/meta_gga.cpp"
   "potential/xc_mt.cpp"
   "potential/potential.cpp"
   "potential/check_xc_potential.cpp"
@@ -191,7 +193,8 @@ install(TARGETS sirius_cxx
   EXPORT sirius_cxx_targets
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius_cxx")
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src"
+                       "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
 install(EXPORT sirius_cxx_targets
   FILE sirius_cxxTargets.cmake
   NAMESPACE sirius::

@@ -94,6 +94,52 @@ Potential::Potential(Simulation_context& ctx__)
     using pf  = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
+    if (ctx_.meta_gga()) {
+        int invalid{0};
+        std::string error;
+        try {
+            if (ctx_.processing_unit() != device_t::CPU || ctx_.spfft<double>().processing_unit() != SPFFT_PU_HOST ||
+                ctx_.spfft_coarse<double>().processing_unit() != SPFFT_PU_HOST || ctx_.num_mag_dims() == 3 ||
+                ctx_.so_correction() || ctx_.cfg().parameters().precision_wf() != "fp64" || ctx_.veff_callback() ||
+                ctx_.cfg().parameters().veff_pw_cutoff() > 0) {
+                RTE_THROW("Libxc meta-GGA SCF currently requires CPU scalar/collinear fp64 orbitals");
+            }
+            if (ctx_.full_potential() || unit_cell_.num_paw_atoms()) {
+                RTE_THROW("Libxc meta-GGA currently supports norm-conserving PW calculations only");
+            }
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                auto const& type = unit_cell_.atom_type(iat);
+                if (type.augment() || type.spin_orbit_coupling()) {
+                    RTE_THROW("Libxc meta-GGA requires scalar norm-conserving pseudopotentials");
+                }
+                auto const& core = type.ps_core_charge_density();
+                if (std::any_of(core.begin(), core.end(), [](double v) { return v != 0; })) {
+                    RTE_THROW("meta-GGA nonlinear core correction requires matching core kinetic-density data");
+                }
+            }
+            for (auto& functional : xc_func_) {
+                if (functional.is_meta_gga()) {
+                    // Validate capabilities without evaluating any grid points.
+                    functional.get_meta(0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                } else if (!functional.is_lda() && !functional.is_gga()) {
+                    RTE_THROW(
+                            "Libxc meta-GGA combinations currently support LDA, GGA and tau-dependent meta-GGA terms");
+                }
+            }
+        } catch (std::exception const& e) {
+            invalid = 1;
+            error   = e.what();
+        }
+        comm_.allreduce<int, mpi::op_t::max>(&invalid, 1);
+        if (invalid) {
+            RTE_THROW("invalid Libxc meta-GGA configuration on a context rank: " + error);
+        }
+    }
+    if (ctx_.meta_gga()) {
+        kinetic_potential_ = std::make_unique<Field4D>(ctx_, lmax_t(ctx_.lmax_pot()));
+        kinetic_potential_->zero();
+    }
+
     if (ctx_.full_potential()) {
         hartree_potential_ = std::make_unique<pf>(
                 ctx_, [&](int ia) { return lmax_t(ctx_.lmax_pot()); }, &ctx_.unit_cell().spl_num_atoms());
@@ -258,7 +304,7 @@ Potential::is_gradient_correction() const
 {
     bool is_gga{false};
     for (auto& ixc : xc_func_) {
-        if (ixc.is_gga() || ixc.is_vdw()) {
+        if (ixc.is_gga() || ixc.is_meta_gga() || ixc.is_vdw()) {
             is_gga = true;
         }
     }
@@ -336,6 +382,10 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     if (use_symmetry__) {
         /* symmetrize potential and effective magnetic field */
         symmetrize_field4d(*this);
+        if (kinetic_potential_) {
+            symmetrize_field4d(*kinetic_potential_);
+            kinetic_potential_->fft_transform(1);
+        }
         if (transform_to_rg__) {
             /* transform potential to real space after symmetrization */
             this->fft_transform(1);

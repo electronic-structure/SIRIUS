@@ -16,6 +16,7 @@
 #include "function3d/smooth_periodic_function.hpp"
 #include "core/profiler.hpp"
 #include "core/wf/wave_functions.hpp"
+#include "core/wf/kinetic_density_operator.hpp"
 #include "lapw/interstitial_functions.hpp"
 
 namespace sirius {
@@ -150,6 +151,25 @@ Local_operator<T>::Local_operator(Simulation_context const& ctx__, fft::spfft_tr
         } else {
             v0_[0] = potential__.component(0).rg().f_0().real() + potential__.component(1).rg().f_0().real();
             v0_[1] = potential__.component(0).rg().f_0().real() - potential__.component(1).rg().f_0().real();
+        }
+    }
+
+    if (potential__.has_kinetic_potential()) {
+        // v_tau = dE_xc/dtau for each spin channel. Restrict it to the
+        // orbital FFT grid using the adjoint of density-grid prolongation.
+        for (int s = 0; s < ctx_.num_spins(); s++) {
+            vtau_vec_[s]  = std::make_unique<Smooth_periodic_function<T>>(fft_coarse__, gvec_coarse_p__);
+            auto const& t = potential__.kinetic_potential().scalar().rg();
+            for (int ig = 0; ig < gvec_coarse_p_->gvec().count(); ig++) {
+                int fine = t.gvec().gvec_base_mapping(ig);
+                auto v   = t.f_pw_local(fine);
+                if (ctx_.num_spins() == 2) {
+                    v += double(1 - 2 * s) * potential__.kinetic_potential().vector(0).rg().f_pw_local(fine);
+                }
+                vtau_vec_[s]->f_pw_local(ig) = static_cast<std::complex<T>>(v);
+            }
+            vtau0_[s] = vtau_vec_[s]->f_0().real();
+            vtau_vec_[s]->fft_transform(1);
         }
     }
 
@@ -398,6 +418,10 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
         }
     };
 
+    std::unique_ptr<wf::Kinetic_density_operator<T>> tau_op;
+    if (ctx_.meta_gga()) {
+        tau_op = std::make_unique<wf::Kinetic_density_operator<T>>(spfftk__, *gkvec_fft__);
+    }
     PROFILE_START("sirius::Local_operator::apply_h|bands");
     for (int i = 0; i < spl_num_wf.local_size(); i++) {
 
@@ -469,6 +493,13 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
             vphi_to_G();
             /* add kinetic energy */
             add_to_hphi(spins__.begin().get(), wf::band_index(i));
+            if (tau_op) {
+                // Add the generalized Kohn-Sham term -1/2 div(v_tau grad(psi)).
+                int s = spins__.begin().get();
+                tau_op->add_potential(vtau_vec_[s]->values().at(memory_t::host),
+                                      phi_fft[s].at(memory_t::host, 0, wf::band_index(i)),
+                                      hphi_fft[s].at(memory_t::host, 0, wf::band_index(i)));
+            }
         }
     }
     PROFILE_STOP("sirius::Local_operator::apply_h|bands");

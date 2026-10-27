@@ -21,6 +21,8 @@ jobs:
           restore-keys: spack-buildcache-cpu-
       - name: Build SIRIUS
         run: |
+          install -d -m 755 "${RUNNER_TEMP}/sirius-stage"
+          spack -e /sirius-env config add "config:build_stage:${RUNNER_TEMP}/sirius-stage"
           spack -e /sirius-env repo add ${GITHUB_WORKSPACE}/spack_repo/sirius_repo
           spack -e /sirius-env mirror add --unsigned --autopush local-buildcache file://${GITHUB_WORKSPACE}/.spack-buildcache
           spack -e /sirius-env develop -p ${GITHUB_WORKSPACE} sirius@develop
@@ -28,8 +30,11 @@ jobs:
           spack -e /sirius-env install --use-buildcache=package:never,dependencies:auto
       - name: Run unit tests
         run: |
-          cd $(spack -e /sirius-env location -b sirius)
-          spack -e /sirius-env --color always build-env sirius -- ctest --output-on-failure --label-exclude integration_test
+          build_dir=$(spack -e /sirius-env location -b sirius)
+          chown -R nobody:nogroup "${RUNNER_TEMP}/sirius-stage"
+          cd "$build_dir"
+          spack -e /sirius-env --color always build-env sirius -- runuser -u nobody -- \
+            env HOME="$build_dir" ctest --output-on-failure --label-exclude integration_test
       - name: Run verification tests
         run: |
           cd $(spack -e /sirius-env location -b sirius)

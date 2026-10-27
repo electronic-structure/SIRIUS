@@ -2858,7 +2858,7 @@ sirius_generate_density(void* const* gs_handler__, bool const* add_core__, bool 
                 if (paw_only) {
                     gs.density().generate_paw_density();
                 } else {
-                    gs.density().generate<double>(gs.k_point_set(), *gs.potential().create_lapw_basis(),
+                    gs.density().generate<double>(gs.k_point_set(), gs.potential().create_lapw_basis().get(),
                                                   gs.ctx().use_symmetry(), add_core, transform_to_rg);
                 }
             },
