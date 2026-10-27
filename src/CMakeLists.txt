@@ -111,7 +111,7 @@ endif()
 target_link_libraries(sirius_cxx PUBLIC
   MPI::MPI_CXX
   Libxc::xc
-  sirius::libspg
+  Spglib::symspg
   hdf5::hdf5
   costa::costa
   $<TARGET_NAME_IF_EXISTS:sirius::elpa>

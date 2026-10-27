@@ -1,5 +1,4 @@
 # Convert environment variables to normal variables
-set(SIRIUS_SPG_DIR $ENV{SPG_DIR})
 set(SIRIUS_GSL_ROOT_DIR $ENV{GSL_ROOT_DIR}) 
 set(SIRIUS_MKLROOT $ENV{MKLROOT})
 set(SIRIUS_MAGMAROOT $ENV{MAGMAROOT})
