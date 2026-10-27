@@ -174,6 +174,9 @@ test_external_xc(bool gamma, int mag, bool points)
         failures += !std::isfinite(error) || error > tolerance;
     };
     check("XC total-energy accounting", std::abs(ks_energy(ctx, ks, density, potential) - center), 2e-10);
+    check("orbital kinetic-energy contraction",
+          std::abs(energy_kin(ctx, ks, density, potential) - density.kinetic_density().scalar().integrate().total),
+          2e-10);
     double h = 5e-5;
     check("nonlocal XC orbital derivative", std::abs((evaluate(h) - evaluate(-h)) / (2 * h) - derivative), 6e-9);
     ctx.cb().external_xc_ = [](auto const&, auto const&, auto&) { throw std::runtime_error("test callback failure"); };

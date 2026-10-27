@@ -818,15 +818,23 @@ class Potential : public Field4D
         return energy_vha_;
     }
 
-    /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
+    /// XC contraction of the non-electronic uniform neutralizing charge.
+    /** \f$ (q/\Omega)\int V^{XC}(\mathbf r)\,d\mathbf r\f$ uses the current
+     *  real-space potential, whose Fourier buffer need not have been transformed.
+     */
+    double
+    external_xc_background_contraction() const
+    {
+        return external_xc_registered_
+                       ? ctx_.cfg().parameters().extra_charge() * xc_potential().integrate().total / unit_cell_.omega()
+                       : 0;
+    }
+
+    /// Integral of the electronic density times the XC potential.
     auto
     energy_vxc(Density const& density__) const
     {
-        double result = inner(density__.rho(), xc_potential());
-        if (external_xc_registered_) {
-            result -= ctx_.cfg().parameters().extra_charge() * xc_potential().rg().f_0().real();
-        }
-        return result;
+        return inner(density__.rho(), xc_potential()) - external_xc_background_contraction();
     }
 
     /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
