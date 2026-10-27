@@ -668,9 +668,9 @@ Simulation_context::print_info(std::ostream& out__) const
         std::string evsn[]     = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
         la::ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
         std::map<la::ev_solver_t, std::string> const evsm = {
-                {la::ev_solver_t::lapack, "LAPACK"},    {la::ev_solver_t::scalapack, "ScaLAPACK"},
-                {la::ev_solver_t::elpa, "ELPA"},        {la::ev_solver_t::dlaf, "DLA-Future"},
-                {la::ev_solver_t::magma, "MAGMA"},      {la::ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
+                {la::ev_solver_t::lapack, "LAPACK"},     {la::ev_solver_t::scalapack, "ScaLAPACK"},
+                {la::ev_solver_t::elpa, "ELPA"},         {la::ev_solver_t::dlaf, "DLA-Future"},
+                {la::ev_solver_t::magma, "MAGMA"},       {la::ev_solver_t::magma_gpu, "MAGMA with GPU pointers"},
                 {la::ev_solver_t::cusolver, "cuSOLVER"}, {la::ev_solver_t::rocsolver, "rocSOLVER"}};
         for (int i = 0; i < 2; i++) {
             os << evsn[i] << evsm.at(evst[i]) << std::endl;
