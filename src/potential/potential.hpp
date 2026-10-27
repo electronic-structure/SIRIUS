@@ -59,6 +59,11 @@ class Potential : public Field4D
     void
     xc_rg_meta(Density const& density__);
 
+    bool external_xc_registered_{false};
+    double external_xc_energy_{0};
+    void
+    xc_external(Density const& density__);
+
     /// Local part of pseudopotential.
     std::unique_ptr<Smooth_periodic_function<double>> local_potential_;
 
@@ -817,7 +822,11 @@ class Potential : public Field4D
     auto
     energy_vxc(Density const& density__) const
     {
-        return inner(density__.rho(), xc_potential());
+        double result = inner(density__.rho(), xc_potential());
+        if (external_xc_registered_) {
+            result -= ctx_.cfg().parameters().extra_charge() * xc_potential().rg().f_0().real();
+        }
+        return result;
     }
 
     /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
@@ -831,6 +840,9 @@ class Potential : public Field4D
     auto
     energy_exc(Density const& density__) const
     {
+        if (external_xc_registered_) {
+            return external_xc_energy_;
+        }
         double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
             exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density().rg());
@@ -937,11 +949,18 @@ class Potential : public Field4D
 
     std::shared_ptr<LAPW_radial_basis>
     create_lapw_basis() const;
+
+    friend void
+    copy(Potential const&, Potential&);
 };
 
 inline void
 copy(Potential const& src__, Potential& dest__)
 {
+    if (src__.external_xc_registered_ != dest__.external_xc_registered_) {
+        RTE_THROW("cannot copy potentials with different external XC registration");
+    }
+    dest__.external_xc_energy_ = src__.external_xc_energy_;
     for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
         copy(src__.component(j).rg(), dest__.component(j).rg());
         if (src__.ctx().full_potential()) {

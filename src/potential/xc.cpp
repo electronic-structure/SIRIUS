@@ -576,6 +576,13 @@ Potential::xc(Density const& density__)
     for (int i = 0; i < ctx_.num_mag_dims(); i++) {
         effective_magnetic_field(i).zero();
     }
+    if (bool(ctx_.cb().external_xc_) != external_xc_registered_) {
+        RTE_THROW("external XC registration cannot change during SCF");
+    }
+    if (external_xc_registered_) {
+        xc_external(density__);
+        return;
+    }
     if (kinetic_potential_) {
         kinetic_potential_->zero();
         xc_rg_meta(density__);
