@@ -39,6 +39,8 @@ MaxEmptyLinesToKeep: 1
 BreakConstructorInitializersBeforeComma: 'true'
 ConstructorInitializerIndentWidth: 4
 Cpp11BracedListStyle: 'true'
+# keep the indentation of preprocessor directives (e.g. '#pragma omp' indented with the code); needs clang-format >= 22
+IndentPPDirectives: Leave
 
 AlwaysBreakAfterReturnType: All
 ReflowComments: false

@@ -49,7 +49,7 @@ get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> 
 
             // iterate over all atomic basis functions (apw and lo)
             double re{0}, im{0};
-            #pragma omp parallel for reduction(+:re, im)
+            #pragma omp parallel for reduction(+ : re, im)
             for (int xi = 0; xi < atom.mt_basis_size(); xi++) {
                 // expansion coefficient
                 auto c = wf__.mt_coeffs(xi, loc.index_local, spin_idx__, band_idx__);
@@ -74,7 +74,7 @@ get_wave_function_value(K_point<double> const& kp__, wf::Wave_functions<double> 
         // sum over local set of G+k-vectors
         double re{0}, im{0};
         int ngkloc = kp__.gkvec().count();
-        #pragma omp parallel for reduction(+:re, im)
+        #pragma omp parallel for reduction(+ : re, im)
         for (int igloc = 0; igloc < ngkloc; igloc++) {
             // G+k vector in Cartesian coordinates
             auto vgc = kp__.gkvec().gvec_cart(gvec_index_t::local(igloc));
