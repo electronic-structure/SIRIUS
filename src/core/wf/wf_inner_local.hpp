@@ -24,11 +24,13 @@ inner_product_local_gpu(std::complex<T> const* wf1, int ld1, std::complex<T> con
     if constexpr (std::is_same_v<T, double>) {
         acc::blas::zdotc_strided_batched(n, reinterpret_cast<acc_complex_double_t const*>(wf1), ld1,
                                          reinterpret_cast<acc_complex_double_t const*>(wf2), ld2, num_bands,
-                                         reinterpret_cast<acc_complex_double_t*>(result_local.data()), 0 /* stream id */);
+                                         reinterpret_cast<acc_complex_double_t*>(result_local.data()),
+                                         0 /* stream id */);
     } else {
         acc::blas::cdotc_strided_batched(n, reinterpret_cast<acc_complex_float_t const*>(wf1), ld1,
                                          reinterpret_cast<acc_complex_float_t const*>(wf2), ld2, num_bands,
-                                         reinterpret_cast<acc_complex_float_t*>(result_local.data()), 0 /* stream id */);
+                                         reinterpret_cast<acc_complex_float_t*>(result_local.data()),
+                                         0 /* stream id */);
     }
 
     if constexpr (is_real_v<F>) {

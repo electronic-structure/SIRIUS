@@ -414,8 +414,8 @@ cdotc_strided_batched(int n__, acc_complex_float_t const* x__, int stridex__, ac
     /* the handle is in the default host pointer mode: rocBLAS copies the result to the host and synchronizes */
     CALL_GPU_BLAS(rocblas_cdotc_strided_batched,
                   (stream_handle(stream_id), n__, reinterpret_cast<const acc::blas_api::complex_float_t*>(x__), 1,
-                   stridex__, reinterpret_cast<const acc::blas_api::complex_float_t*>(y__), 1, stridey__,
-                   batch_count__, reinterpret_cast<acc::blas_api::complex_float_t*>(result__)));
+                   stridex__, reinterpret_cast<const acc::blas_api::complex_float_t*>(y__), 1, stridey__, batch_count__,
+                   reinterpret_cast<acc::blas_api::complex_float_t*>(result__)));
 #elif defined(SIRIUS_CUDA)
     /* cuBLAS has no batched dot product; use 1x1 gemms, which need the output in device memory */
     acc::blas_api::complex_float_t alpha{1, 0};
