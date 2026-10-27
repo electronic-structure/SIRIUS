@@ -658,8 +658,8 @@ struct lapw_radial_basis_t
                             /* r*u'_1(r) * r*u'_2(r) */
                             double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
                             s(ir)     = 0.5 * t1 * Minv +
-                                    t0 * (0.5 * ll * Minv +
-                                          spherical_potential_[ir] * std::pow(atom_type_.radial_grid(ir), 2));
+                                        t0 * (0.5 * ll * Minv +
+                                              spherical_potential_[ir] * std::pow(atom_type_.radial_grid(ir), 2));
                         }
                         h_spherical_integrals_(i1, i2) = s.interpolate().integrate(0) / y00;
                     }

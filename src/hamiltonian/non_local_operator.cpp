@@ -553,10 +553,10 @@ apply_S_operator_strain_deriv(memory_t mem__, int comp__, Beta_projector_generat
         auto& spla_ctx        = bp__.ctx().spla_context();
         auto band_range_phi   = wf::band_range(0, phi__.num_wf().get());
         bool result_on_device = bp__.ctx().processing_unit() == device_t::GPU;
-        auto dbeta_phi        = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
-                                                           bp_strain_deriv_coeffs__, phi__, wf::spin_index(0), band_range_phi);
-        auto beta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device, bp_coeffs__, phi__,
-                                                   wf::spin_index(0), band_range_phi);
+        auto dbeta_phi = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device,
+                                                    bp_strain_deriv_coeffs__, phi__, wf::spin_index(0), band_range_phi);
+        auto beta_phi  = inner_prod_beta<complex_t>(spla_ctx, mem__, host_mem, result_on_device, bp_coeffs__, phi__,
+                                                    wf::spin_index(0), band_range_phi);
 
         auto band_range = wf::band_range(0, ds_phi__.num_wf().get());
         q_op__.apply(mem__, ichunk, 0, ds_phi__, band_range, bp_coeffs__, dbeta_phi);
