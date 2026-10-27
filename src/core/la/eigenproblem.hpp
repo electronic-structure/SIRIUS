@@ -2042,36 +2042,23 @@ class Eigensolver_cuda : public Eigensolver
 
         auto& mpd  = get_memory_pool(memory_t::device);
         auto evals = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
-        auto work  = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
-        /* rocsolver (7.2.3) *hegvdx returns wrong eigen-pairs for the (ill-conditioned) LAPW overlap matrix,
-         * solve for all eigen-pairs with *hegvd instead and keep the lowest nev__ */
-        int info = acc::rocsolver::syhegvd(handle, itype, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(),
-                                           B__.at(memory_t::device), B__.ld(), evals.get(), work.get());
+        /* rocsolver writes all matrix_size__ columns of Z, even for erange_index */
+        auto Z_d = mpd.get_unique_ptr<T>(static_cast<size_t>(matrix_size__) * matrix_size__);
 
-        if (info == 0) {
+        auto ret = acc::rocsolver::syhegvdx(handle, itype, jobz, rocblas_erange::rocblas_erange_index, uplo,
+                                            matrix_size__, A__.at(memory_t::device), A__.ld(), B__.at(memory_t::device),
+                                            B__.ld(), real_type<T>{0}, real_type<T>(0), 1, nev__, evals.get(),
+                                            Z_d.get(), matrix_size__);
+
+        if (ret.info == rocblas_status::rocblas_status_success) {
             acc::copyout(eval__, evals.get(), nev__);
-            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), Z_d.get(), matrix_size__, matrix_size__, nev__);
         }
 
-        return info;
-
-        // /* rocsolver writes all matrix_size__ columns of Z, even for erange_index */
-        // auto Z_d = mpd.get_unique_ptr<T>(static_cast<size_t>(matrix_size__) * matrix_size__);
-        //
-        // auto ret = acc::rocsolver::syhegvdx(handle, itype, jobz, rocblas_erange::rocblas_erange_index, uplo,
-        //                                     matrix_size__, A__.at(memory_t::device), A__.ld(), B__.at(memory_t::device),
-        //                                     B__.ld(), real_type<T>{0}, real_type<T>(0), 1, nev__, evals.get(),
-        //                                     Z_d.get(), matrix_size__);
-        //
-        // if (ret.info == rocblas_status::rocblas_status_success) {
-        //     acc::copyout(eval__, evals.get(), nev__);
-        //     acc::copyout(Z__.at(memory_t::host), Z__.ld(), Z_d.get(), matrix_size__, matrix_size__, nev__);
-        // }
-        //
-        // return ret.info;
+        return ret.info;
     }
 
     template <class T>
