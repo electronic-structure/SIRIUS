@@ -6,7 +6,7 @@ import difflib
 import argparse
 
 #
-# check formatting of the files with clang-format >= 17.0
+# check formatting of the files with clang-format >= 22.0 (IndentPPDirectives: Leave)
 #
 
 parser = argparse.ArgumentParser(description='Check file formatting with clang-format')
@@ -30,11 +30,8 @@ status = 0
 for name in files:
     with open(name, 'r') as f:
         original = f.read()
-    p1 = subprocess.Popen(["sed", r"s/#pragma omp/\/\/#pragma omp/g", name], shell=enable_shell, stdout=subprocess.PIPE)
-    p2 = subprocess.Popen(["clang-format", "-style=file"],                   shell=enable_shell, stdin=p1.stdout, stdout=subprocess.PIPE)
-    p3 = subprocess.Popen(["sed", r"s/\/\/ *#pragma omp/#pragma omp/g"],     shell=enable_shell, stdin=p2.stdout, stdout=subprocess.PIPE)
-    formatted = p3.communicate()[0].decode('utf-8')
-    p3.wait()
+    p = subprocess.Popen(["clang-format", "-style=file", name], shell=enable_shell, stdout=subprocess.PIPE)
+    formatted = p.communicate()[0].decode('utf-8')
     # save formatted file
     if args.fmt:
         with open(name, 'w') as f:
