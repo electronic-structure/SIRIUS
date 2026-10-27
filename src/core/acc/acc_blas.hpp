@@ -144,7 +144,7 @@ get_gpublasDiagonal_t(char c)
     {                                                                                                                  \
         acc::blas_api::status_t status;                                                                                \
         if ((status = func__ args__) != acc::blas_api::status::Success) {                                              \
-            error_message(status);                                                                                     \
+            acc::blas::error_message(status);                                                                          \
             char nm[1024];                                                                                             \
             gethostname(nm, 1024);                                                                                     \
             std::printf("hostname: %s\n", nm);                                                                         \
@@ -374,6 +374,62 @@ sscal(int n__, float const* alpha__, float* x__, int incx__)
 {
     // acc::set_device();
     CALL_GPU_BLAS(acc::blas_api::sscal, (null_stream_handle(), n__, alpha__, x__, incx__));
+}
+
+/// Batched dot products result[i] = x_i^H y_i, where x_i = x + i * stridex and y_i = y + i * stridey.
+/** x and y are in device memory, result is in host memory. The call is blocking. */
+inline void
+zdotc_strided_batched(int n__, acc_complex_double_t const* x__, int stridex__, acc_complex_double_t const* y__,
+                      int stridey__, int batch_count__, acc_complex_double_t* result__, int stream_id)
+{
+#if defined(SIRIUS_ROCM)
+    /* the handle is in the default host pointer mode: rocBLAS copies the result to the host and synchronizes */
+    CALL_GPU_BLAS(rocblas_zdotc_strided_batched,
+                  (stream_handle(stream_id), n__, reinterpret_cast<const acc::blas_api::complex_double_t*>(x__), 1,
+                   stridex__, reinterpret_cast<const acc::blas_api::complex_double_t*>(y__), 1, stridey__,
+                   batch_count__, reinterpret_cast<acc::blas_api::complex_double_t*>(result__)));
+#elif defined(SIRIUS_CUDA)
+    /* cuBLAS has no batched dot product; use 1x1 gemms, which need the output in device memory */
+    acc::blas_api::complex_double_t alpha{1, 0};
+    acc::blas_api::complex_double_t beta{0, 0};
+    auto d_result = acc::allocate<acc_complex_double_t>(batch_count__);
+    CALL_GPU_BLAS(cublasZgemmStridedBatched,
+                  (stream_handle(stream_id), CUBLAS_OP_C, CUBLAS_OP_N, 1, 1, n__, &alpha,
+                   reinterpret_cast<const acc::blas_api::complex_double_t*>(x__), n__, stridex__,
+                   reinterpret_cast<const acc::blas_api::complex_double_t*>(y__), n__, stridey__, &beta,
+                   reinterpret_cast<acc::blas_api::complex_double_t*>(d_result), 1, 1, batch_count__));
+    acc::copyout(result__, d_result, batch_count__, acc::stream_id(stream_id));
+    acc::sync_stream(acc::stream_id(stream_id));
+    acc::deallocate(d_result);
+#endif
+}
+
+/// Batched dot products result[i] = x_i^H y_i, where x_i = x + i * stridex and y_i = y + i * stridey.
+/** x and y are in device memory, result is in host memory. The call is blocking. */
+inline void
+cdotc_strided_batched(int n__, acc_complex_float_t const* x__, int stridex__, acc_complex_float_t const* y__,
+                      int stridey__, int batch_count__, acc_complex_float_t* result__, int stream_id)
+{
+#if defined(SIRIUS_ROCM)
+    /* the handle is in the default host pointer mode: rocBLAS copies the result to the host and synchronizes */
+    CALL_GPU_BLAS(rocblas_cdotc_strided_batched,
+                  (stream_handle(stream_id), n__, reinterpret_cast<const acc::blas_api::complex_float_t*>(x__), 1,
+                   stridex__, reinterpret_cast<const acc::blas_api::complex_float_t*>(y__), 1, stridey__, batch_count__,
+                   reinterpret_cast<acc::blas_api::complex_float_t*>(result__)));
+#elif defined(SIRIUS_CUDA)
+    /* cuBLAS has no batched dot product; use 1x1 gemms, which need the output in device memory */
+    acc::blas_api::complex_float_t alpha{1, 0};
+    acc::blas_api::complex_float_t beta{0, 0};
+    auto d_result = acc::allocate<acc_complex_float_t>(batch_count__);
+    CALL_GPU_BLAS(cublasCgemmStridedBatched,
+                  (stream_handle(stream_id), CUBLAS_OP_C, CUBLAS_OP_N, 1, 1, n__, &alpha,
+                   reinterpret_cast<const acc::blas_api::complex_float_t*>(x__), n__, stridex__,
+                   reinterpret_cast<const acc::blas_api::complex_float_t*>(y__), n__, stridey__, &beta,
+                   reinterpret_cast<acc::blas_api::complex_float_t*>(d_result), 1, 1, batch_count__));
+    acc::copyout(result__, d_result, batch_count__, acc::stream_id(stream_id));
+    acc::sync_stream(acc::stream_id(stream_id));
+    acc::deallocate(d_result);
+#endif
 }
 
 #if defined(SIRIUS_CUDA)
