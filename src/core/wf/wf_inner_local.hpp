@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <vector>
 #include "core/acc/acc.hpp"
-#include "core/memory.hpp"
 #include "core/acc/acc_blas.hpp"
 #include "core/typedefs.hpp"
 
@@ -20,21 +19,18 @@ inner_product_local_gpu(std::complex<T> const* wf1, int ld1, std::complex<T> con
 {
     using C = std::complex<T>;
 
-    auto mem_pool = get_memory_pool(memory_t::device);
-    auto d_work   = mem_pool.get_unique_ptr<C>(num_bands);
     std::vector<C> result_local(num_bands, 0);
 
     if constexpr (std::is_same_v<T, double>) {
         acc::blas::zdotc_strided_batched(n, reinterpret_cast<acc_complex_double_t const*>(wf1), ld1,
                                          reinterpret_cast<acc_complex_double_t const*>(wf2), ld2, num_bands,
-                                         reinterpret_cast<acc_complex_double_t*>(d_work.get()), 0 /* stream id */);
+                                         reinterpret_cast<acc_complex_double_t*>(result_local.data()), 0 /* stream id */);
     } else {
         acc::blas::cdotc_strided_batched(n, reinterpret_cast<acc_complex_float_t const*>(wf1), ld1,
                                          reinterpret_cast<acc_complex_float_t const*>(wf2), ld2, num_bands,
-                                         reinterpret_cast<acc_complex_float_t*>(d_work.get()), 0 /* stream id */);
+                                         reinterpret_cast<acc_complex_float_t*>(result_local.data()), 0 /* stream id */);
     }
 
-    acc::copyout(result_local.data(), d_work.get(), num_bands);
     if constexpr (is_real_v<F>) {
         /* Γ-point case: only half of the G-vectors are stored */
         for (int i = 0; i < num_bands; ++i) {
