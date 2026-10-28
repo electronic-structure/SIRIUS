@@ -236,6 +236,7 @@ class Density : public Field4D
 
     /// Valence tau and its collinear spin difference, mixed with rho/magnetization.
     std::unique_ptr<Field4D> kinetic_density_;
+    bool external_xc_registered_{false};
 
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
@@ -854,7 +855,7 @@ get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double 
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
-    #pragma omp parallel for reduction(min:rhomin)
+    #pragma omp parallel for reduction(min : rhomin)
     for (int ir = 0; ir < num_points; ir++) {
         r3::vector<double> m;
         for (int j = 0; j < ctx.num_mag_dims(); j++) {

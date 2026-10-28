@@ -19,6 +19,7 @@
 #include <spla/spla.hpp>
 
 #include "simulation_parameters.hpp"
+#include "xc_callback.hpp"
 #include "core/hdf5_tree.hpp"
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
@@ -67,6 +68,10 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
 /// Store all callback functions in one place.
 struct callback_functions_t
 {
+    /// External XC evaluator and optional fixed point quadrature.
+    xc_callback_t external_xc_{nullptr};
+    std::shared_ptr<xc_point_set_t const> external_xc_points_;
+
     /// Callback function provided by the host code to compute radial integrals of beta projectors.
     std::function<void(int, double, double*, int)> beta_ri_{nullptr};
 

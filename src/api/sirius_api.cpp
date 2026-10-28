@@ -344,6 +344,35 @@ phase_Rlm_QE(Atom_type const& type__, int xi__)
     return (type__.indexb(xi__).m < 0 && (-type__.indexb(xi__).m) % 2 == 0) ? -1 : 1;
 }
 
+static std::shared_ptr<sirius::xc_point_set_t>
+copy_xc_point_set(Simulation_context const& ctx, int const* num_points, int const* num_blocks,
+                  double const* coordinates, double const* energy_weights, double const* descriptor_weights,
+                  int const* block_sizes, double const* block_centres)
+{
+    int nr      = num_points ? *num_points : -1;
+    int nb      = num_blocks ? *num_blocks : -1;
+    int invalid = nr < 0 || nb < 0 || (nr > 0 && (!coordinates || !energy_weights || !descriptor_weights)) ||
+                  (nb > 0 && (!block_sizes || !block_centres));
+    ctx.comm().allreduce<int, mpi::op_t::max>(&invalid, 1);
+    if (invalid) {
+        RTE_THROW("invalid external point XC array arguments on a context rank");
+    }
+    auto points = std::make_shared<sirius::xc_point_set_t>(ctx);
+    for (int p = 0; p < nr; p++) {
+        size_t offset = 3 * static_cast<size_t>(p);
+        points->coordinates.push_back({coordinates[offset], coordinates[offset + 1], coordinates[offset + 2]});
+        points->energy_weights.push_back(energy_weights[p]);
+        points->descriptor_weights.push_back(descriptor_weights[p]);
+    }
+    for (int b = 0; b < nb; b++) {
+        size_t offset = 3 * static_cast<size_t>(b);
+        points->block_sizes.push_back(block_sizes[b]);
+        points->block_centres.push_back({block_centres[offset], block_centres[offset + 1], block_centres[offset + 2]});
+    }
+    points->validate(ctx);
+    return points;
+}
+
 extern "C" {
 
 /*
@@ -7179,6 +7208,230 @@ sirius_set_dftd4_correction(void* const* handler__, char const* method__, char c
                 if (damping_term__ != nullptr) {
                     sim_ctx.cfg().dftd4().damping_values(damping_term__);
                 }
+            },
+            error_code__);
+}
+/*
+@api begin
+sirius_set_xc_callback:
+  doc: >-
+    Register an external XC evaluator before initializing the context.
+    SIRIUS supplies fields generated from its orbitals. The caller evaluates XC
+    in the same process and returns the energy and primitive-field derivatives.
+    The callback is collective on the context communicator and has the C signature
+    void callback(void* user_data, int nr, int ns, const int* grid_dims,
+    int z_offset, int fcomm_context, int fcomm_fft,
+    const double* lattice, double weight, const double* rho,
+    const double* gradient, const double* tau, double* energy,
+    double* vrho, double* vgradient, double* vtau, int* status).
+    All fields use atomic units. Scalar arrays have Fortran shape (nr,ns),
+    gradients (nr,3,ns), and lattice (3,3) with lattice vectors in columns.
+    grid_dims contains the three global FFT dimensions. Local points are a
+    contiguous z slab starting at zero-based z_offset, with x varying fastest.
+    ns=1 denotes total density and tau, ns=2 denotes up and down channels.
+    weight is the volume per FFT point. Return the same total XC energy on
+    every context rank, including ranks with an empty slab. FFT replicas
+    must not be counted twice. fcomm_fft partitions one complete grid.
+    Return derivatives of the full discrete energy divided by weight.
+    SIRIUS applies the gradient adjoint and tau operator itself.
+    Output arrays and status are initially zero. On failure set status nonzero
+    after completing all callback collectives. Do not unwind across the C ABI.
+    The caller owns user_data and keeps it alive until the context is destroyed.
+    A null function pointer disables the callback before context initialization.
+    Currently supported for CPU norm-conserving PW calculations without core
+    charge, SOC, or noncollinear magnetism. Forces and stress are not supported.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    fptr:
+      type: func
+      attr: in, required, value
+      doc: Pointer to a C-interoperable XC callback.
+    user_data:
+      type: void*
+      attr: in, required, value
+      doc: Opaque callback state, which may be null.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_set_xc_callback(void* const* handler__, void (*fptr__)(), void* user_data__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& ctx   = get_sim_ctx(handler__);
+                int enabled = fptr__ != nullptr, minimum = enabled, maximum = enabled;
+                ctx.comm().allreduce<int, mpi::op_t::min>(&minimum, 1);
+                ctx.comm().allreduce<int, mpi::op_t::max>(&maximum, 1);
+                if (minimum != maximum) {
+                    RTE_THROW("external XC registration must agree on all context ranks");
+                }
+                if (ctx.initialized()) {
+                    RTE_THROW("register external XC before initializing the context");
+                }
+                if (!fptr__) {
+                    ctx.cb().external_xc_ = nullptr;
+                    ctx.cb().external_xc_points_.reset();
+                    return;
+                }
+                using callback_t =
+                        void (*)(void*, int, int, int const*, int, int, int, double const*, double, double const*,
+                                 double const*, double const*, double*, double*, double*, double*, int*);
+                auto callback = reinterpret_cast<callback_t>(fptr__);
+                ctx.cb().external_xc_points_.reset();
+                ctx.cb().external_xc_ = [callback, user_data__](auto const& c, auto const& in, auto& out) {
+                    if (in.points) {
+                        RTE_THROW("the FFT XC callback cannot evaluate an arbitrary point set");
+                    }
+                    auto const& fft = c.template spfft<double>();
+                    int dims[]      = {fft.dim_x(), fft.dim_y(), fft.dim_z()};
+                    double lattice[9];
+                    for (int j = 0; j < 3; j++) {
+                        for (int i = 0; i < 3; i++) {
+                            lattice[i + 3 * j] = c.unit_cell().lattice_vectors()(i, j);
+                        }
+                    }
+                    int status{0};
+                    callback(user_data__, in.num_points, in.num_spins, dims, fft.local_z_offset(),
+                             MPI_Comm_c2f(c.comm().native()), MPI_Comm_c2f(fft.communicator()), lattice,
+                             in.point_weight, in.rho, in.gradient, in.tau, &out.energy, out.vrho, out.vgradient,
+                             out.vtau, &status);
+                    if (status) {
+                        RTE_THROW("external XC callback returned status " + std::to_string(status));
+                    }
+                };
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_set_xc_point_callback:
+  doc: >-
+    Collectively register a reconstructed-field XC evaluator and copy its fixed point quadrature
+    before initializing the context, after defining all atoms and lattice vectors.
+    These are real-space integration points, not k points. SIRIUS reconstructs
+    the fields from its orbitals. The caller evaluates XC in the same process
+    and returns the energy and primitive-field derivatives. SIRIUS maps these
+    derivatives back to the PW Hamiltonian.
+    Each complete atom block is owned once across the context communicator.
+    Empty local arrays are permitted. The callback has the C signature
+    void callback(void* user_data, int nr, int ns, int nb, int fcomm,
+    const double* coordinates, const double* energy_weights,
+    const double* descriptor_weights, const int* block_sizes,
+    const double* block_centres, const double* rho, const double* gradient,
+    const double* tau, double* energy, double* drho, double* dgradient,
+    double* dtau, int* status).
+    Coordinates and block centres have Fortran shapes (3,nr) and (3,nb) in bohr.
+    Fields have shapes (nr,ns), (nr,3,ns), (nr,ns) in atomic units.
+    ns=1 denotes total fields and ns=2 up/down fields. Weights do not scale
+    the physical fields. Return the same globally summed energy on every rank
+    and raw derivatives of the complete discrete energy, including nonlocal
+    descriptor contributions and weights. Do not divide by quadrature weights
+    or apply the sampling/gradient adjoint in the callback.
+    Output arrays and status are initially zero. On failure set status nonzero
+    after completing callback collectives. Never unwind across the C ABI.
+    The caller retains user_data until the context is destroyed.
+    Currently supported for CPU scalar/collinear fp64 norm-conserving PW
+    calculations without core charge, SOC or symmetry reduction at fixed geometry.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    fptr:
+      type: func
+      attr: in, required, value
+      doc: C-interoperable point callback. Null disables external XC.
+    user_data:
+      type: void*
+      attr: in, required, value
+      doc: Opaque callback state, which may be null.
+    num_points:
+      type: int
+      attr: in, required
+      doc: Number of local point rows.
+    num_blocks:
+      type: int
+      attr: in, required
+      doc: Number of complete local atom blocks.
+    coordinates:
+      type: double
+      attr: in, required, dimension(3,num_points)
+      doc: Cartesian target coordinates.
+    energy_weights:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Energy quadrature and partition weights.
+    descriptor_weights:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Independent descriptor quadrature weights.
+    block_sizes:
+      type: int
+      attr: in, required, dimension(num_blocks)
+      doc: Positive consecutive row counts summing to num_points.
+    block_centres:
+      type: double
+      attr: in, required, dimension(3,num_blocks)
+      doc: Cartesian centres of the atom blocks.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_set_xc_point_callback(void* const* handler__, void (*fptr__)(), void* user_data__, int const* num_points__,
+                             int const* num_blocks__, double const* coordinates__, double const* energy_weights__,
+                             double const* descriptor_weights__, int const* block_sizes__,
+                             double const* block_centres__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& ctx   = get_sim_ctx(handler__);
+                int enabled = fptr__ != nullptr, minimum = enabled, maximum = enabled;
+                ctx.comm().allreduce<int, mpi::op_t::min>(&minimum, 1);
+                ctx.comm().allreduce<int, mpi::op_t::max>(&maximum, 1);
+                if (minimum != maximum) {
+                    RTE_THROW("external XC registration must agree on all context ranks");
+                }
+                if (ctx.initialized()) {
+                    RTE_THROW("register external point XC before initializing the context");
+                }
+                if (!fptr__) {
+                    ctx.cb().external_xc_ = nullptr;
+                    ctx.cb().external_xc_points_.reset();
+                    return;
+                }
+                auto points      = copy_xc_point_set(ctx, num_points__, num_blocks__, coordinates__, energy_weights__,
+                                                     descriptor_weights__, block_sizes__, block_centres__);
+                using callback_t = void (*)(void*, int, int, int, int, double const*, double const*, double const*,
+                                            int const*, double const*, double const*, double const*, double const*,
+                                            double*, double*, double*, double*, int*);
+                auto callback    = reinterpret_cast<callback_t>(fptr__);
+                ctx.cb().external_xc_points_ = points;
+                ctx.cb().external_xc_        = [callback, user_data__](auto const& c, auto const& in, auto& out) {
+                    if (!in.points) {
+                        RTE_THROW("the point XC callback requires an explicit point quadrature");
+                    }
+                    auto const& p = *in.points;
+                    int status{0};
+                    callback(user_data__, in.num_points, in.num_spins, static_cast<int>(p.block_sizes.size()),
+                                    MPI_Comm_c2f(c.comm().native()),
+                             p.coordinates.empty() ? nullptr : p.coordinates.front().data(), p.energy_weights.data(),
+                                    p.descriptor_weights.data(), p.block_sizes.data(),
+                             p.block_centres.empty() ? nullptr : p.block_centres.front().data(), in.rho, in.gradient,
+                                    in.tau, &out.energy, out.vrho, out.vgradient, out.vtau, &status);
+                    if (status) {
+                        RTE_THROW("external point XC callback returned status " + std::to_string(status));
+                    }
+                };
             },
             error_code__);
 }

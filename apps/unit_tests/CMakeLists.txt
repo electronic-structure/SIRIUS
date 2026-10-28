@@ -2,7 +2,7 @@ set(unit_tests "test_init;test_nan;test_ylm;test_rlm;test_sinx_cosx;test_gvec;te
 test_fft_correctness_2;test_fft_correctness_3;test_rlm_deriv;test_spline_1;\
 test_spline_2;test_rot_ylm;test_linalg;test_wf_ortho_1;test_serialize;test_mempool;test_sim_ctx;test_roundoff;\
 test_sht_lapl;test_sht;test_spheric_function;test_splindex;test_gaunt_coeff_1;test_gaunt_coeff_2;test_gaunt_coeff_3;\
-test_gaunt_coeff_4;test_init_ctx;test_cmd_args;test_geom3d;test_any_ptr;test_kinetic_density;test_meta_gga")
+test_gaunt_coeff_4;test_init_ctx;test_cmd_args;test_geom3d;test_any_ptr;test_kinetic_density;test_meta_gga;test_external_xc")
 
 foreach(name ${unit_tests})
   add_executable(${name} "${name}.cpp")
@@ -11,9 +11,9 @@ foreach(name ${unit_tests})
   add_test(NAME ${name} COMMAND ${name})
 endforeach()
 
-set_tests_properties(test_kinetic_density test_meta_gga PROPERTIES TIMEOUT 120)
+set_tests_properties(test_kinetic_density test_meta_gga test_external_xc PROPERTIES TIMEOUT 120)
 if(MPIEXEC_EXECUTABLE)
-  foreach(name test_kinetic_density test_meta_gga)
+  foreach(name test_kinetic_density test_meta_gga test_external_xc)
     add_test(NAME ${name}_mpi
       COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
               $<TARGET_FILE:${name}> ${MPIEXEC_POSTFLAGS})
@@ -22,6 +22,18 @@ if(MPIEXEC_EXECUTABLE)
 endif()
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests.x" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+if(SIRIUS_CREATE_FORTRAN_BINDINGS)
+  add_executable(test_external_xc_api test_external_xc_api.f90)
+  target_link_libraries(test_external_xc_api PRIVATE sirius MPI::MPI_Fortran)
+  add_test(NAME test_external_xc_api COMMAND test_external_xc_api)
+  set_tests_properties(test_external_xc_api PROPERTIES TIMEOUT 120)
+  if(MPIEXEC_EXECUTABLE)
+    add_test(NAME test_external_xc_api_mpi
+      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+              $<TARGET_FILE:test_external_xc_api> ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(test_external_xc_api_mpi PROPERTIES TIMEOUT 120 PROCESSORS 2)
+  endif()
+endif()
 install(FILES "unit_tests.x" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
 add_subdirectory(multi_cg)

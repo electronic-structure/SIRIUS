@@ -107,7 +107,11 @@ energy_enuc(Simulation_context const& ctx, Potential const& potential)
 double
 energy_vloc(Density const& density, Potential const& potential)
 {
-    return sirius::inner(potential.local_potential(), density.rho().rg());
+    double result = sirius::inner(potential.local_potential(), density.rho().rg());
+    if (density.ctx().cb().external_xc_) {
+        result -= density.ctx().cfg().parameters().extra_charge() * potential.local_potential().f_0().real();
+    }
+    return result;
 }
 
 double
@@ -119,13 +123,20 @@ eval_sum(Density const& density, K_point_set const& kset)
 double
 energy_veff(Density const& density, Potential const& potential)
 {
-    return sirius::inner(density.rho(), potential.effective_potential());
+    double result = sirius::inner(density.rho(), potential.effective_potential()) -
+                    potential.external_xc_background_contraction();
+    if (density.ctx().cb().external_xc_) {
+        // The Hartree potential has zero cell average; the remaining background is the local PP term.
+        result -= density.ctx().cfg().parameters().extra_charge() * potential.local_potential().f_0().real();
+    }
+    return result;
 }
 
 double
 energy_kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density, Potential const& potential)
 {
-    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential);
+    return eval_sum(density, kset) - energy_veff(density, potential) - energy_bxc(density, potential) -
+           potential.energy_vtau(density);
 }
 
 double
