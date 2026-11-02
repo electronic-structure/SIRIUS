@@ -194,6 +194,7 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
               {ctx__.periodic_function_ptr("rho"), ctx__.periodic_function_ptr("magz"),
                ctx__.periodic_function_ptr("magx"), ctx__.periodic_function_ptr("magy")})
     , unit_cell_(ctx_.unit_cell())
+    , external_xc_registered_(bool(ctx__.cb().external_xc_))
 {
     PROFILE("sirius::Density");
 
@@ -203,7 +204,10 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
 
     using spf = Smooth_periodic_function<double>;
 
-    if (kinetic_density__ || ctx_.meta_gga()) {
+    if (external_xc_registered_) {
+        validate_external_xc_context(ctx_);
+    }
+    if (kinetic_density__ || ctx_.meta_gga() || external_xc_registered_) {
         if (ctx_.processing_unit() != device_t::CPU || ctx_.spfft<double>().processing_unit() != SPFFT_PU_HOST ||
             ctx_.spfft_coarse<double>().processing_unit() != SPFFT_PU_HOST || ctx_.num_mag_dims() == 3 ||
             ctx_.so_correction() || ctx_.full_potential() || unit_cell_.num_paw_atoms()) {
@@ -1206,6 +1210,9 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__
                   bool transform_to_rg__)
 {
     PROFILE("sirius::Density::generate");
+    if (bool(ctx_.cb().external_xc_) != external_xc_registered_) {
+        RTE_THROW("external XC registration cannot change during SCF");
+    }
     power::Profile p1("generate_dens");
 
     generate_valence<T>(ks__, lapw_basis__);

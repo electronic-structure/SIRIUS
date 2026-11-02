@@ -135,7 +135,11 @@ Potential::Potential(Simulation_context& ctx__)
             RTE_THROW("invalid Libxc meta-GGA configuration on a context rank: " + error);
         }
     }
-    if (ctx_.meta_gga()) {
+    external_xc_registered_ = bool(ctx_.cb().external_xc_);
+    if (external_xc_registered_) {
+        validate_external_xc_context(ctx_);
+    }
+    if (ctx_.meta_gga() || external_xc_registered_) {
         kinetic_potential_ = std::make_unique<Field4D>(ctx_, lmax_t(ctx_.lmax_pot()));
         kinetic_potential_->zero();
     }

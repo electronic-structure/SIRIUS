@@ -75,7 +75,7 @@ Stress::calc_stress_nonloc_aux()
 r3::matrix<double>
 Stress::calc_stress_total()
 {
-    if (ctx_.meta_gga()) {
+    if (ctx_.meta_gga() || ctx_.cb().external_xc_) {
         RTE_THROW("meta-GGA cell derivatives are not connected to stress yet");
     }
     calc_stress_kin();

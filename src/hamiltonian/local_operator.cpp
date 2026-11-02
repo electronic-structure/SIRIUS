@@ -419,7 +419,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
     };
 
     std::unique_ptr<wf::Kinetic_density_operator<T>> tau_op;
-    if (ctx_.meta_gga()) {
+    if (vtau_vec_[0]) {
         tau_op = std::make_unique<wf::Kinetic_density_operator<T>>(spfftk__, *gkvec_fft__);
     }
     PROFILE_START("sirius::Local_operator::apply_h|bands");
