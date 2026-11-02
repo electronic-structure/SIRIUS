@@ -6,13 +6,8 @@ stages:
   - build
   - test
 
-.f7t-secrets:
-  variables:
-    F7T_CLIENT_ID: $F7T_TDS_CLIENT_ID
-    F7T_CLIENT_SECRET: $F7T_TDS_CLIENT_SECRET
-
 build base uenv mi300:
-  extends: [.uenv-builder-beverin-mi300, .f7t-secrets]
+  extends: [.uenv-builder-beverin-mi300]
   stage: baseimage
   timeout: 24h
   variables:
@@ -22,7 +17,7 @@ build base uenv mi300:
     SLURM_TIMELIMIT: 600
 
 build sirius mi300:
-  extends: [.uenv-runner-beverin-mi300, .f7t-secrets]
+  extends: [.uenv-runner-beverin-mi300]
   stage: build
   needs: ["build base uenv mi300"]
   image: sirius-mi300/v1:$CI_PIPELINE_ID
@@ -32,7 +27,6 @@ build sirius mi300:
   variables:
     SPEC: sirius@develop +rocm +apps +tests +scalapack ~python +dftd4 +dftd3 +vdwxc build_type=RelWithDebInfo
     ROCM_ARCH: gfx942
-    REPO: ./ci/spack_repo/sirius_ci
   script:
     - |
       #
@@ -42,7 +36,6 @@ build sirius mi300:
       bwrap --dev-bind / / --tmpfs ~ -- ./ci/build-rocm.sh
 
 .run_tests:
-  extends: [.f7t-secrets]
   script:
     - |
       if [ $SLURM_LOCALID -eq 0 ]; then
@@ -84,11 +77,23 @@ beverin test gpu serial:
   variables:
     SLURM_TIMELIMIT: '60:00'
     SLURM_GPUS_PER_TASK: 1
+    SLURM_CONSTRAINT: 'amdgpu_tpx'
     SLURM_GPUS: 1
     SLURM_NTASKS: 1
     SLURM_CPU_BIND: 'verbose'
     USE_MPI: 'YES'
-    TEST_COMMAND: ctest -L gpu_serial_rocm
+    TEST_COMMAND: ctest -L gpu_serial
+
+beverin test cpu serial:
+  extends: [.run_tests_beverin]
+  variables:
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_CONSTRAINT: 'amdgpu_tpx'
+    SLURM_GPUS: 0
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: 'verbose'
+    USE_MPI: 'YES'
+    TEST_COMMAND: ctest -L cpu_serial
 
 beverin test gpu band parallel:
   extends: [.run_tests_beverin]
@@ -109,22 +114,3 @@ beverin test gpu k-point parallel:
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_k_point_parallel
 
-# eiger test cpu serial:
-#   extends: [.run_tests_eiger]
-#   variables:
-#     OMP_NUM_THREADS: 8
-#     SLURM_TIMELIMIT: '60:00'
-#     SLURM_NTASKS: 1
-#     SRUN_CPUS_PER_TASK: 8
-#     USE_MPI: 'YES'
-#     TEST_COMMAND: ctest -L cpu_serial
-
-# eiger test cpu band parallel:
-#   extends: [.run_tests_eiger]
-#   variables:
-#     OMP_NUM_THREADS: 8
-#     SLURM_TIMELIMIT: '60:00'
-#     SLURM_NTASKS: 4
-#     SRUN_CPUS_PER_TASK: 8
-#     USE_MPI: 'YES'
-#     TEST_COMMAND: ctest -L cpu_band_parallel

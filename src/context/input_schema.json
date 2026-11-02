@@ -423,7 +423,8 @@
                         "dlaf",
                         "magma",
                         "magma_gpu",
-                        "cusolver"
+                        "cusolver",
+                        "rocsolver"
                     ],
                     "title": "Standard eigen-value solver to use."
                 },
@@ -439,7 +440,8 @@
                         "dlaf",
                         "magma",
                         "magma_gpu",
-                        "cusolver"
+                        "cusolver",
+                        "rocsolver"
                     ],
                     "title": "Generalized eigen-value solver to use."
                 },

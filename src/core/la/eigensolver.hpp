@@ -42,7 +42,10 @@ enum class ev_solver_t
     magma_gpu,
 
     /// CUDA eigen-solver
-    cusolver
+    cusolver,
+
+    /// ROCm eigen-solver
+    rocsolver
 };
 
 /// Get type of an eigen solver by name (provided as a string).
@@ -52,9 +55,11 @@ get_ev_solver_t(std::string name__)
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
-            {"lapack", ev_solver_t::lapack},       {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa},
-            {"elpa2", ev_solver_t::elpa},          {"dlaf", ev_solver_t::dlaf},           {"magma", ev_solver_t::magma},
-            {"magma_gpu", ev_solver_t::magma_gpu}, {"cusolver", ev_solver_t::cusolver}};
+            {"lapack", ev_solver_t::lapack},       {"scalapack", ev_solver_t::scalapack},
+            {"elpa1", ev_solver_t::elpa},          {"elpa2", ev_solver_t::elpa},
+            {"dlaf", ev_solver_t::dlaf},           {"magma", ev_solver_t::magma},
+            {"magma_gpu", ev_solver_t::magma_gpu}, {"cusolver", ev_solver_t::cusolver},
+            {"rocsolver", ev_solver_t::rocsolver}};
 
     if (map_to_type.count(name__) == 0) {
         std::stringstream s;
@@ -63,6 +68,13 @@ get_ev_solver_t(std::string name__)
     }
 
     return map_to_type.at(name__);
+}
+
+/// Return true if the solver is cuSOLVER or rocSOLVER.
+inline bool
+is_gpu_solver(ev_solver_t type__)
+{
+    return type__ == ev_solver_t::cusolver || type__ == ev_solver_t::rocsolver;
 }
 
 /// Interface to different eigen-solvers.

@@ -1770,10 +1770,10 @@ class Eigensolver_magma_gpu : public Eigensolver
 #endif
 
 #if defined(SIRIUS_CUDA)
-class Eigensolver_cuda : public Eigensolver
+class Eigensolver_cusolver : public Eigensolver
 {
   public:
-    Eigensolver_cuda()
+    Eigensolver_cusolver()
         : Eigensolver(ev_solver_t::cusolver, false, memory_t::host_pinned, memory_t::device)
     {
     }
@@ -1855,14 +1855,14 @@ class Eigensolver_cuda : public Eigensolver
     int
     solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|dsyevdx");
+        PROFILE("Eigensolver_cusolver|dsyevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int
     solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|ssyevdx");
+        PROFILE("Eigensolver_cusolver|ssyevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -1870,7 +1870,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__,
           dmatrix<std::complex<float>>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|cheevdx");
+        PROFILE("Eigensolver_cusolver|cheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -1878,7 +1878,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__,
           dmatrix<std::complex<double>>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|zheevdx");
+        PROFILE("Eigensolver_cusolver|zheevdx");
         return solve_(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -1970,7 +1970,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
           dmatrix<double>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|dsygvdx");
+        PROFILE("Eigensolver_cusolver|dsygvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -1978,7 +1978,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
           dmatrix<float>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|ssygvdx");
+        PROFILE("Eigensolver_cusolver|ssygvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -1986,7 +1986,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
           double* eval__, dmatrix<std::complex<double>>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|zhegvdx");
+        PROFILE("Eigensolver_cusolver|zhegvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -1994,7 +1994,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
           float* eval__, dmatrix<std::complex<float>>& Z__) override
     {
-        PROFILE("Eigensolver_cuda|chegvdx");
+        PROFILE("Eigensolver_cusolver|chegvdx");
         return solve_(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -2026,9 +2026,11 @@ class Eigensolver_cuda : public Eigensolver
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 };
-#elif defined(SIRIUS_ROCM)
+#endif
+
+#if defined(SIRIUS_ROCM)
 /// rocsolver
-class Eigensolver_cuda : public Eigensolver
+class Eigensolver_rocsolver : public Eigensolver
 {
   private:
     template <class T>
@@ -2040,24 +2042,38 @@ class Eigensolver_cuda : public Eigensolver
         auto uplo    = rocblas_fill::rocblas_fill_lower;
         auto& handle = acc::rocsolver::rocsolver_handle();
 
-        auto& mpd = get_memory_pool(memory_t::device);
-        auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
-        auto work = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd  = get_memory_pool(memory_t::device);
+        auto evals = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto work  = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
-        int info;
-        auto dinfo = mpd.get_unique_ptr<int>(1);
+        /* rocsolver (7.2.3) *hegvdx returns wrong eigen-pairs for the (ill-conditioned) LAPW overlap matrix,
+         * solve for all eigen-pairs with *hegvd instead and keep the lowest nev__ */
+        int info = acc::rocsolver::syhegvd(handle, itype, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(),
+                                           B__.at(memory_t::device), B__.ld(), evals.get(), work.get());
 
-        acc::rocsolver::syhegvd(handle, itype, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(),
-                                B__.at(memory_t::device), B__.ld(), w.get(), work.get(), dinfo.get());
-
-        acc::copyout(&info, dinfo.get(), 1);
-        if (!info) {
-            acc::copyout(eval__, w.get(), nev__);
+        if (info == 0) {
+            acc::copyout(eval__, evals.get(), nev__);
             acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
         }
+
         return info;
+
+        // /* rocsolver writes all matrix_size__ columns of Z, even for erange_index */
+        // auto Z_d = mpd.get_unique_ptr<T>(static_cast<size_t>(matrix_size__) * matrix_size__);
+        //
+        // auto ret = acc::rocsolver::syhegvdx(handle, itype, jobz, rocblas_erange::rocblas_erange_index, uplo,
+        //                                     matrix_size__, A__.at(memory_t::device), A__.ld(), B__.at(memory_t::device),
+        //                                     B__.ld(), real_type<T>{0}, real_type<T>(0), 1, nev__, evals.get(),
+        //                                     Z_d.get(), matrix_size__);
+        //
+        // if (ret.info == rocblas_status::rocblas_status_success) {
+        //     acc::copyout(eval__, evals.get(), nev__);
+        //     acc::copyout(Z__.at(memory_t::host), Z__.ld(), Z_d.get(), matrix_size__, matrix_size__, nev__);
+        // }
+        //
+        // return ret.info;
     }
 
     template <class T>
@@ -2068,45 +2084,42 @@ class Eigensolver_cuda : public Eigensolver
         auto uplo    = rocblas_fill::rocblas_fill_lower;
         auto& handle = acc::rocsolver::rocsolver_handle();
 
-        auto& mpd = get_memory_pool(memory_t::device);
-        auto w    = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
+        auto& mpd  = get_memory_pool(memory_t::device);
+        auto evals = mpd.get_unique_ptr<real_type<T>>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
-        int lwork;
+        /* rocsolver writes all matrix_size__ columns of Z, even for erange_index */
+        auto Z_d = mpd.get_unique_ptr<T>(static_cast<size_t>(matrix_size__) * matrix_size__);
 
-        auto work = mpd.get_unique_ptr<real_type<T>>(lwork);
+        auto ret = acc::rocsolver::syheevdx(handle, jobz, rocblas_erange::rocblas_erange_index, uplo, matrix_size__,
+                                            A__.at(memory_t::device), A__.ld(), real_type<T>{0}, real_type<T>{0}, 1,
+                                            nev__, evals.get(), Z_d.get(), matrix_size__);
 
-        int info;
-        auto dinfo = mpd.get_unique_ptr<int>(1);
-
-        acc::rocsolver::syheevd(handle, jobz, uplo, matrix_size__, A__.at(memory_t::device), A__.ld(), w.get(),
-                                work.get(), dinfo.get());
-
-        acc::copyout(&info, dinfo.get(), 1);
-        if (!info) {
-            acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        if (ret.info == rocblas_status::rocblas_status_success) {
+            acc::copyout(eval__, evals.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), Z_d.get(), matrix_size__, matrix_size__, nev__);
         }
-        return info;
+
+        return ret.info;
     }
 
   public:
-    Eigensolver_cuda()
-        : Eigensolver(ev_solver_t::cusolver, false /* is parallel */, memory_t::host_pinned, memory_t::device)
+    Eigensolver_rocsolver()
+        : Eigensolver(ev_solver_t::rocsolver, false /* is parallel */, memory_t::host_pinned, memory_t::device)
     {
     }
     /// wrapper for dynamic binding
     int
     solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, float* eval__, dmatrix<float>& Z__)
     {
-        PROFILE("Eigensolver_rocm|dsyevdx");
+        PROFILE("Eigensolver_rocsolver|dsyevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
     int
     solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        PROFILE("Eigensolver_rocm|ssyevdx");
+        PROFILE("Eigensolver_rocsolver|ssyevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -2114,7 +2127,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, float* eval__,
           dmatrix<std::complex<float>>& Z__)
     {
-        PROFILE("Eigensolver_rocm|cheevdx");
+        PROFILE("Eigensolver_rocsolver|cheevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -2122,7 +2135,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, double* eval__,
           dmatrix<std::complex<double>>& Z__)
     {
-        PROFILE("Eigensolver_rocm|zheevdx");
+        PROFILE("Eigensolver_rocsolver|zheevdx");
         return stdevp(matrix_size__, nev__, A__, eval__, Z__);
     }
 
@@ -2131,7 +2144,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
           dmatrix<double>& Z__)
     {
-        PROFILE("Eigensolver_rocm|dsygvdx");
+        PROFILE("Eigensolver_rocsolver|dsygvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -2139,7 +2152,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<float>& A__, dmatrix<float>& B__, float* eval__,
           dmatrix<float>& Z__)
     {
-        PROFILE("Eigensolver_rocm|ssygvdx");
+        PROFILE("Eigensolver_rocsolver|ssygvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -2147,7 +2160,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<double>>& A__, dmatrix<std::complex<double>>& B__,
           double* eval__, dmatrix<std::complex<double>>& Z__)
     {
-        PROFILE("Eigensolver_rocm|zhegvdx");
+        PROFILE("Eigensolver_rocsolver|zhegvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -2155,7 +2168,7 @@ class Eigensolver_cuda : public Eigensolver
     solve(ftn_int matrix_size__, int nev__, dmatrix<std::complex<float>>& A__, dmatrix<std::complex<float>>& B__,
           float* eval__, dmatrix<std::complex<float>>& Z__)
     {
-        PROFILE("Eigensolver_rocm|chegvdx");
+        PROFILE("Eigensolver_rocsolver|chegvdx");
         return genevp(matrix_size__, nev__, A__, B__, eval__, Z__);
     }
 
@@ -2184,15 +2197,6 @@ class Eigensolver_cuda : public Eigensolver
           dmatrix<std::complex<float>>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
-    }
-};
-#else
-class Eigensolver_cuda : public Eigensolver
-{
-  public:
-    Eigensolver_cuda()
-        : Eigensolver(ev_solver_t::cusolver, false, memory_t::host_pinned, memory_t::device)
-    {
     }
 };
 #endif
