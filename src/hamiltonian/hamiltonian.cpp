@@ -793,7 +793,7 @@ Hamiltonian0<T>::generate_pw_coefs(Potential const& potential__)
 
     int gv_count = this->ctx_.gvec_fft().count();
 
-    auto& fft = this->ctx_.spfft<T>();
+    auto& fft = ctx_.spfft<T>();
 
     /* temporaty output buffer */
     mdarray<std::complex<T>, 1> fpw_fft({gv_count});
