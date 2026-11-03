@@ -11,6 +11,12 @@
 
 namespace sirius {
 
+struct smooth_sampling_geometry_adjoint_t
+{
+    std::vector<std::array<double, 3>> points;
+    r3::matrix<double> lattice;
+};
+
 /// Fourier sampling of a real field and its Cartesian gradient at arbitrary points.
 /** Points are Cartesian bohr and are owned exactly once across gvec.comm(),
  *  independently of the FFT layout. In particular, replicated FFT slabs are
@@ -24,6 +30,7 @@ class Smooth_periodic_function_sampler
   private:
     fft::Gvec const& gvec_;
     std::vector<r3::vector<double>> fractional_points_;
+    std::vector<r3::vector<double>> unwrapped_fractional_points_;
     std::vector<r3::vector<int>> phase_indices_;
     std::vector<r3::vector<double>> cartesian_g_;
     std::array<int, 3> bounds_{}, offsets_{};
@@ -69,6 +76,7 @@ class Smooth_periodic_function_sampler
         auto inverse = r3::inverse(gvec_.unit_cell_lattice_vectors());
         for (auto const& p : points__) {
             auto f = r3::dot(inverse, p);
+            unwrapped_fractional_points_.push_back(f);
             for (int x = 0; x < 3; x++) {
                 failed |= !std::isfinite(f[x]);
                 f[x] -= std::floor(f[x]);
@@ -131,6 +139,68 @@ class Smooth_periodic_function_sampler
                 }
             }
         }
+        return result;
+    }
+
+    /// Differentiate sampling at fixed Fourier coefficients and fixed Cartesian points in dE/dA.
+    /** With z=f_G exp(i G.r), a=dE/df and b=dE/d(grad f), each Fourier term gives
+     *  \f[ c=a\operatorname{Im}z+(\mathbf G\cdot\mathbf b)\operatorname{Re}z,\qquad
+     *       \partial_{r_\mu}E=-m_G G_\mu c,\qquad
+     *       \partial_{A_{\mu\nu}}E=m_G G_\mu
+     *       [x_\nu c+(A^{-1}\mathbf b)_\nu\operatorname{Im}z],\quad x=A^{-1}r. \f]
+     *  Use unwrapped x for the cell derivative, including points outside the reference cell.
+     *  Point derivatives are local. Cell derivatives are summed over point owners.
+     *  Orbital normalization and kinetic-density metric derivatives are not included here.
+     */
+    smooth_sampling_geometry_adjoint_t
+    geometry_adjoint(Smooth_periodic_function<double> const& field__,
+                     std::vector<std::array<double, 4>> const& covectors__) const
+    {
+        bool failed = &field__.gvec() != &gvec_ || covectors__.size() != fractional_points_.size();
+        for (auto c : field__.f_pw_local()) {
+            failed |= !std::isfinite(c.real()) || !std::isfinite(c.imag());
+        }
+        for (auto const& d : covectors__) {
+            for (double v : d) {
+                failed |= !std::isfinite(v);
+            }
+        }
+        check(failed, "Fourier geometry adjoint: incompatible buffers or nonfinite inputs");
+        std::vector<std::complex<double>> coefficients(gvec_.num_gvec());
+        gvec_.comm().allgather(field__.f_pw_local().at(memory_t::host), coefficients.data(), gvec_.count(),
+                               gvec_.offset());
+        auto inverse = r3::inverse(gvec_.unit_cell_lattice_vectors());
+        smooth_sampling_geometry_adjoint_t result;
+        result.points.resize(fractional_points_.size());
+        std::vector<r3::matrix<double>> lattice((fractional_points_.size() + point_tile - 1) / point_tile);
+        #pragma omp parallel for schedule(static)
+        for (size_t first = 0; first < fractional_points_.size(); first += point_tile) {
+            int count  = static_cast<int>(std::min(point_tile, fractional_points_.size() - first));
+            auto phase = phases(first, count);
+            auto& cell = lattice[first / point_tile];
+            for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
+                auto const& g       = phase_indices_[ig];
+                auto const& cart    = cartesian_g_[ig];
+                double multiplicity = gvec_.reduced() && r3::dot(cart, cart) != 0 ? 2 : 1;
+                for (int p = 0; p < count; p++) {
+                    auto z        = coefficients[ig] * phase(p, g[0]) * phase(p, g[1]) * phase(p, g[2]);
+                    auto const& d = covectors__[first + p];
+                    auto b        = r3::dot(inverse, r3::vector<double>({d[1], d[2], d[3]}));
+                    double a      = d[0] * z.imag() + (cart[0] * d[1] + cart[1] * d[2] + cart[2] * d[3]) * z.real();
+                    for (int x = 0; x < 3; x++) {
+                        result.points[first + p][x] -= multiplicity * cart[x] * a;
+                        for (int y = 0; y < 3; y++) {
+                            cell(x, y) += multiplicity * cart[x] *
+                                          (unwrapped_fractional_points_[first + p][y] * a + b[y] * z.imag());
+                        }
+                    }
+                }
+            }
+        }
+        for (auto const& cell : lattice) {
+            result.lattice += cell;
+        }
+        gvec_.comm().allreduce(&result.lattice(0, 0), 9);
         return result;
     }
 

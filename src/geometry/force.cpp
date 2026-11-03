@@ -196,7 +196,11 @@ Force::calc_forces_total()
 mdarray<double, 2> const&
 Force::calc_forces_total(bool add_scf_corr)
 {
-    if (ctx_.meta_gga() || ctx_.cb().external_xc_) {
+    xc_geometry_derivatives_t geometry(ctx_.unit_cell().num_atoms());
+    if (ctx_.cb().external_xc_) {
+        geometry = potential_.external_xc_geometry(density_);
+    }
+    if (ctx_.meta_gga() && !ctx_.cb().external_xc_) {
         RTE_THROW("meta-GGA geometry derivatives are not connected to forces yet");
     }
     forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
@@ -234,6 +238,11 @@ Force::calc_forces_total(bool add_scf_corr)
                     forces_total_(x, ia) += forces_scf_corr_(x, ia);
                 }
             }
+        }
+    }
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        for (int x = 0; x < 3; x++) {
+            forces_total_(x, ia) -= geometry.atoms[ia][x];
         }
     }
     return forces_total_;

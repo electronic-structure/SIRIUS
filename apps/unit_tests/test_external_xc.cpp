@@ -7,6 +7,8 @@
 #include <testing.hpp>
 #include "dft/energy.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "geometry/force.hpp"
+#include "geometry/stress.hpp"
 
 using namespace sirius;
 
@@ -23,6 +25,8 @@ functional(Simulation_context const& ctx, xc_callback_input_t const& in, xc_call
         }
     }
     comm.allreduce(&moment, 1);
+    // The coupling constant must not hide additional cell dependence from the geometry callback.
+    constexpr double moment_scale = 1.0 / 720;
     for (int s = 0; s < in.num_spins; s++) {
         for (int p = 0; p < nr; p++) {
             int j    = p + nr * s;
@@ -30,22 +34,47 @@ functional(Simulation_context const& ctx, xc_callback_input_t const& in, xc_call
             double w     = in.points ? in.points->energy_weights[p] : in.point_weight;
             double d     = in.points ? in.points->descriptor_weights[p] : in.point_weight;
             double scale = in.points ? 1 : 1 / in.point_weight;
-            energy += w * (0.7 * n * n + 0.3 * t * t + 0.2 * n * t);
-            out.vrho[j] = scale * w * (1.4 * n + 0.2 * t);
-            out.vtau[j] = scale * (w * (0.6 * t + 0.2 * n) + d * 0.4 * moment / ctx.unit_cell().omega());
+            double local = 0.7 * n * n + 0.3 * t * t + 0.2 * n * t;
+            double position{0};
+            if (in.points) {
+                for (int x = 0; x < 3; x++) {
+                    double r = in.points->coordinates[p][x] - in.points->block_centres[0][x];
+                    position += 0.002 * r * r;
+                    if (out.geometry) {
+                        out.geometry->coordinates[p][x] += 0.004 * w * n * r;
+                        out.geometry->block_centres[0][x] -= 0.004 * w * n * r;
+                    }
+                }
+            }
+            local += position * n;
+            energy += w * local;
+            out.vrho[j] = scale * w * (1.4 * n + 0.2 * t + position);
+            out.vtau[j] = scale * (w * (0.6 * t + 0.2 * n) + d * 0.4 * moment * moment_scale);
             for (int x = 0; x < 3; x++) {
                 int k = p + nr * (x + 3 * s);
                 energy += w * 0.1 * in.gradient[k] * in.gradient[k];
+                local += 0.1 * in.gradient[k] * in.gradient[k];
                 out.vgradient[k] = scale * w * 0.2 * in.gradient[k];
+            }
+            if (out.geometry) {
+                out.geometry->energy_weights[p] += local;
+                out.geometry->descriptor_weights[p] += 0.4 * moment * moment_scale * t;
             }
         }
     }
     comm.allreduce(&energy, 1);
-    out.energy = energy + 0.2 * moment * moment / ctx.unit_cell().omega();
+    out.energy = energy + 0.2 * moment * moment * moment_scale;
 }
 
+struct Geometry
+{
+    r3::vector<double> displacement;
+    int mu{-1}, nu{-1};
+    double strain{0}, energy{0};
+};
+
 int
-test_external_xc(bool gamma, int mag, bool points)
+test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
 {
     auto conf                          = R"({"parameters": {
         "electronic_structure_method":"pseudopotential", "use_symmetry":false,
@@ -53,30 +82,44 @@ test_external_xc(bool gamma, int mag, bool points)
     }, "control":{"mpi_grid_dims":[1,1], "processing_unit":"CPU", "verbosity":0}})"_json;
     conf["parameters"]["gamma_point"]  = gamma;
     conf["parameters"]["num_mag_dims"] = mag;
-    double charge                      = points ? 0 : 0.25;
+    double charge                      = gamma ? 0 : 0.25;
     conf["parameters"]["extra_charge"] = charge;
     // Cover both FFT replication and a distributed FFT with the same test executable.
-    if (!points) {
+    if (!points || !gamma) {
         conf["control"]["mpi_grid_dims"] = {mpi::Communicator::world().size(), 1};
     }
     Simulation_context ctx(conf);
-    ctx.unit_cell().set_lattice_vectors({{8, 0, 0}, {0, 9, 0}, {0, 0, 10}});
+    r3::matrix<double> lattice{{8, 0, 0}, {0, 9, 0}, {0, 0, 10}};
+    if (deformation && deformation->mu >= 0) {
+        auto base = lattice;
+        for (int j = 0; j < 3; j++) {
+            lattice(deformation->mu, j) += deformation->strain * base(deformation->nu, j);
+        }
+    }
+    ctx.unit_cell().set_lattice_vectors(lattice);
+    auto atom = dot(lattice, r3::vector<double>{0.2, 0.3, 0.4});
+    if (deformation) {
+        atom += deformation->displacement;
+    }
     auto& type = ctx.unit_cell().add_atom_type("He");
     type.zn(2);
     type.set_radial_grid(radial_grid_t::lin_exp, 400, 0.0, 20.0, 6);
-    std::vector<double> rho(400), orbital(400);
+    // A smooth Coulomb-tail PP also exercises the charged-cell G=0 stress contribution.
+    std::vector<double> rho(400), orbital(400), vlocal(400);
     for (int ir = 0; ir < 400; ir++) {
         double r    = type.radial_grid(ir);
         rho[ir]     = 4 * std::exp(-r * r) * r;
         orbital[ir] = std::exp(-r);
+        vlocal[ir]  = r > 0 ? -2 * std::erf(r / 0.8) / r : -4 / (std::sqrt(pi) * 0.8);
     }
-    type.local_potential(std::vector<double>(400, 0));
+    type.local_potential(vlocal);
     type.ps_core_charge_density(std::vector<double>(400, 0));
     type.ps_total_charge_density(rho);
     type.add_ps_atomic_wf(1, angular_momentum(0), orbital);
     type.d_mtrx_ion(matrix<double>({0, 0}));
-    ctx.unit_cell().add_atom("He", {0.2, 0.3, 0.4});
+    ctx.unit_cell().add_atom("He", dot(r3::inverse(lattice), atom));
     ctx.cb().external_xc_ = functional;
+    std::vector<r3::vector<double>> fractions;
     if (points) {
         auto q = std::make_shared<xc_point_set_t>(ctx);
         // A single owner deliberately leaves every other context rank empty.
@@ -84,18 +127,44 @@ test_external_xc(bool gamma, int mag, bool points)
             for (int z = 0; z < 4; z++) {
                 for (int y = 0; y < 4; y++) {
                     for (int x = 0; x < 4; x++) {
-                        q->coordinates.push_back(
-                                {8 * (0.037 + x / 4.0), 9 * (0.029 + y / 4.0), 10 * (0.041 + z / 4.0)});
-                        q->energy_weights.push_back(720.0 / 64);
-                        q->descriptor_weights.push_back(1.1 * 720.0 / 64);
+                        r3::vector<double> f{0.037 + x / 4.0, 0.029 + y / 4.0, 0.041 + z / 4.0};
+                        if (x + y + z == 0) {
+                            f[0] += 1; // Exercise an unwrapped, descriptor-only image point.
+                        }
+                        fractions.push_back(f);
+                        auto r = dot(lattice, f) + atom - r3::vector<double>{1.6, 2.7, 4.0};
+                        q->coordinates.push_back({r[0], r[1], r[2]});
+                        q->energy_weights.push_back(ctx.unit_cell().omega() / 64);
+                        q->descriptor_weights.push_back(1.1 * ctx.unit_cell().omega() / 64);
                     }
                 }
             }
             q->energy_weights[0] = 0;
             q->block_sizes       = {64};
-            q->block_centres     = {{1.6, 2.7, 4.0}};
+            q->block_centres     = {{atom[0], atom[1], atom[2]}};
         }
-        ctx.cb().external_xc_points_ = q;
+        ctx.cb().external_xc_points_   = q;
+        ctx.cb().external_xc_geometry_ = functional;
+        ctx.cb().external_xc_pullback_ = [&fractions](auto const& c, auto const& q, auto const& d, auto& out) {
+            auto inverse = r3::inverse(c.unit_cell().lattice_vectors());
+            for (size_t p = 0; p < q.coordinates.size(); p++) {
+                double volume =
+                        q.energy_weights[p] * d.energy_weights[p] + q.descriptor_weights[p] * d.descriptor_weights[p];
+                for (int x = 0; x < 3; x++) {
+                    out.atoms[0][x] += d.coordinates[p][x];
+                    for (int y = 0; y < 3; y++) {
+                        out.lattice[x + 3 * y] += d.coordinates[p][x] * fractions[p][y] + volume * inverse(y, x);
+                    }
+                }
+            }
+            for (auto const& centre : d.block_centres) {
+                for (int x = 0; x < 3; x++) {
+                    out.atoms[0][x] += centre[x];
+                }
+            }
+            c.comm().allreduce(out.atoms[0].data(), 3);
+            c.comm().allreduce(out.lattice.data(), 9);
+        };
     }
     ctx.initialize();
     K_point_set ks(ctx);
@@ -137,6 +206,10 @@ test_external_xc(bool gamma, int mag, bool points)
                energy_vloc(density, potential) + potential.energy_exc(density) + potential.ewald_energy();
     };
     double center = evaluate(0), derivative{0};
+    if (deformation) {
+        deformation->energy = center;
+        return 0;
+    }
     Hamiltonian0<double> h0(potential);
     for (auto it : ks.spl_num_kpoints()) {
         auto kp = ks.get<double>(it.i);
@@ -179,6 +252,51 @@ test_external_xc(bool gamma, int mag, bool points)
           2e-10);
     double h = 5e-5;
     check("nonlocal XC orbital derivative", std::abs((evaluate(h) - evaluate(-h)) / (2 * h) - derivative), 6e-9);
+    if (points) {
+        evaluate(0);
+        Force force(ctx, density, potential, ks);
+        auto const& forces = force.calc_forces_total(false);
+        Stress stress(ctx, density, potential, ks);
+        auto sigma  = stress.calc_stress_total();
+        double step = 1e-5;
+        r3::vector<double> direction{0.3, -0.2, 0.4};
+        Geometry plus, minus;
+        plus.displacement  = step * direction;
+        minus.displacement = -step * direction;
+        test_external_xc(gamma, mag, points, &plus);
+        test_external_xc(gamma, mag, points, &minus);
+        double projection{0};
+        for (int x = 0; x < 3; x++) {
+            projection += forces(x, 0) * direction[x];
+        }
+        check("external XC atomic force", std::abs(projection + (plus.energy - minus.energy) / (2 * step)), 2e-8);
+        for (int nu : {0, 1}) {
+            plus    = Geometry{};
+            minus   = Geometry{};
+            plus.mu = minus.mu = 0;
+            plus.nu = minus.nu = nu;
+            plus.strain        = step;
+            minus.strain       = -step;
+            test_external_xc(gamma, mag, points, &plus);
+            test_external_xc(gamma, mag, points, &minus);
+            check("external XC normal/shear stress",
+                  std::abs(ctx.unit_cell().omega() * sigma(0, nu) - (plus.energy - minus.energy) / (2 * step)), 2e-8);
+        }
+        auto pullback                  = ctx.cb().external_xc_pullback_;
+        ctx.cb().external_xc_pullback_ = [](auto const& c, auto const&, auto const&, auto&) {
+            if (c.comm().rank() == 0) {
+                throw std::runtime_error("test quadrature failure");
+            }
+        };
+        bool rejected{false};
+        try {
+            potential.external_xc_geometry(density);
+        } catch (std::exception const&) {
+            rejected = true;
+        }
+        check("collective quadrature failure", rejected ? 0 : 1, 0);
+        ctx.cb().external_xc_pullback_ = pullback;
+    }
     ctx.cb().external_xc_ = [](auto const&, auto const&, auto&) { throw std::runtime_error("test callback failure"); };
     bool rejected{false};
     try {
@@ -194,9 +312,9 @@ int
 main(int argc, char** argv)
 {
     sirius::initialize(1);
-    int failures = call_test("external XC, FFT collinear", test_external_xc, false, 1, false);
-    failures += call_test("external XC, point Gamma", test_external_xc, true, 0, true);
-    failures += call_test("external XC, point collinear", test_external_xc, false, 1, true);
+    int failures = call_test("external XC, FFT collinear", test_external_xc, false, 1, false, nullptr);
+    failures += call_test("external XC, point Gamma", test_external_xc, true, 0, true, nullptr);
+    failures += call_test("external XC, point collinear", test_external_xc, false, 1, true, nullptr);
     sirius::finalize();
     return std::min(failures, 1);
 }
