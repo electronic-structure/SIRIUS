@@ -5,6 +5,8 @@
     },
     "parameters": {
         "electronic_structure_method": "full_potential_lapwlo",
+        "core_relativity" : "none",
+        "valence_relativity" : "none",
         "xc_functionals": [
             "XC_GGA_X_PBE",
             "XC_GGA_C_PBE"
@@ -17,25 +19,27 @@
         ],
         "auto_rmt": 1,
         "aw_cutoff": 7.0,
-        "pw_cutoff": 30.0,
-        "num_dft_iter": 100
+        "pw_cutoff": 16.0,
+        "num_dft_iter": 100,
+        "smearing_width" : 0.005,
+        "smearing" : "fermi_dirac"
     },
     "unit_cell": {
         "lattice_vectors": [
             [
-                20,
+                50,
                 0,
                 0
             ],
             [
                 0,
-                20,
+                50,
                 0
             ],
             [
                 0,
                 0,
-                20
+                50
             ]
         ],
         "atom_types": [
@@ -112,8 +116,12 @@
     },
     "iterative_solver" : {
         "num_steps" : 20,
-        "subspace_size" : 2,
-        "type" : "davidson"
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "num_singular" : 4
+    },
+    "plot" : {
+
     }
 }
 
