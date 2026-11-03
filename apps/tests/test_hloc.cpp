@@ -60,7 +60,7 @@ test_hloc_impl(sirius::Simulation_context& ctx__, int num_bands__, int use_gpu__
     }
 
     double diff{0};
-    #pragma omp parallel for reduction(+:diff)
+    #pragma omp parallel for reduction(+ : diff)
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.ld(); j++) {
             int ig  = gvec->offset() + j;

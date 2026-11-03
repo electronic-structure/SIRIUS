@@ -169,8 +169,8 @@ K_point<T>::initialize()
                     gkvec_, wf::num_mag_dims(0), wf::num_bands(nwfh), ctx_.host_memory_t());
             hubbard_wave_functions_S_ = std::make_unique<wf::Wave_functions<T>>(
                     gkvec_, wf::num_mag_dims(0), wf::num_bands(nwfh), ctx_.host_memory_t());
-            atomic_wave_functions_   = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0),
-                                                                               wf::num_bands(nwf), ctx_.host_memory_t());
+            atomic_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(0),
+                                                                             wf::num_bands(nwf), ctx_.host_memory_t());
             atomic_wave_functions_S_ = std::make_unique<wf::Wave_functions<T>>(
                     gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf), ctx_.host_memory_t());
         }

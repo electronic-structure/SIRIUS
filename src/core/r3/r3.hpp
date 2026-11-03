@@ -148,8 +148,7 @@ class vector : public std::array<T, 3>
 };
 
 template <typename T, typename U>
-inline vector<decltype(T{} + U{})>
-operator+(vector<T> const& a, vector<U> const& b)
+inline vector<decltype(T{} + U{})> operator+(vector<T> const& a, vector<U> const& b)
 {
     vector<decltype(T{} + U{})> c;
     for (int x : {0, 1, 2}) {
@@ -159,8 +158,7 @@ operator+(vector<T> const& a, vector<U> const& b)
 }
 
 template <typename T, typename U>
-inline vector<decltype(T{} - U{})>
-operator-(vector<T> const& a, vector<U> const& b)
+inline vector<decltype(T{} - U{})> operator-(vector<T> const& a, vector<U> const& b)
 {
     vector<decltype(T{} - U{})> c;
     for (int x : {0, 1, 2}) {
@@ -170,8 +168,7 @@ operator-(vector<T> const& a, vector<U> const& b)
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>>
-operator*(vector<T> const& vec, U p)
+inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>> operator*(vector<T> const& vec, U p)
 {
     vector<decltype(T{} * U{})> a;
     for (int x : {0, 1, 2}) {
@@ -181,15 +178,13 @@ operator*(vector<T> const& vec, U p)
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>>
-operator*(U p, vector<T> const& vec)
+inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>> operator*(U p, vector<T> const& vec)
 {
     return vec * p;
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>>
-operator/(vector<T> const& vec, U p)
+inline std::enable_if_t<std::is_scalar<U>::value, vector<decltype(T{} * U{})>> operator/(vector<T> const& vec, U p)
 {
     vector<decltype(T{} * U{})> a;
     for (int x : {0, 1, 2}) {
@@ -376,8 +371,7 @@ class matrix
 
 /// Multiply matrix by a scalar number.
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>>
-operator*(matrix<T> const& a__, U p__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> operator*(matrix<T> const& a__, U p__)
 {
     matrix<decltype(T{} * U{})> c;
     for (int i = 0; i < 3; i++) {
@@ -389,8 +383,7 @@ operator*(matrix<T> const& a__, U p__)
 }
 
 template <typename T, typename U>
-inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>>
-operator*(U p__, matrix<T> const& a__)
+inline std::enable_if_t<std::is_scalar<U>::value, matrix<decltype(T{} * U{})>> operator*(U p__, matrix<T> const& a__)
 {
     return a__ * p__;
 }

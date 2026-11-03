@@ -44,9 +44,9 @@ get_irreducible_reciprocal_mesh(Crystal_symmetry const& sym__, r3::vector<int> k
     std::vector<int> ikmap(nktot, 0);
 
     double q[] = {0, 0, 0};
-    int nk = spg_get_stabilized_reciprocal_mesh((int(*)[3]) & ikgrid(0, 0), &ikmap[0], &k_mesh__[0], &is_shift__[0], 1,
-                                                static_cast<int>(sym_list.size()), (int(*)[3][3]) & sym_list[0], 1,
-                                                (double(*)[3])(&q[0]));
+    int nk = spg_get_stabilized_reciprocal_mesh((int (*)[3]) & ikgrid(0, 0), &ikmap[0], &k_mesh__[0], &is_shift__[0], 1,
+                                                static_cast<int>(sym_list.size()), (int (*)[3][3]) & sym_list[0], 1,
+                                                (double (*)[3])(&q[0]));
 
     std::map<int, int> ikcount;
     for (int ik = 0; ik < nktot; ik++) {

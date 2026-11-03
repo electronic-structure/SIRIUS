@@ -162,7 +162,7 @@ Gvec::find_z_columns(double Gmax__, fft::Grid const& fft_box__)
                         }
 
                         bool found        = (std::find(z_columns_[i1].z.begin(), z_columns_[i1].z.end(), G1[2]) !=
-                                      std::end(z_columns_[i1].z));
+                                             std::end(z_columns_[i1].z));
                         found_for_all_sym = found_for_all_sym && found;
                     } // R
                 }

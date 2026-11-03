@@ -352,8 +352,8 @@ max_node_identifier_length(const internal::TimingNode& node, const std::size_t r
 }
 
 auto
-export_node_json(const std::string& padding, const std::list<internal::TimingNode>& nodeList,
-                 std::ostream& stream) -> void
+export_node_json(const std::string& padding, const std::list<internal::TimingNode>& nodeList, std::ostream& stream)
+        -> void
 {
     stream << "{" << std::endl;
     const std::string nodePadding    = padding + "  ";
@@ -432,8 +432,8 @@ flatten_timings_nodes(std::list<TimingNode>& rootNodes, std::list<TimingNode>& n
 }
 
 auto
-flatten_timings_nodes_from_level(std::list<TimingNode>& nodes, std::size_t targetLevel,
-                                 std::size_t currentLevel) -> void
+flatten_timings_nodes_from_level(std::list<TimingNode>& nodes, std::size_t targetLevel, std::size_t currentLevel)
+        -> void
 {
     if (targetLevel > currentLevel) {
         for (auto& n : nodes) {

@@ -809,7 +809,7 @@ class Radial_solver
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
                             double U  = (1 - sq_alpha_half * enu__ / M0);
                             chi_p(i)  = q[j - 1][i] * 4 * sq_alpha_half * std::pow(U, -2) +
-                                       q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) * std::pow(U, -3) / M0;
+                                        q[j - 2][i] * 4 * std::pow(sq_alpha_half, 2) * std::pow(U, -3) / M0;
                         }
                     } else if (j == 3) {
                         for (int i = 0; i < nr; i++) {
@@ -817,9 +817,9 @@ class Radial_solver
                             double M0 = rel_mass<relativity_t::zora>(enu__, V);
                             double U  = (1 - sq_alpha_half * enu__ / M0);
                             chi_p(i)  = q[j - 1][i] * 6 * sq_alpha_half * std::pow(U, -2) +
-                                       q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) * std::pow(U, -2) / (M0 * U) +
-                                       q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) * std::pow(M0 * U, -2) *
-                                               std::pow(U, -2);
+                                        q[j - 2][i] * 12 * std::pow(sq_alpha_half, 2) * std::pow(U, -2) / (M0 * U) +
+                                        q[j - 3][i] * 12 * std::pow(sq_alpha_half, 3) * std::pow(M0 * U, -2) *
+                                                std::pow(U, -2);
                         }
                     } else {
                         std::stringstream s;

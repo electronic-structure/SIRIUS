@@ -488,9 +488,9 @@ Force::calc_forces_us()
                          * but in formula we have   i * G * exp[-iGRn] Veff*(G)
                          * the differences because we unfold complex array in the real one
                          * and need negative imagine part due to a multiplication law of complex numbers */
-                        auto z = std::complex<double>(0, -gvc[ivec]) *
-                                 ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
-                                 potential_.component(ispin).rg().f_pw_local(igloc);
+                        auto z                   = std::complex<double>(0, -gvc[ivec]) *
+                                                   ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
+                                                   potential_.component(ispin).rg().f_pw_local(igloc);
                         v_tmp(ia, 2 * igloc)     = z.real();
                         v_tmp(ia, 2 * igloc + 1) = z.imag();
                     }

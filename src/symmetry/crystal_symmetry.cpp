@@ -207,7 +207,7 @@ Crystal_symmetry::Crystal_symmetry(r3::matrix<double> const& lattice_vectors__, 
     PROFILE_START("sirius::Crystal_symmetry|spg");
     if (use_sym__) {
         /* make a call to spglib */
-        spg_dataset_ = spg_get_dataset(lattice, (double(*)[3]) & positions_(0, 0), &types_[0], num_atoms_, tolerance_);
+        spg_dataset_ = spg_get_dataset(lattice, (double (*)[3]) & positions_(0, 0), &types_[0], num_atoms_, tolerance_);
         if (spg_dataset_ == NULL) {
             RTE_THROW("spg_get_dataset() returned NULL");
         }
