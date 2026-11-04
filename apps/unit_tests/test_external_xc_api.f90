@@ -10,6 +10,7 @@ module external_xc_test
     integer(C_INT) :: calls, failures, fail_next
     real(C_DOUBLE) :: energy
     integer(C_INT) :: owner = 0, rows = 64, blocks = 1
+    integer(C_INT) :: geometry_calls = 0, pullback_calls = 0
     real(C_DOUBLE) :: first(3) = [0.296d0, 0.261d0, 0.410d0]
     real(C_DOUBLE) :: centre(3) = [1.6d0, 2.7d0, 4.d0]
   end type
@@ -104,11 +105,64 @@ contains
     if (state%fail_next /= 0 .and. rank == 0) status = 7
   end subroutine
 
+  subroutine evaluate_point_geometry(user_data, nr, ns, nb, comm, coordinates, weights, descriptor_weights, &
+                                      block_sizes, centres, rho, gradient, tau, energy, drho, dgradient, dtau, &
+                                      dcoordinates, dweights, ddescriptor, dcentres, status) bind(C)
+    type(C_PTR), value :: user_data
+    integer(C_INT), value :: nr, ns, nb, comm
+    integer(C_INT), intent(in) :: block_sizes(nb)
+    real(C_DOUBLE), intent(in) :: coordinates(3,nr), weights(nr), descriptor_weights(nr), centres(3,nb)
+    real(C_DOUBLE), intent(in) :: rho(nr,ns), gradient(nr,3,ns), tau(nr,ns)
+    real(C_DOUBLE), intent(inout) :: energy, drho(nr,ns), dgradient(nr,3,ns), dtau(nr,ns)
+    real(C_DOUBLE), intent(inout) :: dcoordinates(3,nr), dweights(nr), ddescriptor(nr), dcentres(3,nb)
+    integer(C_INT), intent(inout) :: status
+    type(callback_state), pointer :: state
+    real(C_DOUBLE) :: moment
+    integer :: s, ierr
+
+    call C_F_POINTER(user_data, state)
+    state%geometry_calls = state%geometry_calls + 1
+    if (any(dcoordinates /= 0) .or. any(dweights /= 0) .or. any(ddescriptor /= 0) .or. any(dcentres /= 0)) &
+      state%failures = state%failures + 1
+    call evaluate_points(user_data, nr, ns, nb, comm, coordinates, weights, descriptor_weights, &
+                          block_sizes, centres, rho, gradient, tau, energy, drho, dgradient, dtau, status)
+    moment = 0
+    do s = 1, ns
+      moment = moment + sum(descriptor_weights * tau(:,s))
+    enddo
+    call MPI_ALLREDUCE(MPI_IN_PLACE, moment, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
+    do s = 1, ns
+      dweights = dweights + 0.7d0*rho(:,s)**2 + 0.3d0*tau(:,s)**2 + 0.2d0*rho(:,s)*tau(:,s) + &
+                           0.1d0*sum(gradient(:,:,s)**2,dim=2)
+      ddescriptor = ddescriptor + 0.4d0*moment*tau(:,s)/720.d0
+    enddo
+  end subroutine
+
+  ! This fixture keeps its Cartesian points, centres and weights fixed under geometry changes.
+  subroutine pullback_fixed(user_data, nr, nb, natom, comm, block_sizes, dcoordinates, dweights, &
+                             ddescriptor, dcentres, datoms, dlattice, status) bind(C)
+    type(C_PTR), value :: user_data
+    integer(C_INT), value :: nr, nb, natom, comm
+    integer(C_INT), intent(in) :: block_sizes(nb)
+    real(C_DOUBLE), intent(in) :: dcoordinates(3,nr), dweights(nr), ddescriptor(nr), dcentres(3,nb)
+    real(C_DOUBLE), intent(inout) :: datoms(3,natom), dlattice(3,3)
+    integer(C_INT), intent(inout) :: status
+    type(callback_state), pointer :: state
+
+    call C_F_POINTER(user_data, state)
+    state%pullback_calls = state%pullback_calls + 1
+    if (sum(block_sizes) /= nr .or. natom /= 1 .or. status /= 0) state%failures = state%failures + 1
+    if (any(datoms /= 0) .or. any(dlattice /= 0)) state%failures = state%failures + 1
+    datoms = 0
+    dlattice = 0
+  end subroutine
+
 end module
 
 program test_external_xc_api
   use sirius
   use external_xc_test
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
   implicit none
   type(sirius_context_handler) :: ctx
   type(sirius_kpoint_set_handler) :: ks
@@ -116,6 +170,7 @@ program test_external_xc_api
   type(callback_state), target :: state
   integer, parameter :: n = 400
   real(8) :: r(n), v(n), rho(n), orbital(n), lattice(3,3), dion(0,0), kpoint(3,1), energy
+  real(8) :: datoms(3,1), dlattice(3,3), repeat_energy
   real(8), allocatable :: coordinates(:,:), weights(:), descriptor_weights(:), centres(:,:)
   integer, allocatable :: blocks(:)
   integer :: i, ierr, failures, all_failures, mode, rank, nr, nb, x, y, z
@@ -180,17 +235,40 @@ program test_external_xc_api
       if (rank == 0) weights(1) = 0
       call sirius_set_xc_point_callback(ctx, C_FUNLOC(evaluate_points), C_LOC(state), nr, nb, coordinates, &
                                         weights, descriptor_weights, blocks, centres)
+      call sirius_set_xc_point_geometry_callbacks(ctx, C_FUNLOC(evaluate_point_geometry), &
+                                                  C_FUNLOC(pullback_fixed), C_LOC(state))
       ! Registration owns a copy, and a failed replacement must preserve it.
       coordinates = 0
       if (rank == 0) blocks(1) = 63
       call sirius_set_xc_point_callback(ctx, C_FUNLOC(evaluate_points), C_LOC(state), nr, nb, coordinates, &
                                         weights, descriptor_weights, blocks, centres, error_code=ierr)
       if (ierr == 0) failures = failures + 1
-      deallocate(coordinates, weights, descriptor_weights, centres, blocks)
     endif
     call sirius_initialize_context(ctx)
     call sirius_set_xc_callback(ctx, C_NULL_FUNPTR, C_NULL_PTR, error_code=ierr)
     if (ierr == 0) failures = failures + 1
+    if (mode == 1) then
+      call sirius_set_xc_point_geometry_callbacks(ctx, C_NULL_FUNPTR, C_NULL_FUNPTR, C_NULL_PTR, error_code=ierr)
+      if (ierr == 0) failures = failures + 1
+      call sirius_update_xc_point_set(ctx, nr, nb, coordinates, weights, descriptor_weights, blocks, centres, &
+                                       error_code=ierr)
+      if (ierr == 0) failures = failures + 1
+      if (rank == 0) then
+        i = 0
+        do z = 0, 3
+          do y = 0, 3
+            do x = 0, 3
+              i = i + 1
+              coordinates(:,i) = [8*(0.037d0 + x/4.d0), 9*(0.029d0 + y/4.d0), 10*(0.041d0 + z/4.d0)]
+            enddo
+          enddo
+        enddo
+        blocks = 64
+      endif
+      call sirius_update_xc_point_set(ctx, nr, nb, coordinates, weights, descriptor_weights, blocks, centres)
+      coordinates = 0
+      deallocate(coordinates, weights, descriptor_weights, centres, blocks)
+    endif
     kpoint(:,1) = [0.07d0, 0.03d0, 0.02d0]
     call sirius_create_kset(ctx, 1, kpoint, [1.d0], .true., ks)
     call sirius_create_ground_state(ks, gs)
@@ -200,6 +278,14 @@ program test_external_xc_api
     if (.not. converged .or. state%calls < 2) failures = failures + 1
     call sirius_get_energy(gs, 'exc', energy)
     if (abs(energy - state%energy) > 1.d-12) failures = failures + 1
+    if (mode == 1) then
+      call sirius_get_xc_geometry_derivatives(gs, 1, datoms, dlattice)
+      if (.not. all(ieee_is_finite(datoms)) .or. .not. all(ieee_is_finite(dlattice))) failures = failures + 1
+      if (maxval(abs(datoms)) > 1.d-12) failures = failures + 1
+      if (state%geometry_calls /= 1 .or. state%pullback_calls /= 1) failures = failures + 1
+      call sirius_get_energy(gs, 'exc', repeat_energy)
+      if (repeat_energy /= energy) failures = failures + 1
+    endif
     failures = failures + state%failures
     state%fail_next = 1
     call sirius_generate_effective_potential(gs, error_code=ierr)

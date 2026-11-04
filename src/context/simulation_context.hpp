@@ -71,6 +71,8 @@ struct callback_functions_t
     /// External XC evaluator and optional fixed point quadrature.
     xc_callback_t external_xc_{nullptr};
     std::shared_ptr<xc_point_set_t const> external_xc_points_;
+    xc_callback_t external_xc_geometry_{nullptr};
+    xc_quadrature_pullback_t external_xc_pullback_{nullptr};
 
     /// Callback function provided by the host code to compute radial integrals of beta projectors.
     std::function<void(int, double, double*, int)> beta_ri_{nullptr};
