@@ -7423,11 +7423,11 @@ sirius_set_xc_point_callback(void* const* handler__, void (*fptr__)(), void* use
                     auto const& p = *in.points;
                     int status{0};
                     callback(user_data__, in.num_points, in.num_spins, static_cast<int>(p.block_sizes.size()),
-                                    MPI_Comm_c2f(c.comm().native()),
+                             MPI_Comm_c2f(c.comm().native()),
                              p.coordinates.empty() ? nullptr : p.coordinates.front().data(), p.energy_weights.data(),
-                                    p.descriptor_weights.data(), p.block_sizes.data(),
+                             p.descriptor_weights.data(), p.block_sizes.data(),
                              p.block_centres.empty() ? nullptr : p.block_centres.front().data(), in.rho, in.gradient,
-                                    in.tau, &out.energy, out.vrho, out.vgradient, out.vtau, &status);
+                             in.tau, &out.energy, out.vrho, out.vgradient, out.vtau, &status);
                     if (status) {
                         RTE_THROW("external point XC callback returned status " + std::to_string(status));
                     }
