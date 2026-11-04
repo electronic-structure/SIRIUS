@@ -526,8 +526,9 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
 
         auto vns = potential__.mt_components();
         #pragma omp parallel for
-        for (auto it : unit_cell_.spl_num_atoms()) {
-            int ia     = it.i;
+        for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+            auto aidx  = atom_index_t::local(ialoc);
+            int ia     = unit_cell_.spl_num_atoms().global_index(aidx);
             auto& atom = ctx_.unit_cell().atom(ia);
             auto& type = atom.type();
 
