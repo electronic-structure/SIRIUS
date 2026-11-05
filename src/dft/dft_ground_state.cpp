@@ -150,7 +150,7 @@ DFT_ground_state::check_scf_density()
 
     rms_veff = std::sqrt(rms_veff / ctx_.gvec().num_gvec());
 
-    if (ctx_.verbosity() >= 1) {
+    if (ctx_.verbosity() >= 2) {
         RTE_OUT(ctx_.out()) << "RMS_rho: " << dict["rms"].get<double>() << std::endl
                             << "RMS_veff: " << rms_veff << std::endl
                             << "Eold: " << gs0["energy"]["total"].get<double>()
@@ -195,20 +195,25 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
       << "num_dft_iter              : " << num_dft_iter__ << std::endl;
     RTE_OUT(ctx_.out(1)) << s.str();
 
-    density_.print_info(ctx_.out(1));
+    if (ctx_.verbosity() != 1) {
+        density_.print_info(ctx_.out(2));
+    } else {
+        RTE_OUT(ctx_.out()) << " SCF        Total energy (Ha)   Delta E (Ha)       Density RMS   Time (s)\n";
+    }
 
     /* generate initial lapw basis */
     auto lapw_basis = potential_.create_lapw_basis();
 
     for (int iter = 0; iter < num_dft_iter__; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
+        auto iter_start = std::chrono::high_resolution_clock::now();
         std::stringstream s;
         s << std::endl;
         s << "+------------------------------+" << std::endl
           << "| SCF iteration " << std::setw(3) << iter << " out of " << std::setw(3) << num_dft_iter__ << '|'
           << std::endl
           << "+------------------------------+" << std::endl;
-        RTE_OUT(ctx_.out(2)) << s.str();
+        RTE_OUT(ctx_.out(3)) << s.str();
 
         diagonalize_result_t result;
 
@@ -328,17 +333,17 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         if (ctx_.full_potential()) {
             std::shared_ptr<LAPW_radial_basis> lapw_basis_new;
             try {
-                RTE_OUT(ctx_.out()) << "Generating new LAPW basis\n";
+                RTE_OUT(ctx_.out(2)) << "Generating new LAPW basis\n";
                 lapw_basis_new = potential_.create_lapw_basis();
                 lapw_basis     = lapw_basis_new;
             } catch (std::exception const& e) {
                 RTE_OUT(ctx_.out()) << "LAPW basis is not updated\n";
             }
-            lapw_basis->write_enu(ctx_.out(2));
+            lapw_basis->write_enu(ctx_.out(3));
         }
 
         if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
-            if (ctx_.verbosity() >= 1) {
+            if (ctx_.verbosity() >= 2) {
                 RTE_OUT(ctx_.out()) << "checking functional derivative of Exc\n";
             }
             sirius::check_xc_potential(density_);
@@ -356,30 +361,45 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         rms_hist.push_back(rms);
 
-        /* write some information */
-        std::stringstream out;
-        out << std::endl;
-        print_info(out);
-        out << std::endl;
-        out << "iteration : " << iter << ", RMS (target) : " << std::setprecision(4) << std::scientific << rms << " ("
-            << std::setprecision(4) << std::scientific << density_tol__ << ") "
-            << ", energy difference (target) : " << std::setprecision(4) << std::scientific << etot - eold << " ("
-            << std::setprecision(4) << std::scientific << energy_tol__ << ")" << std::endl;
-        if (!ctx_.full_potential()) {
-            out << "bands are converged : " << boolstr(result.converged) << std::endl;
-        }
-        if (ctx_.cfg().iterative_solver().type() != "exact") {
-            out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged) << std::endl;
-        }
+        if (ctx_.verbosity() == 1) {
+            double iter_time =
+                    std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - iter_start).count();
+            std::stringstream out;
+            out << std::setw(4) << iter + 1 << std::setw(25) << std::fixed << std::setprecision(12) << etot;
+            if (iter == 0) {
+                out << std::setw(15) << "-";
+            } else {
+                out << std::setw(15) << std::scientific << std::setprecision(5) << etot - eold;
+            }
+            out << std::setw(18) << std::scientific << std::setprecision(5) << rms << std::setw(11) << std::fixed
+                << std::setprecision(3) << iter_time << std::endl;
+            RTE_OUT(ctx_.out()) << out.str();
+        } else {
+            /* write some information */
+            std::stringstream out;
+            out << std::endl;
+            print_info(out);
+            out << std::endl;
+            out << "iteration : " << iter << ", RMS (target) : " << std::setprecision(4) << std::scientific << rms
+                << " (" << std::setprecision(4) << std::scientific << density_tol__ << ") "
+                << ", energy difference (target) : " << std::setprecision(4) << std::scientific << etot - eold << " ("
+                << std::setprecision(4) << std::scientific << energy_tol__ << ")" << std::endl;
+            if (!ctx_.full_potential()) {
+                out << "bands are converged : " << boolstr(result.converged) << std::endl;
+            }
+            if (ctx_.cfg().iterative_solver().type() != "exact") {
+                out << std::endl << "iterative solver converged : " << boolstr(iter_solver_converged) << std::endl;
+            }
 
-        RTE_OUT(ctx_.out(1)) << out.str();
+            RTE_OUT(ctx_.out(2)) << out.str();
+        }
         /* check if the calculation has converged */
         bool converged = (std::abs(eold - etot) < energy_tol__) && (rms < density_tol__); // && iter_solver_converged;
 
         if (converged) {
             if (std::abs(ne_diff) > 1e-10) {
                 std::stringstream ss;
-                if (ctx_.verbosity() >= 2) {
+                if (ctx_.verbosity() >= 3) {
                     RTE_OUT(ctx_.out()) << fmt::format("*WARNING* Wrong number of electrons ne_diff: {}\n", ne_diff);
                 }
                 // ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
@@ -397,10 +417,12 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 
         eold = etot;
     }
-    std::stringstream out;
-    out << std::endl;
-    print_info(out);
-    RTE_OUT(ctx_.out(1)) << out.str();
+    if (ctx_.verbosity() != 1) {
+        std::stringstream out;
+        out << std::endl;
+        print_info(out);
+        RTE_OUT(ctx_.out(2)) << out.str();
+    }
 
     if (write_state__) {
         ctx_.create_storage_file(storage_file_name);
@@ -455,6 +477,27 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         dict["converged"] = false;
     }
 
+    if (ctx_.verbosity() == 1) {
+        auto out = RTE_OUT(ctx_.out());
+        if (num_iter < 0) {
+            out << "SCF did not converge after " << etot_hist.size() << " iterations" << std::endl;
+        }
+        std::stringstream energy_out;
+        print_info(energy_out);
+        out << energy_out.str();
+        if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-8) {
+            out << fmt::format("Fermi energy (up/down): {:.8f} / {:.8f} Ha\n", kset_.energy_fermi_fixed_mag(0),
+                               kset_.energy_fermi_fixed_mag(1));
+        } else {
+            out << fmt::format("Fermi energy: {:.8f} Ha\n", dict["efermi"].get<double>());
+        }
+        out << fmt::format("Band gap: {:.6f} eV; SCF time: {:.3f} s\n", dict["band_gap"].get<double>() * ha2ev,
+                           dict["scf_time"].get<double>());
+        if (ctx_.num_mag_dims()) {
+            out << "Total magnetization: " << dict["magnetisation"]["total"] << std::endl;
+        }
+    }
+
     if (env::check_scf_density()) {
         check_scf_density();
     }
@@ -465,6 +508,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
 void
 DFT_ground_state::print_info(std::ostream& out__) const
 {
+    bool compact        = ctx_.verbosity() == 1;
     double evalsum1     = kset_.valence_eval_sum();
     double evalsum2     = density_.core_eval_sum();
     double s_sum        = kset_.entropy_sum();
@@ -486,17 +530,27 @@ DFT_ground_state::print_info(std::ostream& out__) const
         one_elec_en -= hub_one_elec;
     }
 
-    density_.print_info(out__);
+    if (!compact) {
+        density_.print_info(out__);
+    }
 
     out__ << std::endl;
-    out__ << "Energy" << std::endl << hbar(80, '-') << std::endl;
+    if (compact) {
+        out__ << "Energy contributions (Ha)" << std::endl;
+    } else {
+        out__ << "Energy" << std::endl << hbar(80, '-') << std::endl;
+    }
 
     auto write_energy = [&](std::string label__, double value__) {
-        out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)
-              << std::fixed << value__ << std::endl;
+        out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(compact ? 20 : 16)
+              << std::setprecision(compact ? 12 : 8) << std::fixed << value__ << std::endl;
     };
 
     auto write_energy2 = [&](std::string label__, double value__) {
+        if (compact) {
+            write_energy(label__, value__);
+            return;
+        }
         out__ << std::left << std::setw(30) << label__ << " : " << std::right << std::setw(16) << std::setprecision(8)
               << std::fixed << value__ << " (Ha), " << std::setw(16) << std::setprecision(8) << std::fixed
               << value__ * 2 << " (Ry)" << std::endl;
@@ -536,6 +590,9 @@ DFT_ground_state::print_info(std::ostream& out__) const
     }
     write_energy2("Total energy", etot);
     write_energy2("Free energy (E-TS)", etot + s_sum);
+    if (compact) {
+        return;
+    }
     out__ << std::endl;
     write_energy("band gap (eV)", gap);
     if (std::abs(ctx_.cfg().parameters().fixed_mag()) > 1e-8) {
