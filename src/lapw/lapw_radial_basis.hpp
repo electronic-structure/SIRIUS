@@ -999,7 +999,7 @@ class LAPW_radial_basis
     inline void
     write_enu(std::ostream& out__) const
     {
-        if (unit_cell_.parameters().verbosity() >= 2) {
+        if (unit_cell_.parameters().verbosity() >= 3) {
             mpi::pstdout pout(unit_cell_.comm());
             if (unit_cell_.comm().rank() == 0) {
                 pout << std::endl << "Linearization energies" << std::endl;

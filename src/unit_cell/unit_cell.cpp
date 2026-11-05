@@ -202,7 +202,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
             out__ << std::endl;
         }
     }
-    if (verbosity__ >= 2) {
+    if (verbosity__ >= 3) {
         out__ << std::endl
               << "atom id  type id  class id             position                      vector_field" << std::endl
               << hbar(90, '-') << std::endl;
@@ -249,7 +249,7 @@ Unit_cell::print_info(std::ostream& out__, int verbosity__) const
 void
 Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
 {
-    if (verbosity__ >= 1) {
+    if (verbosity__ >= 2) {
         out__ << std::endl << "lattice vectors" << std::endl;
         for (int i = 0; i < 3; i++) {
             out__ << "  a" << i + 1 << " : ";
@@ -261,7 +261,7 @@ Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
         out__ << std::endl << "unit cell volume : " << ffmt(18, 8) << omega() << " [a.u.^3]" << std::endl;
     }
 
-    if (verbosity__ >= 2) {
+    if (verbosity__ >= 3) {
         out__ << std::endl
               << "atom id  type id  class id             position                      vector_field" << std::endl
               << hbar(90, '-') << std::endl;
@@ -290,7 +290,7 @@ Unit_cell::print_geometry_info(std::ostream& out__, int verbosity__) const
             out__ << std::endl;
         }
     }
-    if (verbosity__ >= 1) {
+    if (verbosity__ >= 2) {
         out__ << std::endl << "minimum bond length: " << ffmt(12, 6) << min_bond_length() << std::endl;
     }
 }

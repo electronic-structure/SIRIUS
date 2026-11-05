@@ -842,11 +842,13 @@ class config_t
         }
         /// Level of verbosity.
         /**
-            The following convention in proposed:
-              - 0: silent mode (no output is printed)
-              - 1: basic output (low level of output)
-              - 2: extended output (medium level of output)
-              - 3: extensive output (high level of output)
+            Output levels:
+              - 0: silent mode
+              - 1: basic simulation information, compact SCF progress, final observables and a short timing table
+              - 2: original level 1 (basic output, including per-iteration density and energy reports)
+              - 3: original level 2 (extended output)
+              - 4: original level 3 (extensive output)
+            Verification and explicit diagnostic environment settings are unchanged.
         */
         inline auto verbosity() const
         {
