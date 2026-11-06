@@ -6063,16 +6063,16 @@ sirius_create_kpoint:
 @api end
 */
 void
-sirius_create_kpoint(void* const* handler__, double const* vk__, int const* num_gkvec_loc__,
-                     int const* gkvec_loc__, void** kp_handler__, int* error_code__)
+sirius_create_kpoint(void* const* handler__, double const* vk__, int const* num_gkvec_loc__, int const* gkvec_loc__,
+                     void** kp_handler__, int* error_code__)
 {
     PROFILE("api::sirius::create_kpoint");
     call_sirius(
             [&]() {
                 auto& sctx = get_sim_ctx(handler__);
-                auto gk_in = std::make_shared<fft::Gvec>(
-                        r3::vector<double>(vk__), sctx.unit_cell().reciprocal_lattice_vectors(),
-                        *num_gkvec_loc__, gkvec_loc__, sctx.comm_band(), false);
+                auto gk_in = std::make_shared<fft::Gvec>(r3::vector<double>(vk__),
+                                                         sctx.unit_cell().reciprocal_lattice_vectors(),
+                                                         *num_gkvec_loc__, gkvec_loc__, sctx.comm_band(), false);
 
                 int num_gkvec = *num_gkvec_loc__;
                 sctx.comm_band().allreduce(&num_gkvec, 1);
