@@ -32,6 +32,12 @@ type sirius_ground_state_handler
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
+!> @brief Opaque wrapper for K-point handler.
+type sirius_kpoint_handler
+    private
+    type(C_PTR) :: handler_ptr_ = C_NULL_PTR
+end type
+
 !> @brief Opaque wrapper for K-point set handler.
 type sirius_kpoint_set_handler
     private
@@ -46,7 +52,8 @@ end type
 
 !> @brief Free any of the SIRIUS handlers (context, ground state or k-points).
 interface sirius_free_handler
-    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, sirius_free_handler_H0
+    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, &
+                     sirius_free_handler_H0, sirius_free_handler_kp
 end interface
 
 contains
@@ -5895,6 +5902,63 @@ call sirius_add_hubbard_atom_constraint_aux(handler_ptr,atom_id_ptr,n_ptr,l_ptr,
 end subroutine sirius_add_hubbard_atom_constraint
 
 !
+!> @brief Create and initialize a k-point using an explicit distributed G-vector basis. The simulation context must outlive the returned k-point handler. This call is collective over the band communicator.
+!> @param [in] handler Simulation context handler.
+!> @param [in] vk K-point coordinates in reciprocal lattice units.
+!> @param [in] num_gkvec_loc Number of local G-vectors for G+k.
+!> @param [in] gkvec_loc Local G-vector Miller indices.
+!> @param [out] kp_handler Handler of the newly initialized k-point. Release with sirius_free_handler.
+!> @param [out] error_code Error code.
+subroutine sirius_create_kpoint(handler,vk,num_gkvec_loc,gkvec_loc,kp_handler,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+real(8), target, intent(in) :: vk(3)
+integer, target, intent(in) :: num_gkvec_loc
+integer, target, intent(in) :: gkvec_loc(3,num_gkvec_loc)
+type(sirius_kpoint_handler), target, intent(out) :: kp_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: vk_ptr
+type(C_PTR) :: num_gkvec_loc_ptr
+type(C_PTR) :: gkvec_loc_ptr
+type(C_PTR) :: kp_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_create_kpoint_aux(handler,vk,num_gkvec_loc,gkvec_loc,kp_handler,&
+&error_code)&
+&bind(C, name="sirius_create_kpoint")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: vk
+type(C_PTR), value :: num_gkvec_loc
+type(C_PTR), value :: gkvec_loc
+type(C_PTR), value :: kp_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+vk_ptr = C_NULL_PTR
+vk_ptr = C_LOC(vk)
+num_gkvec_loc_ptr = C_NULL_PTR
+num_gkvec_loc_ptr = C_LOC(num_gkvec_loc)
+gkvec_loc_ptr = C_NULL_PTR
+gkvec_loc_ptr = C_LOC(gkvec_loc)
+kp_handler_ptr = C_NULL_PTR
+kp_handler_ptr = C_LOC(kp_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_kpoint_aux(handler_ptr,vk_ptr,num_gkvec_loc_ptr,gkvec_loc_ptr,&
+&kp_handler_ptr,error_code_ptr)
+end subroutine sirius_create_kpoint
+
+!
 !> @brief Interface to linear solver.
 !> @param [in] gs_handler DFT ground state handler.
 !> @param [in] h0_handler K-point independent Hamiltonian handler.
@@ -7218,6 +7282,13 @@ subroutine sirius_free_handler_dft(handler, error_code)
     integer, optional, target, intent(out) :: error_code
     call sirius_free_object_handler(handler%handler_ptr_, error_code)
 end subroutine sirius_free_handler_dft
+
+subroutine sirius_free_handler_kp(handler, error_code)
+    implicit none
+    type(sirius_kpoint_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_kp
 
 subroutine sirius_free_handler_H0(handler, error_code)
     implicit none

@@ -3020,6 +3020,41 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                                    int* const error_code__);
 
 /*
+sirius_create_kpoint:
+  doc: Create and initialize a k-point using an explicit distributed G-vector basis.
+       The simulation context must outlive the returned k-point handler.
+       This call is collective over the band communicator.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    vk:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K-point coordinates in reciprocal lattice units.
+    num_gkvec_loc:
+      type: int
+      attr: in, required
+      doc: Number of local G-vectors for G+k.
+    gkvec_loc:
+      type: int
+      attr: in, required, dimension(3,num_gkvec_loc)
+      doc: Local G-vector Miller indices.
+    kp_handler:
+      type: kp_handler
+      attr: out, required
+      doc: Handler of the newly initialized k-point. Release with sirius_free_handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_create_kpoint(void* const* handler__, double const* vk__, int const* num_gkvec_loc__,
+                     int const* gkvec_loc__, void** kp_handler__, int* error_code__);
+
+/*
 sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
