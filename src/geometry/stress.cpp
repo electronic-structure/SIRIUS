@@ -58,14 +58,24 @@ external_xc_stress(Simulation_context& ctx, Density const& density, Potential& p
     }
 
     // Use the same coarse FFT representation as the kinetic-density operator.
+    int ns = ctx.num_spins();
     std::vector<Smooth_periodic_function<double>> vtau;
-    for (int j = 0; j < ctx.num_mag_dims() + 1; j++) {
+    for (int s = 0; s < ns; s++) {
         vtau.emplace_back(ctx.spfft_coarse<double>(), ctx.gvec_coarse_fft_sptr());
-        for (int ig = 0; ig < ctx.gvec_coarse().count(); ig++) {
-            int fine                   = ctx.gvec().gvec_base_mapping(ig);
-            vtau.back().f_pw_local(ig) = potential.kinetic_potential().component(j).rg().f_pw_local(fine);
+    }
+    for (int ig = 0; ig < ctx.gvec_coarse().count(); ig++) {
+        int fine = ctx.gvec().gvec_base_mapping(ig);
+        auto v   = potential.kinetic_potential().scalar().rg().f_pw_local(fine);
+        if (ns == 1) {
+            vtau[0].f_pw_local(ig) = v;
+        } else { // ns == 2: spin-up and spin-down channels
+            auto bz                = potential.kinetic_potential().vector(0).rg().f_pw_local(fine);
+            vtau[0].f_pw_local(ig) = v + bz;
+            vtau[1].f_pw_local(ig) = v - bz;
         }
-        vtau.back().fft_transform(1);
+    }
+    for (auto& v : vtau) {
+        v.fft_transform(1);
     }
     r3::matrix<double> metric;
     for (auto it : ks.spl_num_kpoints()) {
@@ -75,7 +85,7 @@ external_xc_stress(Simulation_context& ctx, Density const& density, Potential& p
         int nr         = fft.local_slice_size();
         std::vector<std::complex<double>> work(gk.count());
         mdarray<std::complex<double>, 2> gradient({nr, 3});
-        for (int s = 0; s < ctx.num_spins(); s++) {
+        for (int s = 0; s < ns; s++) {
             int nb = kp->num_occupied_bands(s);
             if (!nb) {
                 continue;
@@ -102,11 +112,8 @@ external_xc_stress(Simulation_context& ctx, Density const& density, Potential& p
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
                         for (int ir = 0; ir < nr; ir++) {
-                            double v = vtau[0].value(ir);
-                            if (ctx.num_spins() == 2) {
-                                v += (1 - 2 * s) * vtau[1].value(ir);
-                            }
-                            metric(mu, nu) -= weight * v * std::real(std::conj(gradient(ir, mu)) * gradient(ir, nu));
+                            metric(mu, nu) -= weight * vtau[s].value(ir) *
+                                              std::real(std::conj(gradient(ir, mu)) * gradient(ir, nu));
                         }
                     }
                 }

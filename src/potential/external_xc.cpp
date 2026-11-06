@@ -102,22 +102,27 @@ orbital_fields(Simulation_context const& ctx, Density const& density)
 {
     std::array<std::vector<Smooth_periodic_function<double>>, 2> fields;
     int ns = ctx.num_spins();
-    for (int s = 0; s < ns; s++) {
-        for (auto& component : fields) {
+    for (auto& component : fields) {
+        for (int s = 0; s < ns; s++) {
             component.emplace_back(ctx.spfft<double>(), ctx.gvec_fft_sptr());
         }
-        for (int ig = 0; ig < ctx.gvec().count(); ig++) {
-            auto n = density.rho().rg().f_pw_local(ig);
-            auto t = density.kinetic_density().scalar().rg().f_pw_local(ig);
-            if (ctx.gvec().offset() + ig == 0) {
-                n -= ctx.cfg().parameters().extra_charge() / ctx.unit_cell().omega();
-            }
-            if (ns == 2) {
-                n = 0.5 * (n + double(1 - 2 * s) * density.mag(0).rg().f_pw_local(ig));
-                t = 0.5 * (t + double(1 - 2 * s) * density.kinetic_density().vector(0).rg().f_pw_local(ig));
-            }
-            fields[0][s].f_pw_local(ig) = n;
-            fields[1][s].f_pw_local(ig) = t;
+    }
+    for (int ig = 0; ig < ctx.gvec().count(); ig++) {
+        auto n = density.rho().rg().f_pw_local(ig);
+        auto t = density.kinetic_density().scalar().rg().f_pw_local(ig);
+        if (ctx.gvec().offset() + ig == 0) {
+            n -= ctx.cfg().parameters().extra_charge() / ctx.unit_cell().omega();
+        }
+        if (ns == 1) {
+            fields[0][0].f_pw_local(ig) = n;
+            fields[1][0].f_pw_local(ig) = t;
+        } else { // ns == 2: spin-up and spin-down channels
+            auto mz                     = density.mag(0).rg().f_pw_local(ig);
+            auto tz                     = density.kinetic_density().vector(0).rg().f_pw_local(ig);
+            fields[0][0].f_pw_local(ig) = 0.5 * (n + mz);
+            fields[0][1].f_pw_local(ig) = 0.5 * (n - mz);
+            fields[1][0].f_pw_local(ig) = 0.5 * (t + tz);
+            fields[1][1].f_pw_local(ig) = 0.5 * (t - tz);
         }
     }
     return fields;
@@ -248,8 +253,11 @@ Potential::xc_external(Density const& density__)
     evaluate(ctx_, in, out, ctx_.cb().external_xc_);
     external_xc_energy_ = out.energy;
     kinetic_potential_->zero();
+    // Reuse sampled-field buffers for the spin-channel potentials.
+    auto potentials = std::move(fields);
     for (int s = 0; s < ns; s++) {
-        Smooth_periodic_function<double> v(fft, ctx_.gvec_fft_sptr()), t(fft, ctx_.gvec_fft_sptr());
+        auto& v = potentials[0][s];
+        auto& t = potentials[1][s];
         if (sampler) {
             std::vector<std::array<double, 4>> dr(nr), dt(nr);
             for (int p = 0; p < nr; p++) {
@@ -274,14 +282,18 @@ Potential::xc_external(Density const& density__)
                 t.value(p) = vtau(p, s);
             }
         }
-        for (int p = 0; p < fft.local_slice_size(); p++) {
-            double weight = ns == 1 ? 1 : 0.5;
-            xc_potential_->rg().value(p) += weight * v.value(p);
-            kinetic_potential_->scalar().rg().value(p) += weight * t.value(p);
-            if (ns == 2) {
-                effective_magnetic_field(0).rg().value(p) += double(1 - 2 * s) * weight * v.value(p);
-                kinetic_potential_->vector(0).rg().value(p) += double(1 - 2 * s) * weight * t.value(p);
-            }
+    }
+    for (int p = 0; p < fft.local_slice_size(); p++) {
+        if (ns == 1) {
+            xc_potential_->rg().value(p) += potentials[0][0].value(p);
+            kinetic_potential_->scalar().rg().value(p) += potentials[1][0].value(p);
+        } else { // ns == 2: transform spin channels to scalar and magnetic potentials
+            auto v_up = potentials[0][0].value(p), v_dn = potentials[0][1].value(p);
+            auto t_up = potentials[1][0].value(p), t_dn = potentials[1][1].value(p);
+            xc_potential_->rg().value(p) += 0.5 * (v_up + v_dn);
+            effective_magnetic_field(0).rg().value(p) += 0.5 * (v_up - v_dn);
+            kinetic_potential_->scalar().rg().value(p) += 0.5 * (t_up + t_dn);
+            kinetic_potential_->vector(0).rg().value(p) += 0.5 * (t_up - t_dn);
         }
     }
     kinetic_potential_->fft_transform(-1);
