@@ -292,6 +292,15 @@ get_gs(void* const* h)
     return static_cast<any_ptr*>(*h)->get<DFT_ground_state>();
 }
 
+K_point<double>&
+get_kp(void* const* h)
+{
+    if (h == nullptr || *h == nullptr) {
+        RTE_THROW("Non-existing K-point handler");
+    }
+    return static_cast<any_ptr*>(*h)->get<K_point<double>>();
+}
+
 K_point_set&
 get_ks(void* const* h)
 {
@@ -6016,6 +6025,64 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                     elem["lm_order"] = lm_order_;
                 }
                 sim_ctx.cfg().hubbard().constraint().local().append(elem);
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_create_kpoint:
+  doc: Create and initialize a k-point using an explicit distributed G-vector basis.
+       The simulation context must outlive the returned k-point handler.
+       This call is collective over the band communicator.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    vk:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K-point coordinates in reciprocal lattice units.
+    num_gkvec_loc:
+      type: int
+      attr: in, required
+      doc: Number of local G-vectors for G+k.
+    gkvec_loc:
+      type: int
+      attr: in, required, dimension(3,num_gkvec_loc)
+      doc: Local G-vector Miller indices.
+    kp_handler:
+      type: kp_handler
+      attr: out, required
+      doc: Handler of the newly initialized k-point. Release with sirius_free_handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_create_kpoint(void* const* handler__, double const* vk__, int const* num_gkvec_loc__, int const* gkvec_loc__,
+                     void** kp_handler__, int* error_code__)
+{
+    PROFILE("api::sirius::create_kpoint");
+    call_sirius(
+            [&]() {
+                auto& sctx = get_sim_ctx(handler__);
+                auto gk_in = std::make_shared<fft::Gvec>(r3::vector<double>(vk__),
+                                                         sctx.unit_cell().reciprocal_lattice_vectors(),
+                                                         *num_gkvec_loc__, gkvec_loc__, sctx.comm_band(), false);
+
+                int num_gkvec = *num_gkvec_loc__;
+                sctx.comm_band().allreduce(&num_gkvec, 1);
+                if (num_gkvec != gk_in->num_gvec()) {
+                    RTE_THROW("wrong number of G+k vectors for k");
+                }
+
+                K_point<double>* new_kpoint = new K_point<double>(sctx, gk_in, 1.0);
+                new_kpoint->initialize();
+                *kp_handler__ = new any_ptr(new_kpoint);
             },
             error_code__);
 }
