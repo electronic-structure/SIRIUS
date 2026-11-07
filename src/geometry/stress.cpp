@@ -618,7 +618,12 @@ Stress::print_info(std::ostream& out__, int verbosity__) const
         }
     };
 
-    const double au2kbar      = 2.94210119E5;
+    const double au2kbar = 2.94210119E5;
+    if (verbosity__ == 1) {
+        print_stress("stress_total [kbar]", stress_total_ * au2kbar);
+        return;
+    }
+
     auto stress_kin           = stress_kin_ * au2kbar;
     auto stress_har           = stress_har_ * au2kbar;
     auto stress_ewald         = stress_ewald_ * au2kbar;

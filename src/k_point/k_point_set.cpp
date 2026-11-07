@@ -162,7 +162,9 @@ K_point_set::initialize(std::vector<int> const& counts)
 #endif
     }
 
-    if (ctx_.verbosity() > 0) {
+    if (ctx_.verbosity() == 1) {
+        RTE_OUT(ctx_.out()) << "number of k-points: " << num_kpoints() << std::endl;
+    } else if (ctx_.verbosity() >= 2) {
         this->print_info();
     }
     print_memory_usage(ctx_.out(), FILE_LINE);
@@ -394,7 +396,7 @@ K_point_set::find_efermi_generic(double emin, double emax) const
                                                                      ctx_.cfg().settings().tol_ne(), 1000);
             if (res_newton) {
                 // Newton search success
-                if (ctx_.verbosity() >= 2) {
+                if (ctx_.verbosity() >= 3) {
                     RTE_OUT(ctx_.out()) << "Newton iteration converged after " << res_newton.value().iter << " steps\n";
                 }
                 return res_newton.value();
