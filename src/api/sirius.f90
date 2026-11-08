@@ -50,10 +50,16 @@ type sirius_H0_handler
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
-!> @brief Free any of the SIRIUS handlers (context, ground state or k-points).
+!> @brief Opaque wrapper for K-point dependent Hamiltonian object.
+type sirius_Hk_handler
+    private
+    type(C_PTR) :: handler_ptr_ = C_NULL_PTR
+end type
+
+!> @brief Free any of the SIRIUS object handlers.
 interface sirius_free_handler
     module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, &
-                     sirius_free_handler_H0, sirius_free_handler_kp
+                     sirius_free_handler_H0, sirius_free_handler_kp, sirius_free_handler_Hk
 end interface
 
 contains
@@ -6045,7 +6051,7 @@ end interface
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 h0_handler_ptr = C_NULL_PTR
-h0_handler_ptr = C_LOC(h0_handler)
+h0_handler_ptr = C_LOC(h0_handler%handler_ptr_)
 kq_handler_ptr = C_NULL_PTR
 kq_handler_ptr = C_LOC(kq_handler%handler_ptr_)
 dpsi_ptr = C_NULL_PTR
@@ -6858,13 +6864,57 @@ end interface
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 H0_handler_ptr = C_NULL_PTR
-H0_handler_ptr = C_LOC(H0_handler)
+H0_handler_ptr = C_LOC(H0_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_create_hamiltonian_aux(gs_handler_ptr,H0_handler_ptr,error_code_ptr)
 end subroutine sirius_create_hamiltonian
+
+!
+!> @brief Create a k-point Hamiltonian and precompute its plane-wave Hamiltonian and overlap diagonals. The parent Hamiltonian and k-point must outlive the returned handler. Release this handler with sirius_free_handler before releasing either parent.
+!> @param [in] H0_handler K-point independent Hamiltonian handler.
+!> @param [in] kp_handler Initialized k-point handler associated with the same simulation context.
+!> @param [out] Hk_handler Handler of the newly created k-point Hamiltonian.
+!> @param [out] error_code Error code.
+subroutine sirius_create_hamiltonian_k(H0_handler,kp_handler,Hk_handler,error_code)
+implicit none
+!
+type(sirius_H0_handler), target, intent(in) :: H0_handler
+type(sirius_kpoint_handler), target, intent(in) :: kp_handler
+type(sirius_Hk_handler), target, intent(out) :: Hk_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: H0_handler_ptr
+type(C_PTR) :: kp_handler_ptr
+type(C_PTR) :: Hk_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_create_hamiltonian_k_aux(H0_handler,kp_handler,Hk_handler,error_code)&
+&bind(C, name="sirius_create_hamiltonian_k")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: H0_handler
+type(C_PTR), value :: kp_handler
+type(C_PTR), value :: Hk_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+H0_handler_ptr = C_NULL_PTR
+H0_handler_ptr = C_LOC(H0_handler%handler_ptr_)
+kp_handler_ptr = C_NULL_PTR
+kp_handler_ptr = C_LOC(kp_handler%handler_ptr_)
+Hk_handler_ptr = C_NULL_PTR
+Hk_handler_ptr = C_LOC(Hk_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_hamiltonian_k_aux(H0_handler_ptr,kp_handler_ptr,Hk_handler_ptr,&
+&error_code_ptr)
+end subroutine sirius_create_hamiltonian_k
 
 !
 !> @brief Set the parameters controlling the dftd3 correction.
@@ -7281,5 +7331,12 @@ subroutine sirius_free_handler_H0(handler, error_code)
     integer, optional, target, intent(out) :: error_code
     call sirius_free_object_handler(handler%handler_ptr_, error_code)
 end subroutine sirius_free_handler_H0
+
+subroutine sirius_free_handler_Hk(handler, error_code)
+    implicit none
+    type(sirius_Hk_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_Hk
 
 end module

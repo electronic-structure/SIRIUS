@@ -3568,6 +3568,33 @@ void
 sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* error_code__);
 
 /*
+sirius_create_hamiltonian_k:
+  doc: Create a k-point Hamiltonian and precompute its plane-wave Hamiltonian and overlap diagonals.
+       The parent Hamiltonian and k-point must outlive the returned handler.
+       Release this handler with sirius_free_handler before releasing either parent.
+  arguments:
+    H0_handler:
+      type: H0_handler
+      attr: in, required
+      doc: K-point independent Hamiltonian handler.
+    kp_handler:
+      type: kp_handler
+      attr: in, required
+      doc: Initialized k-point handler associated with the same simulation context.
+    Hk_handler:
+      type: Hk_handler
+      attr: out, required
+      doc: Handler of the newly created k-point Hamiltonian.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_create_hamiltonian_k(void* const* H0_handler__, void* const* kp_handler__, void** Hk_handler__,
+                            int* error_code__);
+
+/*
 sirius_set_dftd3_correction:
     doc: Set the parameters controlling the dftd3 correction.
     arguments:

@@ -319,6 +319,15 @@ get_H0(void* const* h)
     return static_cast<any_ptr*>(*h)->get<Hamiltonian0<double>>();
 }
 
+Hamiltonian_k<double>&
+get_hk(void* const* h)
+{
+    if (h == nullptr || *h == nullptr) {
+        RTE_THROW("Non-existing K-point Hamiltonian handler");
+    }
+    return static_cast<any_ptr*>(*h)->get<Hamiltonian_k<double>>();
+}
+
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
 static inline int
 idx_m_qe(int m__)
@@ -7059,6 +7068,44 @@ sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* e
                 gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), transform_to_rg);
                 *H0_handler__ =
                         new any_ptr(new Hamiltonian0<double>(gs.potential(), gs.potential().create_lapw_basis()));
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_create_hamiltonian_k:
+  doc: Create a k-point Hamiltonian and precompute its plane-wave Hamiltonian and overlap diagonals.
+       The parent Hamiltonian and k-point must outlive the returned handler.
+       Release this handler with sirius_free_handler before releasing either parent.
+  arguments:
+    H0_handler:
+      type: H0_handler
+      attr: in, required
+      doc: K-point independent Hamiltonian handler.
+    kp_handler:
+      type: kp_handler
+      attr: in, required
+      doc: Initialized k-point handler associated with the same simulation context.
+    Hk_handler:
+      type: Hk_handler
+      attr: out, required
+      doc: Handler of the newly created k-point Hamiltonian.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_create_hamiltonian_k(void* const* H0_handler__, void* const* kp_handler__, void** Hk_handler__,
+                            int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& H0 = get_H0(H0_handler__);
+                auto& kp = get_kp(kp_handler__);
+                *Hk_handler__ = new any_ptr(new Hamiltonian_k<double>(H0, kp, true));
             },
             error_code__);
 }
