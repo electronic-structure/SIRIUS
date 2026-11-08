@@ -235,6 +235,13 @@ class Hamiltonian_k
     /** In general case it is a k-dependent matrix */
     std::shared_ptr<U_operator<T>> u_op_;
 
+    /// Cached PW Hamiltonian and overlap diagonals.
+    mdarray<T, 2> h_diag_;
+    mdarray<T, 2> o_diag_;
+
+    /// Separate validity flag also covers ranks with no local G+k vectors.
+    bool diagonals_precomputed_{false};
+
     /// Copy constructor is forbidden.
     Hamiltonian_k(Hamiltonian_k<T> const& src__) = delete;
 
@@ -243,7 +250,8 @@ class Hamiltonian_k
     operator=(Hamiltonian_k<T> const& src__) = delete;
 
   public:
-    Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__);
+    /// Optionally precompute both PW diagonals; LAPW initialization is unchanged.
+    Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__, bool precompute_diagonals = false);
 
     Hamiltonian_k(Hamiltonian_k<T>&& src__);
 
@@ -255,7 +263,7 @@ class Hamiltonian_k
         return H0_;
     }
 
-    template <typename F, int what>
+    template <int what>
     std::pair<mdarray<T, 2>, mdarray<T, 2>>
     get_h_o_diag_pw() const;
 

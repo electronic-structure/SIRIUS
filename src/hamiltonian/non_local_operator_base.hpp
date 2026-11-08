@@ -103,6 +103,18 @@ class Non_local_operator
                                this->op_(1, packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__));
     }
 
+    std::complex<T>
+    value_complex(int xi1__, int xi2__, int ispn__, int ia__) const
+    {
+        int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
+        int idx = packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__;
+
+        T re = op_(0, idx, ispn__);
+        T im = op_.size(0) == 2 ? op_(1, idx, ispn__) : T{0};
+
+        return {re, im};
+    }
+
     int
     size(int i) const
     {

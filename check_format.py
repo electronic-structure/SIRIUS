@@ -30,7 +30,7 @@ status = 0
 for name in files:
     with open(name, 'r') as f:
         original = f.read()
-    p = subprocess.Popen(["clang-format", "-style=file", name], shell=enable_shell, stdout=subprocess.PIPE)
+    p = subprocess.Popen(["clang-format-mp-23", "-style=file", name], shell=enable_shell, stdout=subprocess.PIPE)
     formatted = p.communicate()[0].decode('utf-8')
     # save formatted file
     if args.fmt:

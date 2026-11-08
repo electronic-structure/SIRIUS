@@ -264,7 +264,7 @@ davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, wf::num_bands num_bands
 
     /* get diagonal elements for preconditioning */
     auto h_o_diag =
-            (ctx.full_potential()) ? Hk__.template get_h_o_diag_lapw<3>() : Hk__.template get_h_o_diag_pw<T, 3>();
+            (ctx.full_potential()) ? Hk__.template get_h_o_diag_lapw<3>() : Hk__.template get_h_o_diag_pw<3>();
 
     mdarray<T, 2>* h_diag{nullptr};
     mdarray<T, 2>* o_diag{nullptr};
