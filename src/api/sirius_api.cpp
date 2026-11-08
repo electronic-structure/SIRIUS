@@ -6100,18 +6100,10 @@ sirius_linear_solver:
       type: H0_handler
       attr: in, required
       doc: K-point independent Hamiltonian handler.
-    vkq:
-      type: double
-      attr: in, required, dimension(3)
-      doc: K+q-point in lattice coordinates
-    num_gvec_kq_loc:
-      type: int
+    kq_handler:
+      type: kp_handler
       attr: in, required
-      doc: Local number of G-vectors for k+q-point
-    gvec_kq_loc:
-      type: int
-      attr: in, required, dimension(3, num_gvec_kq_loc)
-      doc: Local list of G-vectors for k+q-point.
+      doc: Handler of the k+q point.
     dpsi:
       type: complex
       attr: inout, required, dimension(ld, num_spin_comp)
@@ -6171,8 +6163,8 @@ sirius_linear_solver:
 @api end
 */
 void
-sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__,
-                     int const* num_gvec_kq_loc__, int const* gvec_kq_loc__, std::complex<double>* dpsi__,
+sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void* const* kq_handler__,
+                     std::complex<double>* dpsi__,
                      std::complex<double>* psi__, double* eigvals__, std::complex<double>* dvpsi__, int const* ld__,
                      int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
                      int const* nbnd_occ_kq__, double const* tol__, std::complex<double> const* omega__, int* niter__,
@@ -6203,23 +6195,9 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
                     sr = wf::spin_range(*spin__ - 1);
                 }
 
-                std::shared_ptr<fft::Gvec> gvkq_in;
-                gvkq_in = std::make_shared<fft::Gvec>(r3::vector<double>(vkq__),
-                                                      sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_kq_loc__,
-                                                      gvec_kq_loc__, sctx.comm_band(), false);
-
-                int num_gvec_kq_loc = *num_gvec_kq_loc__;
-                int num_gvec_kq     = num_gvec_kq_loc;
-                sctx.comm_band().allreduce(&num_gvec_kq, 1);
-
-                if (num_gvec_kq != gvkq_in->num_gvec()) {
-                    RTE_THROW("wrong number of G+k vectors for k");
-                }
+                auto& kp = get_kp(kq_handler__);
 
                 auto& H0 = get_H0(h0_handler__);
-
-                sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-                kp.initialize();
 
                 auto Hk = H0(kp);
 
