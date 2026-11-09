@@ -58,7 +58,6 @@ std::unique_ptr<power::Profile> energy_profiler;
 
 } // namespace
 
-
 void
 initialize(bool call_mpi_init__)
 {
