@@ -19,7 +19,7 @@ def fermi_entropy(fn, dd=1e-4):
     dd -- regularization parameter
     """
     if isinstance(fn, CoefficientArray):
-        out = CoefficientArray(dtype=np.double, ctype=np.array)
+        out = CoefficientArray()
         for key, val in fn._data.items():
             out[key] = _fermi_entropy(val, dd)
         return out
@@ -35,7 +35,7 @@ def df_fermi_entropy(fn, dd=1e-4):
     """
 
     if isinstance(fn, CoefficientArray):
-        out = CoefficientArray(dtype=np.double, ctype=np.array)
+        out = CoefficientArray()
         for key, val in fn._data.items():
             out[key] = _df_fermi_entropy(val, dd)
         return out
@@ -149,7 +149,7 @@ def constrain_occupancy_gradient(dfn, fn, comm, kweights, mag):
     mag      -- magnetization
     """
     if isinstance(fn, CoefficientArray):
-        fn = fn.flatten(ctype=np.array)
+        fn = fn.flatten()
         # allgather and stack to columns
         kw = deepcopy(fn)
         for k in kw._data.keys():
@@ -159,7 +159,7 @@ def constrain_occupancy_gradient(dfn, fn, comm, kweights, mag):
         # count number of elements per rank
         proc_sizes = list(map(np.size, vfn_tmp))
         # get offset per rank
-        offsets = np.hstack([0, np.cumsum(proc_sizes[:-1])]).astype(np.int)
+        offsets = np.hstack([0, np.cumsum(proc_sizes[:-1])]).astype(int)
         # allgather occupation numbers and gradient (because constraint is global)
         vfn = np.hstack(vfn_tmp)
         vdfn = np.hstack(comm.allgather(dfn.to_array()))
@@ -240,4 +240,4 @@ class FreeEnergy:
             einsum('ij,ij->j', cn.conj(), dAdC)
         ) + self.kb * self.temperature * self.omega_k * self.scale * df_fermi_entropy(
             self.scale * fn, dd=self.delta)
-        return dAdC * fn, dAdfn.flatten(ctype=np.array)
+        return dAdC * fn, dAdfn.flatten()

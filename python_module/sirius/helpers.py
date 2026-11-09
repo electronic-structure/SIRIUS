@@ -213,14 +213,14 @@ def kpoint_index(kp, ctx):
     import numpy as np
 
     pm = ctx.cfg.parameters
-    shiftk = np.array(pm.shiftk, dtype=np.int)
-    ngridk = np.array(pm.ngridk, dtype=np.int)
+    shiftk = np.array(pm.shiftk, dtype=int)
+    ngridk = np.array(pm.ngridk, dtype=int)
     ik = np.array(kp.vk) * ngridk - shiftk / 2
-    if not np.isclose(ik - ik.astype(np.int), 0).all():
+    if not np.isclose(ik - ik.astype(int), 0).all():
         # single k-point given in vk
         # TODO: give proper coordinates
         ik = [0, 0, 0]
     else:
-        ik = ik.astype(np.int)
+        ik = ik.astype(int)
 
     return tuple(ik)
