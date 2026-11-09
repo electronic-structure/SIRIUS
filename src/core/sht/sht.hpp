@@ -27,7 +27,6 @@
 #include "core/r3/r3.hpp"
 #include "core/sf/specfunc.hpp"
 #include "core/la/linalg.hpp"
-#include "lebedev_grids.hpp"
 
 namespace sirius {
 
@@ -103,115 +102,7 @@ class SHT // TODO: better name
 
   public:
     /// Default constructor.
-    SHT(device_t pu__, int lmax__, int mesh_type__ = 0)
-        : pu_(pu__)
-        , lmax_(lmax__)
-        , mesh_type_(mesh_type__)
-    {
-        lmmax_ = (lmax_ + 1) * (lmax_ + 1);
-
-        switch (mesh_type_) {
-            case 0: {
-                num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-                break;
-            }
-            case 1: {
-                num_points_ = lmmax_;
-                break;
-            }
-            default: {
-                std::stringstream s;
-                s << "[SHT] wrong spherical coverage parameter : " << mesh_type_;
-                throw std::runtime_error(s.str());
-            }
-        }
-
-        std::vector<double> x(num_points_);
-        std::vector<double> y(num_points_);
-        std::vector<double> z(num_points_);
-
-        coord_ = mdarray<double, 2>({3, num_points_});
-
-        tp_ = mdarray<double, 2>({2, num_points_});
-
-        w_.resize(num_points_);
-
-        switch (mesh_type_) {
-            case 0: {
-                Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-                break;
-            }
-            case 1: {
-                uniform_coverage();
-                break;
-            }
-        }
-
-        ylm_backward_ = mdarray<std::complex<double>, 2>({lmmax_, num_points_});
-
-        ylm_forward_ = mdarray<std::complex<double>, 2>({num_points_, lmmax_});
-
-        rlm_backward_ = mdarray<double, 2>({lmmax_, num_points_});
-
-        rlm_forward_ = mdarray<double, 2>({num_points_, lmmax_});
-
-        for (int itp = 0; itp < num_points_; itp++) {
-            switch (mesh_type_) {
-                case 0: {
-                    coord_(0, itp) = x[itp];
-                    coord_(1, itp) = y[itp];
-                    coord_(2, itp) = z[itp];
-
-                    auto vs = spherical_coordinates(r3::vector<double>(x[itp], y[itp], z[itp]));
-
-                    tp_(0, itp) = vs[1];
-                    tp_(1, itp) = vs[2];
-                    sf::spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
-                    sf::spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
-                    for (int lm = 0; lm < lmmax_; lm++) {
-                        ylm_forward_(itp, lm) = std::conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
-                        rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
-                    }
-                    break;
-                }
-                case 1: {
-                    double t = tp_(0, itp);
-                    double p = tp_(1, itp);
-
-                    coord_(0, itp) = std::sin(t) * std::cos(p);
-                    coord_(1, itp) = std::sin(t) * std::sin(p);
-                    coord_(2, itp) = std::cos(t);
-
-                    sf::spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
-                    sf::spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
-
-                    for (int lm = 0; lm < lmmax_; lm++) {
-                        ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
-                        rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
-                    }
-                    break;
-                }
-            }
-        }
-
-        if (mesh_type_ == 1) {
-            la::wrap(la::lib_t::lapack).geinv(lmmax_, ylm_forward_);
-            la::wrap(la::lib_t::lapack).geinv(lmmax_, rlm_forward_);
-        }
-
-        switch (pu_) {
-            case device_t::GPU: {
-                ylm_forward_.allocate(memory_t::device).copy_to(memory_t::device);
-                rlm_forward_.allocate(memory_t::device).copy_to(memory_t::device);
-                ylm_backward_.allocate(memory_t::device).copy_to(memory_t::device);
-                rlm_backward_.allocate(memory_t::device).copy_to(memory_t::device);
-                break;
-            }
-            case device_t::CPU: {
-                break;
-            }
-        }
-    }
+    SHT(device_t pu__, int lmax__, int mesh_type__ = 0);
 
     /// Check the transformations.
     void

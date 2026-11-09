@@ -101,9 +101,20 @@ struct SpFFT_Transform<std::complex<float>>
 template <typename T>
 using spfft_transform_type = typename SpFFT_Transform<T>::type;
 
-/// Mapping between SpFFT and Sirius memory types.
-const std::map<SpfftProcessingUnitType, memory_t> spfft_memory_t = {{SPFFT_PU_HOST, memory_t::host},
-                                                                    {SPFFT_PU_GPU, memory_t::device}};
+/// Mapping between SpFFT processing unit and Sirius memory types.
+inline memory_t
+spfft_memory_t(SpfftProcessingUnitType pu__)
+{
+    switch (pu__) {
+        case SPFFT_PU_HOST: {
+            return memory_t::host;
+        }
+        case SPFFT_PU_GPU: {
+            return memory_t::device;
+        }
+    }
+    throw std::runtime_error("spfft_memory_t(): wrong processing unit");
+}
 
 template <typename F, typename T, typename... Args>
 using enable_return =

@@ -80,6 +80,7 @@ fout = open("atoms.json", "w")
 fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps(atoms2, indent=2)))
 fout.close()
 
+# declarations go to atomic_data.hpp, the tables to atomic_data.cpp (compiled once)
 atomic_data_file = open("atomic_data.hpp", "w")
 atomic_data_file.write("// Warning! This is an automatically generated header file!\n")
 atomic_data_file.write("/** \\file atomic_data.hpp\n")
@@ -109,9 +110,36 @@ struct atomic_level_descriptor
     double occupancy;
 
     /// True if this is a core level.
-    bool core;
-};""")
-atomic_data_file.write("\n\n")
+    bool core{false};
+};
+
+/// Chemical symbols of the elements, index is Z - 1.
+extern const std::vector<std::string> atomic_symb;
+
+/// Names of the elements, index is Z - 1.
+extern const std::vector<std::string> atomic_name;
+
+/// Map from chemical symbol to Z.
+extern const std::map<std::string, int> atomic_zn;
+
+/// Ground state electronic configuration of the elements, index is Z - 1.
+extern const std::vector<std::vector<atomic_level_descriptor>> atomic_conf;
+
+/// Total energy of the free atoms (NIST, LDA), index is Z - 1.
+extern const std::vector<double> atomic_energy_NIST_LDA;
+
+#endif
+""")
+atomic_data_file.close()
+
+atomic_data_file = open("atomic_data.cpp", "w")
+atomic_data_file.write("// Warning! This is an automatically generated file!\n")
+atomic_data_file.write("/** \\file atomic_data.cpp\n")
+atomic_data_file.write(" *  \\brief Basic atomic data information.\n")
+atomic_data_file.write(" */\n")
+atomic_data_file.write("\n")
+atomic_data_file.write('#include "atomic_data.hpp"\n')
+atomic_data_file.write("\n")
 
 atomic_data_file.write("const std::vector<std::string> atomic_symb = {\n")
 atomic_data_file.write("    %s\n"%(", ".join(['"' + a['symbol'] + '"' for a in atoms])))
@@ -140,9 +168,6 @@ atomic_data_file.write("\n")
 atomic_data_file.write("const std::vector<double> atomic_energy_NIST_LDA = {\n")
 atomic_data_file.write("    %s\n"%(", ".join(["%12.7f"%(a['NIST_LDA_Etot']) for a in atoms])))
 atomic_data_file.write("};\n")
-atomic_data_file.write("\n")
-
-atomic_data_file.write("#endif\n")
 
 atomic_data_file.close()
 
