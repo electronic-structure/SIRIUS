@@ -24,7 +24,7 @@
 #endif
 #include "core/la/linalg_spla.hpp"
 #include "core/cmd_args.hpp"
-#include "core/json.hpp"
+#include "core/json_fwd.hpp"
 #include "core/profiler.hpp"
 using json = nlohmann::json;
 #include "core/power.hpp"

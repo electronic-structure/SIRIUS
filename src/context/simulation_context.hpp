@@ -355,33 +355,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Create a simulation context with world communicator and load parameters from JSON string or a file.
-    explicit Simulation_context(std::string const& str__, mpi::Communicator const& comm__ = mpi::Communicator::world())
-        : comm_(comm__)
-    {
-        init_common();
-        if (!is_json_string(str__) && isHDF5(str__)) {
-            HDF5_tree fin(str__, hdf5_access_t::read_only);
-            std::string json_string;
-            fin.read("config", json_string);
-            auto dict = read_json_from_file_or_string(json_string);
-            for (auto& e : dict["unit_cell"]["atom_types"]) {
-                auto label                             = e.get<std::string>();
-                dict["unit_cell"]["atom_files"][label] = "";
-            }
-            import(dict);
-            unit_cell_->import(cfg().unit_cell());
-
-            /* need to set type of calculation before parsing species */
-            this->electronic_structure_method(cfg().parameters().electronic_structure_method());
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++) {
-                fin["unit_cell"]["atom_types"][iat].read("config", json_string);
-                unit_cell_->atom_type(iat).read_input(json_string);
-            }
-        } else {
-            import(str__);
-            unit_cell_->import(cfg().unit_cell());
-        }
-    }
+    explicit Simulation_context(std::string const& str__, mpi::Communicator const& comm__ = mpi::Communicator::world());
 
     explicit Simulation_context(nlohmann::json const& dict__,
                                 mpi::Communicator const& comm__ = mpi::Communicator::world())
@@ -816,21 +790,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Export parameters of simulation context as a JSON dictionary.
     nlohmann::json
-    serialize() const
-    {
-        nlohmann::json dict;
-        dict["config"] = cfg().dict();
-        bool const cart_pos{false};
-        dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
-        auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
-                                       spfft_transform_coarse_->dim_z()};
-        dict["fft_coarse_grid"]     = fftgrid;
-        dict["mpi_grid"]            = mpi_grid_dims();
-        dict["omega"]               = unit_cell().omega();
-        dict["chemical_formula"]    = unit_cell().chemical_formula();
-        dict["num_atoms"]           = unit_cell().num_atoms();
-        return dict;
-    }
+    serialize() const;
 
     /// Return output stream.
     inline std::ostream&

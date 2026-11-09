@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include "core/json.hpp"
 extern "C" {
 #include <spglib.h>
 }

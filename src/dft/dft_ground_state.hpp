@@ -15,7 +15,7 @@
 #define __DFT_GROUND_STATE_HPP__
 
 #include "k_point/k_point_set.hpp"
-#include "core/json.hpp"
+#include "core/json_fwd.hpp"
 #include "hubbard/hubbard.hpp"
 #include "geometry/stress.hpp"
 #include "geometry/force.hpp"

@@ -1,5 +1,6 @@
 #include <sirius.hpp>
 #include "testing.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

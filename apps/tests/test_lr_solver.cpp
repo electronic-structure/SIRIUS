@@ -11,6 +11,7 @@
 #include "hamiltonian/davidson.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
 #include "multi_cg/multi_cg.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

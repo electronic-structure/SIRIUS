@@ -31,6 +31,7 @@
 #include "hamiltonian/diagonalize.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "sirius.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

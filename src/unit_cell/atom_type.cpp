@@ -17,6 +17,7 @@
 #include "potential/xc_functional_base.hpp"
 #include <algorithm>
 #include <vector>
+#include "core/json.hpp"
 
 namespace sirius {
 

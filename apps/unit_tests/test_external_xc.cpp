@@ -7,6 +7,7 @@
 #include <testing.hpp>
 #include "dft/energy.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

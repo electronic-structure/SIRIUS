@@ -17,7 +17,7 @@
 #include "core/typedefs.hpp"
 #include "core/sf/specfunc.hpp"
 #include "core/cmd_args.hpp"
-#include "core/json.hpp"
+#include "core/nlohmann_json_fwd.hpp"
 #include "core/memory.hpp"
 #include "dft/smearing.hpp"
 #include "context/config.hpp"
@@ -47,16 +47,10 @@ class Config : public config_t
     /// Lock parameters.
     /** After locking parameters can't be modified. */
     void
-    lock()
-    {
-        dict_["locked"] = true;
-    }
-    void
+    lock();
     /// Remove the locking switch.
-    unlock()
-    {
-        dict_.erase("locked");
-    }
+    void
+    unlock();
 };
 
 /// Set of basic parameters of a simulation.

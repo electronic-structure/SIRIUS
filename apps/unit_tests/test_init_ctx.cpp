@@ -8,6 +8,7 @@
 
 #include <sirius.hpp>
 #include "testing.hpp"
+#include "core/json.hpp"
 
 /* template for unit tests */
 

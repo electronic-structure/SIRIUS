@@ -15,6 +15,7 @@
 #include "unit_cell.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "core/ostream_tools.hpp"
+#include "core/json.hpp"
 
 namespace sirius {
 

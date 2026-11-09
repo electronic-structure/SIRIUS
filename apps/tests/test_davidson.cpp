@@ -10,6 +10,7 @@
 #include <testing.hpp>
 #include "hamiltonian/davidson.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

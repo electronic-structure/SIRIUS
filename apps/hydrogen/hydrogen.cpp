@@ -7,6 +7,7 @@
  */
 
 #include <sirius.hpp>
+#include "core/json.hpp"
 
 using namespace sirius;
 

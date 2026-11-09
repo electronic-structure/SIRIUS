@@ -8,6 +8,7 @@
 #include <cstdio>
 #include "dft/dft_ground_state.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

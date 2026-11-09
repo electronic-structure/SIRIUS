@@ -23,7 +23,7 @@
 #include "core/typedefs.hpp"
 #include "core/rte/rte.hpp"
 #include "core/math_tools.hpp"
-#include "core/json.hpp"
+#include "core/json_fwd.hpp"
 
 namespace sirius {
 
@@ -988,135 +988,8 @@ class Bound_state : public Radial_solver
 
     std::vector<double> dpdr_;
 
-    inline void
-    solve(relativity_t rel__, double enu_start__, double alpha0__, double alpha1__)
-    {
-        int np = num_points();
-
-        Spline<double> chi_p(radial_grid());
-        Spline<double> chi_q(radial_grid());
-
-        std::vector<double> p(np);
-        std::vector<double> q(np);
-        std::vector<double> dqdr(np);
-        std::vector<double> rdudr(np);
-        dpdr_ = std::vector<double>(np);
-
-        int s{1};
-        int sp;
-        double denu = enu_tolerance_;
-
-        /* 1st pass: estimate upper and lower boundaries */
-        enu_ = integrate_forward_until(rel__, enu_start__, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
-                                       [&s, &sp, &denu, alpha0__, alpha1__, this](int iter, int nn, double& enu) {
-                                           sp = s;
-                                           s  = (nn > (n_ - l_ - 1)) ? -1 : 1;
-                                           if (s != sp && iter > 3) {
-                                               return true;
-                                           }
-                                           denu = (s != sp) ? denu * alpha0__ : denu * alpha1__;
-                                           /* do not allow big step in energy */
-                                           denu = std::min(denu, 10.0);
-                                           enu += s * denu;
-                                           return false;
-                                       });
-
-        double e1 = enu_;
-        double e2 = enu_ - sp * denu;
-
-        std::stringstream sout;
-
-        /* e1 is bottom, e2 is top energy */
-        if (e1 > e2) {
-            std::swap(e1, e2);
-        }
-
-        /* 2nd pass: refine by bisection */
-        enu_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
-                                       [&e1, &e2, this](int iter, int nn, double& enu) {
-                                           if (nn > (n_ - l_ - 1)) {
-                                               e2 = enu;
-                                           } else {
-                                               e1 = enu;
-                                           }
-                                           enu = (e1 + e2) / 2.0;
-                                           return std::abs(e1 - e2) < enu_tolerance_;
-                                       });
-
-        /* final choice for enu: bottom enery of the refined interval */
-        /* radial functions are also recomputed for the final time */
-        enu_ = integrate_forward_until(rel__, e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
-                                       [](int iter, int nn, double& enu) { return true; });
-
-        sout << "final value for enu = " << enu_ << std::endl;
-
-        /* compute r * u'(r) */
-        for (int i = 0; i < num_points(); i++) {
-            rdudr[i] = dpdr_[i] - p[i] / radial_grid(i);
-        }
-
-        for (int i = 0; i < np; i++) {
-            p_(i)     = p[i];
-            q_(i)     = q[i];
-            u_(i)     = p[i] * radial_grid_.x_inv(i);
-            rdudr_(i) = rdudr[i];
-        }
-        p_.interpolate();
-        q_.interpolate();
-        u_.interpolate();
-        rdudr_.interpolate();
-
-        /* p is not divided by r, so we integrate with r^0 prefactor */
-        double norm = inner(p_, p_, 0);
-        if (rel__ == relativity_t::dirac) {
-            norm += inner(q_, q_, 0);
-        }
-
-        norm = 1.0 / std::sqrt(norm);
-        p_.scale(norm);
-        q_.scale(norm);
-        u_.scale(norm);
-        rdudr_.scale(norm);
-
-        /* count number of nodes of the function */
-        int nn{0};
-        std::vector<double> xn;
-        for (int i = 0; i < np - 1; i++) {
-            if (p_(i) * p_(i + 1) < 0.0) {
-                nn++;
-                xn.push_back(radial_grid(i));
-            }
-        }
-
-        if (nn != (n_ - l_ - 1)) {
-            nlohmann::json dict;
-            dict["x"]  = radial_grid().values();
-            dict["p"]  = p_.values();
-            dict["ve"] = this->ve_.values();
-            dict["z"]  = this->zn_;
-            write_json_to_file(dict, "radial_solver_zn" + std::to_string(this->zn_) + "_n" + std::to_string(this->n_) +
-                                             "_l" + std::to_string(this->l_) + "_k" + std::to_string(this->k_) +
-                                             ".json");
-
-            sout << "n = " << n_ << std::endl
-                 << "l = " << l_ << std::endl
-                 << "k = " << k_ << std::endl
-                 << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1) << std::endl;
-            sout << "node location : ";
-            for (auto e : xn) {
-                sout << e << " ";
-            }
-            sout << std::endl << "last value of ve : " << this->ve_(np - 1);
-            RTE_THROW(sout);
-        }
-
-        for (int i = 0; i < np - 1; i++) {
-            rho_(i) += std::pow(u_(i), 2);
-            if (rel__ == relativity_t::dirac) {
-                rho_(i) += std::pow(q_(i) * radial_grid_.x_inv(i), 2);
-            }
-        }
-    }
+    void
+    solve(relativity_t rel__, double enu_start__, double alpha0__, double alpha1__);
 
   public:
     Bound_state(relativity_t rel__, int zn__, int n__, int l__, int k__, Radial_grid<double> const& radial_grid__,

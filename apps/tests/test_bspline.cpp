@@ -4,6 +4,7 @@
 #include "radial/bspline.hpp"
 
 #include <algorithm>
+#include "core/json.hpp"
 
 using namespace sirius;
 

@@ -9,6 +9,7 @@
 #include <sirius.hpp>
 #include <testing.hpp>
 #include "core/wf/kinetic_density_operator.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

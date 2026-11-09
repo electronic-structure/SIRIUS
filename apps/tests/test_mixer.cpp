@@ -11,6 +11,7 @@
 #include "mixer/mixer_factory.hpp"
 #include "core/cmd_args.hpp"
 #include "testing.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

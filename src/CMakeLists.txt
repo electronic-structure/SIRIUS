@@ -58,6 +58,7 @@ set(_SOURCES
   "symmetry/crystal_symmetry.cpp"
   "geometry/force.cpp"
   "geometry/stress.cpp"
+  "lapw/lapw_radial_basis.cpp"
   "k_point/generate_lapw_wave_functions.cpp"
   "k_point/generate_spinor_wave_functions.cpp"
   "k_point/k_point.cpp"
@@ -66,6 +67,7 @@ set(_SOURCES
   "radial/radial_solver.cpp"
   "mixer/mixer_functions.cpp"
   "nlcglib/adaptor.cpp"
+  "context/config.cpp"
   "context/simulation_context.cpp"
   "context/simulation_parameters.cpp"
   "core/cmd_args.cpp"
@@ -86,6 +88,7 @@ set(_SOURCES
   "core/la/linalg_spla.cpp"
   "core/la/dmatrix.cpp"
   "core/la/dlaf.cpp"
+  "core/json.cpp"
   "core/memory.cpp"
   )
 

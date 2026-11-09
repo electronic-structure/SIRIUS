@@ -15,6 +15,7 @@
 #define __LATTICE_RELAXATION_HPP__
 
 #include "dft_ground_state.hpp"
+#include "core/json.hpp"
 #if defined(SIRIUS_VCSQNM)
 #include "vcsqnm/periodic_optimizer.hpp"
 #endif

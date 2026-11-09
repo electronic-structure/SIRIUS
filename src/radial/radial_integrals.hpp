@@ -22,6 +22,10 @@
 
 namespace sirius {
 
+/// Throw an error for a q-point outside of the interpolation grid; the unit cell is printed for diagnostics.
+[[noreturn]] void
+throw_q_out_of_range(double q__, double q_last__, Unit_cell const& unit_cell__);
+
 /// Base class for all kinds of radial integrals.
 template <int N>
 class Radial_integrals_base
@@ -65,13 +69,7 @@ class Radial_integrals_base
     iqdq(double q__) const
     {
         if (q__ > grid_q_.last()) {
-            std::stringstream s;
-            s << "q-point is out of range" << std::endl
-              << "  q : " << q__ << std::endl
-              << "  last point of the q-grid : " << grid_q_.last() << std::endl;
-            auto uc = unit_cell_.serialize();
-            s << "unit cell: " << uc;
-            RTE_THROW(s);
+            throw_q_out_of_range(q__, grid_q_.last(), unit_cell_);
         }
         std::pair<int, double> result;
         /* find index of q-point */
