@@ -10,6 +10,7 @@ gcc-env:
   - umpire~mpi
   - libvdwxc@0.5
   - kokkos+serial@4.7.02
+  - py-pytest
   variants:
   - +mpi
   views:

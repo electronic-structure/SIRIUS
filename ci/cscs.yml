@@ -78,6 +78,11 @@ build sirius eiger:
       # ls -alhrt /dev/shm/
       # ls -alhrt /dev/shm//spack-stage/antonk/*
 
+      # python tests need the spack runtime environment (PYTHONPATH etc.) written by the build job
+      if [ -n "${SOURCE_PYTHON_ENV:-}" ]; then
+        source /dev/shm/spack-stage/sirius-python-env.sh
+      fi
+
       stagedir=$(find /dev/shm/spack-stage -type d -name "spack-stage-sirius-*")
       echo "stagedir: $stagedir"
       cd $stagedir
@@ -161,3 +166,28 @@ eiger test cpu band parallel:
     SLURM_CPUS_PER_TASK: 8
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L cpu_band_parallel
+
+daint test python:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_GPUS: 1
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: 'socket'
+    USE_MPI: 'YES'
+    SOURCE_PYTHON_ENV: 'YES'
+    TEST_COMMAND: ctest -L python
+
+eiger test python:
+  extends: [.run_tests_eiger]
+  variables:
+    OMP_NUM_THREADS: 8
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_NTASKS: 1
+    SRUN_CPUS_PER_TASK: 8
+    SLURM_CPUS_PER_TASK: 8
+    USE_MPI: 'YES'
+    SOURCE_PYTHON_ENV: 'YES'
+    TEST_COMMAND: ctest -L python
