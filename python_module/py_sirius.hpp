@@ -18,6 +18,12 @@
 #ifndef __PY_SIRIUS_HPP__
 #define __PY_SIRIUS_HPP__
 
+/* This header must be included before any SIRIUS header: with GNU extensions (-std=gnu++NN) <complex.h>, pulled in
+ * e.g. by vdwxc.h, includes the C99 header which defines the macro I; pybind11/stl.h uses I as a template parameter. */
+#if defined(I)
+#error "py_sirius.hpp must be included before headers that include <complex.h>"
+#endif
+
 #include <pybind11/pybind11.h>
 /* every translation unit of the module must see the same type casters: std::vector, std::array, ... are
  * converted to / from python lists by the casters in stl.h */

@@ -13,13 +13,14 @@
  *  The bindings are split into several translation units (py_sirius_*.cpp), see py_sirius.hpp.
  */
 
+/* must come first, see py_sirius.hpp */
+#include "py_sirius.hpp"
 #include <mpi.h>
 #include <mpi4py/mpi4py.h>
 #include <iostream>
 #include <pybind11/pybind11.h>
 #include "sirius.hpp"
 #include "make_sirius_comm.hpp"
-#include "py_sirius.hpp"
 
 namespace py = pybind11;
 using namespace sirius;

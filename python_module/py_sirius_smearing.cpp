@@ -11,10 +11,10 @@
  *  \brief Python bindings: sirius.smearing submodule.
  */
 
+#include "py_sirius.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "dft/smearing.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

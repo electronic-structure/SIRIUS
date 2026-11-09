@@ -11,12 +11,12 @@
  *  \brief Python bindings: simulation context and unit cell.
  */
 
+#include "py_sirius.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "context/simulation_context.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

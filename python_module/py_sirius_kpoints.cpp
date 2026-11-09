@@ -11,11 +11,11 @@
  *  \brief Python bindings: k-points, application of the Hamiltonian, subspace initialization.
  */
 
+#include "py_sirius.hpp"
 #include <pybind11/pybind11.h>
 #include "k_point/k_point_set.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/initialize_subspace.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

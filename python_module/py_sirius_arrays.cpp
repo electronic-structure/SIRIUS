@@ -11,6 +11,7 @@
  *  \brief Python bindings: FFT grid, mdarray, G-vectors, wave-functions and periodic functions.
  */
 
+#include "py_sirius.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "core/fft/fft3d_grid.hpp"
@@ -19,7 +20,6 @@
 #include "core/wf/wave_functions.hpp"
 #include "function3d/smooth_periodic_function.hpp"
 #include "function3d/periodic_function.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

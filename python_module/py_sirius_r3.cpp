@@ -6,12 +6,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "py_sirius.hpp"
 #include <string>
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 #include <pybind11/numpy.h>
 #include "core/r3/r3.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

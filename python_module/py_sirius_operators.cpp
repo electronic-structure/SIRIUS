@@ -6,6 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "py_sirius.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <string>
@@ -19,7 +20,6 @@
 #include "hamiltonian/hamiltonian.hpp"
 #include "potential/potential.hpp"
 #include "nlcglib/inverse_overlap.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

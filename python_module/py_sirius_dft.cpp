@@ -11,11 +11,11 @@
  *  \brief Python bindings: potential, density, DFT ground state, forces and stress.
  */
 
+#include "py_sirius.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "dft/dft_ground_state.hpp"
 #include "magnetization.hpp"
-#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
