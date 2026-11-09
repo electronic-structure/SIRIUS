@@ -62,9 +62,7 @@ class Energy:
             benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex128)
             if self.ctx.gamma_point:
                 tmp = np.einsum("ij,ij->j", val[1:, :], np.conj(X[key])[1:, :])
-                benergies[: val.shape[1]] = (
-                    np.array(val[0, :]) * np.array(X[key][0, :]) + 2 * np.real(tmp)
-                ).flatten()
+                benergies[: val.shape[1]] = val[0, :] * X[key][0, :] + 2 * np.real(tmp)
             else:
                 benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 

@@ -12,6 +12,7 @@ implementations (before the np.matrix -> ndarray cleanup) and serve as golden
 references.
 """
 
+import functools
 import pathlib
 import sys
 import types
@@ -49,12 +50,23 @@ from sirius.edft import ortho  # type: ignore
 # ---------------------------------------------------------------------------
 
 
+def _silence_matrix_warning(f):
+    @functools.wraps(f)
+    def _f(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+            return f(*args, **kwargs)
+
+    return _f
+
+
 def _mat(x):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", PendingDeprecationWarning)
         return np.matrix(x, copy=False)
 
 
+@_silence_matrix_warning
 def _ref_lagrangeMult(p, c0, P=None):
     c0 = _mat(c0)
     p = _mat(p)
@@ -67,6 +79,7 @@ def _ref_lagrangeMult(p, c0, P=None):
     return correction
 
 
+@_silence_matrix_warning
 def _ref_c(x, c0):
     x = _mat(x)
     XX = np.dot(x.H, x)
@@ -81,6 +94,7 @@ def _ref_c(x, c0):
     return np.dot(c0, cosU) + np.dot(x, sincU)
 
 
+@_silence_matrix_warning
 def _ref_prepare_fX(x, c0):
     x = _mat(x)
     XX = np.dot(x.H, x)
@@ -95,6 +109,7 @@ def _ref_prepare_fX(x, c0):
     return c, Λ, sincU, R
 
 
+@_silence_matrix_warning
 def _ref_apply_single(x, c0, Λ, Hc, sincU, R):
     R = _mat(R)
     sincU = _mat(sincU)
@@ -135,6 +150,7 @@ def _ref_apply_single(x, c0, Λ, Hc, sincU, R):
     return dEdx + correction, dEdx
 
 
+@_silence_matrix_warning
 def _ref_sinU(x):
     x = _mat(x)
     XX = np.dot(x.H, x)
@@ -144,6 +160,7 @@ def _ref_sinU(x):
     return np.dot(np.dot(R, np.diag(np.sin(w))), R.H)
 
 
+@_silence_matrix_warning
 def _ref_cosU(x):
     x = _mat(x)
     XX = np.dot(x.H, x)
@@ -153,6 +170,7 @@ def _ref_cosU(x):
     return np.dot(np.dot(R, np.diag(np.cos(w))), R.H)
 
 
+@_silence_matrix_warning
 def _ref_gram_schmidt(X):
     X = _mat(X)
     m = X.shape[1]
@@ -166,6 +184,7 @@ def _ref_gram_schmidt(X):
     return Q
 
 
+@_silence_matrix_warning
 def _ref_modified_gram_schmidt(X):
     X = _mat(X)
     m = X.shape[1]
@@ -357,7 +376,6 @@ def _pw(*blocks):
     return out
 
 
-@pytest.mark.xfail(strict=True, reason="np.matrix still used in OT kernels")
 @pytest.mark.parametrize("kind", ["none", "scalar", "dia_matrix"])
 def test_no_matrix_lagrangeMult(rng, system, kind):
     c0, _, _ = system
@@ -365,7 +383,6 @@ def test_no_matrix_lagrangeMult(rng, system, kind):
     assert type(ott.lagrangeMult(p, c0, _precond(rng, kind))) is np.ndarray
 
 
-@pytest.mark.xfail(strict=True, reason="np.matrix still used in OT kernels")
 def test_no_matrix_kernels(system):
     c0, x, H = system
     assert type(ott.c(x, c0)) is np.ndarray
@@ -380,7 +397,6 @@ def test_no_matrix_kernels(system):
     assert type(ortho.modified_gram_schmidt(x)) is np.ndarray
 
 
-@pytest.mark.xfail(strict=True, reason="np.matrix still used in OT kernels")
 def test_no_matrix_constrained_gradient(rng, system):
     """Exercise both branches of ConstrainedGradient.__call__ (PwCoeffs and ndarray)."""
     c0, x, H = system

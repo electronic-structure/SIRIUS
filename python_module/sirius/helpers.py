@@ -36,8 +36,7 @@ def load_state(filename, kset, name, dtype):
     """
     import glob
 
-    ctype = np.matrix
-    out = CoefficientArray(dtype=dtype, ctype=np.matrix)
+    out = CoefficientArray()
 
     idx_to_k = {}
     for i, kp in enumerate(kset):
@@ -61,7 +60,7 @@ def load_state(filename, kset, name, dtype):
                 k = idx_to_k[ki]
                 _, s = eval(key)
                 if key in fh5[name].keys():
-                    out[(k, s)] = ctype(fh5[name][key])
+                    out[(k, s)] = np.asarray(fh5[name][key], dtype=dtype)
     return out
 
 
