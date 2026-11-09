@@ -77,6 +77,7 @@ set(_SOURCES
   "core/sf/sbessel.cpp"
   "core/acc/acc.cpp"
   "core/acc/acc_blas.cpp"
+  "core/acc/acc_lapack.cpp"
   "core/acc/cusolver.cpp"
   "core/acc/rocsolver.cpp"
   "core/profiler.cpp"

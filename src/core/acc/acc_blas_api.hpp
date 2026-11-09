@@ -14,10 +14,16 @@
 #ifndef __ACC_BLAS_API_HPP__
 #define __ACC_BLAS_API_HPP__
 
+#include <cstdio>
+#include <stdexcept>
+#include <unistd.h>
 #include <utility>
+#include <vector>
+#include "acc.hpp"
 
 #if defined(SIRIUS_CUDA)
 #include <cublas_v2.h>
+#include <cublasXt.h>
 
 #elif defined(SIRIUS_ROCM)
 #include <rocblas/rocblas.h>
@@ -349,6 +355,163 @@ sscal(ARGS&&... args) -> status_t
 }
 
 } // namespace blas_api
+
+/// Helpers and handles of the GPU blas library.
+namespace blas {
+
+#ifdef SIRIUS_CUDA
+inline const char*
+error_message(acc::blas_api::status_t status)
+{
+    switch (status) {
+        case CUBLAS_STATUS_NOT_INITIALIZED: {
+            return "the library was not initialized";
+            break;
+        }
+        case CUBLAS_STATUS_INVALID_VALUE: {
+            return "the parameters m,n,k<0";
+            break;
+        }
+        case CUBLAS_STATUS_ARCH_MISMATCH: {
+            return "the device does not support double-precision";
+            break;
+        }
+        case CUBLAS_STATUS_EXECUTION_FAILED: {
+            return "the function failed to launch on the GPU";
+            break;
+        }
+        default: {
+            return "gpublas status unknown";
+        }
+    }
+}
+#else
+inline const char*
+error_message(acc::blas_api::status_t status)
+{
+    return rocblas_status_to_string(status);
+}
+#endif
+
+inline acc::blas_api::operation_t
+get_gpublasOperation_t(char c)
+{
+    switch (c) {
+        case 'n':
+        case 'N': {
+            return acc::blas_api::operation::None;
+        }
+        case 't':
+        case 'T': {
+            return acc::blas_api::operation::Transpose;
+        }
+        case 'c':
+        case 'C': {
+            return acc::blas_api::operation::ConjugateTranspose;
+        }
+        default: {
+            throw std::runtime_error("get_gpublasOperation_t(): wrong operation");
+        }
+    }
+    return acc::blas_api::operation::None; // make compiler happy
+}
+
+inline acc::blas_api::side_mode_t
+get_gpublasSideMode_t(char c)
+{
+    switch (c) {
+        case 'l':
+        case 'L': {
+            return acc::blas_api::side::Left;
+        }
+        case 'r':
+        case 'R': {
+            return acc::blas_api::side::Right;
+        }
+        default: {
+            throw std::runtime_error("get_gpublasSideMode_t(): wrong side");
+        }
+    }
+    return acc::blas_api::side::Left; // make compiler happy
+}
+
+inline acc::blas_api::fill_mode_t
+get_gpublasFillMode_t(char c)
+{
+    switch (c) {
+        case 'u':
+        case 'U': {
+            return acc::blas_api::fill::Upper;
+        }
+        case 'l':
+        case 'L': {
+            return acc::blas_api::fill::Lower;
+        }
+        default: {
+            throw std::runtime_error("get_gpublasFillMode_t(): wrong mode");
+        }
+    }
+    return acc::blas_api::fill::Upper; // make compiler happy
+}
+
+inline acc::blas_api::diagonal_t
+get_gpublasDiagonal_t(char c)
+{
+    switch (c) {
+        case 'n':
+        case 'N': {
+            return acc::blas_api::diagonal::NonUnit;
+        }
+        case 'u':
+        case 'U': {
+            return acc::blas_api::diagonal::Unit;
+        }
+        default: {
+            throw std::runtime_error("get_gpublasDiagonal_t(): wrong diagonal type");
+        }
+    }
+    return acc::blas_api::diagonal::NonUnit; // make compiler happy
+}
+
+#define CALL_GPU_BLAS(func__, args__)                                                                                  \
+    {                                                                                                                  \
+        acc::blas_api::status_t status;                                                                                \
+        if ((status = func__ args__) != acc::blas_api::status::Success) {                                              \
+            acc::blas::error_message(status);                                                                          \
+            char nm[1024];                                                                                             \
+            gethostname(nm, 1024);                                                                                     \
+            std::printf("hostname: %s\n", nm);                                                                         \
+            std::printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);                           \
+            acc::stack_backtrace();                                                                                    \
+        }                                                                                                              \
+    }
+
+/// Store the default (null) stream handler.
+acc::blas_api::handle_t&
+null_stream_handle();
+
+/// Store the gpublas handlers associated with acc streams.
+std::vector<acc::blas_api::handle_t>&
+stream_handles();
+
+inline acc::blas_api::handle_t
+stream_handle(int id__)
+{
+    return (id__ == -1) ? null_stream_handle() : stream_handles()[id__];
+}
+
+#if defined(SIRIUS_CUDA)
+namespace xt {
+
+/// Store the cuBlasXt handler.
+cublasXtHandle_t&
+cublasxt_handle();
+
+} // namespace xt
+#endif
+
+} // namespace blas
+
 } // namespace acc
 } // namespace sirius
 

@@ -17,11 +17,6 @@
 
 #if defined(SIRIUS_CUDA)
 #include <cuda_runtime.h>
-#include <cuda.h>
-#include <cublas_v2.h>
-#include <cublasXt.h>
-#include <nvtx3/nvToolsExt.h>
-#include <cuda_profiler_api.h>
 #include <cuComplex.h>
 #endif
 
@@ -245,14 +240,8 @@ sync_stream(stream_id sid__)
 }
 
 /// Reset device.
-inline void
-reset()
-{
-#ifdef SIRIUS_CUDA
-    CALL_DEVICE_API(ProfilerStop, ());
-#endif
-    CALL_DEVICE_API(DeviceReset, ());
-}
+void
+reset();
 
 /// Synchronize device.
 inline void
@@ -273,88 +262,11 @@ get_free_mem()
     return free;
 }
 
-inline void
-print_device_info(int device_id__, std::ostream& out__)
-{
-#if defined(SIRIUS_CUDA)
-    cudaDeviceProp devprop;
-#elif defined(SIRIUS_ROCM)
-    hipDeviceProp_t devprop;
-#endif
+void
+print_device_info(int device_id__, std::ostream& out__);
 
-    CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
-
-#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
-    int clockRate{-1};
-    int memoryClockRate{-1};
-
-#if CUDA_VERSION < 13000 || defined(SIRIUS_ROCM)
-    clockRate       = devprop.clockRate;
-    memoryClockRate = devprop.memoryClockRate;
-#else
-    // Cf. https://developer.nvidia.com/blog/whats-new-and-important-in-cuda-toolkit-13-0/#changes_to_cudadeviceprop
-    CALL_DEVICE_API(DeviceGetAttribute, (&clockRate, cudaDevAttrClockRate, device_id__));
-    CALL_DEVICE_API(DeviceGetAttribute, (&memoryClockRate, cudaDevAttrMemoryClockRate, device_id__));
-#endif
-
-    out__ << "  name                             : " << std::string(devprop.name) << std::endl
-          << "  major                            : " << devprop.major << std::endl
-          << "  minor                            : " << devprop.minor << std::endl
-          << "  clockRate                        : " << clockRate << " kHz" << std::endl
-          << "  memoryClockRate                  : " << memoryClockRate << " kHz" << std::endl
-          << "  memoryBusWidth                   : " << devprop.memoryBusWidth << " bits" << std::endl
-          << "  sharedMemPerBlock                : " << (devprop.sharedMemPerBlock >> 10) << " kB" << std::endl
-          << "  totalConstMem                    : " << (devprop.totalConstMem >> 10) << " kB" << std::endl
-          << "  totalGlobalMem                   : " << (devprop.totalGlobalMem >> 10) << " kB" << std::endl
-          << "  available memory                 : " << (get_free_mem() >> 10) << " kB" << std::endl
-          << "  l2CacheSize                      : " << (devprop.l2CacheSize >> 10) << " kB" << std::endl
-          << "  warpSize                         : " << devprop.warpSize << std::endl
-          << "  regsPerBlock                     : " << devprop.regsPerBlock << std::endl
-          << "  canMapHostMemory                 : " << devprop.canMapHostMemory << std::endl
-          << "  concurrentKernels                : " << devprop.concurrentKernels << std::endl
-          << "  maxGridSize                      : " << devprop.maxGridSize[0] << " " << devprop.maxGridSize[1] << " "
-          << devprop.maxGridSize[2] << std::endl
-          << "  maxThreadsDim                    : " << devprop.maxThreadsDim[0] << " " << devprop.maxThreadsDim[1]
-          << " " << devprop.maxThreadsDim[2] << std::endl
-          << "  maxThreadsPerBlock               : " << devprop.maxThreadsPerBlock << std::endl
-          << "  maxThreadsPerMultiProcessor      : " << devprop.maxThreadsPerMultiProcessor << std::endl
-          << "  multiProcessorCount              : " << devprop.multiProcessorCount << std::endl
-          << "  pciBusID                         : " << devprop.pciBusID << std::endl
-          << "  pciDeviceID                      : " << devprop.pciDeviceID << std::endl
-          << "  pciDomainID                      : " << devprop.pciDomainID << std::endl;
-#if defined(SIRIUS_CUDA)
-    out__ << "  regsPerMultiprocessor            : " << devprop.regsPerMultiprocessor << std::endl
-          << "  asyncEngineCount                 : " << devprop.asyncEngineCount << std::endl
-          << "  ECCEnabled                       : " << devprop.ECCEnabled << std::endl
-          << "  memPitch                         : " << devprop.memPitch << std::endl;
-#endif
-#endif
-}
-
-inline std::string
-get_uuid(int device_id__)
-{
-#if defined(SIRIUS_CUDA)
-    cudaDeviceProp devprop;
-    CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
-    auto const& uuid_bytes = devprop.uuid.bytes;
-#elif defined(SIRIUS_ROCM)
-    hipUUID uuid;
-    CALL_DEVICE_API(DeviceGetUuid, (&uuid, device_id__));
-    auto const& uuid_bytes = uuid.bytes;
-#endif
-
-    std::stringstream s;
-#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
-    for (int i = 0; i < 16; i++) {
-        if (i == 4 || i == 6 || i == 8 || i == 10) {
-            s << '-';
-        }
-        s << std::hex << std::setw(2) << std::setfill('0') << (int)uuid_bytes[i];
-    }
-#endif
-    return s.str();
-}
+std::string
+get_uuid(int device_id__);
 
 /// Copy memory inside a device.
 template <typename T>
@@ -522,17 +434,13 @@ deallocate_host(void* ptr__)
 }
 
 #if defined(SIRIUS_CUDA)
-inline void
-begin_range_marker(const char* label__)
-{
-    nvtxRangePushA(label__);
-}
+/// Open an nvtx range.
+void
+begin_range_marker(const char* label__);
 
-inline void
-end_range_marker()
-{
-    nvtxRangePop();
-}
+/// Close the last nvtx range.
+void
+end_range_marker();
 
 template <typename T>
 inline void
