@@ -90,6 +90,7 @@ set(_SOURCES
   "core/la/dlaf.cpp"
   "core/json.cpp"
   "core/memory.cpp"
+  "sirius_init.cpp"
   )
 
 

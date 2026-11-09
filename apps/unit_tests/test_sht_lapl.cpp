@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <function3d/spheric_function.hpp>
 #include <testing.hpp>
 
 using namespace sirius;

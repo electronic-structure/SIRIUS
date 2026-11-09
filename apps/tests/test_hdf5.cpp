@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/hdf5_tree.hpp>
 
 using namespace sirius;
 

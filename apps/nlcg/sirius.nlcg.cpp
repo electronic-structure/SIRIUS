@@ -6,7 +6,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <dft/dft_ground_state.hpp>
+#include <core/sirius_version.hpp>
+#include <sirius_init.hpp>
 #include "core/json.hpp"
 #include "nlcglib/call_nlcg.hpp"
 

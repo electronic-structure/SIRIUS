@@ -6,8 +6,10 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
-#include <testing.hpp>
+#include <function3d/smooth_periodic_function.hpp>
+#include <hamiltonian/local_operator.hpp>
+#include <sirius_init.hpp>
+#include <testing_context.hpp>
 #include "core/json.hpp"
 
 using namespace sirius;

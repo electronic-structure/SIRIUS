@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <sirius_init.hpp>
 #include <testing.hpp>
 #include "dft/energy.hpp"
 #include "hamiltonian/hamiltonian.hpp"

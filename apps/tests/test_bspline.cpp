@@ -1,4 +1,6 @@
-#include "sirius.hpp"
+#include "core/la/eigensolver.hpp"
+#include "unit_cell/atom_type.hpp"
+#include "sirius_init.hpp"
 #include "testing.hpp"
 
 #include "radial/bspline.hpp"

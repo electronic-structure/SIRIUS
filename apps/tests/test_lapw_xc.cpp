@@ -6,7 +6,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <potential/potential.hpp>
+#include <sirius_init.hpp>
 #include "testing.hpp"
 #include "core/json.hpp"
 

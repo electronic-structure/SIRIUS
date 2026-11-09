@@ -6,7 +6,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/fft/fft.hpp>
+#include <core/constants.hpp>
+#include <sirius_init.hpp>
 #include <testing.hpp>
 
 /* test FFT: transform single harmonic and compare with plane wave exp(iGr) */
