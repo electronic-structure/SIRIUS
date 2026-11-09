@@ -320,7 +320,7 @@ get_H0(void* const* h)
 }
 
 Hamiltonian_k<double>&
-get_hk(void* const* h)
+get_Hk(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
         RTE_THROW("Non-existing K-point Hamiltonian handler");
@@ -6105,14 +6105,10 @@ sirius_linear_solver:
       type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
-    h0_handler:
-      type: H0_handler
+    hkq_handler:
+      type: Hk_handler
       attr: in, required
-      doc: K-point independent Hamiltonian handler.
-    kq_handler:
-      type: kp_handler
-      attr: in, required
-      doc: Handler of the k+q point.
+      doc: K+q-point Hamiltonian handler.
     dpsi:
       type: complex
       attr: inout, required, dimension(ld, num_spin_comp)
@@ -6172,8 +6168,7 @@ sirius_linear_solver:
 @api end
 */
 void
-sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void* const* kq_handler__,
-                     std::complex<double>* dpsi__,
+sirius_linear_solver(void* const* gs_handler__, void* const* hkq_handler__, std::complex<double>* dpsi__,
                      std::complex<double>* psi__, double* eigvals__, std::complex<double>* dvpsi__, int const* ld__,
                      int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
                      int const* nbnd_occ_kq__, double const* tol__, std::complex<double> const* omega__, int* niter__,
@@ -6204,11 +6199,9 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void*
                     sr = wf::spin_range(*spin__ - 1);
                 }
 
-                auto& kp = get_kp(kq_handler__);
-
-                auto& H0 = get_H0(h0_handler__);
-
-                auto Hk = H0(kp);
+                auto& Hkq = get_Hk(hkq_handler__);
+                auto& kp = Hkq.kp();
+                Hkq.H0().local_op().prepare_k(kp.gkvec_fft());
 
                 /* copy eigenvalues (factor 2 for rydberg/hartree) */
                 std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ_k);
@@ -6229,6 +6222,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void*
                                                                       wf::num_mag_dims(0), false);
 
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    #pragma omp parallel for
                     for (int i = 0; i < nbnd_occ_kq; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
@@ -6236,9 +6230,8 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void*
                     }
                 }
 
-                // TODO: comment where nbnd_occ_k and nbnd_occ_kq are used and how
-
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    #pragma omp parallel for
                     for (int i = 0; i < nbnd_occ_k; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
@@ -6278,7 +6271,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void*
 
                 auto omega = get_value(omega__, std::complex<double>(0, 0)) / 2.0;
 
-                sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, psi_wf,
+                sirius::lr::Linear_response_operator linear_operator(Hkq, eigvals_vec, psi_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
                                                                      omega, wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
@@ -6288,7 +6281,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void*
                 auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
 
                 /* set up the diagonal preconditioner */
-                auto h_o_diag = Hk.get_h_o_diag_pw<3>(); // already on the GPU if mem=GPU
+                auto h_o_diag = Hkq.get_h_o_diag_pw<3>(); // already on the GPU if mem=GPU
                 mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
                 eigvals_mdarray = [&](int i) { return eigvals_vec[i]; };
                 /* allocate and copy eigvals_mdarray to GPU if running on GPU */
@@ -6319,6 +6312,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void*
 
                 /* bring wave functions back in order of QE */
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    #pragma omp parallel for
                     for (int i = 0; i < nbnd_occ_k; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));

@@ -5967,8 +5967,7 @@ end subroutine sirius_create_kpoint
 !
 !> @brief Interface to linear solver.
 !> @param [in] gs_handler DFT ground state handler.
-!> @param [in] h0_handler K-point independent Hamiltonian handler.
-!> @param [in] kq_handler Handler of the k+q point.
+!> @param [in] hkq_handler K+q-point Hamiltonian handler.
 !> @param [inout] dpsi Left-hand side of the linear equation.
 !> @param [in] psi Unperturbed eigenvectors.
 !> @param [in] eigvals Unperturbed eigenvalues.
@@ -5983,13 +5982,12 @@ end subroutine sirius_create_kpoint
 !> @param [in] omega Complex frequency
 !> @param [out] niter Average number of iterations.
 !> @param [out] error_code Error code
-subroutine sirius_linear_solver(gs_handler,h0_handler,kq_handler,dpsi,psi,eigvals,&
-&dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,niter,error_code)
+subroutine sirius_linear_solver(gs_handler,hkq_handler,dpsi,psi,eigvals,dvpsi,ld,&
+&num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,niter,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
-type(sirius_H0_handler), target, intent(in) :: h0_handler
-type(sirius_kpoint_handler), target, intent(in) :: kq_handler
+type(sirius_Hk_handler), target, intent(in) :: hkq_handler
 complex(8), target, intent(inout) :: dpsi(ld, num_spin_comp)
 complex(8), target, intent(in) :: psi(ld, num_spin_comp)
 real(8), target, intent(in) :: eigvals(*)
@@ -6006,8 +6004,7 @@ integer, optional, target, intent(out) :: niter
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
-type(C_PTR) :: h0_handler_ptr
-type(C_PTR) :: kq_handler_ptr
+type(C_PTR) :: hkq_handler_ptr
 type(C_PTR) :: dpsi_ptr
 type(C_PTR) :: psi_ptr
 type(C_PTR) :: eigvals_ptr
@@ -6024,13 +6021,12 @@ type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_linear_solver_aux(gs_handler,h0_handler,kq_handler,dpsi,psi,eigvals,&
-&dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,niter,error_code)&
+subroutine sirius_linear_solver_aux(gs_handler,hkq_handler,dpsi,psi,eigvals,dvpsi,&
+&ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,niter,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
-type(C_PTR), value :: h0_handler
-type(C_PTR), value :: kq_handler
+type(C_PTR), value :: hkq_handler
 type(C_PTR), value :: dpsi
 type(C_PTR), value :: psi
 type(C_PTR), value :: eigvals
@@ -6050,10 +6046,8 @@ end interface
 !
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
-h0_handler_ptr = C_NULL_PTR
-h0_handler_ptr = C_LOC(h0_handler%handler_ptr_)
-kq_handler_ptr = C_NULL_PTR
-kq_handler_ptr = C_LOC(kq_handler%handler_ptr_)
+hkq_handler_ptr = C_NULL_PTR
+hkq_handler_ptr = C_LOC(hkq_handler%handler_ptr_)
 dpsi_ptr = C_NULL_PTR
 dpsi_ptr = C_LOC(dpsi)
 psi_ptr = C_NULL_PTR
@@ -6090,9 +6084,9 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_linear_solver_aux(gs_handler_ptr,h0_handler_ptr,kq_handler_ptr,dpsi_ptr,&
-&psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,nbnd_occ_k_ptr,&
-&nbnd_occ_kq_ptr,tol_ptr,omega_ptr,niter_ptr,error_code_ptr)
+call sirius_linear_solver_aux(gs_handler_ptr,hkq_handler_ptr,dpsi_ptr,psi_ptr,eigvals_ptr,&
+&dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,nbnd_occ_k_ptr,nbnd_occ_kq_ptr,&
+&tol_ptr,omega_ptr,niter_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
 
 !

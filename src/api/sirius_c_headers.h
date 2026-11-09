@@ -3062,14 +3062,10 @@ sirius_linear_solver:
       type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
-    h0_handler:
-      type: H0_handler
+    hkq_handler:
+      type: Hk_handler
       attr: in, required
-      doc: K-point independent Hamiltonian handler.
-    kq_handler:
-      type: kp_handler
-      attr: in, required
-      doc: Handler of the k+q point.
+      doc: K+q-point Hamiltonian handler.
     dpsi:
       type: complex
       attr: inout, required, dimension(ld, num_spin_comp)
@@ -3128,8 +3124,7 @@ sirius_linear_solver:
       doc: Error code
 */
 void
-sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, void* const* kq_handler__,
-                     double complex* dpsi__,
+sirius_linear_solver(void* const* gs_handler__, void* const* hkq_handler__, double complex* dpsi__,
                      double complex* psi__, double* eigvals__, double complex* dvpsi__, int const* ld__,
                      int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
                      int const* nbnd_occ_kq__, double const* tol__, double complex const* omega__, int* niter__,
