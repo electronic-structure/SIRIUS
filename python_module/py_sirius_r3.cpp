@@ -6,12 +6,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-// #include "python_module_includes.hpp"
 #include <string>
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 #include <pybind11/numpy.h>
 #include "core/r3/r3.hpp"
+#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
@@ -44,49 +44,38 @@ show_mat(const r3::matrix<double>& mat)
 void
 init_r3(py::module& m)
 {
-    py::class_<r3::vector<int>>(m, "vector3d_int")
-            .def(py::init<std::vector<int>>())
+    py::class_<r3::vector<int>> vector3d_int(m, "vector3d_int");
+    vector3d_int.def(py::init<std::vector<int>>())
             .def("__call__", [](const r3::vector<int>& obj, int x) { return obj[x]; })
             .def("__repr__", [](const r3::vector<int>& vec) { return show_vec(vec); })
-            .def("__len__", &r3::vector<int>::length)
-            .def("__array__", [](r3::vector<int>& v3d) {
-                py::array_t<int> x(3);
-                auto r = x.mutable_unchecked<1>();
-                r(0)   = v3d[0];
-                r(1)   = v3d[1];
-                r(2)   = v3d[2];
-                return x;
-            });
+            .def("__len__", &r3::vector<int>::length);
+    def_array_protocol(vector3d_int, [](py::object& obj) -> py::array {
+        auto& v3d = obj.cast<r3::vector<int>&>();
+        return py::array_t<int>(3, &v3d[0]);
+    });
 
-    py::class_<r3::vector<double>>(m, "vector3d_double")
-            .def(py::init<std::vector<double>>())
+    py::class_<r3::vector<double>> vector3d_double(m, "vector3d_double");
+    def_array_protocol(vector3d_double, [](py::object& obj) -> py::array {
+        auto& v3d = obj.cast<r3::vector<double>&>();
+        return py::array_t<double>(3, &v3d[0]);
+    });
+    vector3d_double.def(py::init<std::vector<double>>())
             .def("__call__", [](const r3::vector<double>& obj, int x) { return obj[x]; })
             .def("__repr__", [](const r3::vector<double>& vec) { return show_vec(vec); })
-            .def("__array__",
-                 [](r3::vector<double>& v3d) {
-                     py::array_t<double> x(3);
-                     auto r = x.mutable_unchecked<1>();
-                     r(0)   = v3d[0];
-                     r(1)   = v3d[1];
-                     r(2)   = v3d[2];
-                     return x;
-                 })
             .def("__len__", &r3::vector<double>::length)
             .def(py::self - py::self)
             .def(py::self * float())
             .def(py::self + py::self)
             .def(py::init<r3::vector<double>>());
 
-    py::class_<r3::matrix<double>>(m, "matrix3d")
-            .def(py::init<std::vector<std::vector<double>>>())
+    py::class_<r3::matrix<double>> matrix3d(m, "matrix3d");
+    def_array_protocol(matrix3d, [](py::object& obj) -> py::array {
+        auto& mat = obj.cast<r3::matrix<double>&>();
+        return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
+    });
+    matrix3d.def(py::init<std::vector<std::vector<double>>>())
             .def(py::init<>())
             .def("__call__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
-            .def(
-                    "__array__",
-                    [](const r3::matrix<double>& mat) {
-                        return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
-                    },
-                    py::return_value_policy::reference_internal)
             .def("__getitem__", [](const r3::matrix<double>& obj, int x, int y) { return obj(x, y); })
             .def("__mul__",
                  [](const r3::matrix<double>& obj, r3::vector<double> const& b) {
@@ -97,16 +86,14 @@ init_r3(py::module& m)
             .def(py::init<r3::matrix<double>>())
             .def("det", &r3::matrix<double>::det);
 
-    py::class_<r3::matrix<int>>(m, "matrix3di")
-            .def(py::init<std::vector<std::vector<int>>>())
+    py::class_<r3::matrix<int>> matrix3di(m, "matrix3di");
+    def_array_protocol(matrix3di, [](py::object& obj) -> py::array {
+        auto& mat = obj.cast<r3::matrix<int>&>();
+        return py::array_t<int>({3, 3}, {3 * sizeof(int), sizeof(int)}, &mat(0, 0));
+    });
+    matrix3di.def(py::init<std::vector<std::vector<int>>>())
             .def(py::init<>())
             .def("__call__", [](const r3::matrix<int>& obj, int x, int y) { return obj(x, y); })
-            .def(
-                    "__array__",
-                    [](const r3::matrix<int>& mat) {
-                        return py::array_t<int>({3, 3}, {3 * sizeof(int), sizeof(int)}, &mat(0, 0));
-                    },
-                    py::return_value_policy::reference_internal)
             .def("__getitem__", [](const r3::matrix<int>& obj, int x, int y) { return obj(x, y); })
             .def("__mul__",
                  [](const r3::matrix<int>& obj, r3::vector<int> const& b) {

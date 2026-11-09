@@ -115,7 +115,7 @@ class ApplyHamiltonian:
         ctx = self.kpointset.ctx()
         pmem_t = ctx.processing_unit_memory_t()
         num_sc = ctx.num_spins()
-        H0 = Hamiltonian0(self.potential, False)
+        H0 = Hamiltonian0(self.potential)
         if isinstance(cn, PwCoeffs):
             assert ki is None
             assert ispn is None

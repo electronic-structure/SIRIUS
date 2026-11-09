@@ -1,5 +1,4 @@
 find_package(Python3 COMPONENTS Development REQUIRED)
-set(CMAKE_CXX_STANDARD 17)
 find_package(mpi4py REQUIRED)
 
 # TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP17 is needed for Intel compiler
@@ -20,7 +19,16 @@ else()
 endif()
 
 set(libname py_sirius)
-pybind11_add_module(${libname} py_sirius.cpp py_sirius_operators.cpp py_sirius_r3.cpp)
+# the bindings are split into several translation units to limit the peak memory of the compiler
+pybind11_add_module(${libname}
+  py_sirius.cpp
+  py_sirius_context.cpp
+  py_sirius_dft.cpp
+  py_sirius_kpoints.cpp
+  py_sirius_arrays.cpp
+  py_sirius_smearing.cpp
+  py_sirius_operators.cpp
+  py_sirius_r3.cpp)
 
 add_dependencies(${libname} sirius_cxx)
 target_link_libraries(${libname} PRIVATE mpi4py::mpi4py)

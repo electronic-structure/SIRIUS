@@ -6,7 +6,6 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-// #include "python_module_includes.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <string>
@@ -20,6 +19,7 @@
 #include "hamiltonian/hamiltonian.hpp"
 #include "potential/potential.hpp"
 #include "nlcglib/inverse_overlap.hpp"
+#include "py_sirius.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
@@ -52,9 +52,12 @@ init_operators(py::module& m)
             .def_property_readonly("U", &Hamiltonian_k<PT>::U, py::return_value_policy::reference_internal);
 
     py::class_<S_k<complex_double>>(m, "S_k")
-            .def(py::init<memory_t, std::shared_ptr<spla::Context>, const Q_operator<PT>&,
-                          const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 4>(), py::keep_alive<1, 5>())
+            .def(py::init([](Simulation_context& ctx, const Q_operator<PT>& q_op, const Beta_projectors_base<PT>& bp,
+                             int ispn) {
+                     return std::make_unique<S_k<complex_double>>(ctx.processing_unit_memory_t(),
+                                                                  ctx.spla_context_ptr(), q_op, bp, ispn);
+                 }),
+                 "ctx"_a, "q_op"_a, "beta_projectors"_a, "ispn"_a, py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
             .def_property_readonly("size", &S_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t = S_k<complex_double>;
@@ -79,9 +82,12 @@ init_operators(py::module& m)
             });
 
     py::class_<InverseS_k<complex_double>>(m, "InverseS_k")
-            .def(py::init<memory_t, std::shared_ptr<spla::Context>, const Q_operator<PT>&,
-                          const Beta_projectors_base<PT>&, int>(),
-                 py::keep_alive<1, 4>(), py::keep_alive<1, 5>())
+            .def(py::init([](Simulation_context& ctx, const Q_operator<PT>& q_op, const Beta_projectors_base<PT>& bp,
+                             int ispn) {
+                     return std::make_unique<InverseS_k<complex_double>>(ctx.processing_unit_memory_t(),
+                                                                         ctx.spla_context_ptr(), q_op, bp, ispn);
+                 }),
+                 "ctx"_a, "q_op"_a, "beta_projectors"_a, "ispn"_a, py::keep_alive<1, 3>(), py::keep_alive<1, 4>())
             .def_property_readonly("size", &InverseS_k<complex_double>::size)
             .def("apply", [](py::object& obj, py::array_t<complex_double>& X) {
                 using class_t       = InverseS_k<complex_double>;

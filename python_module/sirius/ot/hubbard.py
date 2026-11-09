@@ -13,7 +13,7 @@ class HubbardU:
         """ """
         ctx = self.kset.ctx()
 
-        H0 = Hamiltonian0(self.potential, False)
+        H0 = Hamiltonian0(self.potential)
 
         if not ctx.hubbard_correction:
             return zeros_like(X)
