@@ -38,6 +38,10 @@ type_info = {
         'f_type' : 'type(sirius_ground_state_handler)',
         'c_type' : 'type(C_PTR)'
     },
+    'kp_handler' : {
+        'f_type' : 'type(sirius_kpoint_handler)',
+        'c_type' : 'type(C_PTR)'
+    },
     'ks_handler' : {
         'f_type' : 'type(sirius_kpoint_set_handler)',
         'c_type' : 'type(C_PTR)'
@@ -48,6 +52,10 @@ type_info = {
     },
     'H0_handler' : {
         'f_type' : 'type(sirius_H0_handler)',
+        'c_type' : 'type(C_PTR)'
+    },
+    'Hk_handler' : {
+        'f_type' : 'type(sirius_Hk_handler)',
         'c_type' : 'type(C_PTR)'
     }
 }
@@ -189,7 +197,7 @@ class Argument:
                 out.write(f'{self.name()}_c_type = {self.name()}\n')
             if self.attr().pass_by() == 'ptr':
                 out.write(f'{self.name()}_ptr = C_LOC({self.name()}_c_type)\n')
-        elif self.type_id() in ['gs_handler', 'ks_handler', 'ctx_handler']:
+        elif self.type_id() in ['gs_handler', 'ks_handler', 'kp_handler', 'ctx_handler', 'H0_handler', 'Hk_handler']:
             if self.attr().pass_by() == 'ptr':
                 out.write(f'{self.name()}_ptr = C_LOC({self.name()}%handler_ptr_)\n')
         else:
@@ -407,6 +415,12 @@ type sirius_ground_state_handler
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
+!> @brief Opaque wrapper for K-point handler.
+type sirius_kpoint_handler
+    private
+    type(C_PTR) :: handler_ptr_ = C_NULL_PTR
+end type
+
 !> @brief Opaque wrapper for K-point set handler.
 type sirius_kpoint_set_handler
     private
@@ -419,9 +433,16 @@ type sirius_H0_handler
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
-!> @brief Free any of the SIRIUS handlers (context, ground state or k-points).
+!> @brief Opaque wrapper for K-point dependent Hamiltonian object.
+type sirius_Hk_handler
+    private
+    type(C_PTR) :: handler_ptr_ = C_NULL_PTR
+end type
+
+!> @brief Free any of the SIRIUS object handlers.
 interface sirius_free_handler
-    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, sirius_free_handler_H0
+    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, &
+                     sirius_free_handler_H0, sirius_free_handler_kp, sirius_free_handler_Hk
 end interface
 
 contains
@@ -478,12 +499,26 @@ subroutine sirius_free_handler_dft(handler, error_code)
     call sirius_free_object_handler(handler%handler_ptr_, error_code)
 end subroutine sirius_free_handler_dft
 
+subroutine sirius_free_handler_kp(handler, error_code)
+    implicit none
+    type(sirius_kpoint_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_kp
+
 subroutine sirius_free_handler_H0(handler, error_code)
     implicit none
     type(sirius_H0_handler), intent(inout) :: handler
     integer, optional, target, intent(out) :: error_code
     call sirius_free_object_handler(handler%handler_ptr_, error_code)
 end subroutine sirius_free_handler_H0
+
+subroutine sirius_free_handler_Hk(handler, error_code)
+    implicit none
+    type(sirius_Hk_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_Hk
 
 end module
 '''

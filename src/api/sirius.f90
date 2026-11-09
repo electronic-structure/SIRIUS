@@ -32,6 +32,12 @@ type sirius_ground_state_handler
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
+!> @brief Opaque wrapper for K-point handler.
+type sirius_kpoint_handler
+    private
+    type(C_PTR) :: handler_ptr_ = C_NULL_PTR
+end type
+
 !> @brief Opaque wrapper for K-point set handler.
 type sirius_kpoint_set_handler
     private
@@ -44,9 +50,16 @@ type sirius_H0_handler
     type(C_PTR) :: handler_ptr_ = C_NULL_PTR
 end type
 
-!> @brief Free any of the SIRIUS handlers (context, ground state or k-points).
+!> @brief Opaque wrapper for K-point dependent Hamiltonian object.
+type sirius_Hk_handler
+    private
+    type(C_PTR) :: handler_ptr_ = C_NULL_PTR
+end type
+
+!> @brief Free any of the SIRIUS object handlers.
 interface sirius_free_handler
-    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, sirius_free_handler_H0
+    module procedure sirius_free_handler_ctx, sirius_free_handler_ks, sirius_free_handler_dft, &
+                     sirius_free_handler_H0, sirius_free_handler_kp, sirius_free_handler_Hk
 end interface
 
 contains
@@ -5895,12 +5908,66 @@ call sirius_add_hubbard_atom_constraint_aux(handler_ptr,atom_id_ptr,n_ptr,l_ptr,
 end subroutine sirius_add_hubbard_atom_constraint
 
 !
+!> @brief Create and initialize a k-point using an explicit distributed G-vector basis. The simulation context must outlive the returned k-point handler. This call is collective over the band communicator.
+!> @param [in] handler Simulation context handler.
+!> @param [in] vk K-point coordinates in reciprocal lattice units.
+!> @param [in] num_gkvec_loc Number of local G-vectors for G+k.
+!> @param [in] gkvec_loc Local G-vector Miller indices.
+!> @param [out] kp_handler Handler of the newly initialized k-point. Release with sirius_free_handler.
+!> @param [out] error_code Error code.
+subroutine sirius_create_kpoint(handler,vk,num_gkvec_loc,gkvec_loc,kp_handler,error_code)
+implicit none
+!
+type(sirius_context_handler), target, intent(in) :: handler
+real(8), target, intent(in) :: vk(3)
+integer, target, intent(in) :: num_gkvec_loc
+integer, target, intent(in) :: gkvec_loc(3,num_gkvec_loc)
+type(sirius_kpoint_handler), target, intent(out) :: kp_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: vk_ptr
+type(C_PTR) :: num_gkvec_loc_ptr
+type(C_PTR) :: gkvec_loc_ptr
+type(C_PTR) :: kp_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_create_kpoint_aux(handler,vk,num_gkvec_loc,gkvec_loc,kp_handler,&
+&error_code)&
+&bind(C, name="sirius_create_kpoint")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: vk
+type(C_PTR), value :: num_gkvec_loc
+type(C_PTR), value :: gkvec_loc
+type(C_PTR), value :: kp_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler%handler_ptr_)
+vk_ptr = C_NULL_PTR
+vk_ptr = C_LOC(vk)
+num_gkvec_loc_ptr = C_NULL_PTR
+num_gkvec_loc_ptr = C_LOC(num_gkvec_loc)
+gkvec_loc_ptr = C_NULL_PTR
+gkvec_loc_ptr = C_LOC(gkvec_loc)
+kp_handler_ptr = C_NULL_PTR
+kp_handler_ptr = C_LOC(kp_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_kpoint_aux(handler_ptr,vk_ptr,num_gkvec_loc_ptr,gkvec_loc_ptr,&
+&kp_handler_ptr,error_code_ptr)
+end subroutine sirius_create_kpoint
+
+!
 !> @brief Interface to linear solver.
 !> @param [in] gs_handler DFT ground state handler.
-!> @param [in] h0_handler K-point independent Hamiltonian handler.
-!> @param [in] vkq K+q-point in lattice coordinates
-!> @param [in] num_gvec_kq_loc Local number of G-vectors for k+q-point
-!> @param [in] gvec_kq_loc Local list of G-vectors for k+q-point.
+!> @param [in] hkq_handler K+q-point Hamiltonian handler.
 !> @param [inout] dpsi Left-hand side of the linear equation.
 !> @param [in] psi Unperturbed eigenvectors.
 !> @param [in] eigvals Unperturbed eigenvalues.
@@ -5915,16 +5982,12 @@ end subroutine sirius_add_hubbard_atom_constraint
 !> @param [in] omega Complex frequency
 !> @param [out] niter Average number of iterations.
 !> @param [out] error_code Error code
-subroutine sirius_linear_solver(gs_handler,h0_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,&
-&dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,&
-&omega,niter,error_code)
+subroutine sirius_linear_solver(gs_handler,hkq_handler,dpsi,psi,eigvals,dvpsi,ld,&
+&num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,niter,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
-type(sirius_H0_handler), target, intent(in) :: h0_handler
-real(8), target, intent(in) :: vkq(3)
-integer, target, intent(in) :: num_gvec_kq_loc
-integer, target, intent(in) :: gvec_kq_loc(3, num_gvec_kq_loc)
+type(sirius_Hk_handler), target, intent(in) :: hkq_handler
 complex(8), target, intent(inout) :: dpsi(ld, num_spin_comp)
 complex(8), target, intent(in) :: psi(ld, num_spin_comp)
 real(8), target, intent(in) :: eigvals(*)
@@ -5941,10 +6004,7 @@ integer, optional, target, intent(out) :: niter
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
-type(C_PTR) :: h0_handler_ptr
-type(C_PTR) :: vkq_ptr
-type(C_PTR) :: num_gvec_kq_loc_ptr
-type(C_PTR) :: gvec_kq_loc_ptr
+type(C_PTR) :: hkq_handler_ptr
 type(C_PTR) :: dpsi_ptr
 type(C_PTR) :: psi_ptr
 type(C_PTR) :: eigvals_ptr
@@ -5961,16 +6021,12 @@ type(C_PTR) :: niter_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_linear_solver_aux(gs_handler,h0_handler,vkq,num_gvec_kq_loc,gvec_kq_loc,&
-&dpsi,psi,eigvals,dvpsi,ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,&
-&omega,niter,error_code)&
+subroutine sirius_linear_solver_aux(gs_handler,hkq_handler,dpsi,psi,eigvals,dvpsi,&
+&ld,num_spin_comp,alpha_pv,spin,nbnd_occ_k,nbnd_occ_kq,tol,omega,niter,error_code)&
 &bind(C, name="sirius_linear_solver")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
-type(C_PTR), value :: h0_handler
-type(C_PTR), value :: vkq
-type(C_PTR), value :: num_gvec_kq_loc
-type(C_PTR), value :: gvec_kq_loc
+type(C_PTR), value :: hkq_handler
 type(C_PTR), value :: dpsi
 type(C_PTR), value :: psi
 type(C_PTR), value :: eigvals
@@ -5990,14 +6046,8 @@ end interface
 !
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
-h0_handler_ptr = C_NULL_PTR
-h0_handler_ptr = C_LOC(h0_handler)
-vkq_ptr = C_NULL_PTR
-vkq_ptr = C_LOC(vkq)
-num_gvec_kq_loc_ptr = C_NULL_PTR
-num_gvec_kq_loc_ptr = C_LOC(num_gvec_kq_loc)
-gvec_kq_loc_ptr = C_NULL_PTR
-gvec_kq_loc_ptr = C_LOC(gvec_kq_loc)
+hkq_handler_ptr = C_NULL_PTR
+hkq_handler_ptr = C_LOC(hkq_handler%handler_ptr_)
 dpsi_ptr = C_NULL_PTR
 dpsi_ptr = C_LOC(dpsi)
 psi_ptr = C_NULL_PTR
@@ -6034,10 +6084,9 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_linear_solver_aux(gs_handler_ptr,h0_handler_ptr,vkq_ptr,num_gvec_kq_loc_ptr,&
-&gvec_kq_loc_ptr,dpsi_ptr,psi_ptr,eigvals_ptr,dvpsi_ptr,ld_ptr,num_spin_comp_ptr,&
-&alpha_pv_ptr,spin_ptr,nbnd_occ_k_ptr,nbnd_occ_kq_ptr,tol_ptr,omega_ptr,niter_ptr,&
-&error_code_ptr)
+call sirius_linear_solver_aux(gs_handler_ptr,hkq_handler_ptr,dpsi_ptr,psi_ptr,eigvals_ptr,&
+&dvpsi_ptr,ld_ptr,num_spin_comp_ptr,alpha_pv_ptr,spin_ptr,nbnd_occ_k_ptr,nbnd_occ_kq_ptr,&
+&tol_ptr,omega_ptr,niter_ptr,error_code_ptr)
 end subroutine sirius_linear_solver
 
 !
@@ -6809,13 +6858,57 @@ end interface
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
 H0_handler_ptr = C_NULL_PTR
-H0_handler_ptr = C_LOC(H0_handler)
+H0_handler_ptr = C_LOC(H0_handler%handler_ptr_)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
 call sirius_create_hamiltonian_aux(gs_handler_ptr,H0_handler_ptr,error_code_ptr)
 end subroutine sirius_create_hamiltonian
+
+!
+!> @brief Create a k-point Hamiltonian and precompute its plane-wave Hamiltonian and overlap diagonals. The parent Hamiltonian and k-point must outlive the returned handler. Release this handler with sirius_free_handler before releasing either parent.
+!> @param [in] H0_handler K-point independent Hamiltonian handler.
+!> @param [in] kp_handler Initialized k-point handler associated with the same simulation context.
+!> @param [out] Hk_handler Handler of the newly created k-point Hamiltonian.
+!> @param [out] error_code Error code.
+subroutine sirius_create_hamiltonian_k(H0_handler,kp_handler,Hk_handler,error_code)
+implicit none
+!
+type(sirius_H0_handler), target, intent(in) :: H0_handler
+type(sirius_kpoint_handler), target, intent(in) :: kp_handler
+type(sirius_Hk_handler), target, intent(out) :: Hk_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: H0_handler_ptr
+type(C_PTR) :: kp_handler_ptr
+type(C_PTR) :: Hk_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_create_hamiltonian_k_aux(H0_handler,kp_handler,Hk_handler,error_code)&
+&bind(C, name="sirius_create_hamiltonian_k")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: H0_handler
+type(C_PTR), value :: kp_handler
+type(C_PTR), value :: Hk_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+H0_handler_ptr = C_NULL_PTR
+H0_handler_ptr = C_LOC(H0_handler%handler_ptr_)
+kp_handler_ptr = C_NULL_PTR
+kp_handler_ptr = C_LOC(kp_handler%handler_ptr_)
+Hk_handler_ptr = C_NULL_PTR
+Hk_handler_ptr = C_LOC(Hk_handler%handler_ptr_)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_hamiltonian_k_aux(H0_handler_ptr,kp_handler_ptr,Hk_handler_ptr,&
+&error_code_ptr)
+end subroutine sirius_create_hamiltonian_k
 
 !
 !> @brief Set the parameters controlling the dftd3 correction.
@@ -7219,11 +7312,25 @@ subroutine sirius_free_handler_dft(handler, error_code)
     call sirius_free_object_handler(handler%handler_ptr_, error_code)
 end subroutine sirius_free_handler_dft
 
+subroutine sirius_free_handler_kp(handler, error_code)
+    implicit none
+    type(sirius_kpoint_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_kp
+
 subroutine sirius_free_handler_H0(handler, error_code)
     implicit none
     type(sirius_H0_handler), intent(inout) :: handler
     integer, optional, target, intent(out) :: error_code
     call sirius_free_object_handler(handler%handler_ptr_, error_code)
 end subroutine sirius_free_handler_H0
+
+subroutine sirius_free_handler_Hk(handler, error_code)
+    implicit none
+    type(sirius_Hk_handler), intent(inout) :: handler
+    integer, optional, target, intent(out) :: error_code
+    call sirius_free_object_handler(handler%handler_ptr_, error_code)
+end subroutine sirius_free_handler_Hk
 
 end module

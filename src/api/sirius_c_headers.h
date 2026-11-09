@@ -1336,8 +1336,8 @@ sirius_get_pw_coeffs:
       doc: Error code.
 */
 void
-sirius_get_pw_coeffs(void* const* gs_handler__, char const* label__, double complex* pw_coeffs__, int const* ngv__,
-                     int* gvl__, int const* comm__, int* error_code__);
+sirius_get_pw_coeffs(void* const* gs_handler__, char const* label__, double complex* pw_coeffs__,
+                     int const* ngv__, int* gvl__, int const* comm__, int* error_code__);
 
 /*
 sirius_initialize_subspace:
@@ -1692,8 +1692,8 @@ sirius_get_wave_functions:
 */
 void
 sirius_get_wave_functions(void* const* ks_handler__, double const* vkl__, int const* spin__, int const* num_gvec_loc__,
-                          int const* gvec_loc__, double complex* evec__, int const* ld__, int const* num_spin_comp__,
-                          int* error_code__);
+                          int const* gvec_loc__, double complex* evec__, int const* ld__,
+                          int const* num_spin_comp__, int* error_code__);
 
 /*
 sirius_add_atom_type_aw_descriptor:
@@ -2576,8 +2576,8 @@ sirius_get_fv_eigen_vectors:
       doc: Error code
 */
 void
-sirius_get_fv_eigen_vectors(void* const* ks_handler__, int const* ik__, double complex* fv_evec__, int const* ld__,
-                            int const* num_fv_states__, int* error_code__);
+sirius_get_fv_eigen_vectors(void* const* ks_handler__, int const* ik__, double complex* fv_evec__,
+                            int const* ld__, int const* num_fv_states__, int* error_code__);
 
 /*
 sirius_get_fv_eigen_values:
@@ -3020,6 +3020,41 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
                                    int* const error_code__);
 
 /*
+sirius_create_kpoint:
+  doc: Create and initialize a k-point using an explicit distributed G-vector basis.
+       The simulation context must outlive the returned k-point handler.
+       This call is collective over the band communicator.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    vk:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K-point coordinates in reciprocal lattice units.
+    num_gkvec_loc:
+      type: int
+      attr: in, required
+      doc: Number of local G-vectors for G+k.
+    gkvec_loc:
+      type: int
+      attr: in, required, dimension(3,num_gkvec_loc)
+      doc: Local G-vector Miller indices.
+    kp_handler:
+      type: kp_handler
+      attr: out, required
+      doc: Handler of the newly initialized k-point. Release with sirius_free_handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_create_kpoint(void* const* handler__, double const* vk__, int const* num_gkvec_loc__, int const* gkvec_loc__,
+                     void** kp_handler__, int* error_code__);
+
+/*
 sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
@@ -3027,22 +3062,10 @@ sirius_linear_solver:
       type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
-    h0_handler:
-      type: H0_handler
+    hkq_handler:
+      type: Hk_handler
       attr: in, required
-      doc: K-point independent Hamiltonian handler.
-    vkq:
-      type: double
-      attr: in, required, dimension(3)
-      doc: K+q-point in lattice coordinates
-    num_gvec_kq_loc:
-      type: int
-      attr: in, required
-      doc: Local number of G-vectors for k+q-point
-    gvec_kq_loc:
-      type: int
-      attr: in, required, dimension(3, num_gvec_kq_loc)
-      doc: Local list of G-vectors for k+q-point.
+      doc: K+q-point Hamiltonian handler.
     dpsi:
       type: complex
       attr: inout, required, dimension(ld, num_spin_comp)
@@ -3101,8 +3124,7 @@ sirius_linear_solver:
       doc: Error code
 */
 void
-sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__,
-                     int const* num_gvec_kq_loc__, int const* gvec_kq_loc__, double complex* dpsi__,
+sirius_linear_solver(void* const* gs_handler__, void* const* hkq_handler__, double complex* dpsi__,
                      double complex* psi__, double* eigvals__, double complex* dvpsi__, int const* ld__,
                      int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
                      int const* nbnd_occ_kq__, double const* tol__, double complex const* omega__, int* niter__,
@@ -3168,8 +3190,9 @@ sirius_generate_rhoaug_q:
 void
 sirius_generate_rhoaug_q(void* const* gs_handler__, int const* iat__, int const* num_atoms__, int const* num_gvec_loc__,
                          int const* num_spin_comp__, double complex const* qpw__, int const* ldq__,
-                         double complex const* phase_factors_q__, int const* mill__, double complex const* dens_mtrx__,
-                         int const* ldd__, double complex* rho_aug__, int* error_code__);
+                         double complex const* phase_factors_q__, int const* mill__,
+                         double complex const* dens_mtrx__, int const* ldd__, double complex* rho_aug__,
+                         int* error_code__);
 
 /*
 sirius_generate_d_operator_matrix:
@@ -3257,8 +3280,8 @@ sirius_access_density_matrix:
       doc: Error code.
 */
 void
-sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__, double complex* dm__,
-                             int const* ld__, int* error_code__);
+sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__,
+                             double complex* dm__, int const* ld__, int* error_code__);
 
 /*
 sirius_access_local_occupation_matrix:
@@ -3303,8 +3326,8 @@ sirius_access_local_occupation_matrix:
 */
 void
 sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__,
-                                      int const* l__, int const* spin__, double complex* occ_mtrx__, int const* ld__,
-                                      int* error_code__);
+                                      int const* l__, int const* spin__, double complex* occ_mtrx__,
+                                      int const* ld__, int* error_code__);
 
 /*
 sirius_access_nonlocal_occupation_matrix:
@@ -3538,6 +3561,33 @@ sirius_create_hamiltonian:
 */
 void
 sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* error_code__);
+
+/*
+sirius_create_hamiltonian_k:
+  doc: Create a k-point Hamiltonian and precompute its plane-wave Hamiltonian and overlap diagonals.
+       The parent Hamiltonian and k-point must outlive the returned handler.
+       Release this handler with sirius_free_handler before releasing either parent.
+  arguments:
+    H0_handler:
+      type: H0_handler
+      attr: in, required
+      doc: K-point independent Hamiltonian handler.
+    kp_handler:
+      type: kp_handler
+      attr: in, required
+      doc: Initialized k-point handler associated with the same simulation context.
+    Hk_handler:
+      type: Hk_handler
+      attr: out, required
+      doc: Handler of the newly created k-point Hamiltonian.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_create_hamiltonian_k(void* const* H0_handler__, void* const* kp_handler__, void** Hk_handler__,
+                            int* error_code__);
 
 /*
 sirius_set_dftd3_correction:
@@ -3785,3 +3835,4 @@ sirius_set_xc_point_callback(void* const* handler__, void (*fptr__)(), void* use
                              int const* num_blocks__, double const* coordinates__, double const* energy_weights__,
                              double const* descriptor_weights__, int const* block_sizes__,
                              double const* block_centres__, int* error_code__);
+

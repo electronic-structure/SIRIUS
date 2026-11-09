@@ -292,6 +292,15 @@ get_gs(void* const* h)
     return static_cast<any_ptr*>(*h)->get<DFT_ground_state>();
 }
 
+K_point<double>&
+get_kp(void* const* h)
+{
+    if (h == nullptr || *h == nullptr) {
+        RTE_THROW("Non-existing K-point handler");
+    }
+    return static_cast<any_ptr*>(*h)->get<K_point<double>>();
+}
+
 K_point_set&
 get_ks(void* const* h)
 {
@@ -308,6 +317,15 @@ get_H0(void* const* h)
         RTE_THROW("Non-existing Hamiltonian handler");
     }
     return static_cast<any_ptr*>(*h)->get<Hamiltonian0<double>>();
+}
+
+Hamiltonian_k<double>&
+get_Hk(void* const* h)
+{
+    if (h == nullptr || *h == nullptr) {
+        RTE_THROW("Non-existing K-point Hamiltonian handler");
+    }
+    return static_cast<any_ptr*>(*h)->get<Hamiltonian_k<double>>();
 }
 
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
@@ -6022,6 +6040,64 @@ sirius_add_hubbard_atom_constraint(void* const* handler__, int* const atom_id__,
 
 /*
 @api begin
+sirius_create_kpoint:
+  doc: Create and initialize a k-point using an explicit distributed G-vector basis.
+       The simulation context must outlive the returned k-point handler.
+       This call is collective over the band communicator.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    vk:
+      type: double
+      attr: in, required, dimension(3)
+      doc: K-point coordinates in reciprocal lattice units.
+    num_gkvec_loc:
+      type: int
+      attr: in, required
+      doc: Number of local G-vectors for G+k.
+    gkvec_loc:
+      type: int
+      attr: in, required, dimension(3,num_gkvec_loc)
+      doc: Local G-vector Miller indices.
+    kp_handler:
+      type: kp_handler
+      attr: out, required
+      doc: Handler of the newly initialized k-point. Release with sirius_free_handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_create_kpoint(void* const* handler__, double const* vk__, int const* num_gkvec_loc__, int const* gkvec_loc__,
+                     void** kp_handler__, int* error_code__)
+{
+    PROFILE("api::sirius::create_kpoint");
+    call_sirius(
+            [&]() {
+                auto& sctx = get_sim_ctx(handler__);
+                auto gk_in = std::make_shared<fft::Gvec>(r3::vector<double>(vk__),
+                                                         sctx.unit_cell().reciprocal_lattice_vectors(),
+                                                         *num_gkvec_loc__, gkvec_loc__, sctx.comm_band(), false);
+
+                int num_gkvec = *num_gkvec_loc__;
+                sctx.comm_band().allreduce(&num_gkvec, 1);
+                if (num_gkvec != gk_in->num_gvec()) {
+                    RTE_THROW("wrong number of G+k vectors for k");
+                }
+
+                K_point<double>* new_kpoint = new K_point<double>(sctx, gk_in, 1.0);
+                new_kpoint->initialize();
+                *kp_handler__ = new any_ptr(new_kpoint);
+            },
+            error_code__);
+}
+
+/*
+@api begin
 sirius_linear_solver:
   doc: Interface to linear solver.
   arguments:
@@ -6029,22 +6105,10 @@ sirius_linear_solver:
       type: gs_handler
       attr: in, required
       doc: DFT ground state handler.
-    h0_handler:
-      type: H0_handler
+    hkq_handler:
+      type: Hk_handler
       attr: in, required
-      doc: K-point independent Hamiltonian handler.
-    vkq:
-      type: double
-      attr: in, required, dimension(3)
-      doc: K+q-point in lattice coordinates
-    num_gvec_kq_loc:
-      type: int
-      attr: in, required
-      doc: Local number of G-vectors for k+q-point
-    gvec_kq_loc:
-      type: int
-      attr: in, required, dimension(3, num_gvec_kq_loc)
-      doc: Local list of G-vectors for k+q-point.
+      doc: K+q-point Hamiltonian handler.
     dpsi:
       type: complex
       attr: inout, required, dimension(ld, num_spin_comp)
@@ -6104,8 +6168,7 @@ sirius_linear_solver:
 @api end
 */
 void
-sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, double const* vkq__,
-                     int const* num_gvec_kq_loc__, int const* gvec_kq_loc__, std::complex<double>* dpsi__,
+sirius_linear_solver(void* const* gs_handler__, void* const* hkq_handler__, std::complex<double>* dpsi__,
                      std::complex<double>* psi__, double* eigvals__, std::complex<double>* dvpsi__, int const* ld__,
                      int const* num_spin_comp__, double const* alpha_pv__, int const* spin__, int const* nbnd_occ_k__,
                      int const* nbnd_occ_kq__, double const* tol__, std::complex<double> const* omega__, int* niter__,
@@ -6136,25 +6199,9 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
                     sr = wf::spin_range(*spin__ - 1);
                 }
 
-                std::shared_ptr<fft::Gvec> gvkq_in;
-                gvkq_in = std::make_shared<fft::Gvec>(r3::vector<double>(vkq__),
-                                                      sctx.unit_cell().reciprocal_lattice_vectors(), *num_gvec_kq_loc__,
-                                                      gvec_kq_loc__, sctx.comm_band(), false);
-
-                int num_gvec_kq_loc = *num_gvec_kq_loc__;
-                int num_gvec_kq     = num_gvec_kq_loc;
-                sctx.comm_band().allreduce(&num_gvec_kq, 1);
-
-                if (num_gvec_kq != gvkq_in->num_gvec()) {
-                    RTE_THROW("wrong number of G+k vectors for k");
-                }
-
-                auto& H0 = get_H0(h0_handler__);
-
-                sirius::K_point<double> kp(const_cast<sirius::Simulation_context&>(sctx), gvkq_in, 1.0);
-                kp.initialize();
-
-                auto Hk = H0(kp);
+                auto& Hkq = get_Hk(hkq_handler__);
+                auto& kp = Hkq.kp();
+                Hkq.H0().local_op().prepare_k(kp.gkvec_fft());
 
                 /* copy eigenvalues (factor 2 for rydberg/hartree) */
                 std::vector<double> eigvals_vec(eigvals__, eigvals__ + nbnd_occ_k);
@@ -6175,6 +6222,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
                                                                       wf::num_mag_dims(0), false);
 
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    #pragma omp parallel for
                     for (int i = 0; i < nbnd_occ_kq; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             psi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = psi(ig, ispn, i);
@@ -6182,9 +6230,8 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
                     }
                 }
 
-                // TODO: comment where nbnd_occ_k and nbnd_occ_kq are used and how
-
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    #pragma omp parallel for
                     for (int i = 0; i < nbnd_occ_k; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i)) = dpsi(ig, ispn, i);
@@ -6224,7 +6271,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
 
                 auto omega = get_value(omega__, std::complex<double>(0, 0)) / 2.0;
 
-                sirius::lr::Linear_response_operator linear_operator(Hk, eigvals_vec, psi_wf,
+                sirius::lr::Linear_response_operator linear_operator(Hkq, eigvals_vec, psi_wf,
                                                                      *alpha_pv__ / 2, // rydberg/hartree factor
                                                                      omega, wf::band_range(0, nbnd_occ_kq), sr, mem);
                 /* CG state vectors */
@@ -6234,7 +6281,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
                 auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
 
                 /* set up the diagonal preconditioner */
-                auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
+                auto h_o_diag = Hkq.get_h_o_diag_pw<3>(); // already on the GPU if mem=GPU
                 mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
                 eigvals_mdarray = [&](int i) { return eigvals_vec[i]; };
                 /* allocate and copy eigvals_mdarray to GPU if running on GPU */
@@ -6265,6 +6312,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* h0_handler__, doubl
 
                 /* bring wave functions back in order of QE */
                 for (int ispn = 0; ispn < *num_spin_comp__; ispn++) {
+                    #pragma omp parallel for
                     for (int i = 0; i < nbnd_occ_k; i++) {
                         for (int ig = 0; ig < kp.gkvec().count(); ig++) {
                             dpsi(ig, ispn, i) = dpsi_wf->pw_coeffs(ig, wf::spin_index(ispn), wf::band_index(i));
@@ -7014,6 +7062,44 @@ sirius_create_hamiltonian(void* const* gs_handler__, void** H0_handler__, int* e
                 gs.potential().generate(gs.density(), gs.ctx().use_symmetry(), transform_to_rg);
                 *H0_handler__ =
                         new any_ptr(new Hamiltonian0<double>(gs.potential(), gs.potential().create_lapw_basis()));
+            },
+            error_code__);
+}
+
+/*
+@api begin
+sirius_create_hamiltonian_k:
+  doc: Create a k-point Hamiltonian and precompute its plane-wave Hamiltonian and overlap diagonals.
+       The parent Hamiltonian and k-point must outlive the returned handler.
+       Release this handler with sirius_free_handler before releasing either parent.
+  arguments:
+    H0_handler:
+      type: H0_handler
+      attr: in, required
+      doc: K-point independent Hamiltonian handler.
+    kp_handler:
+      type: kp_handler
+      attr: in, required
+      doc: Initialized k-point handler associated with the same simulation context.
+    Hk_handler:
+      type: Hk_handler
+      attr: out, required
+      doc: Handler of the newly created k-point Hamiltonian.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_create_hamiltonian_k(void* const* H0_handler__, void* const* kp_handler__, void** Hk_handler__,
+                            int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& H0 = get_H0(H0_handler__);
+                auto& kp = get_kp(kp_handler__);
+                *Hk_handler__ = new any_ptr(new Hamiltonian_k<double>(H0, kp, true));
             },
             error_code__);
 }

@@ -48,7 +48,7 @@ accumulate_pw_diag(mdarray<T, 2>& diag__, matrix<std::complex<T>> const& beta_gk
 } // namespace
 
 template <typename T>
-Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__)
+Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__, bool precompute_diagonals__)
     : H0_(H0__)
     , kp_(kp__)
 {
@@ -63,6 +63,12 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__)
                 const_cast<wf::Wave_functions<T>&>(kp_.hubbard_wave_functions_S())
                         .copy_to(H0_.ctx().processing_unit_memory_t());
             }
+        }
+        if (precompute_diagonals__) {
+            auto diagonals = this->template get_h_o_diag_pw<3>();
+            h_diag_ = std::move(diagonals.first);
+            o_diag_ = std::move(diagonals.second);
+            diagonals_precomputed_ = true;
         }
     }
 }
@@ -84,7 +90,7 @@ template <typename T>
 Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian_k&& src__) = default;
 
 template <typename T>
-template <typename F, int what>
+template <int what>
 std::pair<mdarray<T, 2>, mdarray<T, 2>>
 Hamiltonian_k<T>::get_h_o_diag_pw() const
 {
@@ -98,6 +104,23 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
     h_diag.zero();
     o_diag.zero();
 
+    if (diagonals_precomputed_) {
+        if (what & 1) {
+            copy(h_diag_, h_diag);
+            if (H0_.ctx().processing_unit() == device_t::GPU) {
+                h_diag.allocate(memory_t::device);
+                auto_copy(h_diag, h_diag_, device_t::GPU);
+            }
+        }
+        if (what & 2) {
+            copy(o_diag_, o_diag);
+            if (H0_.ctx().processing_unit() == device_t::GPU) {
+                o_diag.allocate(memory_t::device);
+                auto_copy(o_diag, o_diag_, device_t::GPU);
+            }
+        }
+        return std::make_pair(std::move(h_diag), std::move(o_diag));
+    }
     std::vector<int> offset_t(uc.num_atom_types());
     std::generate(offset_t.begin(), offset_t.end(), [n = 0, iat = 0, &uc]() mutable {
         int offs = n;
@@ -151,10 +174,10 @@ Hamiltonian_k<T>::get_h_o_diag_pw() const
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
                         if (what & 1) {
-                            d_sum(xi1, xi2) += H0_.D().template value<F>(xi1, xi2, ispn, ia);
+                            d_sum(xi1, xi2) += H0_.D().value_complex(xi1, xi2, ispn, ia);
                         }
                         if (what & 2) {
-                            q_sum(xi1, xi2) += H0_.Q().template value<F>(xi1, xi2, ispn, ia);
+                            q_sum(xi1, xi2) += H0_.Q().value_complex(xi1, xi2, ispn, ia);
                         }
                     }
                 }
@@ -1488,22 +1511,13 @@ Hamiltonian_k<T>::apply_b(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_fun
 template class Hamiltonian_k<double>;
 
 template std::pair<mdarray<double, 2>, mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<double, 1>() const;
+Hamiltonian_k<double>::get_h_o_diag_pw<1>() const;
 
 template std::pair<mdarray<double, 2>, mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<double, 2>() const;
+Hamiltonian_k<double>::get_h_o_diag_pw<2>() const;
 
 template std::pair<mdarray<double, 2>, mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<double, 3>() const;
-
-template std::pair<mdarray<double, 2>, mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<std::complex<double>, 1>() const;
-
-template std::pair<mdarray<double, 2>, mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<std::complex<double>, 2>() const;
-
-template std::pair<mdarray<double, 2>, mdarray<double, 2>>
-Hamiltonian_k<double>::get_h_o_diag_pw<std::complex<double>, 3>() const;
+Hamiltonian_k<double>::get_h_o_diag_pw<3>() const;
 
 template std::pair<mdarray<double, 2>, mdarray<double, 2>>
 Hamiltonian_k<double>::get_h_o_diag_lapw<1>() const;
@@ -1518,22 +1532,13 @@ Hamiltonian_k<double>::get_h_o_diag_lapw<3>() const;
 template class Hamiltonian_k<float>;
 
 template std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<float, 1>() const;
+Hamiltonian_k<float>::get_h_o_diag_pw<1>() const;
 
 template std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<float, 2>() const;
+Hamiltonian_k<float>::get_h_o_diag_pw<2>() const;
 
 template std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<float, 3>() const;
-
-template std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 1>() const;
-
-template std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 2>() const;
-
-template std::pair<mdarray<float, 2>, mdarray<float, 2>>
-Hamiltonian_k<float>::get_h_o_diag_pw<std::complex<float>, 3>() const;
+Hamiltonian_k<float>::get_h_o_diag_pw<3>() const;
 
 template std::pair<mdarray<float, 2>, mdarray<float, 2>>
 Hamiltonian_k<float>::get_h_o_diag_lapw<1>() const;
