@@ -1,5 +1,4 @@
 find_package(Python3 COMPONENTS Development REQUIRED)
-set(CMAKE_CXX_STANDARD 17)
 find_package(mpi4py REQUIRED)
 
 # TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP17 is needed for Intel compiler

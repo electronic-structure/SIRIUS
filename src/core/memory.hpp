@@ -650,11 +650,11 @@ class mdarray
     at_idx(memory_t mem__, index_type const idx__);
 
     // Call constructor on non-trivial data. Complex numbers are treated as trivial.
-    inline void
+    void
     call_constructor();
 
     // Call destructor on non-trivial data. Complex numbers are treated as trivial.
-    inline void
+    void
     call_destructor();
 
     /// Copy constructor is forbidden
@@ -695,19 +695,19 @@ class mdarray
     mdarray(mdarray<T, N>&& src);
 
     /// Move assignment operator
-    inline mdarray<T, N>&
+    mdarray<T, N>&
     operator=(mdarray<T, N>&& src);
 
     /// Allocate heap memory for array.
-    inline auto&
+    mdarray<T, N>&
     allocate(memory_t memory__);
 
     /// Allocate memory from the pool.
-    inline auto&
+    mdarray<T, N>&
     allocate(memory_pool& mp__);
 
     /// Deallocate host or device memory.
-    inline void
+    void
     deallocate(memory_t memory__);
 
     /// Access operator() for the elements of multidimensional array.
@@ -770,7 +770,7 @@ class mdarray
 
     /// Compute hash of the array
     /** Example: std::printf("hash(h) : %16llX\n", h.hash()); */
-    inline uint64_t
+    uint64_t
     hash(uint64_t h__ = 5381) const;
 
     /// Compute weighted checksum.
@@ -778,10 +778,10 @@ class mdarray
     checksum_w(size_t idx0__, size_t size__) const;
 
     /// Compute checksum.
-    inline T
+    T
     checksum(size_t idx0__, size_t size__) const;
 
-    inline T
+    T
     checksum() const;
 
     inline T*
@@ -797,18 +797,18 @@ class mdarray
     end() const;
 
     /// Zero n elements starting from idx0.
-    inline void
+    void
     zero(memory_t mem__, size_t idx0__, size_t n__);
 
     /// Zero the entire array.
-    inline void
+    void
     zero(memory_t mem__ = memory_t::host);
 
     /// Copy n elements starting from idx0 from one memory type to another.
-    inline void
+    void
     copy_to(memory_t mem__, size_t idx0__, size_t n__, acc::stream_id sid = acc::stream_id(-1));
     /// Copy entire array from one memory type to another.
-    inline void
+    void
     copy_to(memory_t mem__, acc::stream_id sid = acc::stream_id(-1));
 
     auto
@@ -828,10 +828,12 @@ class mdarray
     operator=(std::function<T(void)> f__);
 
     auto&
-    operator=(std::function<T(index_type)> f__);
+    operator=(std::function<T(index_type)> f__)
+        requires(N == 1);
 
     auto&
-    operator=(std::function<T(index_type, index_type)> f__);
+    operator=(std::function<T(index_type, index_type)> f__)
+        requires(N == 2);
 };
 
 template <typename T, int N>
@@ -987,7 +989,7 @@ mdarray<T, N>::mdarray(mdarray<T, N>&& src)
 }
 
 template <typename T, int N>
-inline mdarray<T, N>&
+mdarray<T, N>&
 mdarray<T, N>::operator=(mdarray<T, N>&& src)
 {
     if (this != &src) {
@@ -1009,7 +1011,7 @@ mdarray<T, N>::operator=(mdarray<T, N>&& src)
 }
 
 template <typename T, int N>
-auto&
+mdarray<T, N>&
 mdarray<T, N>::allocate(memory_t memory__)
 {
     /* do nothing for zero-sized array */
@@ -1040,7 +1042,7 @@ mdarray<T, N>::allocate(memory_t memory__)
 }
 
 template <typename T, int N>
-auto&
+mdarray<T, N>&
 mdarray<T, N>::allocate(memory_pool& mp__)
 {
     /* do nothing for zero-sized array */
@@ -1107,7 +1109,7 @@ mdarray<T, N>::operator()(Args... args)
 }
 
 template <typename T, int N>
-T const&
+inline T const&
 mdarray<T, N>::operator[](size_t const idx__) const
 {
     mdarray_assert(idx__ >= 0 && idx__ < size());
@@ -1115,7 +1117,7 @@ mdarray<T, N>::operator[](size_t const idx__) const
 }
 
 template <typename T, int N>
-T&
+inline T&
 mdarray<T, N>::operator[](size_t const idx__)
 {
     return const_cast<T&>(static_cast<mdarray<T, N> const&>(*this)[idx__]);
@@ -1138,21 +1140,21 @@ mdarray<T, N>::at(memory_t mem__, Args... args)
 }
 
 template <typename T, int N>
-T const*
+inline T const*
 mdarray<T, N>::at(memory_t mem__) const
 {
     return at_idx<false>(mem__, 0);
 }
 
 template <typename T, int N>
-T*
+inline T*
 mdarray<T, N>::at(memory_t mem__)
 {
     return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
 }
 
 template <typename T, int N>
-T*
+inline T*
 mdarray<T, N>::host_data()
 {
     mdarray_assert(raw_ptr_ != nullptr);
@@ -1160,7 +1162,7 @@ mdarray<T, N>::host_data()
 }
 
 template <typename T, int N>
-T const*
+inline T const*
 mdarray<T, N>::host_data() const
 {
     mdarray_assert(raw_ptr_ != nullptr);
@@ -1168,7 +1170,7 @@ mdarray<T, N>::host_data() const
 }
 
 template <typename T, int N>
-T*
+inline T*
 mdarray<T, N>::device_data()
 {
 #if defined(SIRIUS_GPU)
@@ -1180,7 +1182,7 @@ mdarray<T, N>::device_data()
 }
 
 template <typename T, int N>
-T const*
+inline T const*
 mdarray<T, N>::device_data() const
 {
 #if defined(SIRIUS_GPU)
@@ -1192,7 +1194,7 @@ mdarray<T, N>::device_data() const
 }
 
 template <typename T, int N>
-size_t
+inline size_t
 mdarray<T, N>::size() const
 {
     size_t size_{1};
@@ -1205,7 +1207,7 @@ mdarray<T, N>::size() const
 }
 
 template <typename T, int N>
-size_t
+inline size_t
 mdarray<T, N>::size(int i) const
 {
     mdarray_assert(i < N);
@@ -1213,7 +1215,7 @@ mdarray<T, N>::size(int i) const
 }
 
 template <typename T, int N>
-int32_t
+inline int32_t
 mdarray<T, N>::ld() const
 {
     mdarray_assert(dims_[0].size() < size_t(1 << 31));
@@ -1250,28 +1252,28 @@ mdarray<T, N>::checksum() const
 }
 
 template <typename T, int N>
-T*
+inline T*
 mdarray<T, N>::begin()
 {
     return this->at(memory_t::host);
 }
 
 template <typename T, int N>
-T const*
+inline T const*
 mdarray<T, N>::begin() const
 {
     return this->at(memory_t::host);
 }
 
 template <typename T, int N>
-T*
+inline T*
 mdarray<T, N>::end()
 {
     return this->at(memory_t::host) + this->size();
 }
 
 template <typename T, int N>
-T const*
+inline T const*
 mdarray<T, N>::end() const
 {
     return this->at(memory_t::host) + this->size();
@@ -1347,21 +1349,21 @@ mdarray<T, N>::copy_to(memory_t mem__, acc::stream_id sid)
 }
 
 template <typename T, int N>
-auto
+inline auto
 mdarray<T, N>::label() const
 {
     return label_;
 }
 
 template <typename T, int N>
-auto
+inline auto
 mdarray<T, N>::dim(int idx__) const
 {
     return this->dims_[idx__];
 }
 
 template <typename T, int N>
-bool
+inline bool
 mdarray<T, N>::on_device() const
 {
 #if defined(SIRIUS_GPU)
@@ -1372,7 +1374,7 @@ mdarray<T, N>::on_device() const
 }
 
 template <typename T, int N>
-bool
+inline bool
 mdarray<T, N>::on_host() const
 {
     return (raw_ptr_ != nullptr);
@@ -1391,8 +1393,8 @@ mdarray<T, N>::operator=(std::function<T(void)> f__)
 template <typename T, int N>
 auto&
 mdarray<T, N>::operator=(std::function<T(index_type)> f__)
+    requires(N == 1)
 {
-    static_assert(N == 1, "wrong number of dimensions");
 
     for (index_type i0 = this->dims_[0].begin(); i0 != this->dims_[0].end(); i0++) {
         (*this)(i0) = f__(i0);
@@ -1403,8 +1405,8 @@ mdarray<T, N>::operator=(std::function<T(index_type)> f__)
 template <typename T, int N>
 auto&
 mdarray<T, N>::operator=(std::function<T(index_type, index_type)> f__)
+    requires(N == 2)
 {
-    static_assert(N == 2, "wrong number of dimensions");
 
     for (index_type i1 = this->dims_[1].begin(); i1 != this->dims_[1].end(); i1++) {
         for (index_type i0 = this->dims_[0].begin(); i0 != this->dims_[0].end(); i0++) {
@@ -1421,6 +1423,27 @@ mdarray<T, N>::~mdarray()
     deallocate(memory_t::host);
     deallocate(memory_t::device);
 }
+
+/* explicit instantiations are in memory.cpp */
+extern template class mdarray<double, 1>;
+extern template class mdarray<double, 2>;
+extern template class mdarray<double, 3>;
+extern template class mdarray<double, 4>;
+extern template class mdarray<std::complex<double>, 1>;
+extern template class mdarray<std::complex<double>, 2>;
+extern template class mdarray<std::complex<double>, 3>;
+extern template class mdarray<std::complex<double>, 4>;
+extern template class mdarray<int, 1>;
+extern template class mdarray<int, 2>;
+extern template class mdarray<int, 3>;
+extern template class mdarray<float, 1>;
+extern template class mdarray<float, 2>;
+extern template class mdarray<float, 3>;
+extern template class mdarray<std::complex<float>, 1>;
+extern template class mdarray<std::complex<float>, 2>;
+extern template class mdarray<std::complex<float>, 3>;
+extern template class mdarray<uint32_t, 1>;
+extern template class mdarray<char, 1>;
 
 // Alias for matrix
 template <typename T>

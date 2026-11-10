@@ -60,4 +60,24 @@ get_device_t(std::string name__)
     return m.at(name__);
 }
 
+template class mdarray<double, 1>;
+template class mdarray<double, 2>;
+template class mdarray<double, 3>;
+template class mdarray<double, 4>;
+template class mdarray<std::complex<double>, 1>;
+template class mdarray<std::complex<double>, 2>;
+template class mdarray<std::complex<double>, 3>;
+template class mdarray<std::complex<double>, 4>;
+template class mdarray<int, 1>;
+template class mdarray<int, 2>;
+template class mdarray<int, 3>;
+template class mdarray<float, 1>;
+template class mdarray<float, 2>;
+template class mdarray<float, 3>;
+template class mdarray<std::complex<float>, 1>;
+template class mdarray<std::complex<float>, 2>;
+template class mdarray<std::complex<float>, 3>;
+template class mdarray<uint32_t, 1>;
+template class mdarray<char, 1>;
+
 } // namespace sirius
