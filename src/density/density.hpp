@@ -423,22 +423,10 @@ class Density : public Field4D
     }
 
     auto&
-    kinetic_density()
-    {
-        if (!kinetic_density_) {
-            RTE_THROW("kinetic density was not enabled before constructing Density");
-        }
-        return *kinetic_density_;
-    }
+    kinetic_density();
 
     auto const&
-    kinetic_density() const
-    {
-        if (!kinetic_density_) {
-            RTE_THROW("kinetic density was not enabled before constructing Density");
-        }
-        return *kinetic_density_;
-    }
+    kinetic_density() const;
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.
@@ -522,11 +510,7 @@ class Density : public Field4D
     }
 
     inline auto const&
-    density_mt(atom_index_t::local ialoc__) const
-    {
-        auto ia = ctx_.unit_cell().spl_num_atoms().global_index(ialoc__);
-        return rho().mt()[ia];
-    }
+    density_mt(atom_index_t::local ialoc__) const;
 
     /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
     void
@@ -534,25 +518,11 @@ class Density : public Field4D
 
     /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
     inline auto
-    paw_ae_density(int ia__) const
-    {
-        std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            result[j] = &paw_density_->ae_density(j, ia__);
-        }
-        return result;
-    }
+    paw_ae_density(int ia__) const;
 
     /// Return list of pointers to pseudo PAW density function for a given local index of atom with PAW potential.
     inline auto
-    paw_ps_density(int ia__) const
-    {
-        std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            result[j] = &paw_density_->ps_density(j, ia__);
-        }
-        return result;
-    }
+    paw_ps_density(int ia__) const;
 
     void
     mixer_input();
@@ -621,42 +591,7 @@ class Density : public Field4D
 
     /// Check density at MT boundary
     void
-    check_density_continuity_at_mt()
-    {
-        //    // generate plane-wave coefficients of the potential in the interstitial region
-        //    ctx_.fft().input(&rho_->f_it<global>(0));
-        //    ctx_.fft().transform(-1);
-        //    ctx_.fft().output(ctx_.num_gvec(), ctx_.fft_index(), &rho_->f_pw(0));
-        //
-        //    SHT sht(ctx_.lmax_rho());
-        //
-        //    double diff = 0.0;
-        //    for (int ia = 0; ia < ctx_.num_atoms(); ia++)
-        //    {
-        //        for (int itp = 0; itp < sht.num_points(); itp++)
-        //        {
-        //            double vc[3];
-        //            for (int x = 0; x < 3; x++) vc[x] = sht.coord(x, itp) * ctx_.atom(ia)->mt_radius();
-        //
-        //            double val_it = 0.0;
-        //            for (int ig = 0; ig < ctx_.num_gvec(); ig++)
-        //            {
-        //                double vgc[3];
-        //                ctx_.get_coordinates<cartesian, reciprocal>(ctx_.gvec(ig), vgc);
-        //                val_it += real(rho_->f_pw(ig) * exp(std::complex<double>(0.0, Utils::scalar_product(vc,
-        //                vgc))));
-        //            }
-        //
-        //            double val_mt = 0.0;
-        //            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
-        //                val_mt += rho_->f_rlm(lm, ctx_.atom(ia)->num_mt_points() - 1, ia) * sht.rlm_backward(lm, itp);
-        //
-        //            diff += fabs(val_it - val_mt);
-        //        }
-        //    }
-        //    std::printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff /
-        //    ctx_.num_atoms() / sht.num_points());
-    }
+    check_density_continuity_at_mt();
 
     void
     save(std::string name__) const;
@@ -665,157 +600,59 @@ class Density : public Field4D
     load(std::string name__);
 
     void
-    save_to_xsf()
-    {
-        //== FILE* fout = fopen("unit_cell.xsf", "w");
-        //== fprintf(fout, "CRYSTAL\n");
-        //== fprintf(fout, "PRIMVEC\n");
-        //== auto& lv = unit_cell_.lattice_vectors();
-        //== for (int i = 0; i < 3; i++)
-        //== {
-        //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-        //== }
-        //== fprintf(fout, "CONVVEC\n");
-        //== for (int i = 0; i < 3; i++)
-        //== {
-        //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-        //== }
-        //== fprintf(fout, "PRIMCOORD\n");
-        //== fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
-        //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        //== {
-        //==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
-        //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
-        //== }
-        //== fclose(fout);
-    }
+    save_to_xsf();
 
     void
-    save_to_ted()
-    {
-
-        //== void write_periodic_function()
-        //== {
-        //==     //== mdarray<double, 3> vloc_3d_map(&vloc_it[0], fft_->size(0), fft_->size(1), fft_->size(2));
-        //==     //== int nx = fft_->size(0);
-        //==     //== int ny = fft_->size(1);
-        //==     //== int nz = fft_->size(2);
-
-        //==     //== auto p = parameters_.unit_cell()->unit_cell_parameters();
-
-        //==     //== FILE* fout = fopen("potential.ted", "w");
-        //==     //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
-        //==     //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha,
-        // p.beta, p.gamma);
-        //==     //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
-        //==     //== for (int i0 = 0; i0 <= nx; i0++)
-        //==     //== {
-        //==     //==     for (int i1 = 0; i1 <= ny; i1++)
-        //==     //==     {
-        //==     //==         for (int i2 = 0; i2 <= nz; i2++)
-        //==     //==         {
-        //==     //==             fprintf(fout, "%14.8f\n", vloc_3d_map(i0 % nx, i1 % ny, i2 % nz));
-        //==     //==         }
-        //==     //==     }
-        //==     //== }
-        //==     //== fclose(fout);
-        //== }
-    }
+    save_to_ted();
 
     void
-    save_to_xdmf()
-    {
-        //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
-        //== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
-
-        //== mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
-        //== mag_grid.zero();
-
-        //== // loop over 3D array (real space)
-        //== for (int j0 = 0; j0 < fft_->size(0); j0++)
-        //== {
-        //==     for (int j1 = 0; j1 < fft_->size(1); j1++)
-        //==     {
-        //==         for (int j2 = 0; j2 < fft_->size(2); j2++)
-        //==         {
-        //==             int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
-        //==             // get real space fractional coordinate
-        //==             double frv[] = {double(j0) / fft_->size(0),
-        //==                             double(j1) / fft_->size(1),
-        //==                             double(j2) / fft_->size(2)};
-        //==             r3::vector<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(r3::vector<double>(frv));
-        //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
-        //==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
-        //==             if (ctx_.num_mag_dims() == 3)
-        //==             {
-        //==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
-        //==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
-        //==             }
-        //==         }
-        //==     }
-        //== }
-
-        //== HDF5_tree h5_rho("rho.hdf5", true);
-        //== h5_rho.write("rho", rho_grid);
-        //== h5_rho.write("pos", pos_grid);
-        //== h5_rho.write("mag", mag_grid);
-
-        //== FILE* fout = fopen("rho.xdmf", "w");
-        //== //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-        //== //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-        //== //==               "<Xdmf>\n"
-        //== //==               "  <Domain Name=\"name1\">\n"
-        //== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-        //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-        //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
-        //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
-        // Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-        //== //==               "      </Geometry>\n"
-        //== //==               "      <Attribute\n"
-        //== //==               "           AttributeType=\"Scalar\"\n"
-        //== //==               "           Center=\"Node\"\n"
-        //== //==               "           Name=\"rho\">\n"
-        //== //==               "          <DataItem\n"
-        //== //==               "             NumberType=\"Float\"\n"
-        //== //==               "             Precision=\"8\"\n"
-        //== //==               "             Dimensions=\"%i %i %i\"\n"
-        //== //==               "             Format=\"HDF\">\n"
-        //== //==               "             rho.hdf5:/rho\n"
-        //== //==               "          </DataItem>\n"
-        //== //==               "        </Attribute>\n"
-        //== //==               "    </Grid>\n"
-        //== //==               "  </Domain>\n"
-        //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
-        // fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-        //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-        //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-        //==               "<Xdmf>\n"
-        //==               "  <Domain Name=\"name1\">\n"
-        //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-        //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-        //==               "      <Geometry GeometryType=\"XYZ\">\n"
-        //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\"
-        // Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-        //==               "      </Geometry>\n"
-        //==               "      <Attribute\n"
-        //==               "           AttributeType=\"Vector\"\n"
-        //==               "           Center=\"Node\"\n"
-        //==               "           Name=\"mag\">\n"
-        //==               "          <DataItem\n"
-        //==               "             NumberType=\"Float\"\n"
-        //==               "             Precision=\"8\"\n"
-        //==               "             Dimensions=\"%i %i %i 3\"\n"
-        //==               "             Format=\"HDF\">\n"
-        //==               "             rho.hdf5:/mag\n"
-        //==               "          </DataItem>\n"
-        //==               "        </Attribute>\n"
-        //==               "    </Grid>\n"
-        //==               "  </Domain>\n"
-        //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1),
-        // fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-        //== fclose(fout);
-    }
+    save_to_xdmf();
 };
+
+inline auto&
+Density::kinetic_density()
+{
+    if (!kinetic_density_) {
+        RTE_THROW("kinetic density was not enabled before constructing Density");
+    }
+    return *kinetic_density_;
+}
+
+inline auto const&
+Density::kinetic_density() const
+{
+    if (!kinetic_density_) {
+        RTE_THROW("kinetic density was not enabled before constructing Density");
+    }
+    return *kinetic_density_;
+}
+
+inline auto const&
+Density::density_mt(atom_index_t::local ialoc__) const
+{
+    auto ia = ctx_.unit_cell().spl_num_atoms().global_index(ialoc__);
+    return rho().mt()[ia];
+}
+
+inline auto
+Density::paw_ae_density(int ia__) const
+{
+    std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        result[j] = &paw_density_->ae_density(j, ia__);
+    }
+    return result;
+}
+
+inline auto
+Density::paw_ps_density(int ia__) const
+{
+    std::vector<Flm const*> result(ctx_.num_mag_dims() + 1);
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        result[j] = &paw_density_->ps_density(j, ia__);
+    }
+    return result;
+}
 
 inline void
 copy(Density const& src__, Density& dest__)

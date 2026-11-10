@@ -263,28 +263,7 @@ class Potential : public Field4D
      * \f]
      */
     void
-    generate_local_potential()
-    {
-        PROFILE("sirius::Potential::generate_local_potential");
-
-        /* get lenghts of all G shells */
-        auto q = ctx_.gvec().shells_len();
-        /* get form-factors for all G shells */
-        auto const ff = ctx_.ri().vloc_->values(q, ctx_.comm());
-        /* make Vloc(G) */
-        auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
-
-        std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
-
-        local_potential_->fft_transform(1);
-
-        if (env::print_checksum()) {
-            auto cs  = local_potential_->checksum_pw();
-            auto cs1 = local_potential_->checksum_rg();
-            print_checksum("local_potential_pw", cs, ctx_.out());
-            print_checksum("local_potential_rg", cs1, ctx_.out());
-        }
-    }
+    generate_local_potential();
 
     /// Generate XC potential in the muffin-tins.
     void
@@ -312,93 +291,7 @@ class Potential : public Field4D
     template <bool free_atom, typename T>
     std::vector<T>
     poisson_vmt(Atom const& atom__, Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
-                Spheric_function<function_domain_t::spectral, T>& vha_mt__) const
-    {
-        const bool use_r_prefact{false};
-
-        int lmmax_rho = rho_mt__.angular_domain_size();
-        int lmmax_pot = vha_mt__.angular_domain_size();
-        if ((int)l_by_lm_.size() < lmmax_rho) {
-            std::stringstream s;
-            s << "wrong size of l_by_lm array for atom of " << atom__.type().symbol() << std::endl
-              << "  lmmax_rho: " << lmmax_rho << std::endl
-              << "  l_by_lm.size: " << l_by_lm_.size();
-            RTE_THROW(s);
-        }
-        std::vector<T> qmt(lmmax_rho, 0);
-
-        double R = atom__.mt_radius();
-        int nmtp = atom__.num_mt_points();
-
-        #pragma omp parallel
-        {
-            std::vector<T> g1;
-            std::vector<T> g2;
-
-            #pragma omp for
-            for (int lm = 0; lm < lmmax_rho; lm++) {
-                int l = l_by_lm_[lm];
-
-                auto rholm = rho_mt__.component(lm);
-
-                if (use_r_prefact) {
-                    /* save multipole moment */
-                    qmt[lm] = rholm.integrate(g1, l + 2);
-                } else {
-                    for (int ir = 0; ir < nmtp; ir++) {
-                        double r = atom__.radial_grid(ir);
-                        rholm(ir) *= std::pow(r, l + 2);
-                    }
-                    qmt[lm] = rholm.interpolate().integrate(g1, 0);
-                }
-
-                if (lm < lmmax_pot) {
-
-                    if (use_r_prefact) {
-                        rholm.integrate(g2, 1 - l);
-                    } else {
-                        rholm = rho_mt__.component(lm);
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            double r = atom__.radial_grid(ir);
-                            rholm(ir) *= std::pow(r, 1 - l);
-                        }
-                        rholm.interpolate().integrate(g2, 0);
-                    }
-
-                    double fact = fourpi / double(2 * l + 1);
-
-                    for (int ir = 0; ir < nmtp; ir++) {
-                        double r = atom__.radial_grid(ir);
-
-                        if (free_atom) {
-                            vha_mt__(lm, ir) = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
-                        } else {
-                            double d1        = 1.0 / std::pow(R, 2 * l + 1);
-                            vha_mt__(lm, ir) = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                               (g2.back() - g2[ir]) * std::pow(r, l) -
-                                               (g1.back() - g1[ir]) * std::pow(r, l) * d1;
-                        }
-                        vha_mt__(lm, ir) *= fact;
-                    }
-                }
-            }
-        }
-        if (!free_atom) {
-            /* contribution from nuclear potential -z*(1/r - 1/R) */
-            for (int ir = 0; ir < nmtp; ir++) {
-#ifdef __VHA_AUX
-                double r = atom__.radial_grid(ir);
-                vha_mt__(0, ir) += atom__.zn() * (1 / R - 1 / r) / y00;
-#else
-                vha_mt__(0, ir) += atom__.zn() / R / y00;
-#endif
-            }
-        }
-        /* nuclear multipole moment */
-        qmt[0] -= atom__.zn() * y00;
-
-        return qmt;
-    }
+                Spheric_function<function_domain_t::spectral, T>& vha_mt__) const;
 
     /// Poisson solver.
     /** Detailed explanation is available in:
@@ -715,11 +608,7 @@ class Potential : public Field4D
     }
 
     auto const&
-    effective_potential_mt(atom_index_t::local ialoc) const
-    {
-        auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
-        return this->scalar().mt()[ia];
-    }
+    effective_potential_mt(atom_index_t::local ialoc) const;
 
     auto&
     effective_magnetic_field(int i)
@@ -740,11 +629,7 @@ class Potential : public Field4D
     }
 
     auto const&
-    hartree_potential_mt(atom_index_t::local ialoc) const
-    {
-        auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
-        return hartree_potential_->mt()[ia];
-    }
+    hartree_potential_mt(atom_index_t::local ialoc) const;
 
     auto&
     xc_potential()
@@ -777,34 +662,13 @@ class Potential : public Field4D
     }
 
     auto&
-    kinetic_potential()
-    {
-        if (!kinetic_potential_) {
-            RTE_THROW("kinetic potential is not enabled");
-        }
-        return *kinetic_potential_;
-    }
+    kinetic_potential();
 
     auto const&
-    kinetic_potential() const
-    {
-        if (!kinetic_potential_) {
-            RTE_THROW("kinetic potential is not enabled");
-        }
-        return *kinetic_potential_;
-    }
+    kinetic_potential() const;
 
     double
-    energy_vtau(Density const& density__) const
-    {
-        double result{0};
-        if (kinetic_potential_) {
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                result += inner(density__.kinetic_density().component(j), kinetic_potential_->component(j));
-            }
-        }
-        return result;
-    }
+    energy_vtau(Density const& density__) const;
 
     inline auto
     vh_el(int ia) const
@@ -823,12 +687,7 @@ class Potential : public Field4D
      *  real-space potential, whose Fourier buffer need not have been transformed.
      */
     double
-    external_xc_background_contraction() const
-    {
-        return external_xc_registered_
-                       ? ctx_.cfg().parameters().extra_charge() * xc_potential().integrate().total / unit_cell_.omega()
-                       : 0;
-    }
+    external_xc_background_contraction() const;
 
     /// Integral of the electronic density times the XC potential.
     auto
@@ -846,30 +705,13 @@ class Potential : public Field4D
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
     auto
-    energy_exc(Density const& density__) const
-    {
-        if (external_xc_registered_) {
-            return external_xc_energy_;
-        }
-        double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
-        if (!ctx_.full_potential()) {
-            exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density().rg());
-        }
-
-        exc -= vdw_energy_;
-
-        return exc;
-    }
+    energy_exc(Density const& density__) const;
 
     bool
     is_gradient_correction() const;
 
     auto&
-    vsigma(int idx__)
-    {
-        RTE_ASSERT(idx__ >= 0 && idx__ < 3);
-        return (*vsigma_[idx__].get());
-    }
+    vsigma(int idx__);
 
     inline void
     add_delta_rho_xc(double d__)
@@ -961,6 +803,172 @@ class Potential : public Field4D
     friend void
     copy(Potential const&, Potential&);
 };
+
+template <bool free_atom, typename T>
+inline std::vector<T>
+Potential::poisson_vmt(Atom const& atom__, Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
+                       Spheric_function<function_domain_t::spectral, T>& vha_mt__) const
+{
+    const bool use_r_prefact{false};
+
+    int lmmax_rho = rho_mt__.angular_domain_size();
+    int lmmax_pot = vha_mt__.angular_domain_size();
+    if ((int)l_by_lm_.size() < lmmax_rho) {
+        std::stringstream s;
+        s << "wrong size of l_by_lm array for atom of " << atom__.type().symbol() << std::endl
+          << "  lmmax_rho: " << lmmax_rho << std::endl
+          << "  l_by_lm.size: " << l_by_lm_.size();
+        RTE_THROW(s);
+    }
+    std::vector<T> qmt(lmmax_rho, 0);
+
+    double R = atom__.mt_radius();
+    int nmtp = atom__.num_mt_points();
+
+    #pragma omp parallel
+    {
+        std::vector<T> g1;
+        std::vector<T> g2;
+
+        #pragma omp for
+        for (int lm = 0; lm < lmmax_rho; lm++) {
+            int l = l_by_lm_[lm];
+
+            auto rholm = rho_mt__.component(lm);
+
+            if (use_r_prefact) {
+                /* save multipole moment */
+                qmt[lm] = rholm.integrate(g1, l + 2);
+            } else {
+                for (int ir = 0; ir < nmtp; ir++) {
+                    double r = atom__.radial_grid(ir);
+                    rholm(ir) *= std::pow(r, l + 2);
+                }
+                qmt[lm] = rholm.interpolate().integrate(g1, 0);
+            }
+
+            if (lm < lmmax_pot) {
+
+                if (use_r_prefact) {
+                    rholm.integrate(g2, 1 - l);
+                } else {
+                    rholm = rho_mt__.component(lm);
+                    for (int ir = 0; ir < nmtp; ir++) {
+                        double r = atom__.radial_grid(ir);
+                        rholm(ir) *= std::pow(r, 1 - l);
+                    }
+                    rholm.interpolate().integrate(g2, 0);
+                }
+
+                double fact = fourpi / double(2 * l + 1);
+
+                for (int ir = 0; ir < nmtp; ir++) {
+                    double r = atom__.radial_grid(ir);
+
+                    if (free_atom) {
+                        vha_mt__(lm, ir) = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
+                    } else {
+                        double d1        = 1.0 / std::pow(R, 2 * l + 1);
+                        vha_mt__(lm, ir) = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
+                                           (g2.back() - g2[ir]) * std::pow(r, l) -
+                                           (g1.back() - g1[ir]) * std::pow(r, l) * d1;
+                    }
+                    vha_mt__(lm, ir) *= fact;
+                }
+            }
+        }
+    }
+    if (!free_atom) {
+        /* contribution from nuclear potential -z*(1/r - 1/R) */
+        for (int ir = 0; ir < nmtp; ir++) {
+#ifdef __VHA_AUX
+            double r = atom__.radial_grid(ir);
+            vha_mt__(0, ir) += atom__.zn() * (1 / R - 1 / r) / y00;
+#else
+            vha_mt__(0, ir) += atom__.zn() / R / y00;
+#endif
+        }
+    }
+    /* nuclear multipole moment */
+    qmt[0] -= atom__.zn() * y00;
+
+    return qmt;
+}
+
+inline auto const&
+Potential::effective_potential_mt(atom_index_t::local ialoc) const
+{
+    auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
+    return this->scalar().mt()[ia];
+}
+
+inline auto const&
+Potential::hartree_potential_mt(atom_index_t::local ialoc) const
+{
+    auto ia = unit_cell_.spl_num_atoms().global_index(ialoc);
+    return hartree_potential_->mt()[ia];
+}
+
+inline auto&
+Potential::kinetic_potential()
+{
+    if (!kinetic_potential_) {
+        RTE_THROW("kinetic potential is not enabled");
+    }
+    return *kinetic_potential_;
+}
+
+inline auto const&
+Potential::kinetic_potential() const
+{
+    if (!kinetic_potential_) {
+        RTE_THROW("kinetic potential is not enabled");
+    }
+    return *kinetic_potential_;
+}
+
+inline double
+Potential::energy_vtau(Density const& density__) const
+{
+    double result{0};
+    if (kinetic_potential_) {
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            result += inner(density__.kinetic_density().component(j), kinetic_potential_->component(j));
+        }
+    }
+    return result;
+}
+
+inline double
+Potential::external_xc_background_contraction() const
+{
+    return external_xc_registered_
+                   ? ctx_.cfg().parameters().extra_charge() * xc_potential().integrate().total / unit_cell_.omega()
+                   : 0;
+}
+
+inline auto
+Potential::energy_exc(Density const& density__) const
+{
+    if (external_xc_registered_) {
+        return external_xc_energy_;
+    }
+    double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
+    if (!ctx_.full_potential()) {
+        exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density().rg());
+    }
+
+    exc -= vdw_energy_;
+
+    return exc;
+}
+
+inline auto&
+Potential::vsigma(int idx__)
+{
+    RTE_ASSERT(idx__ >= 0 && idx__ < 3);
+    return (*vsigma_[idx__].get());
+}
 
 inline void
 copy(Potential const& src__, Potential& dest__)

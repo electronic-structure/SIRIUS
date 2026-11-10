@@ -9,6 +9,7 @@
 #include "core/sht/sht.hpp"
 #include "core/math_tools.hpp"
 #include "lebedev_grids.hpp"
+#include "core/la/linalg.hpp"
 
 namespace sirius {
 

@@ -26,7 +26,8 @@
 #include "core/typedefs.hpp"
 #include "core/r3/r3.hpp"
 #include "core/sf/specfunc.hpp"
-#include "core/la/linalg.hpp"
+#include "core/memory.hpp"
+#include "core/rte/rte.hpp"
 
 namespace sirius {
 
@@ -141,21 +142,7 @@ class SHT // TODO: better name
 
     /// Convert form Rlm to Ylm representation.
     static void
-    convert(int lmax__, double const* f_rlm__, std::complex<double>* f_ylm__)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax__; l++) {
-            for (int m = -l; m <= l; m++) {
-                if (m == 0) {
-                    f_ylm__[lm] = f_rlm__[lm];
-                } else {
-                    int lm1     = sf::lm(l, -m);
-                    f_ylm__[lm] = ylm_dot_rlm(l, m, m) * f_rlm__[lm] + ylm_dot_rlm(l, m, -m) * f_rlm__[lm1];
-                }
-                lm++;
-            }
-        }
-    }
+    convert(int lmax__, double const* f_rlm__, std::complex<double>* f_ylm__);
 
     // void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
     //{
@@ -226,34 +213,7 @@ class SHT // TODO: better name
         \endverbatim
      */
     static inline std::complex<double>
-    ylm_dot_rlm(int l, int m1, int m2)
-    {
-        double const isqrt2 = 1.0 / std::sqrt(2);
-
-        RTE_ASSERT(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
-
-        if (!((m1 == m2) || (m1 == -m2))) {
-            return std::complex<double>(0, 0);
-        }
-
-        if (m1 == 0) {
-            return std::complex<double>(1, 0);
-        }
-
-        if (m1 < 0) {
-            if (m2 < 0) {
-                return -std::complex<double>(0, isqrt2);
-            } else {
-                return std::pow(-1.0, m2) * std::complex<double>(isqrt2, 0);
-            }
-        } else {
-            if (m2 < 0) {
-                return std::pow(-1.0, m1) * std::complex<double>(0, isqrt2);
-            } else {
-                return std::complex<double>(isqrt2, 0);
-            }
-        }
-    }
+    ylm_dot_rlm(int l, int m1, int m2);
 
     static inline auto
     rlm_dot_ylm(int l, int m1, int m2)
@@ -268,20 +228,7 @@ class SHT // TODO: better name
      *  \f]
      */
     static inline auto
-    gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
-    {
-        RTE_ASSERT(l1 >= 0);
-        RTE_ASSERT(l2 >= 0);
-        RTE_ASSERT(l3 >= 0);
-        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
-        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
-        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
-
-        return std::pow(-1.0, std::abs(m1)) *
-               std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
-               gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
-               gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
-    }
+    gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3);
 
     /// Gaunt coefficent of three real spherical harmonics.
     /**
@@ -290,27 +237,7 @@ class SHT // TODO: better name
      *  \f]
      */
     static inline auto
-    gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
-    {
-        RTE_ASSERT(l1 >= 0);
-        RTE_ASSERT(l2 >= 0);
-        RTE_ASSERT(l3 >= 0);
-        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
-        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
-        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
-
-        double d{0};
-        for (int k1 = -l1; k1 <= l1; k1++) {
-            for (int k2 = -l2; k2 <= l2; k2++) {
-                for (int k3 = -l3; k3 <= l3; k3++) {
-                    d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l2, k2, m2) *
-                                   SHT::ylm_dot_rlm(l3, k3, m3)) *
-                         SHT::gaunt_yyy(l1, l2, l3, k1, k2, k3);
-                }
-            }
-        }
-        return d;
-    }
+    gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3);
 
     /// Gaunt coefficent of two real spherical harmonics with a complex one.
     /**
@@ -319,24 +246,7 @@ class SHT // TODO: better name
      *  \f]
      */
     static inline auto
-    gaunt_ryr(int l1, int l2, int l3, int m1, int m2, int m3)
-    {
-        RTE_ASSERT(l1 >= 0);
-        RTE_ASSERT(l2 >= 0);
-        RTE_ASSERT(l3 >= 0);
-        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
-        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
-        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
-
-        std::complex<double> d{0};
-        for (int k1 = -l1; k1 <= l1; k1++) {
-            for (int k3 = -l3; k3 <= l3; k3++) {
-                d += std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3) *
-                     SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
-            }
-        }
-        return d;
-    }
+    gaunt_ryr(int l1, int l2, int l3, int m1, int m2, int m3);
 
     /// Gaunt coefficent of two complex and one real spherical harmonics.
     /**
@@ -345,75 +255,21 @@ class SHT // TODO: better name
      *  \f]
      */
     static inline auto
-    gaunt_yry(int l1, int l2, int l3, int m1, int m2, int m3)
-    {
-        RTE_ASSERT(l1 >= 0);
-        RTE_ASSERT(l2 >= 0);
-        RTE_ASSERT(l3 >= 0);
-        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
-        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
-        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
-
-        if (m2 == 0) {
-            return std::complex<double>(gaunt_yyy(l1, l2, l3, m1, m2, m3), 0.0);
-        } else {
-            return (ylm_dot_rlm(l2, m2, m2) * gaunt_yyy(l1, l2, l3, m1, m2, m3) +
-                    ylm_dot_rlm(l2, -m2, m2) * gaunt_yyy(l1, l2, l3, m1, -m2, m3));
-        }
-    }
+    gaunt_yry(int l1, int l2, int l3, int m1, int m2, int m3);
 
     /// Convert from Ylm to Rlm representation.
     static void
-    convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax__; l++) {
-            for (int m = -l; m <= l; m++) {
-                if (m == 0) {
-                    f_rlm__[lm] = std::real(f_ylm__[lm]);
-                } else {
-                    int lm1     = sf::lm(l, -m);
-                    f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
-                }
-                lm++;
-            }
-        }
-    }
+    convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__);
 
     void
-    uniform_coverage()
-    {
-        tp_(0, 0) = pi;
-        tp_(1, 0) = 0;
-
-        for (int k = 1; k < num_points_ - 1; k++) {
-            double hk = -1.0 + double(2 * k) / double(num_points_ - 1);
-            tp_(0, k) = std::acos(hk);
-            double t  = tp_(1, k - 1) + 3.80925122745582 / std::sqrt(double(num_points_)) / std::sqrt(1 - hk * hk);
-            tp_(1, k) = std::fmod(t, twopi);
-        }
-
-        tp_(0, num_points_ - 1) = 0;
-        tp_(1, num_points_ - 1) = 0;
-    }
+    uniform_coverage();
 
     /// Return Clebsch-Gordan coefficient.
     /** Clebsch-Gordan coefficients arise when two angular momenta are combined into a
      *  total angular momentum.
      */
     static inline double
-    clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
-    {
-        RTE_ASSERT(l1 >= 0);
-        RTE_ASSERT(l2 >= 0);
-        RTE_ASSERT(l3 >= 0);
-        RTE_ASSERT(m1 >= -l1 && m1 <= l1);
-        RTE_ASSERT(m2 >= -l2 && m2 <= l2);
-        RTE_ASSERT(m3 >= -l3 && m3 <= l3);
-
-        return std::pow(-1, l1 - l2 + m3) * std::sqrt(double(2 * l3 + 1)) *
-               gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);
-    }
+    clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3);
 
     inline auto
     ylm_backward(int lm, int itp) const
@@ -475,6 +331,178 @@ class SHT // TODO: better name
         return lmmax_;
     }
 };
+
+inline void
+SHT::convert(int lmax__, double const* f_rlm__, std::complex<double>* f_ylm__)
+{
+    int lm = 0;
+    for (int l = 0; l <= lmax__; l++) {
+        for (int m = -l; m <= l; m++) {
+            if (m == 0) {
+                f_ylm__[lm] = f_rlm__[lm];
+            } else {
+                int lm1     = sf::lm(l, -m);
+                f_ylm__[lm] = ylm_dot_rlm(l, m, m) * f_rlm__[lm] + ylm_dot_rlm(l, m, -m) * f_rlm__[lm1];
+            }
+            lm++;
+        }
+    }
+}
+
+inline std::complex<double>
+SHT::ylm_dot_rlm(int l, int m1, int m2)
+{
+    double const isqrt2 = 1.0 / std::sqrt(2);
+
+    RTE_ASSERT(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
+
+    if (!((m1 == m2) || (m1 == -m2))) {
+        return std::complex<double>(0, 0);
+    }
+
+    if (m1 == 0) {
+        return std::complex<double>(1, 0);
+    }
+
+    if (m1 < 0) {
+        if (m2 < 0) {
+            return -std::complex<double>(0, isqrt2);
+        } else {
+            return std::pow(-1.0, m2) * std::complex<double>(isqrt2, 0);
+        }
+    } else {
+        if (m2 < 0) {
+            return std::pow(-1.0, m1) * std::complex<double>(0, isqrt2);
+        } else {
+            return std::complex<double>(isqrt2, 0);
+        }
+    }
+}
+
+inline auto
+SHT::gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    RTE_ASSERT(l1 >= 0);
+    RTE_ASSERT(l2 >= 0);
+    RTE_ASSERT(l3 >= 0);
+    RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+    RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+    RTE_ASSERT(m3 >= -l3 && m3 <= l3);
+
+    return std::pow(-1.0, std::abs(m1)) *
+           std::sqrt(double(2 * l1 + 1) * double(2 * l2 + 1) * double(2 * l3 + 1) / fourpi) *
+           gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) *
+           gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, -2 * m1, 2 * m2, 2 * m3);
+}
+
+inline auto
+SHT::gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    RTE_ASSERT(l1 >= 0);
+    RTE_ASSERT(l2 >= 0);
+    RTE_ASSERT(l3 >= 0);
+    RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+    RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+    RTE_ASSERT(m3 >= -l3 && m3 <= l3);
+
+    double d{0};
+    for (int k1 = -l1; k1 <= l1; k1++) {
+        for (int k2 = -l2; k2 <= l2; k2++) {
+            for (int k3 = -l3; k3 <= l3; k3++) {
+                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l2, k2, m2) *
+                               SHT::ylm_dot_rlm(l3, k3, m3)) *
+                     SHT::gaunt_yyy(l1, l2, l3, k1, k2, k3);
+            }
+        }
+    }
+    return d;
+}
+
+inline auto
+SHT::gaunt_ryr(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    RTE_ASSERT(l1 >= 0);
+    RTE_ASSERT(l2 >= 0);
+    RTE_ASSERT(l3 >= 0);
+    RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+    RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+    RTE_ASSERT(m3 >= -l3 && m3 <= l3);
+
+    std::complex<double> d{0};
+    for (int k1 = -l1; k1 <= l1; k1++) {
+        for (int k3 = -l3; k3 <= l3; k3++) {
+            d += std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3) *
+                 SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
+        }
+    }
+    return d;
+}
+
+inline auto
+SHT::gaunt_yry(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    RTE_ASSERT(l1 >= 0);
+    RTE_ASSERT(l2 >= 0);
+    RTE_ASSERT(l3 >= 0);
+    RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+    RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+    RTE_ASSERT(m3 >= -l3 && m3 <= l3);
+
+    if (m2 == 0) {
+        return std::complex<double>(gaunt_yyy(l1, l2, l3, m1, m2, m3), 0.0);
+    } else {
+        return (ylm_dot_rlm(l2, m2, m2) * gaunt_yyy(l1, l2, l3, m1, m2, m3) +
+                ylm_dot_rlm(l2, -m2, m2) * gaunt_yyy(l1, l2, l3, m1, -m2, m3));
+    }
+}
+
+inline void
+SHT::convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
+{
+    int lm = 0;
+    for (int l = 0; l <= lmax__; l++) {
+        for (int m = -l; m <= l; m++) {
+            if (m == 0) {
+                f_rlm__[lm] = std::real(f_ylm__[lm]);
+            } else {
+                int lm1     = sf::lm(l, -m);
+                f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
+            }
+            lm++;
+        }
+    }
+}
+
+inline void
+SHT::uniform_coverage()
+{
+    tp_(0, 0) = pi;
+    tp_(1, 0) = 0;
+
+    for (int k = 1; k < num_points_ - 1; k++) {
+        double hk = -1.0 + double(2 * k) / double(num_points_ - 1);
+        tp_(0, k) = std::acos(hk);
+        double t  = tp_(1, k - 1) + 3.80925122745582 / std::sqrt(double(num_points_)) / std::sqrt(1 - hk * hk);
+        tp_(1, k) = std::fmod(t, twopi);
+    }
+
+    tp_(0, num_points_ - 1) = 0;
+    tp_(1, num_points_ - 1) = 0;
+}
+
+inline double
+SHT::clebsch_gordan(int l1, int l2, int l3, int m1, int m2, int m3)
+{
+    RTE_ASSERT(l1 >= 0);
+    RTE_ASSERT(l2 >= 0);
+    RTE_ASSERT(l3 >= 0);
+    RTE_ASSERT(m1 >= -l1 && m1 <= l1);
+    RTE_ASSERT(m2 >= -l2 && m2 <= l2);
+    RTE_ASSERT(m3 >= -l3 && m3 <= l3);
+
+    return std::pow(-1, l1 - l2 + m3) * std::sqrt(double(2 * l3 + 1)) *
+           gsl_sf_coupling_3j(2 * l1, 2 * l2, 2 * l3, 2 * m1, 2 * m2, -2 * m3);
+}
 
 } // namespace sirius
 
