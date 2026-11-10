@@ -16,9 +16,11 @@
 
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 #include "blas_lapack.h"
 #include "scalapack.h"
+#include "core/rte/rte.hpp"
 #include <mpi.h>
 
 namespace sirius {
