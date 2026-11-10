@@ -19,6 +19,7 @@
 #include <gsl/gsl_odeiv2.h>
 #include <tuple>
 #include "spline.hpp"
+#include "enu_search.hpp"
 #include "core/constants.hpp"
 #include "core/typedefs.hpp"
 #include "core/rte/rte.hpp"
@@ -1048,15 +1049,6 @@ class Bound_state : public Radial_solver
     {
         return dpdr_;
     }
-};
-
-struct enu_search_t
-{
-    double enu{0.0};
-    double ebot{0.0};
-    double etop{0.0};
-    int auto_enu{1};
-    double etop_first_pass{0};
 };
 
 enu_search_t

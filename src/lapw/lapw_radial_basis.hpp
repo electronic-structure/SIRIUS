@@ -16,6 +16,7 @@
 
 #include "unit_cell/unit_cell.hpp"
 #include "core/la/eigensolver.hpp"
+#include "radial/enu_search.hpp"
 
 namespace sirius {
 

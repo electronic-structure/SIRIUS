@@ -16,6 +16,7 @@
 
 #include "k_point/k_point_set.hpp"
 #include "diagonalize_pp.hpp"
+#include "diagonalize.hpp"
 
 namespace sirius {
 
@@ -269,42 +270,6 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
             s << "initial_spinor_wave_functions_" << ispn;
             if (kp__.comm().rank() == 0) {
                 print_checksum(s.str(), cs, RTE_OUT(std::cout));
-            }
-        }
-    }
-}
-
-template <typename T>
-void
-initialize_subspace(K_point_set& kset__, Hamiltonian0<T>& H0__)
-{
-    PROFILE("sirius::initialize_subspace_kset");
-
-    int N{0};
-
-    auto& ctx = H0__.ctx();
-
-    if (ctx.cfg().iterative_solver().init_subspace() == "lcao") {
-        /* get the total number of atomic-centered orbitals */
-        N = ctx.unit_cell().num_ps_atomic_wf().first;
-    }
-
-    for (auto it : kset__.spl_num_kpoints()) {
-        auto kp = kset__.get<T>(it.i);
-        auto Hk = H0__(*kp);
-        if (ctx.gamma_point() && (ctx.so_correction() == false)) {
-            initialize_subspace<T, T>(Hk, *kp, N);
-        } else {
-            initialize_subspace<T, std::complex<T>>(Hk, *kp, N);
-        }
-    }
-
-    /* reset the energies for the iterative solver to do at least two steps */
-    for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx.num_spinors(); ispn++) {
-            for (int i = 0; i < ctx.num_bands(); i++) {
-                kset__.get<T>(ik)->band_energy(i, ispn, 0);
-                kset__.get<T>(ik)->band_occupancy(i, ispn, ctx.max_occupancy());
             }
         }
     }

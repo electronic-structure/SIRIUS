@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <lapw/lapw_radial_basis.hpp>
+#include <radial/radial_solver.hpp>
 #include <core/system_tools.hpp>
 #include <sirius_init.hpp>
 using json = nlohmann::json;

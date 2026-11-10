@@ -28,6 +28,7 @@ endif()
 set(_SOURCES
   "hamiltonian/hamiltonian.cpp"
   "hamiltonian/hamiltonian_k.cpp"
+  "hamiltonian/diagonalize.cpp"
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
   "density/density.cpp"

@@ -14,6 +14,7 @@
 #include "core/power.hpp"
 #include "core/profiler.hpp"
 #include "lapw/lapw_radial_basis.hpp"
+#include "radial/radial_solver.hpp"
 #include "core/serialize_mdarray.hpp"
 #include "beta_projectors/beta_projectors_base.hpp"
 #include "symmetry/symmetrize_field4d.hpp"

@@ -27,7 +27,6 @@
 #include "symmetry/crystal_symmetry.hpp"
 #include "multi_cg/multi_cg.hpp"
 #include "hamiltonian/check_wave_functions.hpp"
-#include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "sirius.hpp"

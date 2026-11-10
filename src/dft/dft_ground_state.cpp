@@ -16,7 +16,6 @@
 #include "dft_ground_state.hpp"
 #include "core/profiler.hpp"
 #include "core/rte/rte.hpp"
-#include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 #include "core/json.hpp"
 

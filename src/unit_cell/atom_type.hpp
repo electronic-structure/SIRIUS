@@ -15,7 +15,8 @@
 #define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
-#include "radial/radial_solver.hpp"
+#include "radial/radial_grid.hpp"
+#include "radial/spline.hpp"
 #include "context/simulation_parameters.hpp"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"

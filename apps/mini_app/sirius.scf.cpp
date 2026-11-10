@@ -12,7 +12,6 @@
 #include "core/profiler.hpp"
 #include "core/json.hpp"
 #include "dft/lattice_relaxation.hpp"
-#include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 #include "k_point/get_wave_function_value.hpp"
 
