@@ -121,23 +121,8 @@ print_mdarray_allocation(size_t num_bytes__, char const* location__, char const*
 }
 
 /// Get a memory type from a string.
-inline auto
-get_memory_t(std::string name__)
-{
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, memory_t> const m = {{"none", memory_t::none},
-                                               {"host", memory_t::host},
-                                               {"host_pinned", memory_t::host_pinned},
-                                               {"managed", memory_t::managed},
-                                               {"device", memory_t::device}};
-
-    if (m.count(name__) == 0) {
-        std::stringstream s;
-        s << "get_memory_t(): wrong label of the memory_t enumerator: " << name__;
-        throw std::runtime_error(s.str());
-    }
-    return m.at(name__);
-}
+memory_t
+get_memory_t(std::string name__);
 
 /// Type of the main processing unit.
 /** List the processing units on which the code can run. */
@@ -170,19 +155,8 @@ get_device_t(memory_t mem__)
 }
 
 /// Get device type from the string.
-inline device_t
-get_device_t(std::string name__)
-{
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, device_t> const m = {{"cpu", device_t::CPU}, {"gpu", device_t::GPU}};
-
-    if (m.count(name__) == 0) {
-        std::stringstream s;
-        s << "get_device_t(): wrong label of the device_t enumerator: " << name__;
-        throw std::runtime_error(s.str());
-    }
-    return m.at(name__);
-}
+device_t
+get_device_t(std::string name__);
 
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
@@ -316,92 +290,16 @@ class memory_pool
 #endif
   public:
     /// Constructor
-    memory_pool(memory_t M__)
-        : M_(M__)
-    {
-        std::string mem_type;
-
-        // All examples in Umpire use upper case names.
-        switch (M__) {
-            case memory_t::host: {
-                mem_type = "HOST";
-                break;
-            }
-            case memory_t::host_pinned: {
-                mem_type = "PINNED";
-                break;
-            }
-            case memory_t::managed: {
-                mem_type = "MANAGED";
-                break;
-            }
-            case memory_t::device: {
-#if defined(SIRIUS_GPU)
-                std::stringstream s;
-                s << "DEVICE::" << acc::get_device_id();
-                mem_type = s.str();
-#else
-                mem_type = "NONE";
-                M_       = memory_t::none;
-#endif
-                break;
-            }
-            case memory_t::none: {
-                mem_type = "NONE";
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        if (M_ != memory_t::none) {
-            auto& rm         = umpire::ResourceManager::getInstance();
-            this->allocator_ = rm.getAllocator(mem_type);
-
-            if (M_ == memory_t::host) {
-                this->memory_pool_allocator_ = rm.makeAllocator<umpire::strategy::AlignedAllocator>(
-                        "aligned_allocator", this->allocator_, 256);
-            } else {
-                std::transform(mem_type.begin(), mem_type.end(), mem_type.begin(),
-                               [](unsigned char c) { return std::tolower(c); });
-                this->memory_pool_allocator_ =
-                        rm.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type + "_dynamic_pool", allocator_);
-            }
-        }
-#endif
-    }
+    memory_pool(memory_t M__);
 
     /// Return a pointer to a memory block for n elements of type T.
     template <typename T>
     inline T*
-    allocate(size_t num_elements__)
-    {
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        if (M_ == memory_t::none) {
-            return nullptr;
-        }
-
-        return static_cast<T*>(memory_pool_allocator_.allocate(num_elements__ * sizeof(T)));
-#else
-        return sirius::allocate<T>(num_elements__, M_);
-#endif
-    }
+    allocate(size_t num_elements__);
 
     /// Delete a pointer and add its memory back to the pool.
     inline void
-    free(void* ptr__)
-    {
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        if (M_ == memory_t::none) {
-            return;
-        }
-
-        memory_pool_allocator_.deallocate(ptr__);
-#else
-        deallocate(ptr__, M_);
-#endif
-    }
+    free(void* ptr__);
 
     /// Return a unique pointer to the allocated memory.
     template <typename T>
@@ -418,15 +316,7 @@ class memory_pool
 
     /// shrink the memory pool and release all memory.
     void
-    clear()
-    {
-        if (M_ == memory_t::none) {
-            return;
-        }
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        memory_pool_allocator_.release();
-#endif
-    }
+    clear();
 
     /// Return the type of memory this pool is managing.
     inline memory_t
@@ -437,42 +327,147 @@ class memory_pool
 
     /// Return the total capacity of the memory pool.
     size_t
-    total_size() const
-    {
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        if (M_ != memory_t::none) {
-            return memory_pool_allocator_.getActualSize();
-        }
-#endif
-        return 0;
-    }
+    total_size() const;
 
     /// Get the total free size of the memory pool.
     size_t
-    free_size() const
-    {
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        if (M_ != memory_t::none) {
-            size_t s = memory_pool_allocator_.getActualSize() - memory_pool_allocator_.getCurrentSize();
-            return s;
-        }
-#endif
-        return 0;
-    }
+    free_size() const;
 
     /// Get the number of free memory blocks.
     size_t
-    num_blocks() const
-    {
-#if defined(SIRIUS_USE_MEMORY_POOL)
-        if (M_ != memory_t::none) {
-            auto dynamic_pool = umpire::util::unwrap_allocator<umpire::strategy::DynamicPoolList>(allocator_);
-            return dynamic_pool->getBlocksInPool();
-        }
-#endif
-        return 0;
-    }
+    num_blocks() const;
 };
+
+inline memory_pool::memory_pool(memory_t M__)
+    : M_(M__)
+{
+    std::string mem_type;
+
+    // All examples in Umpire use upper case names.
+    switch (M__) {
+        case memory_t::host: {
+            mem_type = "HOST";
+            break;
+        }
+        case memory_t::host_pinned: {
+            mem_type = "PINNED";
+            break;
+        }
+        case memory_t::managed: {
+            mem_type = "MANAGED";
+            break;
+        }
+        case memory_t::device: {
+#if defined(SIRIUS_GPU)
+            std::stringstream s;
+            s << "DEVICE::" << acc::get_device_id();
+            mem_type = s.str();
+#else
+            mem_type = "NONE";
+            M_       = memory_t::none;
+#endif
+            break;
+        }
+        case memory_t::none: {
+            mem_type = "NONE";
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    if (M_ != memory_t::none) {
+        auto& rm         = umpire::ResourceManager::getInstance();
+        this->allocator_ = rm.getAllocator(mem_type);
+
+        if (M_ == memory_t::host) {
+            this->memory_pool_allocator_ =
+                    rm.makeAllocator<umpire::strategy::AlignedAllocator>("aligned_allocator", this->allocator_, 256);
+        } else {
+            std::transform(mem_type.begin(), mem_type.end(), mem_type.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
+            this->memory_pool_allocator_ =
+                    rm.makeAllocator<umpire::strategy::DynamicPoolList>(mem_type + "_dynamic_pool", allocator_);
+        }
+    }
+#endif
+}
+
+template <typename T>
+inline T*
+memory_pool::allocate(size_t num_elements__)
+{
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    if (M_ == memory_t::none) {
+        return nullptr;
+    }
+
+    return static_cast<T*>(memory_pool_allocator_.allocate(num_elements__ * sizeof(T)));
+#else
+    return sirius::allocate<T>(num_elements__, M_);
+#endif
+}
+
+inline void
+memory_pool::free(void* ptr__)
+{
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    if (M_ == memory_t::none) {
+        return;
+    }
+
+    memory_pool_allocator_.deallocate(ptr__);
+#else
+    deallocate(ptr__, M_);
+#endif
+}
+
+inline void
+memory_pool::clear()
+{
+    if (M_ == memory_t::none) {
+        return;
+    }
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    memory_pool_allocator_.release();
+#endif
+}
+
+inline size_t
+memory_pool::total_size() const
+{
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    if (M_ != memory_t::none) {
+        return memory_pool_allocator_.getActualSize();
+    }
+#endif
+    return 0;
+}
+
+inline size_t
+memory_pool::free_size() const
+{
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    if (M_ != memory_t::none) {
+        size_t s = memory_pool_allocator_.getActualSize() - memory_pool_allocator_.getCurrentSize();
+        return s;
+    }
+#endif
+    return 0;
+}
+
+inline size_t
+memory_pool::num_blocks() const
+{
+#if defined(SIRIUS_USE_MEMORY_POOL)
+    if (M_ != memory_t::none) {
+        auto dynamic_pool = umpire::util::unwrap_allocator<umpire::strategy::DynamicPoolList>(allocator_);
+        return dynamic_pool->getBlocksInPool();
+    }
+#endif
+    return 0;
+}
 
 /// Return a memory pool.
 /** A memory pool is created when this function called for the first time. */
@@ -563,20 +558,23 @@ class index_range
     }
 
     inline bool
-    check_range([[maybe_unused]] index_type i__) const
-    {
-#if defined(NDEBUG)
-        return true;
-#else
-        if (i__ < begin_ || i__ >= end_) {
-            std::cout << "index " << i__ << " out of range [" << begin_ << ", " << end_ << ")" << std::endl;
-            return false;
-        } else {
-            return true;
-        }
-#endif
-    }
+    check_range([[maybe_unused]] index_type i__) const;
 };
+
+inline bool
+index_range::check_range([[maybe_unused]] index_type i__) const
+{
+#if defined(NDEBUG)
+    return true;
+#else
+    if (i__ < begin_ || i__ >= end_) {
+        std::cout << "index " << i__ << " out of range [" << begin_ << ", " << end_ << ")" << std::endl;
+        return false;
+    } else {
+        return true;
+    }
+#endif
+}
 
 /// Multidimensional array with the column-major (Fortran) order.
 /** The implementation supports two memory pointers: one is accessible by CPU and second is accessible by a device.
@@ -674,28 +672,13 @@ class mdarray
     ~mdarray();
 
     /// N-dimensional array, heap allocation.
-    mdarray(std::array<index_range, N> const dims__, memory_t memory__ = memory_t::host, std::string label__ = "")
-        : label_{label__}
-    {
-        this->init_dimensions(dims__);
-        this->allocate(memory__);
-    }
+    mdarray(std::array<index_range, N> const dims__, memory_t memory__ = memory_t::host, std::string label__ = "");
 
     /// N-dimensional array, heap allocation in host memory.
-    mdarray(std::array<index_range, N> const dims__, std::string label__)
-        : label_{label__}
-    {
-        this->init_dimensions(dims__);
-        this->allocate(memory_t::host);
-    }
+    mdarray(std::array<index_range, N> const dims__, std::string label__);
 
     /// N-dimensional array, memory pool allocation.
-    mdarray(std::array<index_range, N> const dims__, memory_pool& mp__, std::string label__ = "")
-        : label_{label__}
-    {
-        this->init_dimensions(dims__);
-        this->allocate(mp__);
-    }
+    mdarray(std::array<index_range, N> const dims__, memory_pool& mp__, std::string label__ = "");
 
     /// N-dimensional array, wrap CPU pointer.
     mdarray(std::array<index_range, N> const dims__, T* ptr__, std::string label__ = "")
@@ -850,6 +833,30 @@ class mdarray
     auto&
     operator=(std::function<T(index_type, index_type)> f__);
 };
+
+template <typename T, int N>
+inline mdarray<T, N>::mdarray(std::array<index_range, N> const dims__, memory_t memory__, std::string label__)
+    : label_{label__}
+{
+    this->init_dimensions(dims__);
+    this->allocate(memory__);
+}
+
+template <typename T, int N>
+inline mdarray<T, N>::mdarray(std::array<index_range, N> const dims__, std::string label__)
+    : label_{label__}
+{
+    this->init_dimensions(dims__);
+    this->allocate(memory_t::host);
+}
+
+template <typename T, int N>
+inline mdarray<T, N>::mdarray(std::array<index_range, N> const dims__, memory_pool& mp__, std::string label__)
+    : label_{label__}
+{
+    this->init_dimensions(dims__);
+    this->allocate(mp__);
+}
 
 template <typename T, int N>
 void

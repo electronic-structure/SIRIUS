@@ -317,27 +317,15 @@ class Unit_cell
 
     /// Number of atom types.
     inline int
-    num_atom_types() const
-    {
-        assert(atom_types_.size() == atom_type_id_map_.size());
-        return static_cast<int>(atom_types_.size());
-    }
+    num_atom_types() const;
 
     /// Return atom type instance by id.
     inline Atom_type&
-    atom_type(int id__)
-    {
-        assert(id__ >= 0 && id__ < (int)atom_types_.size());
-        return *atom_types_[id__];
-    }
+    atom_type(int id__);
 
     /// Return const atom type instance by id.
     inline Atom_type const&
-    atom_type(int id__) const
-    {
-        assert(id__ >= 0 && id__ < (int)atom_types_.size());
-        return *atom_types_[id__];
-    }
+    atom_type(int id__) const;
 
     /// Return const atom type instance by label.
     inline auto const&
@@ -389,31 +377,15 @@ class Unit_cell
 
     /// Return const atom instance by id.
     inline Atom const&
-    atom(int id__) const
-    {
-        assert(id__ >= 0 && id__ < (int)atoms_.size());
-        return *atoms_[id__];
-    }
+    atom(int id__) const;
 
     /// Return atom instance by id.
     inline Atom&
-    atom(int id__)
-    {
-        assert(id__ >= 0 && id__ < (int)atoms_.size());
-        return *atoms_[id__];
-    }
+    atom(int id__);
 
     /// Total nuclear charge.
     inline int
-    total_nuclear_charge() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            result += nat * atom_type(iat).zn();
-        }
-        return result;
-    }
+    total_nuclear_charge() const;
 
     /// Total number of electrons (core + valence).
     inline double
@@ -424,129 +396,48 @@ class Unit_cell
 
     /// Number of valence electrons.
     inline double
-    num_valence_electrons() const
-    {
-        double result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            result += nat * atom_type(iat).num_valence_electrons();
-        }
-        return result;
-    }
+    num_valence_electrons() const;
 
     /// Number of core electrons.
     inline double
-    num_core_electrons() const
-    {
-        double result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            result += nat * atom_type(iat).num_core_electrons();
-        }
-        return result;
-    }
+    num_core_electrons() const;
 
     /// Maximum number of muffin-tin points among all atom types.
     inline int
-    max_num_mt_points() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).num_mt_points());
-        }
-        return result;
-    }
+    max_num_mt_points() const;
 
     /// Total number of the augmented wave basis functions over all atoms.
     /** This is equal to the total number of matching coefficients for each plane-wave. */
     inline int
-    mt_aw_basis_size() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            result += nat * atom_type(iat).mt_aw_basis_size();
-        }
-        return result;
-    }
+    mt_aw_basis_size() const;
 
     /// Total number of local orbital basis functions over all atoms.
     inline int
-    mt_lo_basis_size() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            result += nat * atom_type(iat).mt_lo_basis_size();
-        }
-        return result;
-    }
+    mt_lo_basis_size() const;
 
     /// Maximum number of basis functions among all atom types.
     inline int
-    max_mt_basis_size() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).mt_basis_size());
-        }
-        return result;
-    }
+    max_mt_basis_size() const;
 
     /// Maximum number of radial functions among all atom types.
     inline int
-    max_mt_radial_basis_size() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).mt_radial_basis_size());
-        }
-        return result;
-    }
+    max_mt_radial_basis_size() const;
 
     /// Minimum muffin-tin radius.
     inline double
-    min_mt_radius() const
-    {
-        double result{1e100};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::min(result, atom_type(iat).mt_radius());
-        }
-        return result;
-    }
+    min_mt_radius() const;
 
     /// Maximum muffin-tin radius.
     inline double
-    max_mt_radius() const
-    {
-        double result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).mt_radius());
-        }
-        return result;
-    }
+    max_mt_radius() const;
 
     /// Maximum number of AW basis functions among all atom types.
     inline int
-    max_mt_aw_basis_size() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).mt_aw_basis_size());
-        }
-        return result;
-    }
+    max_mt_aw_basis_size() const;
 
     /// Maximum local orbital basis size among all atoms.
     inline int
-    max_mt_lo_basis_size() const
-    {
-        int result{0};
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            result = std::max(result, atom_type(iat).mt_lo_basis_size());
-        }
-        return result;
-    }
+    max_mt_lo_basis_size() const;
 
     /// Maximum number of atoms across all atom types.
     inline auto
@@ -560,11 +451,7 @@ class Unit_cell
     }
 
     void
-    set_equivalent_atoms(int const* equivalent_atoms__)
-    {
-        equivalent_atoms_.resize(num_atoms());
-        std::copy(equivalent_atoms__, equivalent_atoms__ + num_atoms(), equivalent_atoms_.begin());
-    }
+    set_equivalent_atoms(int const* equivalent_atoms__);
 
     inline auto const&
     spl_num_atoms() const
@@ -592,24 +479,10 @@ class Unit_cell
 
     /// Maximum orbital quantum number of radial functions between all atom types.
     inline int
-    lmax() const
-    {
-        int l{-1};
-        for (int iat = 0; iat < this->num_atom_types(); iat++) {
-            l = std::max(l, this->atom_type(iat).indexr().lmax());
-        }
-        return l;
-    }
+    lmax() const;
 
     inline int
-    lmax_apw() const
-    {
-        int lmax{-1};
-        for (int iat = 0; iat < this->num_atom_types(); iat++) {
-            lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
-        }
-        return lmax;
-    }
+    lmax_apw() const;
 
     inline int
     num_nearest_neighbours(int ia) const
@@ -675,15 +548,205 @@ class Unit_cell
 
     /// Return 'True' if at least one atom in the unit cell has an augmentation charge.
     inline bool
-    augment() const
-    {
-        bool a{false};
-        for (auto iat = 0; iat < num_atom_types(); iat++) {
-            a |= atom_type(iat).augment();
-        }
-        return a;
-    }
+    augment() const;
 };
+
+inline int
+Unit_cell::num_atom_types() const
+{
+    assert(atom_types_.size() == atom_type_id_map_.size());
+    return static_cast<int>(atom_types_.size());
+}
+
+inline Atom_type&
+Unit_cell::atom_type(int id__)
+{
+    assert(id__ >= 0 && id__ < (int)atom_types_.size());
+    return *atom_types_[id__];
+}
+
+inline Atom_type const&
+Unit_cell::atom_type(int id__) const
+{
+    assert(id__ >= 0 && id__ < (int)atom_types_.size());
+    return *atom_types_[id__];
+}
+
+inline Atom const&
+Unit_cell::atom(int id__) const
+{
+    assert(id__ >= 0 && id__ < (int)atoms_.size());
+    return *atoms_[id__];
+}
+
+inline Atom&
+Unit_cell::atom(int id__)
+{
+    assert(id__ >= 0 && id__ < (int)atoms_.size());
+    return *atoms_[id__];
+}
+
+inline int
+Unit_cell::total_nuclear_charge() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        result += nat * atom_type(iat).zn();
+    }
+    return result;
+}
+
+inline double
+Unit_cell::num_valence_electrons() const
+{
+    double result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        result += nat * atom_type(iat).num_valence_electrons();
+    }
+    return result;
+}
+
+inline double
+Unit_cell::num_core_electrons() const
+{
+    double result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        result += nat * atom_type(iat).num_core_electrons();
+    }
+    return result;
+}
+
+inline int
+Unit_cell::max_num_mt_points() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::max(result, atom_type(iat).num_mt_points());
+    }
+    return result;
+}
+
+inline int
+Unit_cell::mt_aw_basis_size() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        result += nat * atom_type(iat).mt_aw_basis_size();
+    }
+    return result;
+}
+
+inline int
+Unit_cell::mt_lo_basis_size() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        result += nat * atom_type(iat).mt_lo_basis_size();
+    }
+    return result;
+}
+
+inline int
+Unit_cell::max_mt_basis_size() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::max(result, atom_type(iat).mt_basis_size());
+    }
+    return result;
+}
+
+inline int
+Unit_cell::max_mt_radial_basis_size() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::max(result, atom_type(iat).mt_radial_basis_size());
+    }
+    return result;
+}
+
+inline double
+Unit_cell::min_mt_radius() const
+{
+    double result{1e100};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::min(result, atom_type(iat).mt_radius());
+    }
+    return result;
+}
+
+inline double
+Unit_cell::max_mt_radius() const
+{
+    double result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::max(result, atom_type(iat).mt_radius());
+    }
+    return result;
+}
+
+inline int
+Unit_cell::max_mt_aw_basis_size() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::max(result, atom_type(iat).mt_aw_basis_size());
+    }
+    return result;
+}
+
+inline int
+Unit_cell::max_mt_lo_basis_size() const
+{
+    int result{0};
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        result = std::max(result, atom_type(iat).mt_lo_basis_size());
+    }
+    return result;
+}
+
+inline void
+Unit_cell::set_equivalent_atoms(int const* equivalent_atoms__)
+{
+    equivalent_atoms_.resize(num_atoms());
+    std::copy(equivalent_atoms__, equivalent_atoms__ + num_atoms(), equivalent_atoms_.begin());
+}
+
+inline int
+Unit_cell::lmax() const
+{
+    int l{-1};
+    for (int iat = 0; iat < this->num_atom_types(); iat++) {
+        l = std::max(l, this->atom_type(iat).indexr().lmax());
+    }
+    return l;
+}
+
+inline int
+Unit_cell::lmax_apw() const
+{
+    int lmax{-1};
+    for (int iat = 0; iat < this->num_atom_types(); iat++) {
+        lmax = std::max(lmax, this->atom_type(iat).lmax_apw());
+    }
+    return lmax;
+}
+
+inline bool
+Unit_cell::augment() const
+{
+    bool a{false};
+    for (auto iat = 0; iat < num_atom_types(); iat++) {
+        a |= atom_type(iat).augment();
+    }
+    return a;
+}
 
 } // namespace sirius
 

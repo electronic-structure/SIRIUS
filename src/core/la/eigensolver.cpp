@@ -83,3 +83,34 @@ Eigensolver_factory(std::string name__)
 } // namespace la
 
 } // namespace sirius
+
+#include <map>
+
+namespace sirius {
+
+namespace la {
+
+ev_solver_t
+get_ev_solver_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+    static const std::map<std::string, ev_solver_t> map_to_type = {
+            {"lapack", ev_solver_t::lapack},       {"scalapack", ev_solver_t::scalapack},
+            {"elpa1", ev_solver_t::elpa},          {"elpa2", ev_solver_t::elpa},
+            {"dlaf", ev_solver_t::dlaf},           {"magma", ev_solver_t::magma},
+            {"magma_gpu", ev_solver_t::magma_gpu}, {"cusolver", ev_solver_t::cusolver},
+            {"rocsolver", ev_solver_t::rocsolver}};
+
+    if (map_to_type.count(name__) == 0) {
+        std::stringstream s;
+        s << "wrong label of eigen-solver : " << name__;
+        RTE_THROW(s);
+    }
+
+    return map_to_type.at(name__);
+}
+
+} // namespace la
+
+} // namespace sirius

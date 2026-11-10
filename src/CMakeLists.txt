@@ -67,6 +67,7 @@ set(_SOURCES
   "k_point/k_point_set.cpp"
   "radial/radial_integrals.cpp"
   "radial/radial_solver.cpp"
+  "radial/radial_grid.cpp"
   "mixer/mixer_functions.cpp"
   "nlcglib/adaptor.cpp"
   "context/config.cpp"
@@ -89,10 +90,12 @@ set(_SOURCES
   "core/la/eigensolver.cpp"
   "core/la/eigenproblem.cpp"
   "core/la/linalg_spla.cpp"
+  "core/la/linalg_base.cpp"
   "core/la/dmatrix.cpp"
   "core/la/dlaf.cpp"
   "core/json.cpp"
   "core/memory.cpp"
+  "core/typedefs.cpp"
   "sirius_init.cpp"
   )
 
