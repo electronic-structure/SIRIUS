@@ -65,6 +65,8 @@ sum_q_pw_dm_pw_gpu(int num_gvec_loc__, int nbf__, double const* q_pw__, int ldq_
 
 namespace sirius {
 
+class LAPW_radial_basis;
+
 /// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
 inline auto
 get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)

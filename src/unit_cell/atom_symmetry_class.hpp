@@ -15,8 +15,6 @@
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
 #include "atom_type.hpp"
-#include "core/la/eigensolver.hpp"
-#include "core/mpi/pstdout.hpp"
 
 namespace sirius {
 
@@ -38,14 +36,7 @@ class Atom_symmetry_class
 
   public:
     /// Constructor
-    Atom_symmetry_class(int id__, Atom_type const& atom_type__)
-        : id_(id__)
-        , atom_type_(atom_type__)
-    {
-        if (!atom_type_.initialized()) {
-            RTE_THROW("atom type is not initialized");
-        }
-    }
+    Atom_symmetry_class(int id__, Atom_type const& atom_type__);
 
     /// Return symmetry class id.
     inline int
@@ -80,6 +71,15 @@ class Atom_symmetry_class
         return atom_type_;
     }
 };
+
+inline Atom_symmetry_class::Atom_symmetry_class(int id__, Atom_type const& atom_type__)
+    : id_(id__)
+    , atom_type_(atom_type__)
+{
+    if (!atom_type_.initialized()) {
+        RTE_THROW("atom type is not initialized");
+    }
+}
 
 } // namespace sirius
 

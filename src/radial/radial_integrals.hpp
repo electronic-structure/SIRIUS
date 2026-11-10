@@ -16,6 +16,7 @@
 
 #include "unit_cell/unit_cell.hpp"
 #include "core/sf/sbessel.hpp"
+#include "core/splindex.hpp"
 #include "core/rte/rte.hpp"
 #include "core/env/env.hpp"
 #include "core/ostream_tools.hpp"

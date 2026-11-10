@@ -12,6 +12,8 @@
  */
 
 #include "k_point.hpp"
+#include "lapw/lapw_radial_basis.hpp"
+#include "lapw/matching_coefficients.hpp"
 #include "lapw/generate_alm_block.hpp"
 
 namespace sirius {

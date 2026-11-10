@@ -14,6 +14,7 @@
 #include "force.hpp"
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
+#include "lapw/matching_coefficients.hpp"
 #include "density/density.hpp"
 #include "density/augmentation_operator.hpp"
 #include "potential/potential.hpp"

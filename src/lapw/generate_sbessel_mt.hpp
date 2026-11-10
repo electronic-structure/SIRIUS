@@ -14,6 +14,8 @@
 #ifndef __GENERATE_SBESSEL_MT_HPP__
 #define __GENERATE_SBESSEL_MT_HPP__
 
+#include <gsl/gsl_sf_bessel.h>
+
 namespace sirius {
 
 /// Compute values of spherical Bessel functions at MT boundary.

@@ -24,6 +24,8 @@
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/acc/acc.hpp"
+#include "core/la/blacs_grid.hpp"
+#include "core/la/eigensolver.hpp"
 #include "core/env/env.hpp"
 #include "core/time_tools.hpp"
 #include "core/system_tools.hpp"

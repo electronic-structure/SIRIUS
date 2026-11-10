@@ -13,6 +13,7 @@
 
 #include "lapw/lapw_radial_basis.hpp"
 #include "core/la/linalg.hpp"
+#include "core/mpi/pstdout.hpp"
 #include "core/json.hpp"
 
 namespace sirius {

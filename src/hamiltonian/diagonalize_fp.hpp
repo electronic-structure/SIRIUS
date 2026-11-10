@@ -16,6 +16,7 @@
 
 #include "davidson.hpp"
 #include "k_point/k_point.hpp"
+#include "lapw/matching_coefficients.hpp"
 
 namespace sirius {
 

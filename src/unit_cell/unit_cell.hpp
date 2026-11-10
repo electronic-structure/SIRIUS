@@ -18,6 +18,7 @@
 #include <memory>
 #include "atom.hpp"
 #include "core/mpi/mpi_grid.hpp"
+#include "core/splindex.hpp"
 #include "core/json_fwd.hpp"
 #include "context/simulation_parameters.hpp"
 #include "unit_cell/atom_type.hpp"
