@@ -22,6 +22,7 @@
 #include <iostream>
 #include <pybind11/operators.h>
 #include "sirius.hpp"
+#include "core/json.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;

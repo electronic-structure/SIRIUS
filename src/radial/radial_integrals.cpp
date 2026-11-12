@@ -12,8 +12,21 @@
  */
 
 #include "radial_integrals.hpp"
+#include "core/json.hpp"
 
 namespace sirius {
+
+void
+throw_q_out_of_range(double q__, double q_last__, Unit_cell const& unit_cell__)
+{
+    std::stringstream s;
+    s << "q-point is out of range" << std::endl
+      << "  q : " << q__ << std::endl
+      << "  last point of the q-grid : " << q_last__ << std::endl;
+    auto uc = unit_cell__.serialize();
+    s << "unit cell: " << uc;
+    RTE_THROW(s);
+}
 
 template <bool jl_deriv>
 void

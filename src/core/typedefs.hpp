@@ -80,40 +80,11 @@ enum class relativity_t
     dirac
 };
 
-inline relativity_t
-get_relativity_t(std::string name__)
-{
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, relativity_t> const m = {{"none", relativity_t::none},
-                                                   {"koelling_harmon", relativity_t::koelling_harmon},
-                                                   {"zora", relativity_t::zora},
-                                                   {"iora", relativity_t::iora},
-                                                   {"dirac", relativity_t::dirac}};
+relativity_t
+get_relativity_t(std::string name__);
 
-    if (m.count(name__) == 0) {
-        std::stringstream s;
-        s << "get_relativity_t(): wrong label of the relativity_t enumerator: " << name__;
-        throw std::runtime_error(s.str());
-    }
-    return m.at(name__);
-}
-
-inline auto
-get_relativity(relativity_t rel__)
-{
-    std::map<relativity_t, std::string> const m = {{relativity_t::none, "none"},
-                                                   {relativity_t::koelling_harmon, "Koelling-Harmon"},
-                                                   {relativity_t::zora, "zora"},
-                                                   {relativity_t::iora, "iora"},
-                                                   {relativity_t::dirac, "Dirac"}};
-
-    if (m.count(rel__) == 0) {
-        std::stringstream s;
-        s << "get_relativity(): wrong type of the relativity_t enumerator";
-        throw std::runtime_error(s.str());
-    }
-    return m.at(rel__);
-}
+std::string
+get_relativity(relativity_t rel__);
 
 /// Describes radial solution.
 struct radial_solution_descriptor

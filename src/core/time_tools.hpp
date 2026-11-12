@@ -15,6 +15,7 @@
 #define __TIME_TOOLS_HPP__
 
 #include <sys/time.h>
+#include <chrono>
 
 namespace sirius {
 

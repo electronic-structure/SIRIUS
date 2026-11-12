@@ -6,7 +6,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <context/simulation_context.hpp>
+#include <sirius_init.hpp>
+#include "core/json.hpp"
 extern "C" {
 #include <spglib.h>
 }

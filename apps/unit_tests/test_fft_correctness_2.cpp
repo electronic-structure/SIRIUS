@@ -6,7 +6,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/fft/fft.hpp>
+#include <sirius_init.hpp>
 #include <testing.hpp>
 
 /* test FFT: tranfrom random function to real space, transform back and compare with the original function */

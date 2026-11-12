@@ -12,6 +12,7 @@
  */
 
 #include "k_point/k_point.hpp"
+#include "lapw/matching_coefficients.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "core/la/inverse_sqrt.hpp"
 
@@ -783,6 +784,46 @@ K_point<T>::generate_gklo_basis()
         }
     }
 }
+
+template <typename T>
+K_point<T>::K_point(Simulation_context& ctx__, r3::vector<double> vk__, double weight__)
+    : ctx_(ctx__)
+    , unit_cell_(ctx_.unit_cell())
+    , vk_(vk__)
+    , weight_(weight__)
+    , comm_(ctx_.comm_band())
+    , rank_col_(ctx_.blacs_grid().comm_col().rank())
+    , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
+    , rank_row_(ctx_.blacs_grid().comm_row().rank())
+    , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
+    , comm_row_(ctx_.blacs_grid().comm_row())
+    , comm_col_(ctx_.blacs_grid().comm_col())
+{
+    this->init0();
+    gkvec_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
+                                         ctx_.gamma_point());
+}
+
+template <typename T>
+K_point<T>::K_point(Simulation_context& ctx__, std::shared_ptr<fft::Gvec> gkvec__, double weight__)
+    : ctx_(ctx__)
+    , unit_cell_(ctx_.unit_cell())
+    , vk_(gkvec__->vk())
+    , weight_(weight__)
+    , comm_(ctx_.comm_band())
+    , gkvec_(gkvec__)
+    , rank_col_(ctx_.blacs_grid().comm_col().rank())
+    , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
+    , rank_row_(ctx_.blacs_grid().comm_row().rank())
+    , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
+    , comm_row_(ctx_.blacs_grid().comm_row())
+    , comm_col_(ctx_.blacs_grid().comm_col())
+{
+    this->init0();
+}
+
+template <typename T>
+K_point<T>::~K_point() = default;
 
 template class K_point<double>;
 #if defined(SIRIUS_USE_FP32)

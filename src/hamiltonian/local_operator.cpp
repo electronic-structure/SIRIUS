@@ -340,7 +340,7 @@ Local_operator<T>::apply_h(fft::spfft_transform_type<T>& spfftk__, std::shared_p
 
     /* assume the location of data on the current processing unit */
     auto spfft_pu  = spfftk__.processing_unit();
-    auto spfft_mem = fft::spfft_memory_t.at(spfft_pu);
+    auto spfft_mem = fft::spfft_memory_t(spfft_pu);
 
     /* number of real-space points in the local part of FFT buffer */
     int nr = spfftk__.local_slice_size();
@@ -521,7 +521,7 @@ Local_operator<T>::apply_fplapw(fft::spfft_transform_type<T>& spfftk__, std::sha
     /* assume the location of data on the current processing unit */
     auto spfft_pu = spfftk__.processing_unit();
 
-    auto spfft_mem = fft::spfft_memory_t.at(spfft_pu);
+    auto spfft_mem = fft::spfft_memory_t(spfft_pu);
 
     auto s0 = wf::spin_index(0);
 

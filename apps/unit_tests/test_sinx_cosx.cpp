@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/sf/specfunc.hpp>
 #include <testing.hpp>
 #include <math.h>
 #include <complex.h>

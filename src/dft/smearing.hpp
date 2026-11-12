@@ -34,24 +34,8 @@ enum class smearing_t
     methfessel_paxton
 };
 
-inline smearing_t
-get_smearing_t(std::string name__)
-{
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    std::map<std::string, smearing_t> const m = {
-            {"gaussian", smearing_t::gaussian},
-            {"fermi_dirac", smearing_t::fermi_dirac},
-            {"cold", smearing_t::cold},
-            {"methfessel_paxton", smearing_t::methfessel_paxton},
-    };
-
-    if (m.count(name__) == 0) {
-        std::stringstream s;
-        s << "get_smearing_t(): wrong label of the smearing_t enumerator: " << name__;
-        throw std::runtime_error(s.str());
-    }
-    return m.at(name__);
-}
+smearing_t
+get_smearing_t(std::string name__);
 
 struct gaussian
 {

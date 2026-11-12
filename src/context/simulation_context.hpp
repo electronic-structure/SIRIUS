@@ -24,6 +24,8 @@
 #include "core/fft/fft.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/acc/acc.hpp"
+#include "core/la/blacs_grid.hpp"
+#include "core/la/eigensolver.hpp"
 #include "core/env/env.hpp"
 #include "core/time_tools.hpp"
 #include "core/system_tools.hpp"
@@ -323,16 +325,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Common init function called by all constructors.
     void
-    init_common()
-    {
-        gettimeofday(&start_time_, NULL);
-        start_time_tag_ = timestamp("%Y%m%d_%H%M%S");
-
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-
-        /* read from external config file provided by SIRIUS_CONFIG environment variable */
-        this->import(env::config_file());
-    }
+    init_common();
 
     /* copy constructor is forbidden */
     Simulation_context(Simulation_context const&) = delete;
@@ -357,50 +350,13 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Create a simulation context with world communicator and load parameters from JSON string or a file.
-    explicit Simulation_context(std::string const& str__, mpi::Communicator const& comm__ = mpi::Communicator::world())
-        : comm_(comm__)
-    {
-        init_common();
-        if (!is_json_string(str__) && isHDF5(str__)) {
-            HDF5_tree fin(str__, hdf5_access_t::read_only);
-            std::string json_string;
-            fin.read("config", json_string);
-            auto dict = read_json_from_file_or_string(json_string);
-            for (auto& e : dict["unit_cell"]["atom_types"]) {
-                auto label                             = e.get<std::string>();
-                dict["unit_cell"]["atom_files"][label] = "";
-            }
-            import(dict);
-            unit_cell_->import(cfg().unit_cell());
-
-            /* need to set type of calculation before parsing species */
-            this->electronic_structure_method(cfg().parameters().electronic_structure_method());
-            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++) {
-                fin["unit_cell"]["atom_types"][iat].read("config", json_string);
-                unit_cell_->atom_type(iat).read_input(json_string);
-            }
-        } else {
-            import(str__);
-            unit_cell_->import(cfg().unit_cell());
-        }
-    }
+    explicit Simulation_context(std::string const& str__, mpi::Communicator const& comm__ = mpi::Communicator::world());
 
     explicit Simulation_context(nlohmann::json const& dict__,
-                                mpi::Communicator const& comm__ = mpi::Communicator::world())
-        : comm_(comm__)
-    {
-        init_common();
-        import(dict__);
-        unit_cell_->import(cfg().unit_cell());
-    }
+                                mpi::Communicator const& comm__ = mpi::Communicator::world());
 
     /// Destructor.
-    ~Simulation_context()
-    {
-        if (!comm().is_finalized() && initialized_) {
-            print_memory_usage(this->out(), FILE_LINE);
-        }
-    }
+    ~Simulation_context();
 
     /// Initialize the similation (can only be called once).
     void
@@ -679,11 +635,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     inline auto&
-    augmentation_op(int iat__)
-    {
-        RTE_ASSERT(augmentation_op_[iat__] != nullptr);
-        return *augmentation_op_[iat__];
-    }
+    augmentation_op(int iat__);
 
     /// Type of the host memory for arrays used in linear algebra operations.
     /** For CPU execution this is normal host memory, for GPU execution this is pinned memory. */
@@ -752,33 +704,17 @@ class Simulation_context : public Simulation_parameters
     }
 
     inline double
-    evp_work_count(double w__ = 0) const
-    {
-        evp_work_count_ += w__;
-        return evp_work_count_;
-    }
+    evp_work_count(double w__ = 0) const;
 
     /// Keep track of the total number of wave-functions to which the local operator was applied.
     inline int
-    num_loc_op_applied(int n = 0) const
-    {
-        num_loc_op_applied_ += n;
-        return num_loc_op_applied_;
-    }
+    num_loc_op_applied(int n = 0) const;
 
     inline int
-    num_itsol_steps(int n = 0) const
-    {
-        num_itsol_steps_ += n;
-        return num_itsol_steps_;
-    }
+    num_itsol_steps(int n = 0) const;
 
     inline int
-    num_constraints_applied(int n = 0) const
-    {
-        num_constraints_applied_ += n;
-        return num_constraints_applied_;
-    }
+    num_constraints_applied(int n = 0) const;
 
     inline auto&
     cb()
@@ -818,40 +754,15 @@ class Simulation_context : public Simulation_parameters
 
     /// Export parameters of simulation context as a JSON dictionary.
     nlohmann::json
-    serialize() const
-    {
-        nlohmann::json dict;
-        dict["config"] = cfg().dict();
-        bool const cart_pos{false};
-        dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
-        auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
-                                       spfft_transform_coarse_->dim_z()};
-        dict["fft_coarse_grid"]     = fftgrid;
-        dict["mpi_grid"]            = mpi_grid_dims();
-        dict["omega"]               = unit_cell().omega();
-        dict["chemical_formula"]    = unit_cell().chemical_formula();
-        dict["num_atoms"]           = unit_cell().num_atoms();
-        return dict;
-    }
+    serialize() const;
 
     /// Return output stream.
     inline std::ostream&
-    out() const
-    {
-        RTE_ASSERT(output_stream_ != nullptr);
-        return *output_stream_;
-    }
+    out() const;
 
     /// Return output stream based on the verbosity level.
     inline std::ostream&
-    out(int level__) const
-    {
-        if (this->verbosity() >= level__) {
-            return this->out();
-        } else {
-            return null_stream();
-        }
-    }
+    out(int level__) const;
 
     /// Wrap output stream of context into rte::ostream.
     inline auto
@@ -896,6 +807,85 @@ class Simulation_context : public Simulation_parameters
         return rotm_ylm_;
     }
 };
+
+inline void
+Simulation_context::init_common()
+{
+    gettimeofday(&start_time_, NULL);
+    start_time_tag_ = timestamp("%Y%m%d_%H%M%S");
+
+    unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+
+    /* read from external config file provided by SIRIUS_CONFIG environment variable */
+    this->import(env::config_file());
+}
+
+inline Simulation_context::Simulation_context(nlohmann::json const& dict__, mpi::Communicator const& comm__)
+    : comm_(comm__)
+{
+    init_common();
+    import(dict__);
+    unit_cell_->import(cfg().unit_cell());
+}
+
+inline Simulation_context::~Simulation_context()
+{
+    if (!comm().is_finalized() && initialized_) {
+        print_memory_usage(this->out(), FILE_LINE);
+    }
+}
+
+inline auto&
+Simulation_context::augmentation_op(int iat__)
+{
+    RTE_ASSERT(augmentation_op_[iat__] != nullptr);
+    return *augmentation_op_[iat__];
+}
+
+inline double
+Simulation_context::evp_work_count(double w__) const
+{
+    evp_work_count_ += w__;
+    return evp_work_count_;
+}
+
+inline int
+Simulation_context::num_loc_op_applied(int n) const
+{
+    num_loc_op_applied_ += n;
+    return num_loc_op_applied_;
+}
+
+inline int
+Simulation_context::num_itsol_steps(int n) const
+{
+    num_itsol_steps_ += n;
+    return num_itsol_steps_;
+}
+
+inline int
+Simulation_context::num_constraints_applied(int n) const
+{
+    num_constraints_applied_ += n;
+    return num_constraints_applied_;
+}
+
+inline std::ostream&
+Simulation_context::out() const
+{
+    RTE_ASSERT(output_stream_ != nullptr);
+    return *output_stream_;
+}
+
+inline std::ostream&
+Simulation_context::out(int level__) const
+{
+    if (this->verbosity() >= level__) {
+        return this->out();
+    } else {
+        return null_stream();
+    }
+}
 
 } // namespace sirius
 

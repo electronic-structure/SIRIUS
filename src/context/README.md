@@ -1,9 +1,13 @@
 # Basic information
 All input parameters that SIRIUS understands are defined in the `input_schema.json` file. If you need to introduce
-new parameters, edit the schema and then generate a new `config.hpp` by running
+new parameters, edit the schema and then generate new `config.hpp` and `config.cpp` by running
 ```
-python3 ../../apps/utils/gen_config.py input_schema.json &> config.hpp
+python3 ../../apps/utils/gen_config.py input_schema.json
+clang-format -i config.cpp
+rm DOC.md
 ```
+`config.hpp` contains only the declarations of the accessors and needs only the forward declarations of
+`nlohmann::json`; the definitions are in `config.cpp`.
 
 Input schema is converted into const json dictionary inside SIRIUS with the following cmake command:
 ```

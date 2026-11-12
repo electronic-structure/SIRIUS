@@ -6,7 +6,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <radial/radial_solver.hpp>
+#include <core/power.hpp>
+#include <core/cmd_args.hpp>
+#include <sirius_init.hpp>
+using json = nlohmann::json;
+#include "core/json.hpp"
 
 using namespace sirius;
 

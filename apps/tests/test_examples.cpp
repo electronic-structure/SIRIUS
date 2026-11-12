@@ -6,7 +6,10 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/fft/fft.hpp>
+#include <core/math_tools.hpp>
+#include <core/cmd_args.hpp>
+#include <sirius_init.hpp>
 #include <spla/spla.hpp>
 #include "core/wf/wave_functions.hpp"
 

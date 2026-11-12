@@ -16,9 +16,11 @@
 
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 #include "blas_lapack.h"
 #include "scalapack.h"
+#include "core/rte/rte.hpp"
 #include <mpi.h>
 
 namespace sirius {
@@ -30,33 +32,49 @@ template <typename T>
 struct constant
 {
     static T const&
-    one() noexcept
-    {
-        static const T a = 1;
-        return a;
-    }
+    one() noexcept;
 
     static T const&
-    two() noexcept
-    {
-        static const T a = 2;
-        return a;
-    }
+    two() noexcept;
 
     static T const&
-    m_one() noexcept
-    {
-        static const T a = -1;
-        return a;
-    }
+    m_one() noexcept;
 
     static T const&
-    zero() noexcept
-    {
-        static const T a = 0;
-        return a;
-    }
+    zero() noexcept;
 };
+
+template <typename T>
+inline T const&
+constant<T>::one() noexcept
+{
+    static const T a = 1;
+    return a;
+}
+
+template <typename T>
+inline T const&
+constant<T>::two() noexcept
+{
+    static const T a = 2;
+    return a;
+}
+
+template <typename T>
+inline T const&
+constant<T>::m_one() noexcept
+{
+    static const T a = -1;
+    return a;
+}
+
+template <typename T>
+inline T const&
+constant<T>::zero() noexcept
+{
+    static const T a = 0;
+    return a;
+}
 
 /// Type of linear algebra backend library.
 enum class lib_t
@@ -79,25 +97,8 @@ enum class lib_t
     spla
 };
 
-inline auto
-get_lib_t(std::string name__)
-{
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-
-    static const std::map<std::string, lib_t> map_to_type = {
-            {"blas", lib_t::blas},      {"lapack", lib_t::lapack},   {"scalapack", lib_t::scalapack},
-            {"cublas", lib_t::gpublas}, {"gpublas", lib_t::gpublas}, {"cublasxt", lib_t::cublasxt},
-            {"magma", lib_t::magma},
-    };
-
-    if (map_to_type.count(name__) == 0) {
-        std::stringstream s;
-        s << "wrong label of linear algebra type: " << name__;
-        throw std::runtime_error(s.str());
-    }
-
-    return map_to_type.at(name__);
-}
+lib_t
+get_lib_t(std::string name__);
 
 inline std::string
 to_string(lib_t la__)
@@ -232,11 +233,7 @@ class linalg_base
   public:
     static ftn_int
     ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2, ftn_int n3,
-           ftn_int n4)
-    {
-        return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (ftn_len)name.length(),
-                               (ftn_len)opts.length());
-    }
+           ftn_int n4);
 
     static ftn_double
     dlamch(char cmach)
@@ -324,6 +321,14 @@ class linalg_base
     }
 #endif
 };
+
+inline ftn_int
+linalg_base::ilaenv(ftn_int ispec, std::string const& name, std::string const& opts, ftn_int n1, ftn_int n2, ftn_int n3,
+                    ftn_int n4)
+{
+    return FORTRAN(ilaenv)(&ispec, name.c_str(), opts.c_str(), &n1, &n2, &n3, &n4, (ftn_len)name.length(),
+                           (ftn_len)opts.length());
+}
 
 } // namespace la
 

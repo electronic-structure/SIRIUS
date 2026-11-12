@@ -6,12 +6,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/sirius_version.hpp>
+#include <sirius_init.hpp>
 #include <cfenv>
 #include "core/profiler.hpp"
 #include "core/json.hpp"
 #include "dft/lattice_relaxation.hpp"
-#include "hamiltonian/initialize_subspace.hpp"
 #include "hamiltonian/diagonalize.hpp"
 #include "k_point/get_wave_function_value.hpp"
 

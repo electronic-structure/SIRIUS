@@ -14,6 +14,7 @@
 #define __DIAGONALIZE_PP_HPP__
 
 #include "davidson.hpp"
+#include "potential/potential.hpp"
 #include "check_wave_functions.hpp"
 #include "k_point/k_point.hpp"
 

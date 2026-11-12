@@ -7,7 +7,7 @@
  */
 
 #include "core/fft/gvec.hpp"
-#include "sirius.hpp"
+#include "sirius_init.hpp"
 #include "testing.hpp"
 
 using namespace sirius;

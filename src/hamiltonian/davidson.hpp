@@ -19,21 +19,9 @@
 #include "core/profiler.hpp"
 #include "residuals.hpp"
 #include "generate_subspace_matrix.hpp"
+#include "davidson_result.hpp"
 
 namespace sirius {
-
-/// Result of Davidson solver.
-struct davidson_result_t
-{
-    /// Number of iterations.
-    int niter;
-    /// Eigen-values.
-    mdarray<double, 2> eval;
-    /// True if all bands (up and dn) are converged.
-    bool converged;
-    /// Number of unconverged bands for each spin channel.
-    int num_unconverged[2];
-};
 
 enum class davidson_evp_t
 {

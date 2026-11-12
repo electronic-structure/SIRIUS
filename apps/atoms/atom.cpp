@@ -7,7 +7,12 @@
  */
 
 #include <algorithm>
-#include <sirius.hpp>
+#include <lapw/lapw_radial_basis.hpp>
+#include <radial/radial_solver.hpp>
+#include <core/system_tools.hpp>
+#include <sirius_init.hpp>
+using json = nlohmann::json;
+#include "core/json.hpp"
 #include "mixer/anderson_mixer.hpp"
 #include "unit_cell/atomic_conf.hpp"
 #include "potential/xc_functional.hpp"

@@ -12,6 +12,7 @@
  */
 
 #include "simulation_parameters.hpp"
+#include "core/json.hpp"
 #include "core/mpi/communicator.hpp"
 #include "context/input_schema.hpp"
 #include "potential/xc_functional_base.hpp"
@@ -132,6 +133,18 @@ Config::import(nlohmann::json const& in__)
 {
     /* overwrite the parameters by the values from the input dictionary */
     compose_json(sirius::input_schema["properties"], in__, this->dict_);
+}
+
+void
+Config::lock()
+{
+    dict_["locked"] = true;
+}
+
+void
+Config::unlock()
+{
+    dict_.erase("locked");
 }
 
 /** Return entire input parameters schema. */

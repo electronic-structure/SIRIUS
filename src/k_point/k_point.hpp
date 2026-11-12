@@ -14,13 +14,15 @@
 #ifndef __K_POINT_HPP__
 #define __K_POINT_HPP__
 
-#include "lapw/matching_coefficients.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 #include "unit_cell/radial_functions_index.hpp"
 #include "core/fft/fft.hpp"
 #include "core/wf/wave_functions.hpp"
 
 namespace sirius {
+
+class Matching_coefficients;
+class LAPW_radial_basis;
 
 /// K-point related variables and methods.
 /** \image html fv_eigen_vectors.png "First-variational eigen vectors"
@@ -190,67 +192,22 @@ class K_point
     generate_gkvec(double gk_cutoff__);
 
     inline int
-    get_ispn(int ispn__) const
-    {
-        RTE_ASSERT(ispn__ == 0 || ispn__ == 1);
-        return ispn_map_[ispn__];
-    }
+    get_ispn(int ispn__) const;
 
     friend class K_point_set;
 
     void
-    init0()
-    {
-        band_occupancies_ =
-                mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
-        band_occupancies_.zero();
-        band_energies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_energies"));
-        band_energies_.zero();
-
-        if (ctx_.num_mag_dims() == 1) {
-            ispn_map_[1] = 1;
-        } else if (ctx_.num_mag_dims() == 3) {
-            ispn_map_[1] = 0;
-        }
-    }
+    init0();
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, r3::vector<double> vk__, double weight__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx_.unit_cell())
-        , vk_(vk__)
-        , weight_(weight__)
-        , comm_(ctx_.comm_band())
-        , rank_col_(ctx_.blacs_grid().comm_col().rank())
-        , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
-        , rank_row_(ctx_.blacs_grid().comm_row().rank())
-        , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
-        , comm_row_(ctx_.blacs_grid().comm_row())
-        , comm_col_(ctx_.blacs_grid().comm_col())
-    {
-        this->init0();
-        gkvec_ = std::make_shared<fft::Gvec>(vk_, unit_cell_.reciprocal_lattice_vectors(), ctx_.gk_cutoff(), comm_,
-                                             ctx_.gamma_point());
-    }
+    K_point(Simulation_context& ctx__, r3::vector<double> vk__, double weight__);
 
     /// Constructor
-    K_point(Simulation_context& ctx__, std::shared_ptr<fft::Gvec> gkvec__, double weight__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx_.unit_cell())
-        , vk_(gkvec__->vk())
-        , weight_(weight__)
-        , comm_(ctx_.comm_band())
-        , gkvec_(gkvec__)
-        , rank_col_(ctx_.blacs_grid().comm_col().rank())
-        , num_ranks_col_(ctx_.blacs_grid().comm_col().size())
-        , rank_row_(ctx_.blacs_grid().comm_row().rank())
-        , num_ranks_row_(ctx_.blacs_grid().comm_row().size())
-        , comm_row_(ctx_.blacs_grid().comm_row())
-        , comm_col_(ctx_.blacs_grid().comm_col())
-    {
-        this->init0();
-    }
+    K_point(Simulation_context& ctx__, std::shared_ptr<fft::Gvec> gkvec__, double weight__);
+
+    /// Destructor; defined in k_point.cpp, where Matching_coefficients is a complete type.
+    ~K_point();
 
     /// Initialize the k-point related arrays and data.
     void
@@ -353,35 +310,7 @@ class K_point
 
     /// Collect distributed second-variational vectors into a global array.
     void
-    get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
-    {
-        RTE_ASSERT((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
-        RTE_ASSERT((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
-
-        sv_evec__.zero();
-
-        if (!ctx_.need_sv()) {
-            for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                sv_evec__(i, i) = 1;
-            }
-            return;
-        }
-
-        int nsp = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
-
-        for (int ispn = 0; ispn < nsp; ispn++) {
-            int offs = ctx_.num_fv_states() * ispn;
-            for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++) {
-                int j = sv_eigen_vectors_[ispn].icol(jloc);
-                for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++) {
-                    int i                         = sv_eigen_vectors_[ispn].irow(iloc);
-                    sv_evec__(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
-                }
-            }
-        }
-
-        comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
-    }
+    get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const;
 
     inline auto const&
     gkvec() const
@@ -412,18 +341,7 @@ class K_point
 
     /// Get the number of occupied bands for each spin channel.
     inline int
-    num_occupied_bands(int ispn__ = -1) const
-    {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
-            if (std::abs(band_occupancy(j, ispn__)) > ctx_.min_occupancy() * ctx_.max_occupancy()) {
-                return j + 1;
-            }
-        }
-        return 0;
-    }
+    num_occupied_bands(int ispn__ = -1) const;
 
     /// Get band energy.
     inline double
@@ -440,14 +358,7 @@ class K_point
     }
 
     inline auto
-    band_energies(int ispn__) const
-    {
-        std::vector<double> result(ctx_.num_bands());
-        for (int j = 0; j < ctx_.num_bands(); j++) {
-            result[j] = this->band_energy(j, ispn__);
-        }
-        return result;
-    }
+    band_energies(int ispn__) const;
 
     /// Get band occupancy.
     inline double
@@ -483,35 +394,18 @@ class K_point
     }
 
     inline auto&
-    fv_states()
-    {
-        RTE_ASSERT(fv_states_ != nullptr);
-        return *fv_states_;
-    }
+    fv_states();
 
     inline wf::Wave_functions<T>&
-    spinor_wave_functions()
-    {
-        RTE_ASSERT(spinor_wave_functions_ != nullptr);
-        return *spinor_wave_functions_;
-    }
+    spinor_wave_functions();
 
     inline wf::Wave_functions<T> const&
-    spinor_wave_functions() const
-    {
-        RTE_ASSERT(spinor_wave_functions_ != nullptr);
-        return *spinor_wave_functions_;
-    }
+    spinor_wave_functions() const;
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions. The S operator is applied on
     /// these functions.
     inline auto const&
-    atomic_wave_functions_S() const
-    {
-        /* the S operator is applied on these functions */
-        RTE_ASSERT(atomic_wave_functions_S_ != nullptr);
-        return *atomic_wave_functions_S_;
-    }
+    atomic_wave_functions_S() const;
 
     inline auto&
     atomic_wave_functions_S()
@@ -521,11 +415,7 @@ class K_point
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions.
     inline auto const&
-    atomic_wave_functions() const
-    {
-        RTE_ASSERT(atomic_wave_functions_ != nullptr);
-        return *atomic_wave_functions_;
-    }
+    atomic_wave_functions() const;
 
     /// Return the initial atomic orbitals used to compute the hubbard wave functions.
     inline auto&
@@ -537,11 +427,7 @@ class K_point
     /// Return the actual hubbard wave functions used in the calculations.
     /** The S operator is applied on these functions. */
     inline auto const&
-    hubbard_wave_functions_S() const
-    {
-        RTE_ASSERT(hubbard_wave_functions_S_ != nullptr);
-        return *hubbard_wave_functions_S_;
-    }
+    hubbard_wave_functions_S() const;
 
     inline auto&
     singular_components()
@@ -607,18 +493,10 @@ class K_point
     }
 
     inline lo_basis_descriptor const&
-    lo_basis_descriptor_col(int idx) const
-    {
-        RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
-        return lo_basis_descriptors_col_[idx];
-    }
+    lo_basis_descriptor_col(int idx) const;
 
     inline lo_basis_descriptor const&
-    lo_basis_descriptor_row(int idx) const
-    {
-        RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
-        return lo_basis_descriptors_row_[idx];
-    }
+    lo_basis_descriptor_row(int idx) const;
 
     inline int
     num_ranks_row() const
@@ -752,32 +630,16 @@ class K_point
     }
 
     auto
-    beta_projectors() -> Beta_projectors<T>&
-    {
-        RTE_ASSERT(beta_projectors_ != nullptr);
-        return *beta_projectors_;
-    }
+    beta_projectors() -> Beta_projectors<T>&;
 
     auto
-    beta_projectors() const -> const Beta_projectors<T>&
-    {
-        RTE_ASSERT(beta_projectors_ != nullptr);
-        return *beta_projectors_;
-    }
+    beta_projectors() const -> const Beta_projectors<T>&;
 
     auto&
-    beta_projectors_row()
-    {
-        RTE_ASSERT(beta_projectors_ != nullptr);
-        return *beta_projectors_row_;
-    }
+    beta_projectors_row();
 
     auto&
-    beta_projectors_col()
-    {
-        RTE_ASSERT(beta_projectors_ != nullptr);
-        return *beta_projectors_col_;
-    }
+    beta_projectors_col();
 
     auto const&
     ctx() const
@@ -788,14 +650,7 @@ class K_point
     /// Return stdout stream for high verbosity output.
     /** This output will not be passed to a ctx_.out() stream. */
     std::ostream&
-    out(int level__) const
-    {
-        if (ctx_.verbosity() >= level__ && this->comm().rank() == 0) {
-            return std::cout;
-        } else {
-            return null_stream();
-        }
-    }
+    out(int level__) const;
 
     auto&
     spfft_transform() const
@@ -827,6 +682,196 @@ class K_point
         return *gkvec_row_;
     }
 };
+
+template <typename T>
+inline int
+K_point<T>::get_ispn(int ispn__) const
+{
+    RTE_ASSERT(ispn__ == 0 || ispn__ == 1);
+    return ispn_map_[ispn__];
+}
+
+template <typename T>
+inline void
+K_point<T>::init0()
+{
+    band_occupancies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_occupancies"));
+    band_occupancies_.zero();
+    band_energies_ = mdarray<double, 2>({ctx_.num_bands(), ctx_.num_spinors()}, mdarray_label("band_energies"));
+    band_energies_.zero();
+
+    if (ctx_.num_mag_dims() == 1) {
+        ispn_map_[1] = 1;
+    } else if (ctx_.num_mag_dims() == 3) {
+        ispn_map_[1] = 0;
+    }
+}
+
+template <typename T>
+inline void
+K_point<T>::get_sv_eigen_vectors(mdarray<std::complex<T>, 2>& sv_evec__) const
+{
+    RTE_ASSERT((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
+    RTE_ASSERT((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
+
+    sv_evec__.zero();
+
+    if (!ctx_.need_sv()) {
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            sv_evec__(i, i) = 1;
+        }
+        return;
+    }
+
+    int nsp = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
+
+    for (int ispn = 0; ispn < nsp; ispn++) {
+        int offs = ctx_.num_fv_states() * ispn;
+        for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++) {
+            int j = sv_eigen_vectors_[ispn].icol(jloc);
+            for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++) {
+                int i                         = sv_eigen_vectors_[ispn].irow(iloc);
+                sv_evec__(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
+            }
+        }
+    }
+
+    comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
+}
+
+template <typename T>
+inline int
+K_point<T>::num_occupied_bands(int ispn__) const
+{
+    if (ctx_.num_mag_dims() == 3) {
+        ispn__ = 0;
+    }
+    for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
+        if (std::abs(band_occupancy(j, ispn__)) > ctx_.min_occupancy() * ctx_.max_occupancy()) {
+            return j + 1;
+        }
+    }
+    return 0;
+}
+
+template <typename T>
+inline auto
+K_point<T>::band_energies(int ispn__) const
+{
+    std::vector<double> result(ctx_.num_bands());
+    for (int j = 0; j < ctx_.num_bands(); j++) {
+        result[j] = this->band_energy(j, ispn__);
+    }
+    return result;
+}
+
+template <typename T>
+inline auto&
+K_point<T>::fv_states()
+{
+    RTE_ASSERT(fv_states_ != nullptr);
+    return *fv_states_;
+}
+
+template <typename T>
+inline wf::Wave_functions<T>&
+K_point<T>::spinor_wave_functions()
+{
+    RTE_ASSERT(spinor_wave_functions_ != nullptr);
+    return *spinor_wave_functions_;
+}
+
+template <typename T>
+inline wf::Wave_functions<T> const&
+K_point<T>::spinor_wave_functions() const
+{
+    RTE_ASSERT(spinor_wave_functions_ != nullptr);
+    return *spinor_wave_functions_;
+}
+
+template <typename T>
+inline auto const&
+K_point<T>::atomic_wave_functions_S() const
+{
+    /* the S operator is applied on these functions */
+    RTE_ASSERT(atomic_wave_functions_S_ != nullptr);
+    return *atomic_wave_functions_S_;
+}
+
+template <typename T>
+inline auto const&
+K_point<T>::atomic_wave_functions() const
+{
+    RTE_ASSERT(atomic_wave_functions_ != nullptr);
+    return *atomic_wave_functions_;
+}
+
+template <typename T>
+inline auto const&
+K_point<T>::hubbard_wave_functions_S() const
+{
+    RTE_ASSERT(hubbard_wave_functions_S_ != nullptr);
+    return *hubbard_wave_functions_S_;
+}
+
+template <typename T>
+inline lo_basis_descriptor const&
+K_point<T>::lo_basis_descriptor_col(int idx) const
+{
+    RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_col_.size());
+    return lo_basis_descriptors_col_[idx];
+}
+
+template <typename T>
+inline lo_basis_descriptor const&
+K_point<T>::lo_basis_descriptor_row(int idx) const
+{
+    RTE_ASSERT(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
+    return lo_basis_descriptors_row_[idx];
+}
+
+template <typename T>
+inline auto
+K_point<T>::beta_projectors() -> Beta_projectors<T>&
+{
+    RTE_ASSERT(beta_projectors_ != nullptr);
+    return *beta_projectors_;
+}
+
+template <typename T>
+inline auto
+K_point<T>::beta_projectors() const -> const Beta_projectors<T>&
+{
+    RTE_ASSERT(beta_projectors_ != nullptr);
+    return *beta_projectors_;
+}
+
+template <typename T>
+inline auto&
+K_point<T>::beta_projectors_row()
+{
+    RTE_ASSERT(beta_projectors_ != nullptr);
+    return *beta_projectors_row_;
+}
+
+template <typename T>
+inline auto&
+K_point<T>::beta_projectors_col()
+{
+    RTE_ASSERT(beta_projectors_ != nullptr);
+    return *beta_projectors_col_;
+}
+
+template <typename T>
+inline std::ostream&
+K_point<T>::out(int level__) const
+{
+    if (ctx_.verbosity() >= level__ && this->comm().rank() == 0) {
+        return std::cout;
+    } else {
+        return null_stream();
+    }
+}
 
 template <typename T>
 inline auto

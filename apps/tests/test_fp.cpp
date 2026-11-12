@@ -6,7 +6,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/omp.hpp>
+#include <core/json_fwd.hpp>
 
 using namespace sirius;
 

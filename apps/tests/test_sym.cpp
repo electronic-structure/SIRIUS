@@ -6,9 +6,11 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
-#include <testing.hpp>
+#include <k_point/k_point_set.hpp>
+#include <sirius_init.hpp>
+#include <testing_context.hpp>
 #include "symmetry/crystal_symmetry.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

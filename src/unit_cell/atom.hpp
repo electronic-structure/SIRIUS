@@ -14,7 +14,6 @@
 #ifndef __ATOM_HPP__
 #define __ATOM_HPP__
 
-#include "core/sht/gaunt.hpp"
 #include "core/profiler.hpp"
 #include "atom_symmetry_class.hpp"
 #include "function3d/spheric_function.hpp"
@@ -97,13 +96,7 @@ class Atom
 
     /// Return id of the symmetry class.
     inline int
-    symmetry_class_id() const
-    {
-        if (symmetry_class_ != nullptr) {
-            return symmetry_class_->id();
-        }
-        return -1;
-    }
+    symmetry_class_id() const;
 
     /// Set symmetry class of the atom.
     inline void
@@ -160,6 +153,15 @@ class Atom
         return type_.mt_lo_basis_size();
     }
 };
+
+inline int
+Atom::symmetry_class_id() const
+{
+    if (symmetry_class_ != nullptr) {
+        return symmetry_class_->id();
+    }
+    return -1;
+}
 
 } // namespace sirius
 

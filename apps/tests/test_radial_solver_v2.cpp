@@ -1,5 +1,7 @@
-#include <sirius.hpp>
+#include <lapw/lapw_radial_basis.hpp>
+#include <sirius_init.hpp>
 #include "testing.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

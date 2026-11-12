@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "sirius.hpp"
+#include "radial/radial_solver.hpp"
 #include "testing.hpp"
 
 using namespace sirius;

@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <sirius_init.hpp>
 #include <testing.hpp>
 #include <cstdio>
 #include "dft/dft_ground_state.hpp"
 #include "hamiltonian/hamiltonian.hpp"
+#include "core/json.hpp"
 
 using namespace sirius;
 

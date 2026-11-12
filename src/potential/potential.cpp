@@ -520,3 +520,31 @@ Potential::create_lapw_basis() const
 }
 
 } // namespace sirius
+
+namespace sirius {
+
+void
+Potential::generate_local_potential()
+{
+    PROFILE("sirius::Potential::generate_local_potential");
+
+    /* get lenghts of all G shells */
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto const ff = ctx_.ri().vloc_->values(q, ctx_.comm());
+    /* make Vloc(G) */
+    auto v = make_periodic_function<true>(ctx_.unit_cell(), ctx_.gvec(), ctx_.phase_factors_t(), ff);
+
+    std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
+
+    local_potential_->fft_transform(1);
+
+    if (env::print_checksum()) {
+        auto cs  = local_potential_->checksum_pw();
+        auto cs1 = local_potential_->checksum_rg();
+        print_checksum("local_potential_pw", cs, ctx_.out());
+        print_checksum("local_potential_rg", cs1, ctx_.out());
+    }
+}
+
+} // namespace sirius

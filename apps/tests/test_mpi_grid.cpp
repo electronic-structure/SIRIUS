@@ -6,7 +6,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/fft/fft.hpp>
+#include <core/system_tools.hpp>
+#include <sirius_init.hpp>
 #include <testing.hpp>
 
 using namespace sirius;

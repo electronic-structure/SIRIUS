@@ -6,7 +6,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <sirius.hpp>
+#include <core/fft/fft.hpp>
+#include <sirius_init.hpp>
 #include <testing.hpp>
 #include "core/wf/wave_functions.hpp"
 #include "core/mpi/mpi_grid.hpp"

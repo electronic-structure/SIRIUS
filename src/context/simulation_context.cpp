@@ -23,6 +23,7 @@
 #include "core/sirius_version.hpp"
 #include "core/ostream_tools.hpp"
 #include "simulation_context.hpp"
+#include "core/json.hpp"
 #include "symmetry/lattice.hpp"
 #include "symmetry/crystal_symmetry.hpp"
 #include "symmetry/check_gvec.hpp"
@@ -1441,6 +1442,51 @@ Simulation_context::init_comm()
 
     /* create communicator, orthogonal to comm_fft_coarse */
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
+}
+
+Simulation_context::Simulation_context(std::string const& str__, mpi::Communicator const& comm__)
+    : comm_(comm__)
+{
+    init_common();
+    if (!is_json_string(str__) && isHDF5(str__)) {
+        HDF5_tree fin(str__, hdf5_access_t::read_only);
+        std::string json_string;
+        fin.read("config", json_string);
+        auto dict = read_json_from_file_or_string(json_string);
+        for (auto& e : dict["unit_cell"]["atom_types"]) {
+            auto label                             = e.get<std::string>();
+            dict["unit_cell"]["atom_files"][label] = "";
+        }
+        import(dict);
+        unit_cell_->import(cfg().unit_cell());
+
+        /* need to set type of calculation before parsing species */
+        this->electronic_structure_method(cfg().parameters().electronic_structure_method());
+        for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++) {
+            fin["unit_cell"]["atom_types"][iat].read("config", json_string);
+            unit_cell_->atom_type(iat).read_input(json_string);
+        }
+    } else {
+        import(str__);
+        unit_cell_->import(cfg().unit_cell());
+    }
+}
+
+nlohmann::json
+Simulation_context::serialize() const
+{
+    nlohmann::json dict;
+    dict["config"] = cfg().dict();
+    bool const cart_pos{false};
+    dict["config"]["unit_cell"] = unit_cell().serialize(cart_pos);
+    auto fftgrid                = {spfft_transform_coarse_->dim_x(), spfft_transform_coarse_->dim_y(),
+                                   spfft_transform_coarse_->dim_z()};
+    dict["fft_coarse_grid"]     = fftgrid;
+    dict["mpi_grid"]            = mpi_grid_dims();
+    dict["omega"]               = unit_cell().omega();
+    dict["chemical_formula"]    = unit_cell().chemical_formula();
+    dict["num_atoms"]           = unit_cell().num_atoms();
+    return dict;
 }
 
 } // namespace sirius
