@@ -5,6 +5,7 @@
 
 #include "potential.hpp"
 #include "function3d/smooth_periodic_function_sampler.hpp"
+#include "radial/spline.hpp"
 #include <limits>
 #include <numeric>
 
@@ -78,17 +79,28 @@ validate_external_xc_context(Simulation_context const& ctx__)
                  ctx__.so_correction() || ctx__.veff_callback() || ctx__.cfg().parameters().precision_wf() != "fp64" ||
                  ctx__.cfg().parameters().veff_pw_cutoff() > 0 || !ctx__.xc_functionals().empty() ||
                  (ctx__.cb().external_xc_points_ && ctx__.use_symmetry());
+    int invalid_core{0};
     for (int iat = 0; iat < ctx__.unit_cell().num_atom_types(); iat++) {
         auto const& type = ctx__.unit_cell().atom_type(iat);
         failed |= type.augment() || type.spin_orbit_coupling();
-        for (double c : type.ps_core_charge_density()) {
-            failed |= c != 0;
+        auto const& core = type.ps_core_charge_density();
+        auto const& tau  = type.ps_core_kinetic_density();
+        bool has_core    = std::any_of(core.begin(), core.end(), [](double n) { return n != 0; });
+        if (has_core || !tau.empty()) {
+            auto n = static_cast<size_t>(type.num_mt_points());
+            invalid_core |= !ctx__.cb().external_xc_points_ || !has_core || n < 4 || core.size() > n ||
+                            tau.size() != n ||
+                            !std::all_of(core.begin(), core.end(), [](double v) { return std::isfinite(v); });
         }
     }
     ctx__.comm().allreduce<int, mpi::op_t::max>(&failed, 1);
+    ctx__.comm().allreduce<int, mpi::op_t::max>(&invalid_core, 1);
     if (failed) {
-        RTE_THROW("external XC requires CPU scalar/collinear fp64 norm-conserving PW calculations without core "
-                  "charge, other XC functionals or potential callbacks; point quadratures require disabled symmetry");
+        RTE_THROW("external XC requires CPU scalar/collinear fp64 norm-conserving PW calculations without "
+                  "other XC functionals or potential callbacks; point quadratures require disabled symmetry");
+    }
+    if (invalid_core) {
+        RTE_THROW("external XC with core charge requires a point quadrature and matching pseudo-core kinetic density");
     }
     if (ctx__.cb().external_xc_points_) {
         ctx__.cb().external_xc_points_->validate(ctx__);
@@ -96,6 +108,93 @@ validate_external_xc_context(Simulation_context const& ctx__)
 }
 
 namespace {
+
+/// Value and first two radial derivatives of the same spline.
+std::array<double, 3>
+core_radial_sample(Spline<double> const& spline, double r)
+{
+    if (r < spline.first()) {
+        // Continue the innermost segment to second order, as for the spherical l=0 field.
+        double dr = r - spline.first();
+        double d1 = spline.deriv(1, 0), d2 = spline.deriv(2, 0);
+        return {spline(0) + dr * (d1 + 0.5 * dr * d2), d1 + dr * d2, d2};
+    }
+    int i     = spline.index_of(r);
+    double dr = r - spline.x(i);
+    return {spline(i, dr), spline.deriv(1, i, dr), spline.deriv(2, i, dr)};
+}
+
+template <typename F>
+void
+for_each_core_sample(Simulation_context const& ctx, std::vector<r3::vector<double>> const& points, F&& f)
+{
+    auto const& cell = ctx.unit_cell();
+    auto const& a    = cell.lattice_vectors();
+    int failed{0};
+    try {
+        for (int iat = 0; iat < cell.num_atom_types(); iat++) {
+            auto const& type = cell.atom_type(iat);
+            if (type.ps_core_kinetic_density().empty() || points.empty()) {
+                continue;
+            }
+            auto const& grid = type.radial_grid();
+            Spline<double> rho(grid, type.ps_core_charge_density()), tau(grid, type.ps_core_kinetic_density());
+            auto limits = r3::find_translations(grid.last(), a);
+            for (int i = 0; i < type.num_atoms(); i++) {
+                int ia    = type.atom_id(i);
+                auto atom = r3::dot(a, cell.atom(ia).position());
+                for (size_t p = 0; p < points.size(); p++) {
+                    auto displacement = points[p] - atom;
+                    auto image        = r3::dot(cell.inverse_lattice_vectors(), displacement);
+                    for (int x = 0; x < 3; x++) {
+                        image[x] = std::nearbyint(image[x]);
+                    }
+                    displacement -= r3::dot(a, image);
+                    for (int z = -limits[2]; z <= limits[2]; z++) {
+                        for (int y = -limits[1]; y <= limits[1]; y++) {
+                            for (int x = -limits[0]; x <= limits[0]; x++) {
+                                r3::vector<double> shift{double(x), double(y), double(z)};
+                                auto dr  = displacement - r3::dot(a, shift);
+                                double r = dr.length();
+                                if (r > grid.last()) {
+                                    continue;
+                                }
+                                if (!std::isfinite(r) || r < 1e-12) {
+                                    RTE_THROW("invalid pseudo-core sampling point at or near a nucleus");
+                                }
+                                f(p, ia, image + shift, r, (1 / r) * dr, core_radial_sample(rho, r),
+                                  core_radial_sample(tau, r));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (std::exception const&) {
+        failed = 1;
+    }
+    ctx.comm().allreduce<int, mpi::op_t::max>(&failed, 1);
+    if (failed) {
+        RTE_THROW("pseudo-core sampling failed on a context rank");
+    }
+}
+
+void
+add_core_fields(Simulation_context const& ctx, std::vector<r3::vector<double>> const& points, mdarray<double, 2>& rho,
+                mdarray<double, 3>& gradient, mdarray<double, 2>& tau)
+{
+    int ns = ctx.num_spins();
+    for_each_core_sample(ctx, points,
+                         [&](auto p, int, auto const&, double, auto const& u, auto const& n, auto const& t) {
+                             for (int s = 0; s < ns; s++) {
+                                 rho(p, s) += n[0] / ns;
+                                 tau(p, s) += t[0] / ns;
+                                 for (int x = 0; x < 3; x++) {
+                                     gradient(p, x, s) += n[1] * u[x] / ns;
+                                 }
+                             }
+                         });
+}
 
 std::array<std::vector<Smooth_periodic_function<double>>, 2>
 orbital_fields(Simulation_context const& ctx, Density const& density)
@@ -242,6 +341,9 @@ Potential::xc_external(Density const& density__)
             }
         }
     }
+    if (points) {
+        add_core_fields(ctx_, coordinates, rho, grad, tau);
+    }
     xc_callback_input_t in{nr,
                            ns,
                            unit_cell_.omega() / ctx_.fft_grid().num_points(),
@@ -333,6 +435,7 @@ Potential::external_xc_geometry(Density const& density__) const
             }
         }
     }
+    add_core_fields(ctx_, points, rho, grad, tau);
     xc_point_derivatives_t d(q);
     xc_callback_input_t in{nr, ns, 0, rho.at(memory_t::host), grad.at(memory_t::host), tau.at(memory_t::host), &q};
     xc_callback_output_t out{0, vrho.at(memory_t::host), vgrad.at(memory_t::host), vtau.at(memory_t::host), &d};
@@ -352,7 +455,35 @@ Potential::external_xc_geometry(Density const& density__) const
             }
         }
     }
-    xc_geometry_derivatives_t result(unit_cell_.num_atoms());
+    int nat = unit_cell_.num_atoms();
+    mdarray<double, 2> core_atoms({3, nat});
+    core_atoms.zero();
+    r3::matrix<double> core_lattice;
+    // For d = r_p - R_a - A n, the point derivative is the radial gradient
+    // contraction plus H(rho_core) times the gradient covector. The atom
+    // derivative has the opposite sign, and the cell derivative is -dE/dd * n^T.
+    for_each_core_sample(ctx_, points,
+                         [&](auto p, int ia, auto const& image, double r, auto const& u, auto const& n, auto const& t) {
+                             r3::vector<double> v{0, 0, 0};
+                             double transverse = n[1] / r;
+                             for (int s = 0; s < ns; s++) {
+                                 r3::vector<double> g{vgrad(p, 0, s), vgrad(p, 1, s), vgrad(p, 2, s)};
+                                 double radial =
+                                         vrho(p, s) * n[1] + vtau(p, s) * t[1] + (n[2] - transverse) * r3::dot(g, u);
+                                 v += (1.0 / ns) * (radial * u + transverse * g);
+                             }
+                             for (int x = 0; x < 3; x++) {
+                                 d.coordinates[p][x] += v[x];
+                                 core_atoms(x, ia) -= v[x];
+                                 for (int y = 0; y < 3; y++) {
+                                     core_lattice(x, y) -= v[x] * image[y];
+                                 }
+                             }
+                         });
+    ctx_.comm().allreduce(core_atoms.at(memory_t::host), core_atoms.size());
+    ctx_.comm().allreduce(&core_lattice(0, 0), 9);
+    lattice += core_lattice;
+    xc_geometry_derivatives_t result(nat);
     try {
         ctx_.cb().external_xc_pullback_(ctx_, q, d, result);
     } catch (std::exception const&) {
@@ -384,9 +515,15 @@ Potential::external_xc_geometry(Density const& density__) const
             failed |= !std::isfinite(result.lattice[i + 3 * j]);
         }
     }
+    for (int ia = 0; ia < nat; ia++) {
+        for (int x = 0; x < 3; x++) {
+            result.atoms[ia][x] += core_atoms(x, ia);
+            failed |= !std::isfinite(result.atoms[ia][x]);
+        }
+    }
     ctx_.comm().allreduce<int, mpi::op_t::max>(&failed, 1);
     if (failed) {
-        RTE_THROW("external XC geometry returned nonfinite cell derivatives");
+        RTE_THROW("external XC geometry returned nonfinite derivatives");
     }
     return result;
 }

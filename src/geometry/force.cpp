@@ -590,12 +590,16 @@ Force::calc_forces_core()
 {
     PROFILE("sirius::Force::calc_forces_core");
 
+    forces_core_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
+    forces_core_.zero();
+    if (ctx_.cb().external_xc_) {
+        // Frozen core motion is included in the external XC geometry adjoint.
+        return forces_core_;
+    }
+
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
     auto ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
-
-    forces_core_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
-    forces_core_.zero();
 
     /* get main arrays */
     auto& xc_pot = potential_.xc_potential();

@@ -71,10 +71,11 @@ struct Geometry
     r3::vector<double> displacement;
     int mu{-1}, nu{-1};
     double strain{0}, energy{0};
+    std::array<std::array<double, 5>, 2> fields{};
 };
 
 int
-test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
+test_external_xc(bool gamma, int mag, bool points, bool nlcc, Geometry* deformation)
 {
     auto conf                          = R"({"parameters": {
         "electronic_structure_method":"pseudopotential", "use_symmetry":false,
@@ -105,20 +106,37 @@ test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
     type.zn(2);
     type.set_radial_grid(radial_grid_t::lin_exp, 400, 0.0, 20.0, 6);
     // A smooth Coulomb-tail PP also exercises the charged-cell G=0 stress contribution.
-    std::vector<double> rho(400), orbital(400), vlocal(400);
+    std::vector<double> rho(400), orbital(400), vlocal(400), core(400), core_tau(400);
     for (int ir = 0; ir < 400; ir++) {
         double r    = type.radial_grid(ir);
         rho[ir]     = 4 * std::exp(-r * r) * r;
         orbital[ir] = std::exp(-r);
         vlocal[ir]  = r > 0 ? -2 * std::erf(r / 0.8) / r : -4 / (std::sqrt(pi) * 0.8);
+        if (nlcc) {
+            core[ir]     = 0.025 * std::exp(-2 * r * r);
+            core_tau[ir] = 0.015 * std::exp(-3 * r * r);
+        }
     }
     type.local_potential(vlocal);
-    type.ps_core_charge_density(std::vector<double>(400, 0));
+    type.ps_core_charge_density(core);
+    if (nlcc) {
+        type.ps_core_kinetic_density(core_tau);
+    }
     type.ps_total_charge_density(rho);
     type.add_ps_atomic_wf(1, angular_momentum(0), orbital);
     type.d_mtrx_ion(matrix<double>({0, 0}));
     ctx.unit_cell().add_atom("He", dot(r3::inverse(lattice), atom));
-    ctx.cb().external_xc_ = functional;
+    std::array<std::array<double, 5>, 2> probe{};
+    ctx.cb().external_xc_ = [&](auto const& c, auto const& in, auto& out) {
+        if (in.points && in.num_points) {
+            for (int s = 0; s < in.num_spins; s++) {
+                auto n   = in.num_points;
+                probe[s] = {in.rho[n * s], in.gradient[n * (3 * s)], in.gradient[n * (3 * s + 1)],
+                            in.gradient[n * (3 * s + 2)], in.tau[n * s]};
+            }
+        }
+        functional(c, in, out);
+    };
     std::vector<r3::vector<double>> fractions;
     if (points) {
         auto q = std::make_shared<xc_point_set_t>(ctx);
@@ -129,7 +147,7 @@ test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
                     for (int x = 0; x < 4; x++) {
                         r3::vector<double> f{0.037 + x / 4.0, 0.029 + y / 4.0, 0.041 + z / 4.0};
                         if (x + y + z == 0) {
-                            f[0] += 1; // Exercise an unwrapped, descriptor-only image point.
+                            f = {1.237, 0.329, 0.441}; // Descriptor-only point near a periodic image of the core.
                         }
                         fractions.push_back(f);
                         auto r = dot(lattice, f) + atom - r3::vector<double>{1.6, 2.7, 4.0};
@@ -208,6 +226,7 @@ test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
     double center = evaluate(0), derivative{0};
     if (deformation) {
         deformation->energy = center;
+        deformation->fields = probe;
         return 0;
     }
     Hamiltonian0<double> h0(potential);
@@ -246,6 +265,25 @@ test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
         }
         failures += !std::isfinite(error) || error > tolerance;
     };
+    if (nlcc) {
+        Geometry valence;
+        test_external_xc(gamma, mag, points, false, &valence);
+        double error{0};
+        if (ctx.comm().rank() == 0) {
+            r3::vector<double> d{0.037 * 8, 0.029 * 9, 0.041 * 10};
+            double r2 = r3::dot(d, d);
+            double n = 0.025 * std::exp(-2 * r2), t = 0.015 * std::exp(-3 * r2);
+            std::array<double, 5> expected{n, -4 * n * d[0], -4 * n * d[1], -4 * n * d[2], t};
+            for (int s = 0; s < ctx.num_spins(); s++) {
+                for (size_t j = 0; j < expected.size(); j++) {
+                    error = std::max(error,
+                                     std::abs(probe[s][j] - valence.fields[s][j] - expected[j] / ctx.num_spins()));
+                }
+            }
+        }
+        ctx.comm().allreduce<double, mpi::op_t::max>(&error, 1);
+        check("frozen core density, gradient and tau at an image point", error, 2e-7);
+    }
     check("XC total-energy accounting", std::abs(ks_energy(ctx, ks, density, potential) - center), 2e-10);
     check("orbital kinetic-energy contraction",
           std::abs(energy_kin(ctx, ks, density, potential) - density.kinetic_density().scalar().integrate().total),
@@ -263,8 +301,8 @@ test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
         Geometry plus, minus;
         plus.displacement  = step * direction;
         minus.displacement = -step * direction;
-        test_external_xc(gamma, mag, points, &plus);
-        test_external_xc(gamma, mag, points, &minus);
+        test_external_xc(gamma, mag, points, nlcc, &plus);
+        test_external_xc(gamma, mag, points, nlcc, &minus);
         double projection{0};
         for (int x = 0; x < 3; x++) {
             projection += forces(x, 0) * direction[x];
@@ -277,8 +315,8 @@ test_external_xc(bool gamma, int mag, bool points, Geometry* deformation)
             plus.nu = minus.nu = nu;
             plus.strain        = step;
             minus.strain       = -step;
-            test_external_xc(gamma, mag, points, &plus);
-            test_external_xc(gamma, mag, points, &minus);
+            test_external_xc(gamma, mag, points, nlcc, &plus);
+            test_external_xc(gamma, mag, points, nlcc, &minus);
             check("external XC normal/shear stress",
                   std::abs(ctx.unit_cell().omega() * sigma(0, nu) - (plus.energy - minus.energy) / (2 * step)), 2e-8);
         }
@@ -312,9 +350,9 @@ int
 main(int argc, char** argv)
 {
     sirius::initialize(1);
-    int failures = call_test("external XC, FFT collinear", test_external_xc, false, 1, false, nullptr);
-    failures += call_test("external XC, point Gamma", test_external_xc, true, 0, true, nullptr);
-    failures += call_test("external XC, point collinear", test_external_xc, false, 1, true, nullptr);
+    int failures = call_test("external XC, FFT collinear", test_external_xc, false, 1, false, false, nullptr);
+    failures += call_test("external XC, point Gamma", test_external_xc, true, 0, true, false, nullptr);
+    failures += call_test("external XC, point collinear with NLCC", test_external_xc, false, 1, true, true, nullptr);
     sirius::finalize();
     return std::min(failures, 1);
 }

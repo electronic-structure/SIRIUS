@@ -522,6 +522,9 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 
     ps_core_charge_density(
             parser["pseudo_potential"].value("core_charge_density", std::vector<double>(rgrid.size(), 0)));
+    if (parser["pseudo_potential"].contains("core_kinetic_density")) {
+        ps_core_kinetic_density(parser["pseudo_potential"]["core_kinetic_density"].get<std::vector<double>>());
+    }
 
     ps_total_charge_density(parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>());
 
@@ -1288,8 +1291,11 @@ Atom_type::serialize() const
     dict["radial_grid"]              = radial_grid().values();
     dict["local_potential"]          = local_potential();
     dict["core_charge_density"]      = ps_core_charge_density();
-    dict["total_charge_density"]     = ps_total_charge_density();
-    dict["atomic_wave_functions"]    = nlohmann::json::array();
+    if (!ps_core_kinetic_density().empty()) {
+        dict["core_kinetic_density"] = ps_core_kinetic_density();
+    }
+    dict["total_charge_density"]  = ps_total_charge_density();
+    dict["atomic_wave_functions"] = nlohmann::json::array();
     for (auto& e : ps_atomic_wfs_) {
         auto o                        = nlohmann::json::object();
         o["angular_momentum"]         = e.am.l();
