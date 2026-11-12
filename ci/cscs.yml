@@ -35,11 +35,10 @@ build sirius cuda:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@=develop +nlcglib +cuda +apps +tests +scalapack +dftd3 +dftd4 +vdwxc ~python ^nlcglib@1.3 ^kokkos+serial
+    SPEC: sirius@=develop +nlcglib +cuda +apps +tests +scalapack +dftd3 +dftd4 +vdwxc +python ^nlcglib@1.3 ^kokkos+serial
     CUDA_ARCH: 90
   script:
     - |
-      #
       git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json) /dev/shm/spack-clone
       git -C /dev/shm/spack-clone checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
       source /dev/shm/spack-clone/share/spack/setup-env.sh
@@ -78,6 +77,11 @@ build sirius eiger:
 
       # ls -alhrt /dev/shm/
       # ls -alhrt /dev/shm//spack-stage/antonk/*
+
+      # python tests need the spack runtime environment (PYTHONPATH etc.) written by the build job
+      if [ -n "${SOURCE_PYTHON_ENV:-}" ]; then
+        source /dev/shm/spack-stage/sirius-python-env.sh
+      fi
 
       stagedir=$(find /dev/shm/spack-stage -type d -name "spack-stage-sirius-*")
       echo "stagedir: $stagedir"
@@ -162,3 +166,28 @@ eiger test cpu band parallel:
     SLURM_CPUS_PER_TASK: 8
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L cpu_band_parallel
+
+daint test python:
+  extends: [.run_tests_daint]
+  variables:
+    OMP_NUM_THREADS: 20
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_GPUS: 1
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: 'socket'
+    USE_MPI: 'YES'
+    SOURCE_PYTHON_ENV: 'YES'
+    TEST_COMMAND: ctest -L python
+
+eiger test python:
+  extends: [.run_tests_eiger]
+  variables:
+    OMP_NUM_THREADS: 8
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_NTASKS: 1
+    SRUN_CPUS_PER_TASK: 8
+    SLURM_CPUS_PER_TASK: 8
+    USE_MPI: 'YES'
+    SOURCE_PYTHON_ENV: 'YES'
+    TEST_COMMAND: ctest -L python

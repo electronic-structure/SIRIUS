@@ -27,7 +27,7 @@ def _solve(A, X):
     """
     returns A⁻¹ X
     """
-    out = type(X)(dtype=X.dtype, ctype=X.ctype)
+    out = type(X)()
     for k in X.keys():
         out[k] = np.linalg.solve(A[k], X[k])
     return out

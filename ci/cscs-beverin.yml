@@ -25,7 +25,7 @@ build sirius mi300:
     paths:
       - builddir.tar
   variables:
-    SPEC: sirius@develop +rocm +apps +tests +scalapack ~python +dftd4 +dftd3 +vdwxc build_type=RelWithDebInfo
+    SPEC: sirius@develop +rocm +apps +tests +scalapack +python +dftd4 +dftd3 +vdwxc build_type=RelWithDebInfo
     ROCM_ARCH: gfx942
   script:
     - |
@@ -47,6 +47,11 @@ build sirius mi300:
       while [ ! -f /dev/shm/unpack_done_$CI_JOB_ID ]; do
         sleep 0.2
       done
+
+      # python tests need the spack runtime environment (PYTHONPATH etc.) written by the build job
+      if [ -n "${SOURCE_PYTHON_ENV:-}" ]; then
+        source /dev/shm/spack-stage/sirius-python-env.sh
+      fi
 
       stagedir=$(find /dev/shm/spack-stage -type d -name spack-stage-sirius-*)
       echo "stagedir: $stagedir"
@@ -114,3 +119,14 @@ beverin test gpu k-point parallel:
     USE_MPI: 'YES'
     TEST_COMMAND: ctest -L gpu_k_point_parallel
 
+beverin test python:
+  extends: [.run_tests_beverin]
+  variables:
+    SLURM_TIMELIMIT: '60:00'
+    SLURM_GPUS_PER_TASK: 1
+    SLURM_GPUS: 1
+    SLURM_NTASKS: 1
+    SLURM_CPU_BIND: 'verbose'
+    USE_MPI: 'YES'
+    SOURCE_PYTHON_ENV: 'YES'
+    TEST_COMMAND: ctest -L python

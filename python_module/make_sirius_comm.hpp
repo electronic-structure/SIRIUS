@@ -6,36 +6,30 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <mpi4py/mpi4py.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/pytypes.h>
-#include <pybind11/operators.h>
-#include <iostream>
+/** \file make_sirius_comm.hpp
+ *
+ *  \brief Conversion between mpi4py and SIRIUS communicators.
+ *
+ *  The functions are defined in py_sirius.cpp: the mpi4py C-API is accessed through a table of function pointers
+ *  which is local to each translation unit and only initialized there by import_mpi4py().
+ */
 
+#ifndef __MAKE_SIRIUS_COMM_HPP__
+#define __MAKE_SIRIUS_COMM_HPP__
+
+#include <pybind11/pybind11.h>
 #include "core/mpi/communicator.hpp"
-#include "core/rte/rte.hpp"
 
 namespace sirius {
 
-inline auto
-make_sirius_comm(pybind11::object py_comm)
-{
-    PyObject* py_obj = py_comm.ptr();
-    MPI_Comm* comm_p = PyMPIComm_Get(py_obj);
-    if (comm_p == NULL) {
-        RTE_THROW("invalid MPI_Comm object passed");
-    }
-    int rank = -1;
-    MPI_Comm_rank(*comm_p, &rank);
+/// Create a SIRIUS communicator from an mpi4py.MPI.Comm object.
+mpi::Communicator
+make_sirius_comm(pybind11::object py_comm);
 
-    mpi::Communicator sirius_comm(*comm_p);
-    return sirius_comm;
-}
+/// Create an mpi4py.MPI.Comm object from a SIRIUS communicator.
+pybind11::object
+make_pycomm(mpi::Communicator const& comm);
 
-inline pybind11::handle
-make_pycomm(const mpi::Communicator& comm)
-{
-    return pybind11::handle(PyMPIComm_New(comm.native()));
-}
+} // namespace sirius
 
-} // end namespace sirius
+#endif

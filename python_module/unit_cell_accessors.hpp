@@ -16,7 +16,7 @@
 #include "unit_cell/unit_cell.hpp"
 
 namespace sirius {
-void
+inline void
 set_atom_positions(Unit_cell& unit_cell, pybind11::buffer positions)
 {
     using namespace pybind11;
@@ -47,7 +47,7 @@ set_atom_positions(Unit_cell& unit_cell, pybind11::buffer positions)
     }
 }
 
-pybind11::array_t<double>
+inline pybind11::array_t<double>
 atom_positions(Unit_cell& unit_cell)
 {
     using namespace pybind11;
@@ -76,7 +76,7 @@ atom_positions(Unit_cell& unit_cell)
     return positions;
 }
 
-void
+inline void
 set_lattice_vectors(Unit_cell& unit_cell, pybind11::buffer l1buf, pybind11::buffer l2buf, pybind11::buffer l3buf)
 {
     using namespace pybind11;

@@ -16,7 +16,7 @@ def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=True):
     nk = len(kpointset)
     nc = kpointset.ctx().num_spins()
     if nc == 1 and nk == 1 and not asPwCoeffs:
-        # return as np.matrix
+        # single k-point, single spin: return a plain (non-PwCoeffs) preconditioner
         kp = kpointset[0]
         gkvec = kp.gkvec()
         # assert (gkvec.num_gvec() == gkvec.count())
