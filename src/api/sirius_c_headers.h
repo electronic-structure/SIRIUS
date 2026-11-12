@@ -3733,7 +3733,8 @@ sirius_set_xc_point_callback:
     after completing callback collectives. Never unwind across the C ABI.
     The caller retains user_data until the context is destroyed.
     Currently supported for CPU scalar/collinear fp64 norm-conserving PW
-    calculations without core charge, SOC or symmetry reduction at fixed geometry.
+    calculations without core charge, SOC or symmetry reduction. Forces and stress
+    require the additional point geometry callbacks.
   arguments:
     handler:
       type: ctx_handler
@@ -3785,3 +3786,144 @@ sirius_set_xc_point_callback(void* const* handler__, void (*fptr__)(), void* use
                              int const* num_blocks__, double const* coordinates__, double const* energy_weights__,
                              double const* descriptor_weights__, int const* block_sizes__,
                              double const* block_centres__, int* error_code__);
+
+/*
+sirius_update_xc_point_set:
+  doc: >-
+    Replace the copied quadrature of an initialized external point XC context
+    without changing its field or geometry callbacks or their user data.
+    Call collectively between SCF calculations, after setting the new lattice
+    and atom positions and before updating the ground state. This call does not
+    update the density, potential or orbitals. Local point and block counts may
+    change, including redistribution to previously empty ranks. The array
+    conventions are those of sirius_set_xc_point_callback. An invalid replacement
+    leaves the previous quadrature and callbacks unchanged.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Initialized simulation context handler.
+    num_points:
+      type: int
+      attr: in, required
+      doc: Number of local point rows.
+    num_blocks:
+      type: int
+      attr: in, required
+      doc: Number of complete local atom blocks.
+    coordinates:
+      type: double
+      attr: in, required, dimension(3,num_points)
+      doc: Cartesian target coordinates.
+    energy_weights:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Energy quadrature and partition weights.
+    descriptor_weights:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Independent descriptor quadrature weights.
+    block_sizes:
+      type: int
+      attr: in, required, dimension(num_blocks)
+      doc: Positive consecutive row counts summing to num_points.
+    block_centres:
+      type: double
+      attr: in, required, dimension(3,num_blocks)
+      doc: Cartesian centres of the atom blocks.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_update_xc_point_set(void* const* handler__, int const* num_points__, int const* num_blocks__,
+                           double const* coordinates__, double const* energy_weights__,
+                           double const* descriptor_weights__, int const* block_sizes__, double const* block_centres__,
+                           int* error_code__);
+
+/*
+sirius_set_xc_point_geometry_callbacks:
+  doc: >-
+    Register optional geometry callbacks after the point XC evaluator and before
+    context initialization. The field callback has the same C arguments as the
+    point XC callback, with four additional double pointers before status.
+    These return raw coordinate (3,nr), energy-weight (nr), descriptor-weight
+    (nr) and block-centre (3,nb) derivatives at fixed physical fields.
+    Evaluate the same discrete energy and field derivatives as the point callback.
+    All explicit atom/cell dependence must enter through these quadrature inputs.
+    The pullback callback has C signature
+    void pullback(void* user_data, int nr, int nb, int natom, int fcomm,
+    const int* block_sizes, const double* dcoordinates, const double* denergy_weights,
+    const double* ddescriptor_weights, const double* dblock_centres,
+    double* datoms, double* dlattice, int* status).
+    SIRIUS adds field-sampling derivatives to dcoordinates before the pullback.
+    The host returns globally summed Cartesian atom (3,natom) and cell (3,3)
+    derivatives, identical on every rank. Lattice vectors are columns and the
+    cell derivative holds Cartesian atoms fixed. Apply no force sign or volume
+    normalization. SIRIUS adds the Fourier cell response and the PW normalization
+    and kinetic-density metric terms when evaluating total stress.
+    Callbacks are collective, including empty ranks. Outputs start at zero.
+    Set status nonzero on failure without unwinding across the C ABI.
+    Both null pointers disable geometry evaluation. The initial scope matches
+    the CPU scalar/collinear norm-conserving point XC evaluator.
+  arguments:
+    handler:
+      type: ctx_handler
+      attr: in, required
+      doc: Simulation context handler.
+    field_fptr:
+      type: func
+      attr: in, required, value
+      doc: C-interoperable field and geometry evaluator.
+    pullback_fptr:
+      type: func
+      attr: in, required, value
+      doc: C-interoperable quadrature pullback.
+    user_data:
+      type: void*
+      attr: in, required, value
+      doc: Caller-owned state retained until context destruction.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_set_xc_point_geometry_callbacks(void* const* handler__, void (*field_fptr__)(), void (*pullback_fptr__)(),
+                                       void* user_data__, int* error_code__);
+
+/*
+sirius_get_xc_geometry_derivatives:
+  doc: >-
+    Evaluate explicit XC atom and cell energy derivatives for the current fields.
+    Requires point geometry callbacks. Smooth Fourier coefficients are fixed.
+    Complete PW stress also includes orbital normalization and kinetic-density
+    metric terms, which are added by the total-stress calculation.
+    Outputs are globally summed on every rank. No force sign or volume factor is
+    applied. Cell columns vary at fixed Cartesian atoms.
+  arguments:
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    num_atoms:
+      type: int
+      attr: in, required
+      doc: Number of atoms in the context.
+    atoms:
+      type: double
+      attr: out, required, dimension(3,num_atoms)
+      doc: Cartesian atom energy derivatives.
+    lattice:
+      type: double
+      attr: out, required, dimension(3,3)
+      doc: Cell energy derivatives with lattice vectors in columns.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+*/
+void
+sirius_get_xc_geometry_derivatives(void* const* gs_handler__, int const* num_atoms__, double* atoms__,
+                                   double* lattice__, int* error_code__);

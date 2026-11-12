@@ -280,6 +280,13 @@ class Potential : public Field4D
     xc_rg_magnetic(Density const& density__, bool use_lapl, const bool calculate_vdw_stress__);
 
   public:
+    /// Explicit external-XC dE/dR and dE/dA at fixed smooth Fourier fields.
+    /** Includes motion of the integration points, weights and atom-block centres.
+     *  Normalization of PW orbitals and the tau metric term belong to Stress.
+     */
+    xc_geometry_derivatives_t
+    external_xc_geometry(Density const& density__) const;
+
     /// Constructor
     Potential(Simulation_context& ctx__);
 
