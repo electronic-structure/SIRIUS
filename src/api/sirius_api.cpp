@@ -2095,7 +2095,11 @@ sirius_add_atom_type_radial_function:
     label:
       type: string
       attr: in, required
-      doc: Label of the radial function.
+      doc: >-
+        Label of the radial function. For external point XC with nonlinear core
+        correction, ps_core_tau supplies the spin-summed positive core kinetic
+        density on the same radial grid as ps_rho_core. Values include the
+        factor 1/2 and occupations in bohr^-5, without a radial Jacobian.
     rf:
       type: double
       attr: in, required, dimension(num_points)
@@ -2169,6 +2173,11 @@ sirius_add_atom_type_radial_function(void* const* handler__, char const* atom_ty
                                           occ);
                 } else if (label == "ps_rho_core") {
                     type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+                } else if (label == "ps_core_tau") {
+                    if (sim_ctx.initialized() || !rf__ || !num_points__ || *num_points__ <= 0) {
+                        RTE_THROW("supply pseudo-core kinetic density before initialization on a nonempty grid");
+                    }
+                    type.ps_core_kinetic_density(std::vector<double>(rf__, rf__ + *num_points__));
                 } else if (label == "ps_rho_total") {
                     type.ps_total_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
                 } else if (label == "vloc") {
@@ -7342,8 +7351,11 @@ sirius_set_xc_point_callback:
     after completing callback collectives. Never unwind across the C ABI.
     The caller retains user_data until the context is destroyed.
     Currently supported for CPU scalar/collinear fp64 norm-conserving PW
-    calculations without core charge, SOC or symmetry reduction. Forces and stress
-    require the additional point geometry callbacks.
+    calculations without SOC or symmetry reduction. For nonlinear core correction,
+    supply the matching spin-summed pseudo-core kinetic density as ps_core_tau
+    or core_kinetic_density in the pseudopotential JSON. SIRIUS adds both
+    frozen-core fields before evaluation. Forces and stress require the
+    additional point geometry callbacks.
   arguments:
     handler:
       type: ctx_handler
