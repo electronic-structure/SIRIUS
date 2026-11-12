@@ -171,7 +171,7 @@ Potential::poisson(Periodic_function<double> const& rho__)
                     d += std::abs(qmt(lm, ia) - qit(lm, ia));
                 }
             }
-            if (ctx_.verbosity() >= 1) {
+            if (ctx_.verbosity() >= 2) {
                 RTE_OUT(ctx_.out()) << "pseudocharge error: " << d << std::endl;
             }
         }

@@ -82,29 +82,35 @@ preprocess_json_input(std::string fname__)
     }
 }
 
-/// Create context of the simulation from a file and command-line arguments.
-auto
-create_sim_ctx(std::string fname__, cmd_args const& args__)
+struct Task_input
 {
-    std::string config_string;
-    if (isHDF5(fname__)) {
-        config_string = fname__;
-    } else {
-        auto json     = preprocess_json_input(fname__);
-        config_string = json.dump();
+    cmd_args const& args;
+    fs::path file{};
+    int verbosity{0};
+
+    auto
+    create_context() const
+    {
+        auto fname = file.string();
+        auto ctx   = isHDF5(fname) ? std::make_unique<Simulation_context>(fname)
+                                   : std::make_unique<Simulation_context>(preprocess_json_input(fname));
+
+        auto& inp = ctx->cfg().parameters();
+        if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
+            RTE_THROW("this is not a Gamma-point calculation")
+        }
+
+        ctx->import(args);
+        return ctx;
     }
 
-    auto ctx = std::make_unique<Simulation_context>(config_string);
-
-    auto& inp = ctx->cfg().parameters();
-    if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
-        RTE_THROW("this is not a Gamma-point calculation")
+    void
+    initialize_context(Simulation_context& ctx)
+    {
+        ctx.initialize();
+        verbosity = ctx.verbosity();
     }
-
-    ctx->import(args__);
-
-    return ctx;
-}
+};
 
 void
 compare_with_reference(Simulation_context& ctx, json const& result, std::string const& ref_file)
@@ -208,7 +214,7 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
 {
     print_memory_usage(ctx.out(), FILE_LINE);
 
-    if (ctx.comm().rank() == 0) {
+    if (ctx.verbosity() >= 2) {
         switch (task_id) {
             case task_t::ground_state_new: {
                 ctx.out() << "+----------------------+" << std::endl
@@ -398,13 +404,13 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
 
 /// Total energy as a function of volume.
 void
-run_eos_task(cmd_args const& args, std::string const& fname)
+run_eos_task(Task_input& input)
 {
-    auto vs0            = args.value<double>("volume_scale0", 0.94);
-    auto vs1            = args.value<double>("volume_scale1", 1.06);
+    auto vs0            = input.args.value<double>("volume_scale0", 0.94);
+    auto vs1            = input.args.value<double>("volume_scale1", 1.06);
     auto s0             = std::pow(vs0, 1.0 / 3);
     auto s1             = std::pow(vs1, 1.0 / 3);
-    auto num_eos_points = args.value<int>("num_eos_points", 7);
+    auto num_eos_points = input.args.value<int>("num_eos_points", 7);
 
     int write_output{0};
 
@@ -412,30 +418,30 @@ run_eos_task(cmd_args const& args, std::string const& fname)
     json_output_common(dict);
     dict["result"] = {};
 
-    int rank{0};
     std::vector<double> volume;
     std::vector<double> energy;
     for (int i = 0; i < num_eos_points; i++) {
         double vs = vs0 + i * (vs1 - vs0) / (num_eos_points - 1);
         double s  = std::pow(vs, 1.0 / 3);
-        auto ctx  = create_sim_ctx(fname, args);
-        rank      = ctx->comm().rank();
+        auto ctx  = input.create_context();
         /* scale lattice vectors */
         auto lv = ctx->unit_cell().lattice_vectors() * s;
         ctx->unit_cell().set_lattice_vectors(lv);
-        ctx->initialize();
+        input.initialize_context(*ctx);
         ctx->out() << "EOS step : " << i << ", lattice scale : " << s << std::endl
                    << "lattice scale range : " << s0 << " " << s1 << std::endl
                    << "volume scale range  : " << vs0 << " " << vs1 << std::endl;
-        auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+        auto e = ground_state(*ctx, task_t::ground_state_new, input.args, write_output);
         dict["result"] += e;
         volume.push_back(ctx->unit_cell().omega());
         energy.push_back(e["energy"]["free"].get<double>());
     }
-    if (rank == 0) {
-        std::cout << "final result:" << std::endl;
-        for (int i = 0; i < num_eos_points; i++) {
-            std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
+    if (mpi::Communicator::world().rank() == 0) {
+        if (input.verbosity >= 1) {
+            std::cout << "final result:" << std::endl;
+            for (int i = 0; i < num_eos_points; i++) {
+                std::cout << "volume: " << volume[i] << ", energy: " << energy[i] << std::endl;
+            }
         }
         dict["volume"] = volume;
         dict["energy"] = energy;
@@ -445,9 +451,9 @@ run_eos_task(cmd_args const& args, std::string const& fname)
 
 /// Total energy as a function of fixed magnetizaion.
 void
-run_fixed_mag_task(cmd_args const& args, std::string const& fname)
+run_fixed_mag_task(Task_input& input)
 {
-    auto num_eos_points = args.value<int>("num_eos_points", 7);
+    auto num_eos_points = input.args.value<int>("num_eos_points", 7);
 
     int write_output{0};
 
@@ -455,26 +461,26 @@ run_fixed_mag_task(cmd_args const& args, std::string const& fname)
     json_output_common(dict);
     dict["result"] = {};
 
-    int rank{0};
     std::vector<double> fixed_mag;
     std::vector<double> energy;
     for (int i = 0; i < num_eos_points; i++) {
         double scale = static_cast<double>(i) / (num_eos_points - 1);
-        auto ctx     = create_sim_ctx(fname, args);
-        rank         = ctx->comm().rank();
+        auto ctx     = input.create_context();
         auto mag     = (i == 0) ? 1e-8 : ctx->cfg().parameters().fixed_mag() * scale;
         ctx->cfg().parameters().fixed_mag(mag);
-        ctx->initialize();
+        input.initialize_context(*ctx);
         ctx->out() << "EOS step : " << i << ", fixed magnetic moment : " << mag << std::endl;
-        auto e = ground_state(*ctx, task_t::ground_state_new, args, write_output);
+        auto e = ground_state(*ctx, task_t::ground_state_new, input.args, write_output);
         dict["result"] += e;
         fixed_mag.push_back(mag);
         energy.push_back(e["energy"]["free"].get<double>());
     }
-    if (rank == 0) {
-        std::cout << "final result:" << std::endl;
-        for (int i = 0; i < num_eos_points; i++) {
-            std::cout << "magnetisation: " << fixed_mag[i] << ", energy: " << energy[i] << std::endl;
+    if (mpi::Communicator::world().rank() == 0) {
+        if (input.verbosity >= 1) {
+            std::cout << "final result:" << std::endl;
+            for (int i = 0; i < num_eos_points; i++) {
+                std::cout << "magnetisation: " << fixed_mag[i] << ", energy: " << energy[i] << std::endl;
+            }
         }
         dict["fixed_mag"] = fixed_mag;
         dict["energy"]    = energy;
@@ -483,12 +489,12 @@ run_fixed_mag_task(cmd_args const& args, std::string const& fname)
 }
 
 void
-run_k_point_path_task(cmd_args const& args, std::string const& fname)
+run_k_point_path_task(Task_input& input)
 {
-    auto ctx = create_sim_ctx(fname, args);
+    auto ctx = input.create_context();
     ctx->cfg().iterative_solver().energy_tolerance(1e-12);
     ctx->gamma_point(false);
-    ctx->initialize();
+    input.initialize_context(*ctx);
 
     Potential potential(*ctx);
 
@@ -497,7 +503,7 @@ run_k_point_path_task(cmd_args const& args, std::string const& fname)
     K_point_set ks(*ctx);
 
     json inp;
-    std::ifstream(fname) >> inp;
+    std::ifstream(input.file) >> inp;
 
     /* list of pairs (label, k-point vector) */
     std::vector<std::pair<std::string, std::vector<double>>> vertex;
@@ -586,19 +592,19 @@ run_k_point_path_task(cmd_args const& args, std::string const& fname)
 }
 
 void
-run_gs_task(cmd_args const& args, std::string const& fname, int task_id)
+run_gs_task(Task_input& input, int task_id)
 {
-    auto ctx = create_sim_ctx(fname, args);
-    ctx->initialize();
+    auto ctx = input.create_context();
+    input.initialize_context(*ctx);
     int write_output{1};
-    ground_state(*ctx, task_id, args, write_output);
+    ground_state(*ctx, task_id, input.args, write_output);
 }
 
 void
-run_plot_wf_task(cmd_args const& args, std::string const& fname)
+run_plot_wf_task(Task_input& input)
 {
-    auto ctx = create_sim_ctx(fname, args);
-    ctx->initialize();
+    auto ctx = input.create_context();
+    input.initialize_context(*ctx);
 
     /* create Potential instance */
     Potential potential(*ctx);
@@ -642,50 +648,46 @@ run_plot_wf_task(cmd_args const& args, std::string const& fname)
     write_json_to_file(dict, "psi_r_v2.json");
 }
 
-/// Run a task based on a command line input.
+/// Run a task selected on the command line.
 void
-run_tasks(cmd_args const& args)
+run_tasks(Task_input& input)
 {
     /* get the task id */
-    int task_id = args.value<int>("task", 0);
+    int task_id = input.args.value<int>("task", 0);
 
-    /* get the input file name */
-    auto fpath = args.value<fs::path>("input", "sirius.json");
-
-    if (fs::is_directory(fpath)) {
-        fpath /= "sirius.json";
+    input.file = input.args.value<fs::path>("input", "sirius.json");
+    if (fs::is_directory(input.file)) {
+        input.file /= "sirius.json";
     }
-
-    if (!fs::exists(fpath)) {
+    if (!fs::exists(input.file)) {
         if (mpi::Communicator::world().rank() == 0) {
             std::cout << "input file does not exist" << std::endl;
         }
         return;
     }
 
-    auto fname = fpath.string();
     switch (task_id) {
         case task_t::ground_state_new:
         case task_t::ground_state_restart:
         case task_t::ground_state_new_relax:
         case task_t::ground_state_new_vcrelax: {
-            run_gs_task(args, fname, task_id);
+            run_gs_task(input, task_id);
             break;
         }
         case task_t::eos: {
-            run_eos_task(args, fname);
+            run_eos_task(input);
             break;
         }
         case task_t::fixed_mag: {
-            run_fixed_mag_task(args, fname);
+            run_fixed_mag_task(input);
             break;
         }
         case task_t::k_point_path: {
-            run_k_point_path_task(args, fname);
+            run_k_point_path_task(input);
             break;
         }
         case task_t::plot_wf: {
-            run_plot_wf_task(args, fname);
+            run_plot_wf_task(input);
             break;
         }
     }
@@ -737,8 +739,9 @@ main(int argn, char** argv)
     int my_rank = mpi::Communicator::world().rank();
 
     bool exception_thrown{false};
+    Task_input input{args};
     try {
-        run_tasks(args);
+        run_tasks(input);
     } catch (std::exception const& e) {
         std::cout << e.what() << std::endl;
         exception_thrown = true;
@@ -754,12 +757,42 @@ main(int argn, char** argv)
     sirius::finalize(true /* MPI finalize */, false /* device reset */);
 
     if (my_rank == 0) {
-        bool flatten{true};
-        auto timing_result =
-                flatten ? global_rtgraph_timer.process().flatten(1).sort_nodes() : global_rtgraph_timer.process();
-        std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
-                                          rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
-                                          rt_graph::Stat::Max});
+        auto timing_result = global_rtgraph_timer.process().flatten(1).sort_nodes();
+        if (input.verbosity == 1 && !timing_result.get_timings("sirius").empty()) {
+            std::stringstream out;
+            out << "Timing summary (inclusive)" << std::endl
+                << hbar(64, '-') << std::endl
+                << std::left << std::setw(28) << "Routine" << std::right << std::setw(8) << "Calls" << std::setw(14)
+                << "Total (s)" << std::setw(14) << "Average (s)" << std::endl
+                << hbar(64, '-') << std::endl;
+            const char* timers[][2] = {{"SIRIUS", "sirius"},
+                                       {"Initialization", "sirius::Simulation_context::initialize"},
+                                       {"Initial state", "sirius::DFT_ground_state::initial_state"},
+                                       {"SCF", "sirius::DFT_ground_state::scf_loop"},
+                                       {"Diagonalization", "sirius::diagonalize"},
+                                       {"Density generation", "sirius::Density::generate"},
+                                       {"Density mixing", "sirius::Density::mix"},
+                                       {"Potential generation", "sirius::Potential::generate"}};
+            for (auto const& timer : timers) {
+                auto times = timing_result.get_timings(timer[1]);
+                if (times.empty()) {
+                    continue;
+                }
+                double total{0};
+                for (double time : times) {
+                    total += time;
+                }
+                out << std::left << std::setw(28) << timer[0] << std::right << std::setw(8) << times.size()
+                    << std::fixed << std::setprecision(6) << std::setw(14) << total << std::setw(14)
+                    << total / times.size() << std::endl;
+            }
+            out << hbar(64, '-') << std::endl;
+            std::cout << out.str();
+        } else if (input.verbosity >= 2) {
+            std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                              rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median,
+                                              rt_graph::Stat::Min, rt_graph::Stat::Max});
+        }
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
         ofs << timing_result.json();
     }

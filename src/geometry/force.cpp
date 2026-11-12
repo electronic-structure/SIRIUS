@@ -964,7 +964,7 @@ Force::print_info(std::ostream& out__, int verbosity__)
         print_forces("total Forces in Ha/bohr", forces_total());
     }
 
-    if (verbosity__ >= 2) {
+    if (verbosity__ >= 3) {
         if (ctx_.full_potential()) {
             print_forces("contribution from density", forces_rho());
 

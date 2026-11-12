@@ -1284,7 +1284,7 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__
                     }
                 }
                 std::string status = (diff > 1e-8) ? "Fail" : "OK";
-                if (ctx_.verbosity() >= 1) {
+                if (ctx_.verbosity() >= 2) {
                     RTE_OUT(ctx_.out()) << "error of density matrix symmetrization: " << diff << " " << status
                                         << std::endl;
                 }
@@ -1301,7 +1301,7 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__
                     }
                 }
                 std::string status = (diff1 > 1e-8) ? "Fail" : "OK";
-                if (ctx_.verbosity() >= 1) {
+                if (ctx_.verbosity() >= 2) {
                     RTE_OUT(ctx_.out()) << "error of LDA+U local occupation matrix symmetrization: " << diff1 << " "
                                         << status << std::endl;
                 }
@@ -1315,7 +1315,7 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__
                     }
                 }
                 status = (diff2 > 1e-8) ? "Fail" : "OK";
-                if (ctx_.verbosity() >= 1) {
+                if (ctx_.verbosity() >= 2) {
                     RTE_OUT(ctx_.out()) << "error of LDA+U nonlocal occupation matrix symmetrization: " << diff2 << " "
                                         << status << std::endl;
                 }
@@ -1328,7 +1328,7 @@ Density::generate(K_point_set const& ks__, LAPW_radial_basis const* lapw_basis__
     }
 
     if (occupation_matrix_) {
-        occupation_matrix_->print_occupancies(2);
+        occupation_matrix_->print_occupancies(3);
         /* calculate the lagrange multiplier and resulting error */
         if (ctx_.hubbard_constrained_calculation()) {
             occupation_matrix_->calculate_constraints_and_error();
@@ -2397,7 +2397,7 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
         RTE_OUT(ctx_.out()) << "Warning: generation of core charge density failed" << std::endl
                             << e.what() << std::endl;
     }
-    RTE_OUT(ctx_.out(2)) << pout.flush(0);
+    RTE_OUT(ctx_.out(3)) << pout.flush(0);
 }
 
 void

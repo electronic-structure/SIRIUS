@@ -50,7 +50,7 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
     if (itso.type() == "davidson") {
         empy_tol =
                 std::max(itsol_tol__ * ctx.cfg().iterative_solver().tolerance_ratio(), itso.empty_states_tolerance());
-        RTE_OUT(ctx.out(2)) << "iterative solver tolerance (occupied, empty): " << itsol_tol__ << " "
+        RTE_OUT(ctx.out(3)) << "iterative solver tolerance (occupied, empty): " << itsol_tol__ << " "
                             << itsol_tol__ + empy_tol << std::endl;
     }
 
@@ -92,13 +92,13 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
     result.avg_num_iter = static_cast<double>(num_dav_iter) / kset__.num_kpoints();
     result.converged    = converged;
     if (!ctx.full_potential()) {
-        RTE_OUT(ctx.out(2)) << "average number of iterations: " << result.avg_num_iter << std::endl;
+        RTE_OUT(ctx.out(3)) << "average number of iterations: " << result.avg_num_iter << std::endl;
     }
 
     /* synchronize eigen-values */
     kset__.sync_band<T, sync_band_t::energy>();
 
-    if (ctx.verbosity() >= 2) {
+    if (ctx.verbosity() >= 3) {
         std::stringstream s;
         s << "Lowest band energies" << std::endl;
         int nbnd = std::min(ctx.cfg().control().num_bands_to_print(), ctx.num_bands());
@@ -129,7 +129,7 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
                 }
             }
         }
-        RTE_OUT(ctx.out(2)) << s.str();
+        RTE_OUT(ctx.out(3)) << s.str();
     }
     print_memory_usage(ctx.out(), FILE_LINE);
 
