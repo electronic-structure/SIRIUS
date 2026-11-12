@@ -143,7 +143,7 @@ for_each_core_sample(Simulation_context const& ctx, std::vector<r3::vector<doubl
             for (int i = 0; i < type.num_atoms(); i++) {
                 int ia    = type.atom_id(i);
                 auto atom = r3::dot(a, cell.atom(ia).position());
-                for (size_t p = 0; p < points.size(); p++) {
+                for (int p = 0; p < static_cast<int>(points.size()); p++) {
                     auto displacement = points[p] - atom;
                     auto image        = r3::dot(cell.inverse_lattice_vectors(), displacement);
                     for (int x = 0; x < 3; x++) {
