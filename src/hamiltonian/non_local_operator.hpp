@@ -63,8 +63,6 @@ class U_operator
     /// Potential correction matrix for a given k-point.
     /** Constructed from local and non-local parts of Hubbard U matrix. */
     std::array<mdarray<std::complex<T>, 2>, 4> um_;
-    //std::vector<int> offset_;
-    //std::vector<std::pair<int, int>> atomic_orbitals_;
     int nhwf_;
     r3::vector<double> vk_;
 
@@ -72,11 +70,6 @@ class U_operator
     U_operator(Simulation_context const& ctx__, Hubbard_matrix const& um1__, r3::vector<double> vk__);
     ~U_operator() = default;
 
-    //inline auto
-    //atomic_orbitals() const
-    //{
-    //    return atomic_orbitals_;
-    //}
     inline auto const&
     u_matrix() const
     {

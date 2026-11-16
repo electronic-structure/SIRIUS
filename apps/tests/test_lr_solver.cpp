@@ -120,7 +120,7 @@ linear_solver_executor(Simulation_context const& sctx, Hamiltonian0<double> cons
     auto C_wrap = sirius::lr::Wave_functions_wrap{C, mem};
 
     /* set up the diagonal preconditioner */
-    auto h_o_diag = Hk.get_h_o_diag_pw<double, 3>(); // already on the GPU if mem=GPU
+    auto h_o_diag = Hk.get_h_o_diag_pw<3>(); // already on the GPU if mem=GPU
     mdarray<double, 1> eigvals_mdarray({eigvals_vec.size()});
     eigvals_mdarray = [&](int i) { return eigvals_vec[i]; };
     /* allocate and copy eigvals_mdarray to GPU if running on GPU */
