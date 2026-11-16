@@ -346,7 +346,7 @@ Crystal_symmetry::print_info(std::ostream& out__, int verbosity__) const
           << "metric tensor error: " << std::scientific << this->metric_tensor_error() << std::endl
           << "rotation matrix error: " << std::scientific << this->sym_op_R_error() << std::endl;
 
-    if (verbosity__ >= 2) {
+    if (verbosity__ >= 3) {
         out__ << std::endl << "symmetry operations " << std::endl << std::endl;
         for (int isym = 0; isym < this->size(); isym++) {
             auto R  = this->operator[](isym).spg_op.R;

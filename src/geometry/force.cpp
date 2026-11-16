@@ -196,7 +196,11 @@ Force::calc_forces_total()
 mdarray<double, 2> const&
 Force::calc_forces_total(bool add_scf_corr)
 {
-    if (ctx_.meta_gga() || ctx_.cb().external_xc_) {
+    xc_geometry_derivatives_t geometry(ctx_.unit_cell().num_atoms());
+    if (ctx_.cb().external_xc_) {
+        geometry = potential_.external_xc_geometry(density_);
+    }
+    if (ctx_.meta_gga() && !ctx_.cb().external_xc_) {
         RTE_THROW("meta-GGA geometry derivatives are not connected to forces yet");
     }
     forces_total_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
@@ -234,6 +238,11 @@ Force::calc_forces_total(bool add_scf_corr)
                     forces_total_(x, ia) += forces_scf_corr_(x, ia);
                 }
             }
+        }
+    }
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        for (int x = 0; x < 3; x++) {
+            forces_total_(x, ia) -= geometry.atoms[ia][x];
         }
     }
     return forces_total_;
@@ -581,12 +590,16 @@ Force::calc_forces_core()
 {
     PROFILE("sirius::Force::calc_forces_core");
 
+    forces_core_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
+    forces_core_.zero();
+    if (ctx_.cb().external_xc_) {
+        // Frozen core motion is included in the external XC geometry adjoint.
+        return forces_core_;
+    }
+
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
     auto ff = ctx_.ri().ps_core_->values(q, ctx_.comm());
-
-    forces_core_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
-    forces_core_.zero();
 
     /* get main arrays */
     auto& xc_pot = potential_.xc_potential();
@@ -955,7 +968,7 @@ Force::print_info(std::ostream& out__, int verbosity__)
         print_forces("total Forces in Ha/bohr", forces_total());
     }
 
-    if (verbosity__ >= 2) {
+    if (verbosity__ >= 3) {
         if (ctx_.full_potential()) {
             print_forces("contribution from density", forces_rho());
 

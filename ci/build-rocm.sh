@@ -17,6 +17,10 @@ spack -e ./spack-env config add "packages:all:variants:[amdgpu_target=${ROCM_ARC
 # spack -e ./spack-env config add "packages:all:providers:mpi:[cray-mpich@9.1.0+rocm]"
 
 spack -e ./spack-env add $SPEC
+# pytest is needed to run the python module tests (ctest -L python)
+if [[ "$SPEC" == *+python* ]]; then
+  spack -e ./spack-env add py-pytest
+fi
 spack -e ./spack-env add cray-mpich@9.1.0+rocm
 
 # build sirius from source
@@ -28,7 +32,14 @@ cat ./spack-env/spack.yaml
 spack -e ./spack-env concretize
 spack -e ./spack-env install
 
+# runtime environment for the python tests (PYTHONPATH etc.), sourced by the CI test jobs
+if [[ "$SPEC" == *+python* ]]; then
+  spack -e ./spack-env load --sh sirius py-pytest > /dev/shm/spack-stage/sirius-python-env.sh
+fi
+
 # the tar pipe below expects a relative path
 builddir=$(spack -e ./spack-env location -b sirius)
 # create a symlink to spack build directory (keep in artifacts)
-tar -cf builddir.tar $builddir
+extra=()
+[[ -f /dev/shm/spack-stage/sirius-python-env.sh ]] && extra+=(/dev/shm/spack-stage/sirius-python-env.sh)
+tar -cf builddir.tar $builddir "${extra[@]}"

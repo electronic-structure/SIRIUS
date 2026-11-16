@@ -243,7 +243,7 @@ initialize_subspace(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, int num_ao__
         //        }
         //    }
         {
-            rte::ostream out(kp__.out(3), std::string(__func__));
+            rte::ostream out(kp__.out(4), std::string(__func__));
             for (int i = 0; i < num_bands; i++) {
                 out << "eval[" << i << "]=" << eval[i] << std::endl;
             }

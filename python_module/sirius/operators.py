@@ -36,7 +36,10 @@ class S_operator(KpointOperatorBase):
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            # scipy passes 1d vectors, the C++ operators expect a 2d block of column vectors
+            X = np.asarray(X)
+            Y = np.array(self.ops[key].apply(np.asfortranarray(X.reshape(X.shape[0], -1))))
+            return Y.reshape(X.shape)
         n = self.ops[key].size
         return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
 
@@ -64,7 +67,10 @@ class Sinv_operator(KpointOperatorBase):
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            # scipy passes 1d vectors, the C++ operators expect a 2d block of column vectors
+            X = np.asarray(X)
+            Y = np.array(self.ops[key].apply(np.asfortranarray(X.reshape(X.shape[0], -1))))
+            return Y.reshape(X.shape)
         n = self.ops[key].size
         return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
 
@@ -98,7 +104,10 @@ class US_Precond(KpointOperatorBase):
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            # scipy passes 1d vectors, the C++ operators expect a 2d block of column vectors
+            X = np.asarray(X)
+            Y = np.array(self.ops[key].apply(np.asfortranarray(X.reshape(X.shape[0], -1))))
+            return Y.reshape(X.shape)
         n = self.ops[key].size
         return LinearOperator(dtype=np.complex128, shape=(n, n), matvec=_matvec, rmatvec=_matvec)
 

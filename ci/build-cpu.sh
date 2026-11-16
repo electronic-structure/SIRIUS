@@ -14,6 +14,10 @@ spack env create -d ./spack-env
 spack -e ./spack-env add cray-mpich@9.1.0
 
 spack -e ./spack-env add $SPEC
+# pytest is needed to run the python module tests (ctest -L python)
+if [[ "$SPEC" == *+python* ]]; then
+  spack -e ./spack-env add py-pytest
+fi
 
 # build sirius from source
 spack -e ./spack-env develop -p $PWD sirius@develop
@@ -23,6 +27,11 @@ cat ./spack-env/spack.yaml
 
 spack -e ./spack-env concretize
 spack -e ./spack-env install
+
+# runtime environment for the python tests (PYTHONPATH etc.), sourced by the CI test jobs
+if [[ "$SPEC" == *+python* ]]; then
+  spack -e ./spack-env load --sh sirius py-pytest > /dev/shm/spack-stage/sirius-python-env.sh
+fi
 
 # the tar pipe below expects a relative path
 # builddir=$(spack -e ./spack-env location -b sirius)

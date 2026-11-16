@@ -21,7 +21,7 @@ def s(x):
     entropy term
     """
     if isinstance(x, CoefficientArray):
-        out = type(x)(dtype=x.dtype, ctype=np.array)
+        out = type(x)()
         for key, val in x._data.items():
             out[key] = _s(x[key])
         return out

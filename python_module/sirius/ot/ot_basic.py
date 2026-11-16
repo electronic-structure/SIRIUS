@@ -62,9 +62,7 @@ class Energy:
             benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex128)
             if self.ctx.gamma_point:
                 tmp = np.einsum("ij,ij->j", val[1:, :], np.conj(X[key])[1:, :])
-                benergies[: val.shape[1]] = (
-                    np.array(val[0, :]) * np.array(X[key][0, :]) + 2 * np.real(tmp)
-                ).flatten()
+                benergies[: val.shape[1]] = val[0, :] * X[key][0, :] + 2 * np.real(tmp)
             else:
                 benergies[: val.shape[1]] = np.einsum("ij,ij->j", val, np.conj(X[key]))
 
@@ -115,7 +113,7 @@ class ApplyHamiltonian:
         ctx = self.kpointset.ctx()
         pmem_t = ctx.processing_unit_memory_t()
         num_sc = ctx.num_spins()
-        H0 = Hamiltonian0(self.potential, False)
+        H0 = Hamiltonian0(self.potential)
         if isinstance(cn, PwCoeffs):
             assert ki is None
             assert ispn is None

@@ -55,6 +55,37 @@ struct xc_callback_input_t
     xc_point_set_t const* points{nullptr};
 };
 
+/// Local derivatives of the discrete energy with respect to independent quadrature inputs.
+/** All explicit atom/cell dependence of the evaluator must enter through these
+ *  inputs, rather than through hidden context-dependent terms in the energy.
+ */
+struct xc_point_derivatives_t
+{
+    std::vector<std::array<double, 3>> coordinates, block_centres;
+    std::vector<double> energy_weights, descriptor_weights;
+
+    explicit xc_point_derivatives_t(xc_point_set_t const& points)
+        : coordinates(points.coordinates.size())
+        , block_centres(points.block_centres.size())
+        , energy_weights(points.energy_weights.size())
+        , descriptor_weights(points.descriptor_weights.size())
+    {
+    }
+};
+
+/// Globally summed dE/dR and dE/dA, with Cartesian atoms fixed in the cell derivative.
+/** Lattice vectors are columns. No force sign or volume normalization is applied. */
+struct xc_geometry_derivatives_t
+{
+    std::vector<std::array<double, 3>> atoms;
+    std::array<double, 9> lattice{};
+
+    explicit xc_geometry_derivatives_t(int num_atoms)
+        : atoms(num_atoms)
+    {
+    }
+};
+
 /// Globally reduced XC energy and its local primitive-field derivatives.
 /** For a possibly nonlocal discrete energy E=F({rho_p,g_p,tau_p},weights),
  *  the point callback returns raw dE/drho_p, dE/dg_p and dE/dtau_p.
@@ -71,10 +102,19 @@ struct xc_callback_output_t
     double* vrho;
     double* vgradient;
     double* vtau;
+    /// Present only during geometry evaluation. Physical fields and quadrature inputs are independent.
+    xc_point_derivatives_t* geometry{nullptr};
 };
 
 /// Register before constructing Density/Potential and retain throughout SCF.
 using xc_callback_t = std::function<void(Simulation_context const&, xc_callback_input_t const&, xc_callback_output_t&)>;
+
+/// Contract local point covectors with the host's quadrature derivatives.
+/** Includes the SIRIUS field-sampling contribution to the coordinate covectors.
+ *  Return replicated Cartesian atom/cell energy derivatives, summing each point once.
+ */
+using xc_quadrature_pullback_t = std::function<void(Simulation_context const&, xc_point_set_t const&,
+                                                    xc_point_derivatives_t const&, xc_geometry_derivatives_t&)>;
 
 void
 validate_external_xc_context(Simulation_context const& ctx__);

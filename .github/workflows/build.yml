@@ -34,7 +34,7 @@ jobs:
           chown -R nobody:nogroup "${RUNNER_TEMP}/sirius-stage"
           cd "$build_dir"
           spack -e /sirius-env --color always build-env sirius -- runuser -u nobody -- \
-            env HOME="$build_dir" ctest --output-on-failure --label-exclude integration_test
+            env HOME="$build_dir" ctest --output-on-failure --label-exclude 'integration_test|python'
       - name: Run verification tests
         run: |
           cd $(spack -e /sirius-env location -b sirius)

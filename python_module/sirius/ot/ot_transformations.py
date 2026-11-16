@@ -7,8 +7,16 @@ from ..coefficient_array import PwCoeffs, allthreaded
 complex_array_t: TypeAlias = NDArray[np.complex128]
 
 
-def matview(x):
-    return np.matrix(x, copy=False)
+def _H(a):
+    """Hermitian conjugate of a dense matrix."""
+    return np.conj(a).T
+
+
+def _apply(P, x):
+    """Apply preconditioner block P (scalar, dense or scipy.sparse matrix) to x."""
+    if np.isscalar(P):
+        return P * x
+    return P @ x
 
 
 def lagrangeMult(p, c0, P=None):
@@ -28,37 +36,38 @@ def lagrangeMult(p, c0, P=None):
                 out[key] = lagrangeMult(v, c0[key])
         return out
     else:
-        c0 = matview(c0)
-        p = matview(p)
+        c0 = np.asarray(c0)
+        p = np.asarray(p)
         if P is not None:
-            oc = solve(c0.H * P * c0, c0.H * P * p)
-            correction = -P * c0 * oc
+            Pc0 = _apply(P, c0)
+            oc = solve(_H(c0) @ Pc0, _H(c0) @ _apply(P, p))
+            correction = -Pc0 @ oc
         else:
-            oc = solve(c0.H * c0, c0.H * p)
-            correction = -c0 * oc
+            oc = solve(_H(c0) @ c0, _H(c0) @ p)
+            correction = -c0 @ oc
         return correction
 
 
 def _c(x: complex_array_t, c0: complex_array_t) -> complex_array_t:
-    x = matview(x)
-    assert np.linalg.norm(np.dot(x.H, c0), "fro") < 1e-7
-    XX = np.dot(x.H, x)
+    x = np.asarray(x)
+    c0 = np.asarray(c0)
+    assert np.linalg.norm(_H(x) @ c0, "fro") < 1e-7
+    XX = _H(x) @ x
     w, R = eigh(XX)
     w = np.where(np.abs(w) < 1e-14, 0, w)
     w = np.sqrt(w)
-    R = matview(R)
-    err = np.linalg.norm(R.H @ R - np.eye(*R.shape), "fro")
+    err = np.linalg.norm(_H(R) @ R - np.eye(*R.shape), "fro")
     # TODO: remove: check that we are not losing accuracy for small x
-    assert np.isclose(R * np.diag(w**2) * R.H, XX).all()
+    assert np.isclose(R @ np.diag(w**2) @ _H(R), XX).all()
     assert err < 1e-11
 
     Wsinc = np.diag(np.sinc(w / np.pi))
-    sincU = np.dot(np.dot(R, Wsinc), R.H)
+    sincU = R @ Wsinc @ _H(R)
 
     Wcos = np.diag(np.cos(w))
-    cosU = np.dot(np.dot(R, Wcos), R.H)
+    cosU = R @ Wcos @ _H(R)
 
-    return np.dot(c0, cosU) + np.dot(x, sincU)
+    return c0 @ cosU + x @ sincU
 
 
 def c(x, c0):
@@ -89,33 +98,31 @@ class ConstrainedGradient:
         Returns:
         tuple -- (c, Λ, sinU, R)
         """
-        # make sure x has type np.matrix
-        x = np.matrix(x, copy=False)
+        x = np.asarray(x)
+        c0 = np.asarray(c0)
 
         # check that x fulfills constraint condition
-        assert np.linalg.norm(np.dot(x.H, c0), "fro") < 1e-7
+        assert np.linalg.norm(_H(x) @ c0, "fro") < 1e-7
 
         # compute eigenvectors and eigenvalues of U
-        XX = np.dot(x.H, x)
+        XX = _H(x) @ x
         Λ, R = eigh(XX)
         w = np.sqrt(Λ)
-        R = np.matrix(R)
-        # note: U = V * sqrt(Λ) * V.H = sqrt(X.T X)
+        # note: U = V @ sqrt(Λ) @ V.H = sqrt(X.H @ X)
 
         # check for orthonormality
-        err = np.linalg.norm(R.H * R - np.eye(*R.shape), "fro")
+        err = np.linalg.norm(_H(R) @ R - np.eye(*R.shape), "fro")
         assert err < 1e-10
 
         # pre-compute matrix functions sin, cos, and inverse of U
         Wsinc = np.diag(np.sinc(w / np.pi))
-        sincU = np.dot(np.dot(R, Wsinc), R.H)
+        sincU = R @ Wsinc @ _H(R)
         # cos
         Wcos = np.diag(np.cos(w))
-        cosU = np.dot(np.dot(R, Wcos), R.H)
-        assert isinstance(cosU, np.matrix)
+        cosU = R @ Wcos @ _H(R)
 
         # compute c(c0, x)
-        c = np.dot(c0, cosU) + np.dot(x, sincU)
+        c = c0 @ cosU + x @ sincU
 
         return c, Λ, sincU, R
 
@@ -130,7 +137,7 @@ class ConstrainedGradient:
 
         Gx -- gradient (projected)
         Hx -- gradient (not projected)
-        depending on type of x: np.matrix or PwCoeffs
+        depending on type of x: np.ndarray or PwCoeffs
         """
         if isinstance(x, PwCoeffs):
             assert isinstance(self.c0, PwCoeffs)
@@ -178,10 +185,8 @@ class ConstrainedGradient:
             c, Λ, sincU, R = self._prepare_fX(x, self.c0)
             # compute ∂E/∂c
             Hc = self.hamiltonian(c, ki=ki, ispn=ispn)
-            # return ∂E/∂x as np.matrix
-            return self._apply_single(
-                x=x, c0=np.matrix(self.c0, copy=False), Λ=Λ, Hc=Hc, sincU=sincU, R=R
-            )
+            # return ∂E/∂x as np.ndarray
+            return self._apply_single(x=x, c0=self.c0, Λ=Λ, Hc=Hc, sincU=sincU, R=R)
 
     @staticmethod
     def _apply_single(x, c0, Λ, Hc, sincU, R):
@@ -189,7 +194,7 @@ class ConstrainedGradient:
         Computes ∂E/∂x
         x    -- OT coefficients, where PW-coefficients are given by c = c(x, c0)
         c0   -- initial coefficients
-        Λ    -- eigenvalues of sqrt(x.H * x)
+        Λ    -- eigenvalues of x.H @ x
         Hc   -- gradient
         sincU -- sinc(U)
         R    -- eigenvectors of U (in columns)
@@ -199,15 +204,11 @@ class ConstrainedGradient:
         #   for electronic structure calculations. , 118(10), 4365–4369.
         #   http://dx.doi.org/10.1063/1.1543154
 
-        R = matview(R)
-        sincU = matview(sincU)
-        Hc = matview(Hc)
-        c0 = matview(c0)
-
-        # assert isinstance(R, np.matrix)
-        # assert isinstance(sincU, np.matrix)
-        # assert isinstance(Hc, np.matrix)
-        # assert isinstance(c0, np.matrix)
+        x = np.asarray(x)
+        R = np.asarray(R)
+        sincU = np.asarray(sincU)
+        Hc = np.asarray(Hc)
+        c0 = np.asarray(c0)
 
         v = np.sinc(np.sqrt(Λ) / np.pi)
         v = v[:, np.newaxis]
@@ -246,15 +247,16 @@ class ConstrainedGradient:
         D2[irow, icol] = -0.5 * np.sinc(np.sqrt(Λ[irow]) / np.pi)
 
         # compute K: TODO copy/paste formula from the paper
-        RtHCtxR = np.array(R.H * (Hc.H * x) * R)
-        RtHCtc0R = np.array(R.H * Hc.H * c0 * R)
-        K = np.matrix(RtHCtxR * np.array(D1) + RtHCtc0R * np.array(D2))
+        RtHCtxR = _H(R) @ (_H(Hc) @ x) @ R
+        RtHCtc0R = _H(R) @ _H(Hc) @ c0 @ R
+        # note: elementwise products with D1, D2
+        K = RtHCtxR * np.ma.getdata(D1) + RtHCtc0R * np.ma.getdata(D2)
         # compute ∂E/∂x
-        dEdx = Hc * sincU + x * (R * (K.H + K) * R.H)
+        dEdx = Hc @ sincU + x @ (R @ (_H(K) + K) @ _H(R))
 
         # Lagrange multiplier
         # TODO: this can be precomputed and stored
-        lM = solve(c0.H @ c0, c0.H @ dEdx)
+        lM = solve(_H(c0) @ c0, _H(c0) @ dEdx)
         correction = -1 * c0 @ lM
 
         return dEdx + correction, dEdx

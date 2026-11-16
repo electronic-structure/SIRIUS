@@ -411,7 +411,7 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     if (!ctx_.full_potential()) {
         generate_d_mtrx();
         generate_PAW_effective_potential(density__);
-        if (ctx_.verbosity() >= 3) {
+        if (ctx_.verbosity() >= 4) {
             rte::ostream out(ctx_.out(), "potential");
             out << "density matrix" << std::endl;
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -448,7 +448,7 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     }
 
     if (ctx_.full_potential()) {
-        if (ctx_.verbosity() >= 3) {
+        if (ctx_.verbosity() >= 4) {
             auto vs = this->get_spherical_potential();
             rte::ostream out(ctx_.out(), "potential");
             for (int ic = 0; ic < ctx_.unit_cell().num_atom_symmetry_classes(); ic++) {

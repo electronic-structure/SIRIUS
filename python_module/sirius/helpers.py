@@ -36,8 +36,7 @@ def load_state(filename, kset, name, dtype):
     """
     import glob
 
-    ctype = np.matrix
-    out = CoefficientArray(dtype=dtype, ctype=np.matrix)
+    out = CoefficientArray()
 
     idx_to_k = {}
     for i, kp in enumerate(kset):
@@ -61,7 +60,7 @@ def load_state(filename, kset, name, dtype):
                 k = idx_to_k[ki]
                 _, s = eval(key)
                 if key in fh5[name].keys():
-                    out[(k, s)] = ctype(fh5[name][key])
+                    out[(k, s)] = np.asarray(fh5[name][key], dtype=dtype)
     return out
 
 
@@ -214,14 +213,14 @@ def kpoint_index(kp, ctx):
     import numpy as np
 
     pm = ctx.cfg.parameters
-    shiftk = np.array(pm.shiftk, dtype=np.int)
-    ngridk = np.array(pm.ngridk, dtype=np.int)
+    shiftk = np.array(pm.shiftk, dtype=int)
+    ngridk = np.array(pm.ngridk, dtype=int)
     ik = np.array(kp.vk) * ngridk - shiftk / 2
-    if not np.isclose(ik - ik.astype(np.int), 0).all():
+    if not np.isclose(ik - ik.astype(int), 0).all():
         # single k-point given in vk
         # TODO: give proper coordinates
         ik = [0, 0, 0]
     else:
-        ik = ik.astype(np.int)
+        ik = ik.astype(int)
 
     return tuple(ik)

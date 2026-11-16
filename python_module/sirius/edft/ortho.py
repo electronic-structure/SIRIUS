@@ -14,29 +14,27 @@ def gram_schmidt(X):
     Arguments:
     X -- column vectors
     """
-    X = np.matrix(X, copy=False)
+    X = np.asarray(X)
     m = X.shape[1]
     Q = np.zeros_like(X)
     Q[:, 0] = X[:, 0] / np.linalg.norm(X[:, 0])
     for i in range(1, m):
         Xi = X[:, i].copy()
         for j in range(i):
-            Xi -= np.tensordot(Xi, np.conj(Q[:, j]), axes=2) * Q[:, j]
+            Xi -= np.vdot(Q[:, j], Xi) * Q[:, j]
         Q[:, i] = Xi / np.linalg.norm(Xi)
     return Q
 
 
 @threaded
 def modified_gram_schmidt(X):
-    X = np.matrix(X, copy=False)
+    X = np.asarray(X)
     m = X.shape[1]
     Q = np.zeros_like(X)
     for k in range(m):
         Q[:, k] = X[:, k]
         for i in range(k):
-            Q[:, k] = (
-                Q[:, k] - np.tensordot(Q[:, k], np.conj(Q[:, i]), axes=2) * Q[:, i]
-            )
+            Q[:, k] = Q[:, k] - np.vdot(Q[:, i], Q[:, k]) * Q[:, i]
         Q[:, k] = Q[:, k] / np.linalg.norm(Q[:, k])
     return Q
 

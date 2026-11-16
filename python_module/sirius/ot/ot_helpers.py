@@ -1,29 +1,19 @@
-from .ot_transformations import matview
+import numpy as np
+
+
+def _matfun(x, f):
+    """f(U) for U = sqrt(x.H @ x)"""
+    x = np.asarray(x)
+    w, R = np.linalg.eigh(np.conj(x).T @ x)
+    w = np.sqrt(w)
+    return R @ np.diag(f(w)) @ np.conj(R).T
 
 
 def sinU(x):
-    """
-    """
-    import numpy as np
-    x = matview(x)
-    XX = np.dot(x.H, x)
-    w, R = np.linalg.eigh(XX)
-    w = np.sqrt(w)
-    R = matview(R)
-    Wsin = np.diag(np.sin(w))
-    sinU = np.dot(np.dot(R, Wsin), R.H)
-    return sinU
+    """sin(U), U = sqrt(x.H @ x)"""
+    return _matfun(x, np.sin)
 
 
 def cosU(x):
-    """
-    """
-    import numpy as np
-    x = matview(x)
-    XX = np.dot(x.H, x)
-    w, R = np.linalg.eigh(XX)
-    w = np.sqrt(w)
-    R = matview(R)
-    Wcos = np.diag(np.cos(w))
-    cosU = np.dot(np.dot(R, Wcos), R.H)
-    return cosU
+    """cos(U), U = sqrt(x.H @ x)"""
+    return _matfun(x, np.cos)

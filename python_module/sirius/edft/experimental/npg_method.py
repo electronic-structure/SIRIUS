@@ -54,7 +54,7 @@ def constraint34(u, tau, T, pe, comm, kweights):
         # count number of elements per rank
         proc_sizes = list(map(np.size, vu_tmp))
         # get offset per rank
-        offsets = np.hstack([0, np.cumsum(proc_sizes[:-1])]).astype(np.int)
+        offsets = np.hstack([0, np.cumsum(proc_sizes[:-1])]).astype(int)
         # allgather occupation numbers and gradient (because constraint is global)
         vu = np.hstack(vu_tmp)
         vkw = np.hstack(comm.allgather(kw.to_array()))

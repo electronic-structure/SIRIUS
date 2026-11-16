@@ -1,5 +1,4 @@
 find_package(Python3 COMPONENTS Development REQUIRED)
-set(CMAKE_CXX_STANDARD 17)
 find_package(mpi4py REQUIRED)
 
 # TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP17 is needed for Intel compiler
@@ -20,7 +19,16 @@ else()
 endif()
 
 set(libname py_sirius)
-pybind11_add_module(${libname} py_sirius.cpp py_sirius_operators.cpp py_sirius_r3.cpp)
+# the bindings are split into several translation units to limit the peak memory of the compiler
+pybind11_add_module(${libname}
+  py_sirius.cpp
+  py_sirius_context.cpp
+  py_sirius_dft.cpp
+  py_sirius_kpoints.cpp
+  py_sirius_arrays.cpp
+  py_sirius_smearing.cpp
+  py_sirius_operators.cpp
+  py_sirius_r3.cpp)
 
 add_dependencies(${libname} sirius_cxx)
 target_link_libraries(${libname} PRIVATE mpi4py::mpi4py)
@@ -64,3 +72,28 @@ install(
   ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg
   DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 )
+
+# Python tests: run pytest against a `sirius` package assembled in the build tree, so that
+# no install step is needed. The pure python sources are symlinked, py_sirius is built into it.
+if(BUILD_TESTING)
+  set(SIRIUS_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/site-packages")
+  set_target_properties(${libname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${SIRIUS_PYTHON_BUILD_DIR}/sirius")
+  file(MAKE_DIRECTORY "${SIRIUS_PYTHON_BUILD_DIR}/sirius")
+  file(GLOB _sirius_py_entries RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sirius" "${CMAKE_CURRENT_SOURCE_DIR}/sirius/*")
+  foreach(_entry IN LISTS _sirius_py_entries)
+    if(NOT _entry STREQUAL "__pycache__")
+      file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sirius/${_entry}" "${SIRIUS_PYTHON_BUILD_DIR}/sirius/${_entry}" SYMBOLIC)
+    endif()
+  endforeach()
+
+  file(GLOB _sirius_pytests RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/test" "${CMAKE_CURRENT_SOURCE_DIR}/test/test_*.py")
+  foreach(_test IN LISTS _sirius_pytests)
+    get_filename_component(_name "${_test}" NAME_WE)
+    add_test(NAME "python_${_name}"
+      COMMAND ${Python3_EXECUTABLE} -m pytest -v -p no:cacheprovider "${_test}"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/test")
+    set_tests_properties("python_${_name}" PROPERTIES
+      LABELS "python"
+      ENVIRONMENT_MODIFICATION "PYTHONPATH=path_list_prepend:${SIRIUS_PYTHON_BUILD_DIR}")
+  endforeach()
+endif()

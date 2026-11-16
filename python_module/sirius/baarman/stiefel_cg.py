@@ -60,9 +60,9 @@ def trim(X, fn, tol=1e-12):
     import numpy as np
     from sirius import CoefficientArray
 
-    fnout = type(fn)(dtype=fn.dtype, ctype=fn.ctype)
-    Xout = type(X)(dtype=X.dtype, ctype=X.ctype)
-    sel = CoefficientArray(dtype=np.int, ctype=np.array)
+    fnout = type(fn)()
+    Xout = type(X)()
+    sel = CoefficientArray()
     for k in fn._data.keys():
         floc = np.array(fn[k]).flatten()
         if (floc < tol).any():

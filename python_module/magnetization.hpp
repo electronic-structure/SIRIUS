@@ -15,7 +15,7 @@
 
 namespace sirius {
 
-std::vector<double>
+inline std::vector<double>
 magnetization(Density& density)
 {
     std::vector<double> lm(3, 0.0);
@@ -28,7 +28,7 @@ magnetization(Density& density)
     return lm;
 }
 
-std::string
+inline std::string
 sprint_magnetization(K_point_set& kset, const Density& density)
 {
     auto& ctx       = kset.ctx();

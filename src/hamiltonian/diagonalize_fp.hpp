@@ -155,7 +155,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     kp__.set_fv_eigen_values(&eval[0]);
 
     {
-        rte::ostream out(kp__.out(4), std::string(__func__));
+        rte::ostream out(kp__.out(5), std::string(__func__));
         for (int i = 0; i < ctx.num_fv_states(); i++) {
             out << "eval[" << i << "]=" << eval[i] << std::endl;
         }
@@ -163,7 +163,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
 
     if (pcs) {
         auto z1 = kp__.fv_eigen_vectors().checksum(ngklo, ctx.num_fv_states());
-        print_checksum("fv_eigen_vectors", z1, kp__.out(1));
+        print_checksum("fv_eigen_vectors", z1, kp__.out(2));
     }
 
     remap_lapw_evec_to_slab(kp__.gkvec().num_gvec(), ctx.unit_cell().mt_lo_basis_size(), ctx.num_fv_states(),
@@ -174,7 +174,7 @@ diagonalize_fp_fv_exact(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
                                                            wf::band_range(0, ctx.num_fv_states()));
         auto z2 = kp__.fv_eigen_vectors_slab().checksum_mt(memory_t::host, wf::spin_index(0),
                                                            wf::band_range(0, ctx.num_fv_states()));
-        print_checksum("fv_eigen_vectors_slab", z1 + z2, kp__.out(1));
+        print_checksum("fv_eigen_vectors_slab", z1 + z2, kp__.out(2));
     }
 
     /* renormalize wave-functions */
@@ -258,7 +258,7 @@ get_singular_components(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
 
     int ncomp = kp__.singular_components().num_wf().get();
 
-    RTE_OUT(ctx.out(3)) << "number of singular components: " << ncomp << std::endl;
+    RTE_OUT(ctx.out(4)) << "number of singular components: " << ncomp << std::endl;
 
     auto& itso = ctx.cfg().iterative_solver();
 
@@ -268,11 +268,11 @@ get_singular_components(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__
     auto result = davidson<double, std::complex<double>, davidson_evp_t::overlap>(
             Hk__, kp__, wf::num_bands(ncomp), wf::num_mag_dims(0), kp__.singular_components(),
             [&](int i, int ispn) { return itsol_tol__; }, itso.residual_tolerance(), itso.num_steps(), itso.locking(),
-            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, ctx.verbosity() - 2);
+            itso.subspace_size(), itso.converge_by_energy(), itso.extra_ortho(), *out, ctx.verbosity() - 3);
 
-    RTE_OUT(kp__.out(2)) << "smallest eigen-value of the singular components: " << result.eval[0] << std::endl;
+    RTE_OUT(kp__.out(3)) << "smallest eigen-value of the singular components: " << result.eval[0] << std::endl;
     for (int i = 0; i < ncomp; i++) {
-        RTE_OUT(kp__.out(3)) << "singular component eigen-value[" << i << "]=" << result.eval[i] << std::endl;
+        RTE_OUT(kp__.out(4)) << "singular component eigen-value[" << i << "]=" << result.eval[i] << std::endl;
     }
 }
 
@@ -342,7 +342,7 @@ diagonalize_fp_fv_davidson(Hamiltonian_k<double> const& Hk__, K_point<double>& k
     auto result = davidson<double, std::complex<double>, davidson_evp_t::hamiltonian>(
             Hk__, kp__, wf::num_bands(ctx.num_fv_states()), wf::num_mag_dims(0), kp__.fv_eigen_vectors_slab(),
             tolerance, itso.residual_tolerance(), itso.num_steps(), itso.locking(), itso.subspace_size(),
-            itso.converge_by_energy(), itso.extra_ortho(), *out, ctx.verbosity() - 2, phi_extra_new.get());
+            itso.converge_by_energy(), itso.extra_ortho(), *out, ctx.verbosity() - 3, phi_extra_new.get());
 
     kp__.set_fv_eigen_values(&result.eval[0]);
 }

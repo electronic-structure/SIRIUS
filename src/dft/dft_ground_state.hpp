@@ -75,15 +75,15 @@ class DFT_ground_state
     {
         int n = ctx_.num_loc_op_applied();
         kset_.comm().allreduce(&n, 1);
-        RTE_OUT(ctx_.out(2)) << "local op. applied: " << n << std::endl;
+        RTE_OUT(ctx_.out(3)) << "local op. applied: " << n << std::endl;
 
         double d = ctx_.evp_work_count();
         kset_.comm().allreduce(&d, 1);
-        RTE_OUT(ctx_.out(2)) << "evp. work count: " << d << std::endl;
+        RTE_OUT(ctx_.out(3)) << "evp. work count: " << d << std::endl;
 
         n = ctx_.num_itsol_steps();
         kset_.comm().allreduce(&n, 1);
-        RTE_OUT(ctx_.out(2)) << "number of iterative solver steps: " << n << std::endl;
+        RTE_OUT(ctx_.out(3)) << "number of iterative solver steps: " << n << std::endl;
     }
 
     /// Return reference to a simulation context.

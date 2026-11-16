@@ -72,5 +72,6 @@ def test_stress_and_force(dft):
     force_obj = dft.forces()
     forces = np.array(force_obj.calc_forces_total(add_scf_corr=False))
 
-    assert forces == pytest.approx(force_ref)
-    assert stress == pytest.approx(stress_ref)
+    # absolute tolerances consistent with the SCF convergence (density_tol=1e-6)
+    assert forces == pytest.approx(force_ref, abs=1e-5)
+    assert stress == pytest.approx(stress_ref, abs=1e-7)

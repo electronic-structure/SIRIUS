@@ -100,28 +100,6 @@ class Lattice_relaxation
 
             rte::ostream out(dft_.ctx().out(), __func__);
 
-            if (compute_stress) {
-                dft_.stress().calc_stress_total();
-                dft_.stress().print_info(out, dft_.ctx().verbosity());
-
-                auto st = dft_.stress().stress_total();
-                double d{0};
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        stress(i, j) = -st(i, j);
-                        d += std::abs(st(i, j));
-                    }
-                }
-                if (d < stress_thr__) {
-                    stress_converged = true;
-                } else {
-                    stress_converged = false;
-                }
-
-                out << "total stress value: " << d << ", stress threshold: " << stress_thr__
-                    << ", converged: " << stress_converged << std::endl;
-            }
-
             if (compute_forces) {
                 dft_.forces().calc_forces_total();
                 dft_.forces().print_info(out, dft_.ctx().verbosity());
@@ -142,6 +120,28 @@ class Lattice_relaxation
                 out << "total forces value: " << d << ", forces threshold: " << forces_thr__
                     << ", converged: " << forces_converged << std::endl;
             }
+
+            if (compute_stress) {
+                dft_.stress().calc_stress_total();
+                dft_.stress().print_info(out, dft_.ctx().verbosity());
+
+                auto st = dft_.stress().stress_total();
+                double d{0};
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        stress(i, j) = -st(i, j);
+                        d += std::abs(st(i, j));
+                    }
+                }
+                if (d < stress_thr__) {
+                    stress_converged = true;
+                } else {
+                    stress_converged = false;
+                }
+                out << "total stress value: " << d << ", stress threshold: " << stress_thr__
+                    << ", converged: " << stress_converged << std::endl;
+            }
+
             auto etot = result["energy"]["total"].get<double>();
 
             if (forces_converged && stress_converged) {
