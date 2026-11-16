@@ -193,6 +193,9 @@ class Atom_type
     /// Pseudo-core charge density (used by PP-PW method in non-linear core correction).
     std::vector<double> ps_core_charge_density_;
 
+    /// Spin-summed positive pseudo-core kinetic energy density on the radial grid.
+    std::vector<double> ps_core_kinetic_density_;
+
     /// Total pseudo-charge density (used by PP-PW method to setup initial density).
     std::vector<double> ps_total_charge_density_;
 
@@ -520,6 +523,22 @@ class Atom_type
     ps_core_charge_density() const
     {
         return ps_core_charge_density_;
+    }
+
+    auto const&
+    ps_core_kinetic_density() const
+    {
+        return ps_core_kinetic_density_;
+    }
+
+    void
+    ps_core_kinetic_density(std::vector<double> values__)
+    {
+        if (values__.empty() ||
+            std::any_of(values__.begin(), values__.end(), [](double t) { return !std::isfinite(t) || t < 0; })) {
+            RTE_THROW("pseudo-core kinetic density must be finite and nonnegative");
+        }
+        ps_core_kinetic_density_ = std::move(values__);
     }
 
     inline std::vector<double>&

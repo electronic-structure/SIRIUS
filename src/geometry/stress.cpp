@@ -326,6 +326,10 @@ r3::matrix<double>
 Stress::calc_stress_core()
 {
     stress_core_.zero();
+    if (ctx_.cb().external_xc_) {
+        // Frozen core motion is included in the external XC geometry adjoint.
+        return stress_core_;
+    }
 
     bool empty = true;
 
