@@ -6200,7 +6200,7 @@ sirius_linear_solver(void* const* gs_handler__, void* const* hkq_handler__, std:
                 }
 
                 auto& Hkq = get_Hk(hkq_handler__);
-                auto& kp = Hkq.kp();
+                auto& kp  = Hkq.kp();
                 Hkq.H0().local_op().prepare_k(kp.gkvec_fft());
 
                 /* copy eigenvalues (factor 2 for rydberg/hartree) */
@@ -7097,8 +7097,8 @@ sirius_create_hamiltonian_k(void* const* H0_handler__, void* const* kp_handler__
 {
     call_sirius(
             [&]() {
-                auto& H0 = get_H0(H0_handler__);
-                auto& kp = get_kp(kp_handler__);
+                auto& H0      = get_H0(H0_handler__);
+                auto& kp      = get_kp(kp_handler__);
                 *Hk_handler__ = new any_ptr(new Hamiltonian_k<double>(H0, kp, true));
             },
             error_code__);

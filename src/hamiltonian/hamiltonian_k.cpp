@@ -65,9 +65,9 @@ Hamiltonian_k<T>::Hamiltonian_k(Hamiltonian0<T> const& H0__, K_point<T>& kp__, b
             }
         }
         if (precompute_diagonals__) {
-            auto diagonals = this->template get_h_o_diag_pw<3>();
-            h_diag_ = std::move(diagonals.first);
-            o_diag_ = std::move(diagonals.second);
+            auto diagonals         = this->template get_h_o_diag_pw<3>();
+            h_diag_                = std::move(diagonals.first);
+            o_diag_                = std::move(diagonals.second);
             diagonals_precomputed_ = true;
         }
     }
