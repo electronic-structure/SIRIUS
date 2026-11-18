@@ -124,7 +124,7 @@ double
 energy_veff(Density const& density, Potential const& potential)
 {
     double result = sirius::inner(density.rho(), potential.effective_potential()) -
-                    potential.external_xc_background_contraction();
+                    potential.external_xc_background_contraction() + potential.energy_external_augmentation(density);
     if (density.ctx().cb().external_xc_) {
         // The Hartree potential has zero cell average; the remaining background is the local PP term.
         result -= density.ctx().cfg().parameters().extra_charge() * potential.local_potential().f_0().real();

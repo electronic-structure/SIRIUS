@@ -1058,6 +1058,9 @@ sirius_add_atom_type_radial_function:
         correction, ps_core_tau supplies the spin-summed positive core kinetic
         density on the same radial grid as ps_rho_core. Values include the
         factor 1/2 and occupations in bohr^-5, without a radial Jacobian.
+        ae_paw_core_tau supplies the corresponding PAW all-electron core data.
+        t_aug supplies ultrasoft r^2 T_ij^L for the two projector indices
+        and angular momentum, including 1/2 and no angular factor.
     rf:
       type: double
       attr: in, required, dimension(num_points)
@@ -3736,8 +3739,10 @@ sirius_set_xc_point_callback:
     Output arrays and status are initially zero. On failure set status nonzero
     after completing callback collectives. Never unwind across the C ABI.
     The caller retains user_data until the context is destroyed.
-    Currently supported for CPU scalar/collinear fp64 norm-conserving PW
-    calculations without SOC or symmetry reduction. For nonlinear core correction,
+    Supports CPU scalar/collinear fp64 norm-conserving, PAW and ultrasoft
+    calculations without SOC or symmetry reduction. PAW requires setup-consistent
+    AE core tau. Ultrasoft requires the independent kinetic augmentation tables.
+    For nonlinear core correction,
     supply the matching spin-summed pseudo-core kinetic density as ps_core_tau
     or core_kinetic_density in the pseudopotential JSON. SIRIUS adds both
     frozen-core fields before evaluation. Forces and stress require the

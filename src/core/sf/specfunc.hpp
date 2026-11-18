@@ -117,7 +117,7 @@ hermiteh_series(int n, double x, const double* a)
  */
 template <typename T, typename F>
 inline void
-legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__)
+legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__, double sin_theta__ = -1)
 {
     /* reference paper:
        Associated Legendre Polynomials and Spherical Harmonics Computation for Chemistry Applications
@@ -136,7 +136,7 @@ legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__)
     l=0 m=0
     */
 
-    double y = std::sqrt(1 - x__ * x__);
+    double y = sin_theta__ >= 0 ? sin_theta__ : std::sqrt(1 - x__ * x__);
 
     plm__[ilm__(0, 0)] = 0.28209479177387814347; // 1.0 / std::sqrt(fourpi)
 
@@ -206,9 +206,9 @@ legendre_plm(int lmax__, double x__, F&& ilm__, T* plm__)
  */
 template <typename T, typename F>
 inline void
-legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, T* p1lm__, T* p2lm__)
+legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, T* p1lm__, T* p2lm__, double sin_theta__ = -1)
 {
-    double y = std::sqrt(1 - x__ * x__);
+    double y = sin_theta__ >= 0 ? sin_theta__ : std::sqrt(1 - x__ * x__);
 
     p1lm__[ilm__(0, 0)] = 0;
     p2lm__[ilm__(0, 0)] = 0;
@@ -395,11 +395,11 @@ spherical_harmonics_ref(int lmax, double theta, double phi, double* rlm)
 
 /// Optimized implementation of real spherical harmonics.
 inline void
-spherical_harmonics(int lmax, double theta, double phi, double* rlm)
+spherical_harmonics(int lmax, double theta, double phi, double* rlm, double sin_theta__ = -1)
 {
     double x = std::cos(theta);
 
-    sf::legendre_plm(lmax, x, sf::lm, rlm);
+    sf::legendre_plm(lmax, x, sf::lm, rlm, sin_theta__);
 
     double c0 = std::cos(phi);
     double c1 = 1;
@@ -425,6 +425,16 @@ spherical_harmonics(int lmax, double theta, double phi, double* rlm)
         }
         phase = -phase;
     }
+}
+
+/// Cartesian evaluation avoids cancellation in sin(theta) near either pole.
+inline void
+spherical_harmonics(int lmax__, r3::vector<double> const& r__, double* rlm__)
+{
+    double transverse = std::hypot(r__[0], r__[1]);
+    double radius     = std::hypot(transverse, r__[2]);
+    sf::spherical_harmonics(lmax__, std::atan2(transverse, r__[2]), std::atan2(r__[1], r__[0]), rlm__,
+                            radius == 0 ? 0 : transverse / radius);
 }
 
 /// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
@@ -516,23 +526,19 @@ sinxn(int n__, double x__)
 inline void
 dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
-    /* get spherical coordinates of the Cartesian vector */
-    auto vrs = r3::spherical_coordinates(r__);
-
-    if (vrs[0] < 1e-12) {
+    double transverse = std::hypot(r__[0], r__[1]);
+    double radius     = std::hypot(transverse, r__[2]);
+    if (radius < 1e-12) {
         data__.zero();
         return;
     }
 
     int lmmax = (lmax__ + 1) * (lmax__ + 1);
 
-    double theta = vrs[1];
-    double phi   = vrs[2];
-
-    double sint = std::sin(theta);
-    double sinp = std::sin(phi);
-    double cost = std::cos(theta);
-    double cosp = std::cos(phi);
+    double sint = transverse / radius;
+    double sinp = transverse == 0 ? 0 : r__[1] / transverse;
+    double cost = r__[2] / radius;
+    double cosp = transverse == 0 ? 1 : r__[0] / transverse;
 
     /* nominators of angle derivatives */
     r3::vector<double> dtheta_dr({cost * cosp, cost * sinp, -sint});
@@ -551,9 +557,9 @@ dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool di
     dRlm_dp_sin_t[0] = 0;
 
     /* compute Legendre polynomials */
-    sf::legendre_plm(lmax__, cost, ilm, plm.data());
+    sf::legendre_plm(lmax__, cost, ilm, plm.data(), sint);
     /* compute sin(theta) * (dPlm/dx)  and Plm / sin(theta) */
-    sf::legendre_plm_aux(lmax__, cost, ilm, plm.data(), dplm.data(), plm_y.data());
+    sf::legendre_plm_aux(lmax__, cost, ilm, plm.data(), dplm.data(), plm_y.data(), sint);
 
     double c0 = cosp;
     double c1 = 1;
@@ -589,12 +595,12 @@ dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool di
     }
 
     if (!divide_by_r__) {
-        vrs[0] = 1;
+        radius = 1;
     }
 
     for (int mu = 0; mu < 3; mu++) {
         for (int lm = 0; lm < lmmax; lm++) {
-            data__(lm, mu) = (dRlm_dt[lm] * dtheta_dr[mu] + dRlm_dp_sin_t[lm] * dphi_dr[mu]) / vrs[0];
+            data__(lm, mu) = (dRlm_dt[lm] * dtheta_dr[mu] + dRlm_dp_sin_t[lm] * dphi_dr[mu]) / radius;
         }
     }
 }
