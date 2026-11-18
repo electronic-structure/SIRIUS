@@ -72,7 +72,7 @@ class Spline : public Radial_grid<U>
     Spline<T, U>&
     operator=(Spline<T, U> const& src__) = delete;
     /// Solver tridiagonal system of linear equaitons.
-    int
+    static int
     solve(T* dl, T* d, T* du, T* b, int n)
     {
         for (int i = 0; i < n - 1; i++) {
@@ -113,6 +113,27 @@ class Spline : public Radial_grid<U>
             b[i] = (b[i] - du[i] * b[i + 1] - dl[i] * b[i + 2]) / d[i];
         }
         return 0;
+    }
+
+    void
+    interpolation_matrix(T* dl__, T* d__, T* du__) const
+    {
+        int n = this->num_points();
+        for (int i = 0; i < n - 2; i++) {
+            d__[i + 1] = static_cast<T>(this->x(i + 2) - this->x(i)) * 2.0;
+        }
+        for (int i = 0; i < n - 1; i++) {
+            du__[i] = this->dx(i);
+            dl__[i] = this->dx(i);
+        }
+        U h0        = this->dx(0);
+        U h1        = this->dx(1);
+        d__[0]      = h0 - (h1 / h0) * h1;
+        du__[0]     = h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
+        h0          = this->dx(n - 2);
+        h1          = this->dx(n - 3);
+        d__[n - 1]  = h0 - (h1 / h0) * h1;
+        dl__[n - 2] = h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
     }
     /// Init the underlying radial grid.
     void
@@ -301,32 +322,7 @@ class Spline : public Radial_grid<U>
         m[0]      = m[1];
         m[ns - 1] = m[ns - 2];
 
-        /* main diagonal of "A" matrix */
-        for (int i = 0; i < ns - 2; i++) {
-            d[i + 1] = static_cast<T>(this->x(i + 2) - this->x(i)) * 2.0;
-        }
-        /* subdiagonals of "A" matrix */
-        for (int i = 0; i < ns - 1; i++) {
-            du[i] = this->dx(i);
-            dl[i] = this->dx(i);
-        }
-
-        /* last part of n-a-k boundary condition */
-        U h0  = this->dx(0);
-        U h1  = this->dx(1);
-        d[0]  = h0 - (h1 / h0) * h1;
-        du[0] = h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
-
-        h0         = this->dx(ns - 2);
-        h1         = this->dx(ns - 3);
-        d[ns - 1]  = h0 - (h1 / h0) * h1;
-        dl[ns - 2] = h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
-
-        ///* this should be boundary conditions for natural spline (with zero second derivatives at boundaries) */
-        // m[0] = m[ns-1] = 0;
-        // du[0] = 0;
-        // dl[ns - 2] = 0;
-        // d[0] = d[ns-1] = 1;
+        interpolation_matrix(dl, d, du);
 
         /* solve tridiagonal system */
         // int info = linalg<device_t::CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
@@ -353,6 +349,46 @@ class Spline : public Radial_grid<U>
         coeffs_(ns - 1, 3) = 0;
 
         return *this;
+    }
+
+    /// Transpose of interpolate(), from coefficient covectors to nodal-value covectors.
+    /** No radial or quadrature weights are inserted. The caller accumulates all
+     *  evaluation-point derivatives into dcoeffs__ before one transpose solve.
+     *  Grid coordinates and the not-a-knot boundary conditions are held fixed.
+     */
+    std::vector<T>
+    interpolation_adjoint(mdarray<T, 2> const& dcoeffs__) const
+    {
+        int n = this->num_points();
+        if (n < 4 || dcoeffs__.size(0) != n || dcoeffs__.size(1) != 4) {
+            RTE_THROW("spline interpolation adjoint: incompatible coefficient derivatives");
+        }
+        std::vector<T> dy(n - 1, 0), m(n, 0), values(n), dl(n - 1), d(n), du(n - 1);
+        for (int i = 0; i < n; i++) {
+            values[i] = dcoeffs__(i, 0);
+        }
+        for (int i = 0; i < n - 1; i++) {
+            U h = this->dx(i);
+            dy[i] += dcoeffs__(i, 1);
+            m[i] += -h * dcoeffs__(i, 1) / 3.0 + dcoeffs__(i, 2) / 2.0 - dcoeffs__(i, 3) / (6.0 * h);
+            m[i + 1] += -h * dcoeffs__(i, 1) / 6.0 + dcoeffs__(i, 3) / (6.0 * h);
+        }
+        interpolation_matrix(dl.data(), d.data(), du.data());
+        // The not-a-knot matrix is not symmetric. Swap its diagonals for A^T.
+        if (solve(du.data(), d.data(), dl.data(), m.data(), n)) {
+            RTE_THROW("spline interpolation adjoint: transpose solve failed");
+        }
+        m[1] += m[0];
+        m[n - 2] += m[n - 1];
+        for (int i = 1; i < n - 1; i++) {
+            dy[i] += 6.0 * m[i];
+            dy[i - 1] -= 6.0 * m[i];
+        }
+        for (int i = 0; i < n - 1; i++) {
+            values[i] -= dy[i] / this->dx(i);
+            values[i + 1] += dy[i] / this->dx(i);
+        }
+        return values;
     }
 
     /// Integrate spline with r^m prefactor.

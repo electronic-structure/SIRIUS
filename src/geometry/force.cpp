@@ -443,6 +443,10 @@ Force::calc_forces_us()
     forces_us_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     forces_us_.zero();
 
+    if (ctx_.cb().external_xc_) {
+        potential_.xc_potential().rg().fft_transform(-1);
+    }
+
     //potential_.fft_transform(-1);
 
     auto const& unit_cell = ctx_.unit_cell();
@@ -497,9 +501,15 @@ Force::calc_forces_us()
                          * but in formula we have   i * G * exp[-iGRn] Veff*(G)
                          * the differences because we unfold complex array in the real one
                          * and need negative imagine part due to a multiplication law of complex numbers */
+                        auto v = potential_.component(ispin).rg().f_pw_local(igloc);
+                        if (ctx_.cb().external_xc_) {
+                            // Reconstructed XC excludes the Fourier Q augmentation,
+                            // just as in the corresponding PAW nonlocal operator.
+                            v -= ispin == 0 ? potential_.xc_potential().rg().f_pw_local(igloc)
+                                            : potential_.effective_magnetic_field(ispin - 1).rg().f_pw_local(igloc);
+                        }
                         auto z                   = std::complex<double>(0, -gvc[ivec]) *
-                                                   ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
-                                                   potential_.component(ispin).rg().f_pw_local(igloc);
+                                                   ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) * v;
                         v_tmp(ia, 2 * igloc)     = z.real();
                         v_tmp(ia, 2 * igloc + 1) = z.imag();
                     }

@@ -210,8 +210,8 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
     if (kinetic_density__ || ctx_.meta_gga() || external_xc_registered_) {
         if (ctx_.processing_unit() != device_t::CPU || ctx_.spfft<double>().processing_unit() != SPFFT_PU_HOST ||
             ctx_.spfft_coarse<double>().processing_unit() != SPFFT_PU_HOST || ctx_.num_mag_dims() == 3 ||
-            ctx_.so_correction() || ctx_.full_potential() || unit_cell_.num_paw_atoms()) {
-            RTE_THROW("kinetic density currently requires CPU norm-conserving PW orbitals without spin-orbit coupling");
+            ctx_.so_correction() || ctx_.full_potential() || (unit_cell_.num_paw_atoms() && !external_xc_registered_)) {
+            RTE_THROW("kinetic density requires CPU scalar/collinear PW orbitals; PAW requires external XC");
         }
         kinetic_density_ = std::make_unique<Field4D>(ctx_, lmax_t(ctx_.lmax_rho()));
         kinetic_density_->zero();

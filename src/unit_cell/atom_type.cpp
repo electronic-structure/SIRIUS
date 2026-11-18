@@ -600,6 +600,15 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
         }
     }
 
+    kinetic_augmentation_.clear();
+    if (parser["pseudo_potential"].contains("kinetic_augmentation")) {
+        for (auto const& channel : parser["pseudo_potential"]["kinetic_augmentation"]) {
+            add_kinetic_augmentation(channel["i"].get<int>(), channel["j"].get<int>(),
+                                     channel["angular_momentum"].get<int>(),
+                                     channel["radial_function"].get<std::vector<double>>());
+        }
+    }
+
     /* read starting wave functions ( UPF CHI ) */
     if (parser["pseudo_potential"].count("atomic_wave_functions")) {
         auto& dict = parser["pseudo_potential"]["atomic_wave_functions"];
@@ -671,6 +680,11 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
     /* read core density and potential */
     paw_ae_core_charge_density(
             parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
+    auto const& paw_data = parser["pseudo_potential"]["paw_data"];
+    paw_ae_core_kinetic_density_.clear();
+    if (paw_data.contains("ae_core_kinetic_density")) {
+        paw_ae_core_kinetic_density(paw_data["ae_core_kinetic_density"].get<std::vector<double>>());
+    }
 
     /* read occupations */
     paw_wf_occ(parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>());
@@ -978,6 +992,8 @@ void
 Atom_type::read_pseudo_paw(pugi::xml_node const& upf)
 {
     is_paw_ = true;
+    // UPF core charge alone does not specify positive orbital-gradient tau.
+    paw_ae_core_kinetic_density_.clear();
 
     /* read core energy */
     if (!upf.child("PP_PAW").attribute("core_energy").empty()) {
@@ -1333,16 +1349,28 @@ Atom_type::serialize() const
             }
         }
     }
+    if (!kinetic_augmentation_.empty()) {
+        dict["kinetic_augmentation"] = nlohmann::json::array();
+        for (auto const& [indices, values] : kinetic_augmentation_) {
+            auto [i, j, l] = indices;
+            dict["kinetic_augmentation"].push_back(
+                    {{"i", i}, {"j", j}, {"angular_momentum", l}, {"radial_function", values}});
+        }
+    }
     if (is_paw()) {
-        auto paw                      = nlohmann::json::object();
-        paw["ae_core_charge_density"] = paw_ae_core_charge_density();
-        paw["ae_wfc"]                 = nlohmann::json::array();
+        auto paw                          = nlohmann::json::object();
+        dict["header"]["paw_core_energy"] = paw_core_energy();
+        paw["ae_core_charge_density"]     = paw_ae_core_charge_density();
+        if (has_paw_core_kinetic_density()) {
+            paw["ae_core_kinetic_density"] = paw_ae_core_kinetic_density();
+        }
+        paw["ae_wfc"] = nlohmann::json::array();
         for (auto& e : ae_paw_wfs_) {
             auto o               = nlohmann::json::object();
             o["radial_function"] = e;
             paw["ae_wfc"].push_back(o);
         }
-        paw["pw_wfc"] = nlohmann::json::array();
+        paw["ps_wfc"] = nlohmann::json::array();
         for (auto& e : ps_paw_wfs_) {
             auto o               = nlohmann::json::object();
             o["radial_function"] = e;

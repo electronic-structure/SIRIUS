@@ -53,6 +53,18 @@ external_xc_stress(Simulation_context& ctx, Density const& density, Potential& p
     for (int j = 0; j < ctx.num_mag_dims(); j++) {
         normalization += sirius::inner(density.mag(j), potential.effective_magnetic_field(j));
     }
+    if (cell.augment()) {
+        auto augmentation = density.generate_rho_aug();
+        Smooth_periodic_function<double> q(ctx.spfft<double>(), ctx.gvec_fft_sptr());
+        for (int j = 0; j < ctx.num_mag_dims() + 1; j++) {
+            for (int ig = 0; ig < ctx.gvec().count(); ig++) {
+                q.f_pw_local(ig) = augmentation(ig, j);
+            }
+            q.fft_transform(1);
+            auto const& v = j == 0 ? potential.xc_potential() : potential.effective_magnetic_field(j - 1);
+            normalization -= sirius::inner(q, v.rg());
+        }
+    }
     for (int mu = 0; mu < 3; mu++) {
         result(mu, mu) -= normalization / cell.omega();
     }
@@ -545,6 +557,9 @@ Stress::calc_stress_us()
     }
 
     potential_.fft_transform(-1);
+    if (ctx_.cb().external_xc_) {
+        potential_.xc_potential().rg().fft_transform(-1);
+    }
 
     la::lib_t la{la::lib_t::none};
     memory_t qmem{memory_t::none};
@@ -614,8 +629,12 @@ Stress::calc_stress_us()
                         double g = gvc.length();
 
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                            auto z = phase_factors(ia, igloc) * potential_.component(ispin).rg().f_pw_local(igloc) *
-                                     (-gvc[mu] / g);
+                            auto v = potential_.component(ispin).rg().f_pw_local(igloc);
+                            if (ctx_.cb().external_xc_) {
+                                v -= ispin == 0 ? potential_.xc_potential().rg().f_pw_local(igloc)
+                                                : potential_.effective_magnetic_field(ispin - 1).rg().f_pw_local(igloc);
+                            }
+                            auto z                   = phase_factors(ia, igloc) * v * (-gvc[mu] / g);
                             v_tmp(ia, 2 * igloc)     = z.real();
                             v_tmp(ia, 2 * igloc + 1) = z.imag();
                         }
