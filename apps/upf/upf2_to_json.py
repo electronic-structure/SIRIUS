@@ -18,9 +18,61 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import hashlib
+import math
 import sys
 import re
 import xml.etree.ElementTree as ET
+
+
+def add_kinetic_augmentation(pp_dict, upf_text, data_file):
+    """Import independent generator-supplied ultrasoft augmentation, not inferred from Q.
+
+    The JSON contains upf_sha256 and kinetic_augmentation. Each channel has
+    zero-based i/j, angular_momentum, and radial_function (r^2 T including 1/2)
+    on the UPF radial grid. All allowed channels, including zeros, are required.
+    For NLCC it also supplies core_kinetic_density in bohr^-5 without r^2.
+    """
+    pp = pp_dict['pseudo_potential']
+    header = pp['header']
+    if header['pseudo_type'] != 'US' or not header['is_ultrasoft']:
+        raise ValueError('Kinetic augmentation requires a non-PAW ultrasoft pseudopotential')
+    with open(data_file) as fh:
+        data = json.load(fh)
+    if data.get('upf_sha256') != hashlib.sha256(upf_text.encode('utf-8')).hexdigest():
+        raise ValueError('Kinetic augmentation does not match this UPF dataset')
+    grid = pp['radial_grid']
+    if not grid or grid[0] <= 0:
+        raise ValueError('Ultrasoft reconstruction requires a positive radial grid')
+    projectors = pp['beta_projectors']
+    expected = {(i, j, l) for j, b in enumerate(projectors) for i, a in enumerate(projectors[:j + 1])
+                for l in range(abs(a['angular_momentum'] - b['angular_momentum']),
+                               a['angular_momentum'] + b['angular_momentum'] + 1, 2)}
+    channels = data.get('kinetic_augmentation', [])
+    supplied = set()
+    for channel in channels:
+        i, j, l = (channel[key] for key in ('i', 'j', 'angular_momentum'))
+        if any(type(x) is not int for x in (i, j, l)):
+            raise ValueError('Kinetic augmentation indices must be integers')
+        key = (min(i, j), max(i, j), l)
+        if key not in expected or key in supplied:
+            raise ValueError('Invalid or duplicate kinetic augmentation channel')
+        values = channel['radial_function']
+        if len(values) != len(grid) or not all(math.isfinite(v) for v in values):
+            raise ValueError('Kinetic augmentation must be finite on the complete radial grid')
+        supplied.add(key)
+    if supplied != expected:
+        raise ValueError('Missing kinetic augmentation channels, including explicit zero channels')
+    core = data.get('core_kinetic_density')
+    nonzero_core = any(pp.get('core_charge_density', []))
+    if nonzero_core and core is None:
+        raise ValueError('NLCC requires independently supplied pseudo-core kinetic density')
+    if core is not None:
+        if (len(core) != len(grid) or not all(math.isfinite(v) and v >= 0 for v in core)
+                or nonzero_core != any(core)):
+            raise ValueError('Invalid or inconsistent pseudo-core kinetic density')
+        pp['core_kinetic_density'] = core
+    pp['kinetic_augmentation'] = channels
 
 
 def str2bool(v):
@@ -235,10 +287,10 @@ def parse_PAW(upf_dict, root):
     assert len(upf_dict['paw_data']['occupations']) == size
 
     # ---- Read AE core correction (density of core charge)
+    node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
     if 'size' in node.attrib:
         if upf_dict['header']['mesh_size'] != int(node.attrib['size']):
             print('WARNING: mesh_size != size(PP_AE_NLCC)')
-    node = root.findall("./PP_PAW/PP_AE_NLCC")[0]
     size = upf_dict['header']['mesh_size']
 
     upf_dict['paw_data']['ae_core_charge_density'] = [
@@ -383,6 +435,146 @@ def parse_upf2_from_file(upf2_fname):
     with open(upf2_fname) as inpf:
         upf2_str = inpf.read()
     return parse_upf2_from_string(upf2_str)
+
+
+def _nonnegative_values(values, name):
+    values = [float(v) for v in values]
+    if not values or any(not math.isfinite(v) or v < 0 for v in values):
+        raise ValueError(name + " must contain finite, nonnegative values")
+    return values
+
+
+def _radial_grid(values, name):
+    values = _nonnegative_values(values, name)
+    if len(values) < 3 or any(a >= b for a, b in zip(values, values[1:])):
+        raise ValueError(name + " must have at least three strictly increasing points")
+    return values
+
+
+def _resample_core(grid, values, target):
+    if target[0] < grid[0] or target[-1] > grid[-1]:
+        raise ValueError("PAW-XML radial grid does not cover the UPF grid")
+    if target == grid:
+        return values[:]
+
+    # GSL is already a SIRIUS dependency. Steffen interpolation preserves
+    # positivity without introducing extra extrema in the core profiles.
+    import ctypes as ct
+    from ctypes.util import find_library
+
+    library = find_library("gsl")
+    if library is None:
+        raise RuntimeError("PAW-XML resampling requires the GSL shared library on the library search path")
+    gsl = ct.CDLL(library)
+    ptr = ct.POINTER(ct.c_double)
+    gsl.gsl_interp_alloc.argtypes = [ct.c_void_p, ct.c_size_t]
+    gsl.gsl_interp_alloc.restype = ct.c_void_p
+    gsl.gsl_interp_init.argtypes = [ct.c_void_p, ptr, ptr, ct.c_size_t]
+    gsl.gsl_interp_eval_e.argtypes = [ct.c_void_p, ptr, ptr, ct.c_double, ct.c_void_p, ptr]
+    gsl.gsl_interp_free.argtypes = [ct.c_void_p]
+    gsl.gsl_interp_free.restype = None
+    x = (ct.c_double * len(grid))(*grid)
+    y = (ct.c_double * len(values))(*values)
+    interp = gsl.gsl_interp_alloc(ct.c_void_p.in_dll(gsl, "gsl_interp_steffen"), len(grid))
+    if not interp:
+        raise MemoryError("Cannot allocate PAW-XML radial interpolator")
+    try:
+        if gsl.gsl_interp_init(interp, x, y, len(grid)) != 0:
+            raise ValueError("Cannot initialize PAW-XML radial interpolator")
+        result = []
+        for radius in target:
+            value = ct.c_double()
+            if gsl.gsl_interp_eval_e(interp, x, y, radius, None, ct.byref(value)) != 0:
+                raise ValueError("Cannot interpolate PAW-XML core field")
+            result.append(value.value)
+        return _nonnegative_values(result, "Interpolated core field")
+    finally:
+        gsl.gsl_interp_free(interp)
+
+
+def add_paw_core_kinetic_density(pp_dict, xml_file):
+    """Import positive core tau from the matching ATOMPAW PAW-XML dataset.
+
+    Both core charge profiles must match the UPF to 1e-6 of their peak after
+    interpolation. This checks compatibility, not provenance: the caller must
+    supply the XML and UPF exported from the same atomic calculation.
+    """
+    pp = pp_dict['pseudo_potential']
+    if pp['header']['pseudo_type'] != 'PAW':
+        raise ValueError("PAW core XML requires a PAW UPF dataset")
+    try:
+        root = ET.parse(xml_file).getroot()
+    except ET.ParseError as error:
+        raise ValueError("Invalid PAW-XML: " + str(error)) from error
+
+    def node(path):
+        nodes = root.findall(path)
+        if len(nodes) != 1:
+            raise ValueError("PAW-XML must contain exactly one " + path)
+        return nodes[0]
+
+    if root.tag != 'paw_dataset' or not node('generator').get('name', '').lower().startswith('atompaw-'):
+        raise ValueError("Expected an ATOMPAW paw_dataset XML file")
+    atom = node('atom')
+    z, core, valence = _nonnegative_values(
+        [atom.get('Z', 'nan'), atom.get('core', 'nan'), atom.get('valence', 'nan')], 'Atomic charges')
+    upf_valence = _nonnegative_values([pp['header']['z_valence']], 'UPF valence charge')[0]
+    if (z == 0 or atom.get('symbol') != pp['header']['element'] or
+            abs(valence - upf_valence) > 1e-8 or
+            abs(core + valence - z) > 1e-8):
+        raise ValueError("PAW-XML element or electron counts do not match the UPF")
+    target = _radial_grid(pp['radial_grid'], 'UPF radial grid')
+    grids = {}
+    for radial in root.findall('radial_grid'):
+        name = radial.get('id')
+        if not name or name in grids:
+            raise ValueError("PAW-XML radial grids must have unique IDs")
+        grids[name] = _radial_grid((radial.findtext('values') or '').split(), 'PAW-XML radial grid')
+
+    def field(tag):
+        data = node(tag)
+        grid = grids.get(data.get('grid'))
+        if grid is None:
+            raise ValueError("Unknown radial grid for " + tag)
+        values = _nonnegative_values((data.text or '').split(), tag)
+        if len(values) != len(grid):
+            raise ValueError("Wrong number of radial values for " + tag)
+        # ATOMPAW stores Y_00 coefficients. SIRIUS uses full spherical fields
+        # in atomic units, including tau = sum_i f_i |grad psi_i|^2 / 2.
+        values = [v / math.sqrt(4 * math.pi) for v in values]
+        return _resample_core(grid, values, target)
+
+    def matching(values, original, name):
+        original = _nonnegative_values(original, name)
+        if len(original) != len(target):
+            raise ValueError("Wrong number of UPF radial values for " + name)
+        if max(abs(a - b) for a, b in zip(values, original)) > 1e-6 * max(original):
+            raise ValueError("PAW-XML and UPF disagree on " + name)
+
+    paw = pp['paw_data']
+    ps_core = pp.get('core_charge_density')
+    if ps_core is None and not pp['header']['core_correction']:
+        ps_core = [0.0] * len(target)
+    if ps_core is None:
+        raise ValueError("UPF core correction is enabled but its core charge density is missing")
+    for tag, original in [('ae_core_density', paw['ae_core_charge_density']),
+                          ('pseudo_core_density', ps_core)]:
+        matching(field(tag), original, tag)
+    ae_tau = field('ae_core_kinetic_energy_density')
+    ps_tau = field('pseudo_core_kinetic_energy_density')
+    if (core > 0) != any(paw['ae_core_charge_density']):
+        raise ValueError("PAW-XML core count disagrees with the UPF AE core charge density")
+    if (core > 0 and not any(ae_tau)) or (any(ps_core) and not any(ps_tau)):
+        raise ValueError("Nonzero core charge requires nonzero supplied core kinetic density")
+    if core == 0 and (any(ae_tau) or any(ps_tau)):
+        raise ValueError("A core-free dataset must have zero core kinetic density")
+    for owner, key, values in [(paw, 'ae_core_kinetic_density', ae_tau),
+                               (pp, 'core_kinetic_density', ps_tau)]:
+        if key in owner:
+            matching(values, owner[key], key)
+    # Do not modify the dataset until every field and compatibility check passes.
+    paw['ae_core_kinetic_density'] = ae_tau
+    pp['core_kinetic_density'] = ps_tau
 
 
 def main():
