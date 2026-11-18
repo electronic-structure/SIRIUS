@@ -168,51 +168,75 @@ class bspline_basis
 
     /// Constructor.
     bspline_basis(Radial_grid<double> const& rgrid__, int num_inner_points__, int nq__)
-        : knots_(make_interp_knots(rgrid__, order, num_inner_points__))
+        : bspline_basis(make_interp_knots(rgrid__, order, num_inner_points__), nq__)
     {
+    }
+
+    /// Construct an evaluation-only basis on a prescribed knot sequence.
+    explicit bspline_basis(std::vector<double> knots__)
+        : knots_(std::move(knots__))
+    {
+        if (knots_.size() < 2 * order ||
+            !std::all_of(knots_.begin(), knots_.end(), [](double x) { return std::isfinite(x); }) ||
+            !std::is_sorted(knots_.begin(), knots_.end()) || knots_.front() == knots_.back()) {
+            RTE_THROW("bspline_basis: invalid knot sequence");
+        }
+    }
+
+    /// Construct on a prescribed nondecreasing knot sequence, including repeated end knots.
+    bspline_basis(std::vector<double> knots__, int nq__, bool include_boundary__ = false, double origin_power__ = 1)
+        : bspline_basis(std::move(knots__))
+    {
+        if (!std::isfinite(origin_power__) || origin_power__ < 1) {
+            RTE_THROW("bspline_basis: invalid origin power");
+        }
         std::vector<double> xg;
         std::vector<double> wg;
         gauss_legendre_rule(nq__, xg, wg);
 
-        int n = this->size() - 1;
-
+        int n = this->size() - (include_boundary__ ? 0 : 1);
+        struct interval_t
+        {
+            int first{0};
+            std::vector<double> r, w;
+            std::vector<std::vector<double>> values, derivatives;
+        };
+        std::vector<interval_t> intervals(knots_.size() - 1);
+        // Each nonzero overlap of two knot intervals is the same global interval.
+        for (int q = 0; q < static_cast<int>(intervals.size()); q++) {
+            double a = knot(q), b = knot(q + 1);
+            if (b <= a) {
+                continue;
+            }
+            auto& interval = intervals[q];
+            interval.first = std::max(0, q - order + 1);
+            int count      = std::max(0, std::min(n, q + 1) - interval.first);
+            interval.values.resize(count);
+            interval.derivatives.resize(count);
+            for (int iq = 0; iq < nq__; iq++) {
+                double r = 0.5 * ((b - a) * xg[iq] + (b + a));
+                double w = 0.5 * (b - a) * wg[iq];
+                if (a == 0 && origin_power__ != 1) {
+                    // r=b*t^p resolves integrable fractional powers at the nucleus.
+                    double t = 0.5 * (xg[iq] + 1);
+                    r        = b * std::pow(t, origin_power__);
+                    w        = 0.5 * b * origin_power__ * std::pow(t, origin_power__ - 1) * wg[iq];
+                }
+                interval.r.push_back(r);
+                interval.w.push_back(w);
+                for (int j = 0; j < count; j++) {
+                    interval.values[j].push_back((*this)(interval.first + j, r));
+                    interval.derivatives[j].push_back(deriv(interval.first + j, r));
+                }
+            }
+        }
         for (int i = 0; i < n; i++) {
             for (int ik = 0; ik < order; ik++) {
-                double ai = this->knot(i + ik);
-                double bi = this->knot(i + ik + 1);
-                if (bi <= ai) {
-                    continue;
-                }
-
-                for (int j = 0; j < n; j++) {
-                    for (int jk = 0; jk < order; jk++) {
-                        double a = std::max(ai, this->knot(j + jk));
-                        double b = std::min(bi, this->knot(j + jk + 1));
-                        if (b <= a) {
-                            continue;
-                        }
-
-                        bspline_basis_pair p;
-                        p.i = i;
-                        p.j = j;
-                        for (int iq = 0; iq < nq__; iq++) {
-                            double r = 0.5 * ((b - a) * xg[iq] + (b + a));
-                            double w = 0.5 * (b - a) * wg[iq];
-
-                            double Bi  = this->operator()(i, r);
-                            double dBi = this->deriv(i, r);
-                            double Bj  = this->operator()(j, r);
-                            double dBj = this->deriv(j, r);
-
-                            p.r.push_back(r);
-                            p.w.push_back(w);
-                            p.Bi.push_back(Bi);
-                            p.dBi.push_back(dBi);
-                            p.Bj.push_back(Bj);
-                            p.dBj.push_back(dBj);
-                        }
-                        basis_pairs_.push_back(p);
-                    }
+                auto const& interval = intervals[i + ik];
+                for (int j = 0; j < static_cast<int>(interval.values.size()); j++) {
+                    int offset = i - interval.first;
+                    basis_pairs_.push_back({i, interval.first + j, interval.w, interval.r, interval.values[offset],
+                                            interval.derivatives[offset], interval.values[j], interval.derivatives[j]});
                 }
             }
         }
