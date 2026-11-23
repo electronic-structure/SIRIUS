@@ -44,6 +44,17 @@ namespace radial_solver_local {
 
 constexpr double alpha = 1.0 / speed_of_light;
 
+/// Exponent of the regular scalar-relativistic Coulomb solution p(r) near the nucleus.
+inline double
+scalar_relativistic_origin_power(int l__, double zn__)
+{
+    double square = 1 + l__ * (l__ + 1.0) - std::pow(alpha * zn__, 2);
+    if (l__ < 0 || !std::isfinite(zn__) || zn__ < 0 || square <= 0) {
+        RTE_THROW("scalar radial equation: invalid or supercritical Coulomb nucleus");
+    }
+    return zn__ == 0 ? l__ + 1.0 : std::sqrt(square);
+}
+
 template <relativity_t rel>
 inline double
 rel_mass(double enu__, double v__)
