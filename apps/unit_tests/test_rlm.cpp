@@ -781,6 +781,15 @@ test_rlm()
     std::vector<double> rlm((lmax + 1) * (lmax + 1));
     std::vector<double> rlm_ref((lmax + 1) * (lmax + 1));
 
+    auto near_pole = r3::spherical_coordinates({0, -5e-14, 1});
+    if (std::abs(near_pole[1] - 5e-14) > 1e-27 || std::abs(near_pole[2] - 1.5 * pi) > 1e-14) {
+        return 1;
+    }
+    sf::spherical_harmonics(1, r3::vector<double>{0, -1e-15, 0}, rlm.data());
+    if (std::abs(rlm[sf::lm(1, -1)] - std::sqrt(3 / pi) / 2) > 1e-14) {
+        return 1;
+    }
+
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
         double phi   = tp(1, k);

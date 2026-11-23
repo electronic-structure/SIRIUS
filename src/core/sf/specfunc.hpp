@@ -431,10 +431,10 @@ spherical_harmonics(int lmax, double theta, double phi, double* rlm, double sin_
 inline void
 spherical_harmonics(int lmax__, r3::vector<double> const& r__, double* rlm__)
 {
-    double transverse = std::hypot(r__[0], r__[1]);
-    double radius     = std::hypot(transverse, r__[2]);
-    sf::spherical_harmonics(lmax__, std::atan2(transverse, r__[2]), std::atan2(r__[1], r__[0]), rlm__,
-                            radius == 0 ? 0 : transverse / radius);
+    // A nonzero vector specifies a direction irrespective of its length.
+    auto vs   = r3::spherical_coordinates(r__, 0.0);
+    double st = vs[0] == 0 ? 0 : std::hypot(r__[0], r__[1]) / vs[0];
+    sf::spherical_harmonics(lmax__, vs[1], vs[2], rlm__, st);
 }
 
 /// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
@@ -526,6 +526,7 @@ sinxn(int n__, double x__)
 inline void
 dRlm_dr(int lmax__, r3::vector<double>& r__, mdarray<double, 2>& data__, bool divide_by_r__ = true)
 {
+    // Compute the trigonometric factors directly to avoid an angle round trip near the poles.
     double transverse = std::hypot(r__[0], r__[1]);
     double radius     = std::hypot(transverse, r__[2]);
     if (radius < 1e-12) {
