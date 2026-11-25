@@ -57,7 +57,8 @@ class Ultrasoft_xc_correction
     fields(mdarray<std::complex<double>, 3> const& dm__) const
     {
         int n = type_.indexb().size(), blocks = static_cast<int>(dm__.size(2));
-        if (dm__.size(0) != n || dm__.size(1) != n || blocks < 1 || blocks > 3 ||
+        if (dm__.size(0) != static_cast<size_t>(n) || dm__.size(1) != static_cast<size_t>(n) ||
+            blocks < 1 || blocks > 3 ||
             (type_.spin_orbit_coupling() && blocks != 3)) {
             RTE_THROW("ultrasoft XC: incompatible projector density matrix");
         }

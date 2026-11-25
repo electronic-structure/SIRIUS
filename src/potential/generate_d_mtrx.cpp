@@ -45,19 +45,18 @@ Potential::generate_d_mtrx()
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 xc_fields.push_back(&effective_magnetic_field(j));
             }
-            std::vector<mdarray<double, 3>> qxc;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 int n = unit_cell_.atom(ia).mt_basis_size();
-                qxc.emplace_back(std::array<index_range, 3>{n, n, ctx_.num_mag_dims() + 1});
+                external_uspp_d_mtrx_[ia] = mdarray<double, 3>({n, n, ctx_.num_mag_dims() + 1});
             }
-            generate_d_mtrx(xc_fields, qxc);
+            generate_d_mtrx(xc_fields, external_uspp_d_mtrx_);
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 auto const& type = unit_cell_.atom(ia).type();
+                auto& local      = external_uspp_d_mtrx_[ia];
                 if (!type.augment() || type.is_paw()) {
+                    local = mdarray<double, 3>{};
                     continue;
                 }
-                auto& local = external_uspp_d_mtrx_[ia];
-                local       = std::move(qxc[ia]);
                 for (size_t i = 0; i < local.size(); i++) {
                     local[i] = -local[i];
                 }
@@ -77,7 +76,7 @@ Potential::add_external_projector_d_mtrx(int ia__, mdarray<double, 3>& result__)
         RTE_THROW("external XC projector matrices are missing for the current potential");
     }
     auto const& x = external_projector_d_mtrx_[ia__];
-    if (x.size(0) != result__.size(0) || x.size(1) != result__.size(1) || x.size(2) != ctx_.num_mag_dims() + 1) {
+    if (x.size(0) != result__.size(0) || x.size(1) != result__.size(1) || x.size(2) != result__.size(2)) {
         RTE_THROW("external XC projector matrix components do not match the potential");
     }
     for (int j = 0; j < static_cast<int>(result__.size(1)); j++) {

@@ -360,7 +360,7 @@ class Spline : public Radial_grid<U>
     interpolation_adjoint(mdarray<T, 2> const& dcoeffs__) const
     {
         int n = this->num_points();
-        if (n < 4 || dcoeffs__.size(0) != n || dcoeffs__.size(1) != 4) {
+        if (n < 4 || dcoeffs__.size(0) != static_cast<size_t>(n) || dcoeffs__.size(1) != 4) {
             RTE_THROW("spline interpolation adjoint: incompatible coefficient derivatives");
         }
         std::vector<T> dy(n - 1, 0), m(n, 0), values(n), dl(n - 1), d(n), du(n - 1);

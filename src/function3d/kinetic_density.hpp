@@ -87,8 +87,9 @@ class Spheric_kinetic_density_operator
         , derivative_({grid__.num_points(), indexb__.indexr().size()})
         , angular_radial_({grid__.num_points(), indexb__.indexr().size()})
     {
-        if (grid_.num_points() < 4 || grid_.first() < 0 || radial__.size(0) != grid_.num_points() ||
-            radial__.size(1) != indexb_.indexr().size() ||
+        if (grid_.num_points() < 4 || grid_.first() < 0 ||
+            radial__.size(0) != static_cast<size_t>(grid_.num_points()) ||
+            radial__.size(1) != static_cast<size_t>(indexb_.indexr().size()) ||
             (!radial_sizes__.empty() && radial_sizes__.size() != radial__.size(1))) {
             RTE_THROW("atom-local kinetic density: invalid radial functions or grid");
         }
@@ -165,7 +166,8 @@ class Spheric_kinetic_density_operator
                 Spheric_function<function_domain_t::spectral, double>& tau__) const
     {
         check_field(tau__);
-        if (dm__.size(0) != indexb_.size() || dm__.size(1) != indexb_.size()) {
+        if (dm__.size(0) != static_cast<size_t>(indexb_.size()) ||
+            dm__.size(1) != static_cast<size_t>(indexb_.size())) {
             RTE_THROW("atom-local kinetic density: incompatible density matrix");
         }
         for (int j = 0; j < indexb_.size(); j++) {
