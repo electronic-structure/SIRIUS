@@ -55,8 +55,9 @@ class Lattice_relaxation
         Eigen::Matrix3d stress;
 
         for (int ia = 0; ia < na; ia++) {
+            auto rc = dft_.ctx().unit_cell().get_cartesian_coordinates(dft_.ctx().unit_cell().atom(ia).position());
             for (auto x : {0, 1, 2}) {
-                r(x, ia) = dft_.ctx().unit_cell().atom(ia).position()[x];
+                r(x, ia) = rc[x];
             }
         }
         /*
@@ -164,7 +165,8 @@ class Lattice_relaxation
             ctx.unit_cell().set_lattice_vectors({lat_a[0], lat_a[1], lat_a[2]}, {lat_b[0], lat_b[1], lat_b[2]},
                                                 {lat_c[0], lat_c[1], lat_c[2]});
             for (int ia = 0; ia < na; ia++) {
-                ctx.unit_cell().atom(ia).set_position({r(0, ia), r(1, ia), r(2, ia)});
+                auto rf = ctx.unit_cell().get_fractional_coordinates({r(0, ia), r(1, ia), r(2, ia)});
+                ctx.unit_cell().atom(ia).set_position(rf);
             }
             dft_.update();
             ctx.unit_cell().print_geometry_info(out, ctx.verbosity());

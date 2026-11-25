@@ -74,24 +74,33 @@ install(
 )
 
 # Python tests: run pytest against a `sirius` package assembled in the build tree, so that
-# no install step is needed. The pure python sources are symlinked, py_sirius is built into it.
+# no install step is needed. py_sirius is built into it. The pure python sources and the tests are
+# copied (not symlinked) so that the build tree is self-contained: the UENV CI tars the build directory
+# and runs the tests from a different checkout. configure_file() re-runs cmake when a file changes.
 if(BUILD_TESTING)
   set(SIRIUS_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/site-packages")
+  set(SIRIUS_PYTHON_TEST_DIR "${CMAKE_CURRENT_BINARY_DIR}/test")
   set_target_properties(${libname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${SIRIUS_PYTHON_BUILD_DIR}/sirius")
   file(MAKE_DIRECTORY "${SIRIUS_PYTHON_BUILD_DIR}/sirius")
-  file(GLOB _sirius_py_entries RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sirius" "${CMAKE_CURRENT_SOURCE_DIR}/sirius/*")
-  foreach(_entry IN LISTS _sirius_py_entries)
-    if(NOT _entry STREQUAL "__pycache__")
-      file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sirius/${_entry}" "${SIRIUS_PYTHON_BUILD_DIR}/sirius/${_entry}" SYMBOLIC)
-    endif()
+  file(GLOB_RECURSE _sirius_py_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sirius" CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/sirius/*.py")
+  foreach(_file IN LISTS _sirius_py_files)
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/sirius/${_file}" "${SIRIUS_PYTHON_BUILD_DIR}/sirius/${_file}" COPYONLY)
   endforeach()
 
-  file(GLOB _sirius_pytests RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/test" "${CMAKE_CURRENT_SOURCE_DIR}/test/test_*.py")
+  file(GLOB _sirius_test_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/test" CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/test/*.py" "${CMAKE_CURRENT_SOURCE_DIR}/test/*.json")
+  foreach(_file IN LISTS _sirius_test_files)
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/test/${_file}" "${SIRIUS_PYTHON_TEST_DIR}/${_file}" COPYONLY)
+  endforeach()
+
+  file(GLOB _sirius_pytests RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/test" CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/test/test_*.py")
   foreach(_test IN LISTS _sirius_pytests)
     get_filename_component(_name "${_test}" NAME_WE)
     add_test(NAME "python_${_name}"
       COMMAND ${Python3_EXECUTABLE} -m pytest -v -p no:cacheprovider "${_test}"
-      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/test")
+      WORKING_DIRECTORY "${SIRIUS_PYTHON_TEST_DIR}")
     set_tests_properties("python_${_name}" PROPERTIES
       LABELS "python"
       ENVIRONMENT_MODIFICATION "PYTHONPATH=path_list_prepend:${SIRIUS_PYTHON_BUILD_DIR}")

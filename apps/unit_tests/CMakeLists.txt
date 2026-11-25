@@ -2,7 +2,7 @@ set(unit_tests "test_init;test_nan;test_ylm;test_rlm;test_sinx_cosx;test_gvec;te
 test_fft_correctness_2;test_fft_correctness_3;test_rlm_deriv;test_spline_1;\
 test_spline_2;test_rot_ylm;test_linalg;test_wf_ortho_1;test_serialize;test_mempool;test_sim_ctx;test_roundoff;\
 test_sht_lapl;test_sht;test_spheric_function;test_splindex;test_gaunt_coeff_1;test_gaunt_coeff_2;test_gaunt_coeff_3;\
-test_gaunt_coeff_4;test_init_ctx;test_cmd_args;test_geom3d;test_any_ptr;test_kinetic_density;test_meta_gga;test_external_xc")
+test_gaunt_coeff_4;test_init_ctx;test_cmd_args;test_geom3d;test_any_ptr;test_kinetic_density;test_meta_gga;test_external_xc;test_radial_core_xc")
 
 foreach(name ${unit_tests})
   add_executable(${name} "${name}.cpp")
@@ -12,6 +12,7 @@ foreach(name ${unit_tests})
 endforeach()
 
 set_tests_properties(test_kinetic_density test_meta_gga test_external_xc PROPERTIES TIMEOUT 120)
+set_tests_properties(test_radial_core_xc PROPERTIES TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 if(MPIEXEC_EXECUTABLE)
   foreach(name test_kinetic_density test_meta_gga test_external_xc)
     add_test(NAME ${name}_mpi

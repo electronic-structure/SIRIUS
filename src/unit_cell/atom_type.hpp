@@ -25,6 +25,8 @@
 #include "core/r3/r3.hpp"
 #include "core/profiler.hpp"
 #include "core/packed_index.hpp"
+#include <map>
+#include <tuple>
 
 #ifdef SIRIUS_USE_PUGIXML
 #include "pugixml.hpp"
@@ -184,6 +186,9 @@ class Atom_type
         Beta-projectors must be loaded before loading the Q radial functions. */
     mdarray<Spline<double>, 2> q_radial_functions_l_;
 
+    /// Setup-supplied ultrasoft tau augmentation, including 1/2 and r^2 but no angular weights.
+    std::map<std::tuple<int, int, int>, std::vector<double>> kinetic_augmentation_;
+
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
 
@@ -206,7 +211,7 @@ class Atom_type
     bool is_paw_{false};
 
     /// Core energy of PAW.
-    bool paw_core_energy_{0};
+    double paw_core_energy_{0};
 
     /// List of all-electron wave functions of the PAW method.
     std::vector<std::vector<double>> ae_paw_wfs_;
@@ -232,6 +237,12 @@ class Atom_type
      *  pseudopotential file and is fixed during the calculation. This is different from LAPW
      *  core charge density, which is recomputed for each atom symmetry class. */
     std::vector<double> paw_ae_core_charge_density_;
+
+    /// Frozen-core positive orbital-gradient kinetic density, summed over both spins.
+    /** Setup-supplied values on radial_grid_, in bohr^-5, including occupations and
+     *  the factor 1/2 but no radial Jacobian or spherical-harmonic normalization.
+     *  An empty vector means unavailable, not a core-free setup. */
+    std::vector<double> paw_ae_core_kinetic_density_;
 
     /// True if the pseudo potential includes spin orbit coupling.
     bool spin_orbit_coupling_{false};
@@ -404,6 +415,56 @@ class Atom_type
     void
     add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__);
 
+    void
+    add_kinetic_augmentation(int i__, int j__, int l__, std::vector<double> values__)
+    {
+        int n = num_beta_radial_functions();
+        if (i__ < 0 || j__ < 0 || i__ >= n || j__ >= n || l__ < 0 || l__ > 2 * lmax_beta() ||
+            values__.size() != static_cast<size_t>(num_mt_points()) ||
+            std::any_of(values__.begin(), values__.end(), [](double v) { return !std::isfinite(v); })) {
+            RTE_THROW("invalid ultrasoft kinetic augmentation channel");
+        }
+        int li = beta_radial_functions_[i__].first.l(), lj = beta_radial_functions_[j__].first.l();
+        if (l__ < std::abs(li - lj) || l__ > li + lj || (li + lj + l__) % 2) {
+            RTE_THROW("ultrasoft kinetic augmentation has incompatible angular momentum");
+        }
+        if (i__ > j__) {
+            std::swap(i__, j__);
+        }
+        if (!kinetic_augmentation_.emplace(std::make_tuple(i__, j__, l__), std::move(values__)).second) {
+            RTE_THROW("duplicate ultrasoft kinetic augmentation channel");
+        }
+    }
+
+    void
+    check_kinetic_augmentation() const
+    {
+        if (!augment() || is_paw()) {
+            RTE_THROW("ultrasoft kinetic augmentation requires a non-PAW augmented setup");
+        }
+        for (int j = 0; j < num_beta_radial_functions(); j++) {
+            int lj = beta_radial_functions_[j].first.l();
+            for (int i = 0; i <= j; i++) {
+                int li = beta_radial_functions_[i].first.l();
+                for (int l = std::abs(li - lj); l <= li + lj; l += 2) {
+                    if (!kinetic_augmentation_.count({i, j, l})) {
+                        RTE_THROW("ultrasoft XC requires every allowed kinetic augmentation channel, including zeros");
+                    }
+                }
+            }
+        }
+        check_ps_core_kinetic_density();
+    }
+
+    auto const&
+    kinetic_augmentation(int i__, int j__, int l__) const
+    {
+        if (i__ > j__) {
+            std::swap(i__, j__);
+        }
+        return kinetic_augmentation_.at({i__, j__, l__});
+    }
+
     /// Set the radial grid of the given type.
     inline void
     set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
@@ -531,6 +592,24 @@ class Atom_type
         return ps_core_kinetic_density_;
     }
 
+    bool
+    has_ps_core_kinetic_density() const
+    {
+        return !ps_core_kinetic_density_.empty();
+    }
+
+    void
+    check_ps_core_kinetic_density() const
+    {
+        auto const& rho = ps_core_charge_density_;
+        bool has_charge = std::any_of(rho.begin(), rho.end(), [](double n) { return n != 0; });
+        auto nr         = static_cast<size_t>(num_mt_points());
+        if (rho.size() > nr || std::any_of(rho.begin(), rho.end(), [](double n) { return !std::isfinite(n); }) ||
+            ((has_charge || has_ps_core_kinetic_density()) && (nr < 4 || ps_core_kinetic_density_.size() != nr))) {
+            RTE_THROW("external XC with core charge requires matching pseudo-core kinetic density");
+        }
+    }
+
     void
     ps_core_kinetic_density(std::vector<double> values__)
     {
@@ -616,6 +695,36 @@ class Atom_type
     {
         paw_ae_core_charge_density_ = inp__;
         return paw_ae_core_charge_density_;
+    }
+
+    bool
+    has_paw_core_kinetic_density() const
+    {
+        return !paw_ae_core_kinetic_density_.empty();
+    }
+
+    std::vector<double> const&
+    paw_ae_core_kinetic_density() const
+    {
+        if (!has_paw_core_kinetic_density() ||
+            paw_ae_core_kinetic_density_.size() != static_cast<size_t>(num_mt_points())) {
+            RTE_THROW("PAW positive core kinetic density is unavailable on the current radial grid");
+        }
+        return paw_ae_core_kinetic_density_;
+    }
+
+    void
+    paw_ae_core_kinetic_density(std::vector<double> values__)
+    {
+        if (values__.empty() || values__.size() != static_cast<size_t>(num_mt_points())) {
+            RTE_THROW("PAW core kinetic density must cover the atomic radial grid");
+        }
+        for (auto value : values__) {
+            if (!std::isfinite(value) || value < 0) {
+                RTE_THROW("PAW positive core kinetic density must be finite and nonnegative");
+            }
+        }
+        paw_ae_core_kinetic_density_ = std::move(values__);
     }
 
     inline auto const&

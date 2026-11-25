@@ -61,6 +61,13 @@ class Potential : public Field4D
 
     bool external_xc_registered_{false};
     double external_xc_energy_{0};
+    std::vector<mdarray<double, 3>> external_projector_d_mtrx_;
+    std::vector<mdarray<double, 3>> external_uspp_d_mtrx_;
+    void
+    add_external_projector_d_mtrx(int ia__, mdarray<double, 3>& result__) const;
+    void
+    generate_d_mtrx(std::vector<Periodic_function<double> const*> const& fields__,
+                    std::vector<mdarray<double, 3>>& result__) const;
     void
     xc_external(Density const& density__);
 
@@ -838,10 +845,24 @@ class Potential : public Field4D
     }
 
     /// Integral of the electronic density times the XC potential.
+    double
+    energy_external_augmentation(Density const& density__) const
+    {
+        double result{0};
+        for (int ia = 0; ia < static_cast<int>(external_uspp_d_mtrx_.size()); ia++) {
+            if (external_uspp_d_mtrx_[ia].size()) {
+                auto dm = density__.density_matrix_aux(atom_index_t::global(ia));
+                result += calc_PAW_one_elec_energy(unit_cell_.atom(ia), dm, external_uspp_d_mtrx_[ia]);
+            }
+        }
+        return result;
+    }
+
     auto
     energy_vxc(Density const& density__) const
     {
-        return inner(density__.rho(), xc_potential()) - external_xc_background_contraction();
+        return inner(density__.rho(), xc_potential()) - external_xc_background_contraction() +
+               energy_external_augmentation(density__);
     }
 
     /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
