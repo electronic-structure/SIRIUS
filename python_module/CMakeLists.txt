@@ -75,7 +75,7 @@ install(
 
 # Python tests: run pytest against a `sirius` package assembled in the build tree, so that
 # no install step is needed. py_sirius is built into it. The pure python sources and the tests are
-# copied (not symlinked) so that the build tree is self-contained: the CI tars the build directory
+# copied (not symlinked) so that the build tree is self-contained: the UENV CI tars the build directory
 # and runs the tests from a different checkout. configure_file() re-runs cmake when a file changes.
 if(BUILD_TESTING)
   set(SIRIUS_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/site-packages")
