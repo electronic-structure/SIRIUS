@@ -46,7 +46,7 @@ Potential::generate_d_mtrx()
                 xc_fields.push_back(&effective_magnetic_field(j));
             }
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                int n = unit_cell_.atom(ia).mt_basis_size();
+                int n                     = unit_cell_.atom(ia).mt_basis_size();
                 external_uspp_d_mtrx_[ia] = mdarray<double, 3>({n, n, ctx_.num_mag_dims() + 1});
             }
             generate_d_mtrx(xc_fields, external_uspp_d_mtrx_);

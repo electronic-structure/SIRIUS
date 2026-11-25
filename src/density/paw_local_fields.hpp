@@ -73,8 +73,7 @@ class PAW_local_fields
     {
         int n = type_.indexb().size(), blocks = static_cast<int>(dm__.size(2));
         if (dm__.size(0) != static_cast<size_t>(n) || dm__.size(1) != static_cast<size_t>(n) ||
-            (blocks < 1 || blocks > 3) ||
-            (type_.spin_orbit_coupling() && blocks != 3)) {
+            (blocks < 1 || blocks > 3) || (type_.spin_orbit_coupling() && blocks != 3)) {
             RTE_THROW("local PAW fields: incompatible density matrix");
         }
         bool spinor      = blocks == 3;
