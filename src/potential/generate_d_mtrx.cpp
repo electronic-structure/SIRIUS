@@ -26,7 +26,80 @@ void
 Potential::generate_d_mtrx()
 {
     PROFILE("sirius::Potential::generate_d_mtrx");
+    std::vector<Periodic_function<double> const*> fields;
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        fields.push_back(&component(j));
+    }
+    generate_d_mtrx(fields, d_mtrx_);
+    external_uspp_d_mtrx_.clear();
+    if (ctx_.cb().external_xc_ && !external_projector_d_mtrx_.empty()) {
+        external_uspp_d_mtrx_.resize(unit_cell_.num_atoms());
+        bool ultrasoft{false};
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto const& type = unit_cell_.atom(ia).type();
+            ultrasoft |= type.augment() && !type.is_paw();
+        }
+        if (ultrasoft) {
+            xc_potential_->rg().fft_transform(-1);
+            std::vector<Periodic_function<double> const*> xc_fields{xc_potential_.get()};
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                xc_fields.push_back(&effective_magnetic_field(j));
+            }
+            std::vector<mdarray<double, 3>> qxc;
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                int n = unit_cell_.atom(ia).mt_basis_size();
+                qxc.emplace_back(std::array<index_range, 3>{n, n, ctx_.num_mag_dims() + 1});
+            }
+            generate_d_mtrx(xc_fields, qxc);
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                auto const& type = unit_cell_.atom(ia).type();
+                if (!type.augment() || type.is_paw()) {
+                    continue;
+                }
+                auto& local = external_uspp_d_mtrx_[ia];
+                local       = std::move(qxc[ia]);
+                for (size_t i = 0; i < local.size(); i++) {
+                    local[i] = -local[i];
+                }
+                add_external_projector_d_mtrx(ia, local);
+                for (size_t i = 0; i < local.size(); i++) {
+                    d_mtrx_[ia][i] += local[i];
+                }
+            }
+        }
+    }
+}
 
+void
+Potential::add_external_projector_d_mtrx(int ia__, mdarray<double, 3>& result__) const
+{
+    if (external_projector_d_mtrx_.size() != static_cast<size_t>(unit_cell_.num_atoms())) {
+        RTE_THROW("external XC projector matrices are missing for the current potential");
+    }
+    auto const& x = external_projector_d_mtrx_[ia__];
+    if (x.size(0) != result__.size(0) || x.size(1) != result__.size(1) || x.size(2) != ctx_.num_mag_dims() + 1) {
+        RTE_THROW("external XC projector matrix components do not match the potential");
+    }
+    for (int j = 0; j < static_cast<int>(result__.size(1)); j++) {
+        for (int k = 0; k < static_cast<int>(result__.size(0)); k++) {
+            if (ctx_.num_mag_dims() == 3) {
+                for (int s = 0; s < 4; s++) {
+                    result__(k, j, s) += x(k, j, s);
+                }
+            } else {
+                result__(k, j, 0) += ctx_.num_spins() == 1 ? x(k, j, 0) : 0.5 * (x(k, j, 0) + x(k, j, 1));
+                if (ctx_.num_spins() == 2) {
+                    result__(k, j, 1) += 0.5 * (x(k, j, 0) - x(k, j, 1));
+                }
+            }
+        }
+    }
+}
+
+void
+Potential::generate_d_mtrx(std::vector<Periodic_function<double> const*> const& fields__,
+                           std::vector<mdarray<double, 3>>& result__) const
+{
     /* local number of G-vectors */
     int gvec_count = ctx_.gvec().count();
     /* split local number of G-vectors into chunks */
@@ -47,7 +120,7 @@ Potential::generate_d_mtrx()
             n_mag_comp = ctx_.num_mag_dims() + 1;
             veff       = mdarray<std::complex<double>, 2>({gvec_count, n_mag_comp}, mph);
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                std::copy(&component(j).rg().f_pw_local(0), &component(j).rg().f_pw_local(0) + gvec_count, &veff(0, j));
+                std::copy(&fields__[j]->rg().f_pw_local(0), &fields__[j]->rg().f_pw_local(0) + gvec_count, &veff(0, j));
             }
             veff.allocate(*mpd).copy_to(memory_t::device);
             break;
@@ -66,7 +139,7 @@ Potential::generate_d_mtrx()
         if (!atom_type.augment()) {
             for (int i = 0; i < atom_type.num_atoms(); i++) {
                 auto ia = atom_type.atom_id(i);
-                d_mtrx_[ia].zero();
+                result__[ia].zero();
             }
             continue;
         }
@@ -107,7 +180,7 @@ Potential::generate_d_mtrx()
                             for (int g = 0; g < ng; g++) {
                                 int ig = ctx_.gvec().offset() + g_begin + g;
                                 /* V(G) * exp(i * G * r_{alpha}) */
-                                auto z = component(iv).rg().f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
+                                auto z = fields__[iv]->rg().f_pw_local(g_begin + g) * ctx_.gvec_phase_factor(ig, ia);
                                 veff_a(2 * g, i, 0)     = z.real();
                                 veff_a(2 * g + 1, i, 0) = z.imag();
                             }
@@ -162,7 +235,7 @@ Potential::generate_d_mtrx()
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nqlm; j++) {
                             d_tmp(j, i, iv) -=
-                                    component(iv).rg().f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
+                                    fields__[iv]->rg().f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 }
@@ -194,7 +267,7 @@ Potential::generate_d_mtrx()
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
                         /* D-matix is symmetric */
-                        d_mtrx_[ia](xi1, xi2, iv) = d_mtrx_[ia](xi2, xi1, iv) =
+                        result__[ia](xi1, xi2, iv) = result__[ia](xi2, xi1, iv) =
                                 d_tmp(idx12, i, iv) * unit_cell_.omega();
                     }
                 }

@@ -18,7 +18,7 @@
         "ngridk" : [1,1,1],
         "density_tol" : 1e-7,
         "energy_tol" : 1e-7,
-        "num_dft_iter" : 20,
+        "num_dft_iter" : 100,
         "lmax_apw"     : 8,
         "lmax_pot"     : 8,
         "lmax_rho"     : 8,

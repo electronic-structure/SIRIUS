@@ -595,35 +595,20 @@ find_translations(double radius__, matrix<double> const& lattice_vectors__)
     return limits;
 }
 
-/// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
+/// Transform Cartesian coordinates [x,y,z] to [r,theta,phi], with zero angles below the radial tolerance.
 inline auto
-spherical_coordinates(vector<double> vc)
+spherical_coordinates(vector<double> vc, double zero_radius__ = 1e-12)
 {
-    r3::vector<double> vs;
-
-    const double eps{1e-12};
-
-    const double twopi = 6.2831853071795864769;
-
-    vs[0] = vc.length();
-
-    if (vs[0] <= eps) {
-        vs[1] = 0.0;
-        vs[2] = 0.0;
-    } else {
-        vs[1] = std::acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
-
-        if (std::abs(vc[0]) > eps || std::abs(vc[1]) > eps) {
-            vs[2] = std::atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
-            if (vs[2] < 0.0) {
-                vs[2] += twopi;
-            }
-        } else {
-            vs[2] = 0.0;
-        }
+    constexpr double twopi{6.2831853071795864769};
+    double transverse = std::hypot(vc[0], vc[1]);
+    double radius     = std::hypot(transverse, vc[2]);
+    if (radius <= zero_radius__) {
+        return vector<double>{radius, 0.0, 0.0};
     }
-
-    return vs;
+    // atan2 preserves small polar angles that acos(z/r) loses.
+    double theta = std::atan2(transverse, vc[2]);
+    double phi   = transverse == 0 ? 0.0 : std::atan2(vc[1], vc[0]);
+    return vector<double>{radius, theta, phi < 0 ? phi + twopi : phi};
 }
 
 } // namespace r3
