@@ -1089,7 +1089,8 @@ Atom_type::read_input(std::string const& str__)
 
         pugi::xml_node upf = doc.child("UPF");
         if (upf.empty()) {
-            RTE_THROW("SIRIUS can only read UPF files with version >= 2. Use the upf_to_json tool.");
+            RTE_THROW("SIRIUS can only read UPF files with version >= 2. Convert it with upf2json (pip install "
+                      "upf_to_json).");
         }
         read_input(upf);
 #else
