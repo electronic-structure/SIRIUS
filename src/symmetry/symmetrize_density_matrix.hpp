@@ -42,13 +42,18 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
             /* apply spatial rotation */
             for (int m1 = 0; m1 < ss1; m1++) {
                 for (int m2 = 0; m2 < ss2; m2++) {
-                    std::array<std::complex<double>, 3> dm_rot_spatial = {0, 0, 0};
-                    for (int j = 0; j < num_mag_comp__; j++) {
-                        for (int m1p = 0; m1p < ss1; m1p++) {
-                            for (int m2p = 0; m2p < ss2; m2p++) {
-                                dm_rot_spatial[j] += std::conj(rotm__[am1.l()](m1, m1p)) *
-                                                     dm_ia__(offset1 + m1p, offset2 + m2p, j) *
-                                                     rotm__[am2.l()](m2, m2p);
+                    std::array<std::complex<double>, 4> dm_rot_spatial{};
+                    for (int m1p = 0; m1p < ss1; m1p++) {
+                        for (int m2p = 0; m2p < ss2; m2p++) {
+                            int i    = offset1 + m1p;
+                            int j    = offset2 + m2p;
+                            auto rot = std::conj(rotm__[am1.l()](m1, m1p)) * rotm__[am2.l()](m2, m2p);
+                            for (int k = 0; k < num_mag_comp__; k++) {
+                                dm_rot_spatial[k] += rot * dm_ia__(i, j, k);
+                            }
+                            if (num_mag_comp__ == 3) {
+                                /* D_du(i,j) = conj(D_ud(j,i)). */
+                                dm_rot_spatial[3] += rot * std::conj(dm_ia__(j, i, 2));
                             }
                         }
                     }
@@ -57,7 +62,7 @@ apply_symmetry_to_density_matrix(mdarray<std::complex<double>, 3> const& dm_ia__
                         dm_ja__(offset1 + m1, offset2 + m2, 0) += dm_rot_spatial[0];
                     } else { /* magnetic symmetrization */
                         std::complex<double> spin_dm[2][2] = {{dm_rot_spatial[0], dm_rot_spatial[2]},
-                                                              {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
+                                                              {dm_rot_spatial[3], dm_rot_spatial[1]}};
 
                         /* spin blocks of density matrix are: uu, dd, ud
                            the mapping from linear index (0, 1, 2) of density matrix components is:

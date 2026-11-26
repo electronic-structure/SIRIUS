@@ -289,6 +289,10 @@ diagonalize_fp_fv_davidson(Hamiltonian_k<double> const& Hk__, K_point<double>& k
 
     auto& ctx = Hk__.H0().ctx();
 
+    if (ctx.valence_relativity() == relativity_t::iora) {
+        RTE_THROW("Davidson solver with IORA relativity is not implemented yet");
+    }
+
     auto& itso = ctx.cfg().iterative_solver();
 
     /* number of singular components */
@@ -474,7 +478,7 @@ diagonalize_fp_sv(Hamiltonian_k<double> const& Hk__, K_point<double>& kp__)
         /* compute <wf_i | h * wf_j> for up-dn block */
         wf::inner(ctx.spla_context(), mem, sr, kp__.fv_states(), br, hpsi[2], br, h, 0, nfv);
 
-        if (kp__.comm().size() == 1) {
+        if (h.blacs_grid().comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {
                 for (int j = 0; j < nfv; j++) {
                     h(nfv + j, i) = std::conj(h(i, nfv + j));

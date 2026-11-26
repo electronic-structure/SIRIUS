@@ -6,6 +6,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <optional>
 #include <fmt/format.h>
 #include <limits>
 #include "core/rte/rte.hpp"
@@ -681,31 +682,31 @@ K_point_set::save(std::string const& name__) const
 void
 K_point_set::load(std::string const& name__)
 {
-    HDF5_tree fin(name__, hdf5_access_t::read_only);
-
-    int num_kpoints_in;
-    fin["K_point_set"].read("num_kpoints", &num_kpoints_in, 1);
-    if (num_kpoints_in != num_kpoints()) {
-        RTE_THROW("wrong number of k-points");
-    }
-
-    /// Index of current k-points in the saved file.
+    std::optional<HDF5_tree> fin;
     std::vector<int> ikidx(num_kpoints(), -1);
-    // read available k-points
-    r3::vector<double> vk_in;
-    for (int jk = 0; jk < num_kpoints(); jk++) {
-        fin["K_point_set"][jk].read("vk", &vk_in[0], 3);
-        auto ik = this->find_kpoint(vk_in);
-        if (ik == -1) {
-            RTE_THROW("wrong index of k-point");
+    ctx_.comm().collective_call([&] {
+        fin.emplace(name__, hdf5_access_t::read_only);
+        auto kset = (*fin)["K_point_set"];
+        int num_kpoints_in;
+        kset.read("num_kpoints", &num_kpoints_in, 1);
+        if (num_kpoints_in != num_kpoints()) {
+            RTE_THROW("wrong number of k-points");
         }
-        // to get current point ik go to jk in the file
-        ikidx[ik] = jk;
-    }
-    for (auto it : spl_num_kpoints_) {
-        auto kp = this->get<double>(it.i);
-        kp->load(fin["K_point_set"][ikidx[it.i]]);
-    }
+        for (int jk = 0; jk < num_kpoints(); jk++) {
+            r3::vector<double> vk_in;
+            kset[jk].read("vk", &vk_in[0], 3);
+            auto ik = this->find_kpoint(vk_in);
+            if (ik == -1 || ikidx[ik] != -1) {
+                RTE_THROW("wrong index of k-point");
+            }
+            ikidx[ik] = jk;
+        }
+    });
+    ctx_.comm().collective_call([&] {
+        for (auto it : spl_num_kpoints_) {
+            this->get<double>(it.i)->load((*fin)["K_point_set"][ikidx[it.i]]);
+        }
+    });
     this->sync_band<double, sync_band_t::energy>();
     this->sync_band<double, sync_band_t::occupancy>();
 }

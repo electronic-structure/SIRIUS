@@ -189,7 +189,7 @@ class Radial_grid
     auto
     segment(int num_points__) const
     {
-        assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
+        assert(num_points__ >= 2 && num_points__ <= (int)x_.size());
         Radial_grid<T> r;
         r.name_  = name_ + " (segment)";
         r.x_     = mdarray<T, 1>({num_points__});
@@ -216,16 +216,11 @@ class Radial_grid
     uint64_t
     hash() const
     {
-        return 0;
+        auto h = x_.hash();
+        h      = dx_.hash(h);
+        h      = x_inv_.hash(h);
+        return h;
     }
-
-    // uint64_t hash() const
-    //{
-    //    uint64_t h = Utils::hash(&x_(0), x_.size() * sizeof(double));
-    //    h += Utils::hash(&dx_(0), dx_.size() * sizeof(double), h);
-    //    h += Utils::hash(&x_inv_(0), x_inv_.size() * sizeof(double), h);
-    //    return h;
-    //}
 };
 
 template <typename T>

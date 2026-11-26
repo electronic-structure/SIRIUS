@@ -347,11 +347,14 @@ class Radial_solver
     double epsrel_{1e-3};
 
     /// Integrate system of two first-order differential equations forward starting from the origin.
+    /// initial_scale__ matches the origin data to the scale of the source terms.
+    /// With scale_factor__, keep the solution unnormalized and return its additional overflow scale.
     template <relativity_t rel>
     int
     integrate_forward_gsl(double enu__, int l__, int k__, Spline<double>& chi_p__, Spline<double>& chi_q__,
                           std::vector<double>& p__, std::vector<double>& dpdr__, std::vector<double>& q__,
-                          std::vector<double>& dqdr__, bool bound_state__) const
+                          std::vector<double>& dqdr__, bool bound_state__, double initial_scale__ = 1.0,
+                          double* scale_factor__ = nullptr) const
     {
         struct params
         {
@@ -505,7 +508,9 @@ class Radial_solver
 
         int last_point{radial_grid_.num_points() - 1};
 
+        double scale;
         auto integrate_forward = [&](int last_point) -> std::vector<int> {
+            scale = 1.0;
             params p;
             p.enu   = enu__;
             p.l     = l__;
@@ -530,26 +535,33 @@ class Radial_solver
             double x = radial_grid_[0];
             double y[2];
             switch (rel) {
-                case relativity_t::none: {
-                    if (l__ == 0) {
-                        y[0] = 2 * x * zn_;
-                        y[1] = -std::pow(zn_, 2) * x;
-                    } else {
-                        y[0] = std::pow(x, l__ + 1) / (2 * l__ + 1);
-                        y[1] = std::pow(x, l__) / 4;
-                    }
-                    break;
-                }
+                case relativity_t::none:
                 case relativity_t::koelling_harmon:
                 case relativity_t::zora:
                 case relativity_t::iora: {
-                    double a = l__ * (l__ + 1) + 1 - std::pow(radial_solver_local::alpha * zn_, 2);
-                    double b = 0.5 * (1 + std::sqrt(1 + 4 * a));
-                    y[0]     = std::pow(x, b);
-                    y[1]     = (x * b * std::pow(x, b - 1) - y[0]) / zn_ / std::pow(radial_solver_local::alpha, 2);
+                    if (zn_ == 0) {
+                        double M = radial_solver_local::rel_mass<rel>(enu__, ve_(0));
+                        y[0]     = std::pow(x, l__ + 1);
+                        y[1]     = l__ * std::pow(x, l__) / (2.0 * M);
+                    } else if constexpr (rel == relativity_t::none) {
+                        if (l__ == 0) {
+                            y[0] = 2 * x * zn_;
+                            y[1] = -std::pow(zn_, 2) * x;
+                        } else {
+                            y[0] = std::pow(x, l__ + 1) / (2 * l__ + 1);
+                            y[1] = std::pow(x, l__) / 4;
+                        }
+                    } else {
+                        double b = radial_solver_local::scalar_relativistic_origin_power(l__, zn_);
+                        y[0]     = std::pow(x, b);
+                        y[1]     = (b - 1.0) * y[0] / (zn_ * std::pow(radial_solver_local::alpha, 2));
+                    }
                     break;
                 }
                 case relativity_t::dirac: {
+                    if (zn_ == 0) {
+                        RTE_THROW("Dirac radial solver requires zn > 0");
+                    }
                     double b = std::sqrt(std::pow(p.kappa, 2) - std::pow(zn_ / speed_of_light, 2));
                     y[0]     = std::pow(x, b);
                     y[1]     = std::pow(x, b - 1) * (b + p.kappa) * x / radial_solver_local::alpha / zn_;
@@ -557,6 +569,8 @@ class Radial_solver
                 }
             }
 
+            y[0] *= initial_scale__;
+            y[1] *= initial_scale__;
             p__[0] = y[0];
             q__[0] = y[1];
 
@@ -564,7 +578,7 @@ class Radial_solver
 
             const gsl_odeiv2_step_type* T = gsl_odeiv2_step_rk8pd;
             gsl_odeiv2_step* s            = gsl_odeiv2_step_alloc(T, 2);
-            gsl_odeiv2_control* c         = gsl_odeiv2_control_y_new(epsabs_, epsrel_);
+            gsl_odeiv2_control* c         = gsl_odeiv2_control_y_new(epsabs_ * initial_scale__, epsrel_);
             gsl_odeiv2_evolve* e          = gsl_odeiv2_evolve_alloc(2);
 
             std::vector<int> ridx;
@@ -602,6 +616,7 @@ class Radial_solver
 
                 if (std::abs(y[0]) > max_val) {
                     ridx.push_back(p.ir + 1);
+                    scale /= max_val;
                     for (int j = 0; j <= p.ir + 1; j++) {
                         p__[j] /= max_val;
                         q__[j] /= max_val;
@@ -611,6 +626,9 @@ class Radial_solver
 
                     chi_p__.scale(1.0 / max_val);
                     chi_q__.scale(1.0 / max_val);
+                    /* The absolute tolerance and the cached derivative refer to the old scale. */
+                    gsl_odeiv2_control_init(c, epsabs_ * initial_scale__ * scale, epsrel_, 1.0, 0.0);
+                    gsl_odeiv2_evolve_reset(e);
                 }
             }
             gsl_odeiv2_evolve_free(e);
@@ -676,6 +694,11 @@ class Radial_solver
                     break;
                 }
             }
+        }
+
+        if (scale_factor__) {
+            *scale_factor__ = scale;
+            return nn;
         }
 
         /* normalize */
@@ -751,6 +774,7 @@ class Radial_solver
 
         using namespace radial_solver_local;
 
+        double initial_scale{1.0};
         for (int j = 0; j <= dme__; j++) {
             p.push_back(std::vector<double>(nr));
             q.push_back(std::vector<double>(nr));
@@ -844,29 +868,42 @@ class Radial_solver
                 chi_q.interpolate();
             }
 
+            double scale{1.0};
+            auto* intermediate_scale = (j > 0 && j < dme__) ? &scale : nullptr;
             switch (rel__) {
                 case relativity_t::none: {
                     nn = integrate_forward_gsl<relativity_t::none>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j],
-                                                                   dqdr[j], false);
+                                                                   dqdr[j], false, initial_scale, intermediate_scale);
                     break;
                 }
                 case relativity_t::koelling_harmon: {
                     nn = integrate_forward_gsl<relativity_t::koelling_harmon>(enu__, l__, 0, chi_p, chi_q, p[j],
-                                                                              dpdr[j], q[j], dqdr[j], false);
+                                                                              dpdr[j], q[j], dqdr[j], false,
+                                                                              initial_scale, intermediate_scale);
                     break;
                 }
                 case relativity_t::zora: {
                     nn = integrate_forward_gsl<relativity_t::zora>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j],
-                                                                   dqdr[j], false);
+                                                                   dqdr[j], false, initial_scale, intermediate_scale);
                     break;
                 }
                 case relativity_t::iora: {
                     nn = integrate_forward_gsl<relativity_t::iora>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j],
-                                                                   dqdr[j], false);
+                                                                   dqdr[j], false, initial_scale, intermediate_scale);
                     break;
                 }
                 default: {
                     RTE_THROW("unsupported relativity type");
+                }
+            }
+            /* Apply this order's overflow scale to the remaining sources and origin data. */
+            if (scale != 1.0) {
+                initial_scale *= scale;
+                for (int k = 0; k < j; k++) {
+                    for (int i = 0; i < nr; i++) {
+                        p[k][i] *= scale;
+                        q[k][i] *= scale;
+                    }
                 }
             }
         }

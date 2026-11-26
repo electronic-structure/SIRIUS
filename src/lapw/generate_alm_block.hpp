@@ -33,14 +33,16 @@ generate_alm_block(Simulation_context const& ctx__, int atom_begin__, int num_at
     mdarray<std::complex<T>, 2> result;
 
     /* quick exit */
-    if (conjugate && alm__.all_atoms()) {
-        result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
-                                             const_cast<std::complex<T>*>(alm__.begin(atom_begin__)),
-                                             mdarray_label("alm_block"));
-        if (ctx__.processing_unit() == device_t::GPU) {
-            result.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+    if constexpr (conjugate && std::is_same_v<T, double>) {
+        if (alm__.all_atoms()) {
+            result = mdarray<std::complex<T>, 2>({alm__.gkvec().count(), num_mt_aw},
+                                                 const_cast<std::complex<T>*>(alm__.begin(atom_begin__)),
+                                                 mdarray_label("alm_block"));
+            if (ctx__.processing_unit() == device_t::GPU) {
+                result.allocate(get_memory_pool(memory_t::device)).copy_to(memory_t::device);
+            }
+            return result;
         }
-        return result;
     }
 
     switch (ctx__.processing_unit()) {
