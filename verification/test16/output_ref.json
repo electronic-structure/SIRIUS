@@ -4,12 +4,12 @@
         "chemical_formula": "Ni2O2",
         "config": {
             "control": {
-                "beta_chunk_size": 256,
                 "beta_on_device": false,
                 "cyclic_block_size": 16,
                 "fft_mode": "parallel",
                 "gen_evp_solver_name": "lapack",
                 "gvec_chunk_size": 500000,
+                "max_atom_chunk_size": 64,
                 "mpi_grid_dims": [1,1],
                 "num_bands_to_print": 10,
                 "ortho_rf": false,
@@ -21,24 +21,71 @@
                 "reduce_gvec": false,
                 "rmt_max": 2.2,
                 "save_rf": false,
+                "save_wf": false,
                 "spglib_tolerance": 1e-06,
                 "std_evp_solver_name": "lapack",
                 "use_second_variation": true,
                 "verbosity": 2,
                 "verification": 0
             },
+            "dftd3": {
+                "cutoff_cn": 40.0,
+                "cutoff_disp2": 60.0,
+                "cutoff_disp3": 40.0,
+                "cutoff_width2": 0.05,
+                "cutoff_width3": 0.0,
+                "damping": "rational",
+                "damping_values": "auto",
+                "method": "none",
+                "parameters": {
+                    "a1": 0.0,
+                    "a2": 0.0,
+                    "alp": 0.0,
+                    "beta": 0.0,
+                    "rs6": 0.0,
+                    "rs8": 0.0,
+                    "s6": 0.0,
+                    "s8": 0.0,
+                    "s9": 0.0
+                },
+                "three_body": true
+            },
+            "dftd4": {
+                "cutoff_cn": 30.0,
+                "cutoff_disp2": 60.0,
+                "cutoff_disp3": 40.0,
+                "cutoff_width2": 0.05,
+                "cutoff_width3": 0.0,
+                "damping": "rational",
+                "damping_values": "auto",
+                "method": "none",
+                "parameters": {
+                    "a1": 0.0,
+                    "a2": 0.0,
+                    "alp": 0.0,
+                    "bet": 0.0,
+                    "enable": false,
+                    "rs6": 0.0,
+                    "rs8": 0.0,
+                    "s6": 0.0,
+                    "s8": 0.0,
+                    "s9": 0.0
+                },
+                "three_body": true
+            },
             "hubbard": {
-                "constrained_calculation": false,
-                "constraint_beta_mixing": 0.4,
-                "constraint_error": 1e-06,
-                "constraint_max_iteration": 10,
-                "constraint_method": "energy",
-                "constraint_strength": 1.0,
-                "hubbard_subspace_method": "none",
+                "constraint": {
+                    "beta_mixing": 0.4,
+                    "error": 1e-06,
+                    "local": [],
+                    "maxiter": 10,
+                    "strength": 1.0,
+                    "type": "energy"
+                },
                 "local": [],
-                "local_constraint": [],
                 "nonlocal": [],
-                "simplified": false
+                "simplified": false,
+                "subspace_method": "none"
             },
             "iterative_solver": {
                 "converge_by_energy": 1,
@@ -50,11 +97,15 @@
                 "init_subspace": "lcao",
                 "locking": true,
                 "min_num_res": 0,
+                "min_occupancy": 1e-14,
+                "min_tolerance": 1e-13,
                 "num_singular": -1,
                 "num_steps": 20,
                 "relative_tolerance": 0,
                 "residual_tolerance": 1e-06,
                 "subspace_size": 2,
+                "tolerance_ratio": 0,
+                "tolerance_scale": [0.1,0.5],
                 "type": "exact"
             },
             "locked": true,
@@ -62,8 +113,8 @@
                 "beta": 0.2,
                 "beta0": 0.15,
                 "beta_scaling_factor": 1.0,
-                "linear_mix_rms_tol": 1000000.0,
                 "max_history": 8,
+                "rms_min": 1e-16,
                 "type": "anderson",
                 "use_hartree": false
             },
@@ -81,9 +132,12 @@
                 "aw_cutoff": 5,
                 "core_relativity": "dirac",
                 "density_tol": 1e-06,
+                "dftd3_correction": false,
+                "dftd4_correction": false,
                 "electronic_structure_method": "full_potential_lapwlo",
                 "energy_tol": 1e-08,
                 "extra_charge": 0,
+                "fixed_mag": 0,
                 "gamma_point": false,
                 "gk_cutoff": 2.6670581079403073,
                 "hubbard_correction": false,
@@ -113,24 +167,26 @@
                 "veff_pw_cutoff": 0.0,
                 "vk": [],
                 "xc_dens_tre": -1,
-                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PZ"]
+                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PZ"],
+                "xc_functionals_weight": []
             },
             "settings": {
-                "always_update_wf": true,
                 "auto_enu_tol": 0,
                 "fft_grid_size": [64,64,64],
                 "fp32_to_fp64_rms": 0,
-                "itsol_tol_min": 1e-13,
-                "itsol_tol_ratio": 0,
-                "itsol_tol_scale": [0.1,0.5],
-                "min_occupancy": 1e-14,
-                "mixer_rms_min": 1e-16,
                 "nprii_aug": 20,
                 "nprii_beta": 20,
                 "nprii_rho_core": 20,
                 "nprii_vloc": 200,
+                "pseudo_grid_cutoff": 10.0,
                 "radial_grid": "exponential, 1.0",
+                "real_occupation_matrix": false,
                 "sht_coverage": 0,
+                "sht_lmax": -1,
+                "simple_lapw_ri": false,
+                "smooth_initial_mag": false,
+                "tol_ne": 0.01,
+                "use_coarse_fft_grid": true,
                 "xc_use_lapl": false
             },
             "unit_cell": {
@@ -142,12 +198,12 @@
                 "atom_types": ["Ni","O"],
                 "atoms": {
                     "Ni": [
-                        [0.0,0.0,0.0],
-                        [0.5,0.5,0.5]
+                        [0.0,0.0,0.0,0.0,0.0,2.0],
+                        [0.5,0.5,0.5,0.0,0.0,-2.0]
                     ],
                     "O": [
-                        [0.25,0.25,0.25],
-                        [0.75,0.75,0.75]
+                        [0.25,0.25,0.25,0.0,0.0,0.0],
+                        [0.75,0.75,0.75,0.0,0.0,0.0]
                     ]
                 },
                 "lattice_vectors": [
@@ -175,44 +231,46 @@
     },
     "counters": {
         "band_evp_work_count": 0.0,
-        "local_operator_num_applied": 6000
+        "local_operator_num_applied": 4080
     },
-    "git_hash": "a0d09bff305c7d162e6e43a792018b99bd33b276",
+    "git_hash": "909606e4fadb37e470d61b70dd9a1a6052aa1d60",
     "ground_state": {
-        "band_gap": 0.0319646229971253,
+        "band_gap": 0.03196449975812529,
         "converged": true,
-        "core_leakage": 9.188792348298539e-09,
-        "efermi": 0.2564357909829238,
+        "core_leakage": 9.174345596979788e-09,
+        "efermi": 0.25643564903537275,
         "energy": {
-            "bxc": -0.07277212846177242,
-            "core_eval_sum": -1782.5367062362159,
-            "entropy_sum": -0.0006429272365177425,
-            "enuc": -3845.7185576035718,
-            "eval_sum": -1819.7577673022984,
+            "bxc": -0.07277220623342312,
+            "core_eval_sum": -1782.536705775339,
+            "dftd3": 0.0,
+            "dftd4": 0.0,
+            "entropy_sum": -0.000642914421066223,
+            "enuc": -3845.7185669356722,
+            "eval_sum": -1819.7577720334418,
             "ewald": 0.0,
-            "exc": -138.3723343989294,
-            "free": -3185.745242608278,
-            "kin": 3233.342670542522,
-            "scf_correction": -2.156351001758594e-06,
-            "total": -3185.7445996810416,
-            "veff": -5053.027665716359,
-            "vha": -4869.992752129422,
-            "vxc": -183.03491358693552
+            "exc": -138.3723350343133,
+            "free": -3185.745226342776,
+            "kin": 3233.342722184177,
+            "scf_correction": 1.7590264178579673e-07,
+            "total": -3185.744583428355,
+            "veff": -5053.027722011386,
+            "vha": -4869.992807636898,
+            "vxc": -183.03491437448776
         },
-        "etot_history": [-3187.2112867315627,-3174.764341436864,-3186.828590029932,-3180.8389992101716,-3182.0304974244445,-3185.8617698830535,-3185.996352300762,-3185.8318166166996,-3185.6958718587107,-3185.6675352939615,-3185.69749653049,-3185.7439359132854,-3185.7443782785626,-3185.7444807258726,-3185.74458840635,-3185.7446057050656,-3185.7446184825744,-3185.744613213639,-3185.744600552935,-3185.744598797949,-3185.7445992861863,-3185.744599498265,-3185.744599672597,-3185.7445996839274,-3185.7445996810416],
+        "etot_history": [-3185.5846950419245,-3185.7229431030228,-3185.731456550881,-3185.7393312168824,-3185.7444333684284,-3185.7446224429696,-3185.7445906529806,-3185.7445711692653,-3185.7445857353546,-3185.744583260098,-3185.7445842277193,-3185.744583490488,-3185.744583484012,-3185.744583443955,-3185.7445834321397,-3185.7445834335863,-3185.744583428355],
         "magnetisation": {
             "atoms": [
-                [0.0,0.0,1.129343143583832],
-                [0.0,0.0,-1.129343143583832],
-                [0.0,0.0,-1.9013971905703217e-33],
-                [0.0,0.0,1.3022172600452156e-33]
+                [0.0,0.0,1.129342842692396],
+                [0.0,0.0,-1.1293428426923957],
+                [0.0,0.0,1.8602405962592007e-33],
+                [0.0,0.0,2.9868616522968423e-33]
             ],
-            "total": [0.0,0.0,-5.991799305251061e-34]
+            "total": [0.0,0.0,2.220446049250313e-16]
         },
-        "num_scf_iterations": 24,
-        "rho_min": 0.009334753031491755,
-        "rms_history": [1.1036604805857115,0.7843482678907403,0.42194653197440074,0.31081053908851836,0.3217397260479829,0.07230032092400514,0.05715952977838594,0.09340798668231366,0.06087660078117265,0.027561082766426614,0.031547528113397026,0.006610836060895933,0.0032044504772272245,0.002165415683166575,0.0011878991718761813,0.0008852429930154192,0.0004106085477594426,0.00030322629378619413,4.3783655357700214e-05,1.7319869879291257e-05,3.7348488077854443e-06,2.0425673658945475e-06,1.0811848977506837e-06,7.455267021088857e-07,1.9329858938611556e-07],
-        "scf_time": 45.259411271
+        "num_scf_iterations": 16,
+        "rho_min": 0.00933495661674279,
+        "rms_history": [11.262232637413616,9.011217180294883,0.49213961380734167,0.17522536663054653,0.059965273393311654,0.03648447853869736,0.005683362993229355,0.002846216139255536,0.0006061462074185419,0.00016011648187786297,0.00015224795289247193,2.4030973445141015e-05,1.8668197202731156e-05,6.256558059552493e-06,3.110237765183439e-06,2.1013162133153757e-06,2.159883974421612e-07],
+        "scf_time": 10.712810713
     },
     "task": 0,
     "threads_per_rank": 16

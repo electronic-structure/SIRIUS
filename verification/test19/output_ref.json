@@ -4,12 +4,12 @@
         "chemical_formula": "Fe",
         "config": {
             "control": {
-                "beta_chunk_size": 256,
                 "beta_on_device": false,
                 "cyclic_block_size": 8,
                 "fft_mode": "parallel",
                 "gen_evp_solver_name": "lapack",
                 "gvec_chunk_size": 500000,
+                "max_atom_chunk_size": 64,
                 "mpi_grid_dims": [1,1],
                 "num_bands_to_print": 10,
                 "ortho_rf": false,
@@ -21,24 +21,71 @@
                 "reduce_gvec": false,
                 "rmt_max": 2.0,
                 "save_rf": false,
+                "save_wf": false,
                 "spglib_tolerance": 1e-06,
                 "std_evp_solver_name": "lapack",
                 "use_second_variation": true,
                 "verbosity": 1,
                 "verification": 0
             },
+            "dftd3": {
+                "cutoff_cn": 40.0,
+                "cutoff_disp2": 60.0,
+                "cutoff_disp3": 40.0,
+                "cutoff_width2": 0.05,
+                "cutoff_width3": 0.0,
+                "damping": "rational",
+                "damping_values": "auto",
+                "method": "none",
+                "parameters": {
+                    "a1": 0.0,
+                    "a2": 0.0,
+                    "alp": 0.0,
+                    "beta": 0.0,
+                    "rs6": 0.0,
+                    "rs8": 0.0,
+                    "s6": 0.0,
+                    "s8": 0.0,
+                    "s9": 0.0
+                },
+                "three_body": true
+            },
+            "dftd4": {
+                "cutoff_cn": 30.0,
+                "cutoff_disp2": 60.0,
+                "cutoff_disp3": 40.0,
+                "cutoff_width2": 0.05,
+                "cutoff_width3": 0.0,
+                "damping": "rational",
+                "damping_values": "auto",
+                "method": "none",
+                "parameters": {
+                    "a1": 0.0,
+                    "a2": 0.0,
+                    "alp": 0.0,
+                    "bet": 0.0,
+                    "enable": false,
+                    "rs6": 0.0,
+                    "rs8": 0.0,
+                    "s6": 0.0,
+                    "s8": 0.0,
+                    "s9": 0.0
+                },
+                "three_body": true
+            },
             "hubbard": {
-                "constrained_calculation": false,
-                "constraint_beta_mixing": 0.4,
-                "constraint_error": 1e-06,
-                "constraint_max_iteration": 10,
-                "constraint_method": "energy",
-                "constraint_strength": 1.0,
-                "hubbard_subspace_method": "none",
+                "constraint": {
+                    "beta_mixing": 0.4,
+                    "error": 1e-06,
+                    "local": [],
+                    "maxiter": 10,
+                    "strength": 1.0,
+                    "type": "energy"
+                },
                 "local": [],
-                "local_constraint": [],
                 "nonlocal": [],
-                "simplified": false
+                "simplified": false,
+                "subspace_method": "none"
             },
             "iterative_solver": {
                 "converge_by_energy": 1,
@@ -50,11 +97,15 @@
                 "init_subspace": "lcao",
                 "locking": true,
                 "min_num_res": 0,
+                "min_occupancy": 1e-14,
+                "min_tolerance": 1e-13,
                 "num_singular": -1,
                 "num_steps": 20,
                 "relative_tolerance": 0,
                 "residual_tolerance": 1e-06,
                 "subspace_size": 2,
+                "tolerance_ratio": 0,
+                "tolerance_scale": [0.1,0.5],
                 "type": "exact"
             },
             "locked": true,
@@ -62,8 +113,8 @@
                 "beta": 0.5,
                 "beta0": 0.15,
                 "beta_scaling_factor": 1.0,
-                "linear_mix_rms_tol": 1000000.0,
                 "max_history": 8,
+                "rms_min": 1e-16,
                 "type": "anderson",
                 "use_hartree": false
             },
@@ -81,9 +132,12 @@
                 "aw_cutoff": 7.0,
                 "core_relativity": "dirac",
                 "density_tol": 1e-07,
+                "dftd3_correction": false,
+                "dftd4_correction": false,
                 "electronic_structure_method": "full_potential_lapwlo",
                 "energy_tol": 1e-10,
                 "extra_charge": 0,
+                "fixed_mag": 0,
                 "gamma_point": false,
                 "gk_cutoff": 3.5,
                 "hubbard_correction": false,
@@ -113,24 +167,26 @@
                 "veff_pw_cutoff": 0.0,
                 "vk": [],
                 "xc_dens_tre": -1,
-                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PW"]
+                "xc_functionals": ["XC_LDA_X","XC_LDA_C_PW"],
+                "xc_functionals_weight": []
             },
             "settings": {
-                "always_update_wf": true,
                 "auto_enu_tol": 0,
                 "fft_grid_size": [20,20,20],
                 "fp32_to_fp64_rms": 0,
-                "itsol_tol_min": 1e-13,
-                "itsol_tol_ratio": 0,
-                "itsol_tol_scale": [0.1,0.5],
-                "min_occupancy": 1e-14,
-                "mixer_rms_min": 1e-16,
                 "nprii_aug": 20,
                 "nprii_beta": 20,
                 "nprii_rho_core": 20,
                 "nprii_vloc": 200,
+                "pseudo_grid_cutoff": 10.0,
                 "radial_grid": "exponential, 1.0",
+                "real_occupation_matrix": false,
                 "sht_coverage": 0,
+                "sht_lmax": -1,
+                "simple_lapw_ri": false,
+                "smooth_initial_mag": false,
+                "tol_ne": 0.01,
+                "use_coarse_fft_grid": true,
                 "xc_use_lapl": false
             },
             "unit_cell": {
@@ -141,7 +197,7 @@
                 "atom_types": ["Fe"],
                 "atoms": {
                     "Fe": [
-                        [0.0,0.0,0.0]
+                        [0.0,0.0,0.0,0.0,0.0,1.0]
                     ]
                 },
                 "lattice_vectors": [
@@ -171,39 +227,41 @@
         "band_evp_work_count": 0.0,
         "local_operator_num_applied": 1440
     },
-    "git_hash": "a0d09bff305c7d162e6e43a792018b99bd33b276",
+    "git_hash": "909606e4fadb37e470d61b70dd9a1a6052aa1d60",
     "ground_state": {
         "band_gap": 0.0,
         "converged": true,
-        "core_leakage": 1.8974562688126637e-10,
-        "efermi": 0.3310241405155767,
+        "core_leakage": 1.8975678806046e-10,
+        "efermi": 0.331024096625388,
         "energy": {
-            "bxc": -0.07403839747301318,
-            "core_eval_sum": -721.5418575774703,
-            "entropy_sum": -1.6804584036851505e-05,
-            "enuc": -1527.9788076644306,
-            "eval_sum": -734.9267517235178,
+            "bxc": -0.07403837486091731,
+            "core_eval_sum": -721.5418402865631,
+            "dftd3": 0.0,
+            "dftd4": 0.0,
+            "entropy_sum": -1.6804819960775443e-05,
+            "enuc": -1527.9788954813175,
+            "eval_sum": -734.9267509156109,
             "ewald": 0.0,
-            "exc": -53.61174434774523,
-            "free": -1270.540096134383,
-            "kin": 1286.0631789395109,
-            "scf_correction": -2.055458026006818e-09,
-            "total": -1270.540079329799,
-            "veff": -2020.9158922655556,
-            "vha": -1950.0254125101567,
-            "vxc": -70.89047975818511
+            "exc": -53.611744197039265,
+            "free": -1270.5401154270137,
+            "kin": 1286.0633150664921,
+            "scf_correction": 2.1061623556306586e-09,
+            "total": -1270.5400986221937,
+            "veff": -2020.916027607242,
+            "vha": -1950.02554802487,
+            "vxc": -70.8904795851541
         },
-        "etot_history": [-1263.9644945286086,-1268.9060802634224,-1269.6527769146371,-1270.4421130308035,-1270.5023167959969,-1270.5410391055593,-1270.5414931037317,-1270.5406687148625,-1270.5404092959195,-1270.5401493281192,-1270.5400925133968,-1270.5400758379103,-1270.5400809063576,-1270.540079425347,-1270.540079316129,-1270.5400793270924,-1270.5400793297354,-1270.540079329799],
+        "etot_history": [-1270.4615837412587,-1270.4490190359813,-1270.3473244538936,-1270.539258154116,-1270.5400106231152,-1270.5405117711764,-1270.5405016931534,-1270.540111745608,-1270.540104935081,-1270.5401003891322,-1270.5400987524836,-1270.5400986062614,-1270.540098621593,-1270.54009861534,-1270.540098621954,-1270.5400986220973,-1270.5400986222003,-1270.5400986221937],
         "magnetisation": {
             "atoms": [
-                [0.0,0.0,1.9015257120052198]
+                [0.0,0.0,1.9015254559726538]
             ],
-            "total": [0.0,0.0,1.9999999999346363]
+            "total": [0.0,0.0,1.999999998465]
         },
         "num_scf_iterations": 17,
-        "rho_min": 0.03181271729135719,
-        "rms_history": [0.9760722153641768,0.3901005360832944,0.22974823264037925,0.07146930958128911,0.028832417585669717,0.031066433524300975,0.008761207485040104,0.002806375278511874,0.0016265154801708758,0.0005847632522019637,0.00015786649660443796,3.3789658014047585e-05,9.004369302505444e-06,1.2380457824376866e-06,9.877120648663631e-08,4.678723508474663e-08,1.6243406968967852e-09,5.892016688406519e-10],
-        "scf_time": 17.635762234
+        "rho_min": 0.03181272609098844,
+        "rms_history": [4.0564552645167415,2.0503784395193727,0.8858939227872885,0.04764544695675296,0.07185777914643253,0.07201823116145491,0.016389459653060188,0.009176845739704337,0.010065605281697533,0.0021774383135218928,0.000632840087954634,2.73220205265482e-05,2.2230740600350594e-06,8.361152587951594e-06,1.0878284489158512e-08,4.225896188449152e-09,5.864924774019603e-10,5.935349034939286e-10],
+        "scf_time": 5.56281225
     },
     "task": 0,
     "threads_per_rank": 16
