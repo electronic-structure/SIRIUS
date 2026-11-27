@@ -54,6 +54,7 @@ Potential::generate_d_mtrx()
                 auto const& type = unit_cell_.atom(ia).type();
                 auto& local      = external_uspp_d_mtrx_[ia];
                 if (!type.augment() || type.is_paw()) {
+                    /* remove non-contributing matrices */
                     local = mdarray<double, 3>{};
                     continue;
                 }
