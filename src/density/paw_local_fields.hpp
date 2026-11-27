@@ -72,8 +72,8 @@ class PAW_local_fields
     fields(mdarray<std::complex<double>, 3> const& dm__, bool include_core__ = true) const
     {
         int n = type_.indexb().size(), blocks = static_cast<int>(dm__.size(2));
-        if (dm__.size(0) != n || dm__.size(1) != n || (blocks < 1 || blocks > 3) ||
-            (type_.spin_orbit_coupling() && blocks != 3)) {
+        if (dm__.size(0) != static_cast<size_t>(n) || dm__.size(1) != static_cast<size_t>(n) ||
+            (blocks < 1 || blocks > 3) || (type_.spin_orbit_coupling() && blocks != 3)) {
             RTE_THROW("local PAW fields: incompatible density matrix");
         }
         bool spinor      = blocks == 3;

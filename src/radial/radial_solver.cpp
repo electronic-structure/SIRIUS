@@ -137,7 +137,7 @@ find_enu(relativity_t rel__, int zn__, int n__, int l__, Radial_grid<double> con
     };
 
     /* current surface derivative */
-    double sd = surface_deriv();
+    //double sd = surface_deriv();
     /* try several steps first */
     double denu{1e-5};
     //for (auto de: {1e-4, 1e-3, 1e-2, 1e-1}) {

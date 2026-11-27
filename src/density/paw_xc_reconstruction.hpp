@@ -81,9 +81,10 @@ class PAW_xc_reconstruction
     check_buffers(mdarray<double, 2> const& rho__, mdarray<double, 3> const& grad__,
                   mdarray<double, 2> const& tau__) const
     {
-        int ns     = ctx_.num_mag_dims() + 1;
-        int failed = rho__.size(0) != num_points_ || rho__.size(1) != ns || grad__.size(0) != num_points_ ||
-                     grad__.size(1) != 3 || grad__.size(2) != ns || tau__.size(0) != num_points_ || tau__.size(1) != ns;
+        size_t ns         = ctx_.num_mag_dims() + 1;
+        size_t num_points = num_points_;
+        int failed = rho__.size(0) != num_points || rho__.size(1) != ns || grad__.size(0) != num_points ||
+                     grad__.size(1) != 3 || grad__.size(2) != ns || tau__.size(0) != num_points || tau__.size(1) != ns;
         ctx_.comm().allreduce<int, mpi::op_t::max>(&failed, 1);
         if (failed) {
             RTE_THROW("PAW XC reconstruction: incompatible point buffers on a context rank");

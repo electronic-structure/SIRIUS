@@ -8,7 +8,6 @@ enu_from_potential(cmd_args const& args__)
 {
     auto species_file = args__.value<std::string>("species");
     auto pot_file     = args__.value<std::string>("potential");
-    auto rel          = get_relativity_t(args__.value<std::string>("rel", "none"));
 
     Simulation_parameters params;
     params.electronic_structure_method("full_potential_lapwlo");
@@ -52,7 +51,7 @@ enu_from_potential(cmd_args const& args__)
         }
     }
 
-    lapw_radial_basis_t rb{atype, relativity_t::none, veff};
+    lapw_radial_basis_t rb{atype, params.valence_relativity(), veff};
     rb.write_enu(std::cout);
 
     int ierr{0};
