@@ -465,6 +465,11 @@ K_point_set::find_band_occupancies()
     this->comm().allreduce<double, mpi::op_t::min>(&emin, 1);
     this->comm().allreduce<double, mpi::op_t::max>(&emax, 1);
 
+    // Smearing gives the edge levels partial occupations at their eigenvalues.
+    // The chemical potential for an empty or full spin channel lies outside them.
+    emin -= 64 * ctx_.smearing_width();
+    emax += 64 * ctx_.smearing_width();
+
     /* split number of bands between available ranks */
     splindex_block<> splb(ctx_.num_bands(), n_blocks(ctx_.comm_band().size()), block_id(ctx_.comm_band().rank()));
 
