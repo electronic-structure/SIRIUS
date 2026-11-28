@@ -147,6 +147,9 @@ ks_energy(Simulation_context const& ctx, std::map<std::string, double> const& en
     switch (ctx.electronic_structure_method()) {
         case electronic_structure_method_t::full_potential_lapwlo: {
             tot_en = energies.at("ekin") + energies.at("exc") + 0.5 * energies.at("vha") + energies.at("enuc");
+            if (ctx.cfg().parameters().dftd4_correction()) {
+                tot_en += energies.at("dftd4_energy");
+            }
             break;
         }
 
