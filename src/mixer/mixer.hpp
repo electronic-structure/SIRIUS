@@ -52,11 +52,11 @@ struct FunctionProperties
                        std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_,
                        std::function<void(double, double, FUNC&, FUNC&)> rotate_)
-        : inner(inner_)
-        , scal(scal_)
-        , copy(copy_)
-        , axpy(axpy_)
-        , rotate(rotate_)
+        : inner(std::move(inner_))
+        , scal(std::move(scal_))
+        , copy(std::move(copy_))
+        , axpy(std::move(axpy_))
+        , rotate(std::move(rotate_))
     {
     }
 
