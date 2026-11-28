@@ -12,6 +12,8 @@
  */
 
 #include <exception>
+#include <stdexcept>
+#include <utility>
 #include "core/power.hpp"
 #include "core/profiler.hpp"
 #include "core/serialize_mdarray.hpp"
@@ -34,7 +36,7 @@ namespace sirius {
  *  with alpha/r + beta tail. Bound states are found and accumulated in the core charge density. */
 static auto
 generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel__, std::vector<double> const& vs__,
-                             std::vector<double>& rho_core__)
+                             std::vector<double> const& previous_energies__, std::vector<double>& rho_core__)
 {
     std::fill(rho_core__.begin(), rho_core__.end(), 0.0);
 
@@ -96,9 +98,18 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
     /* atomic level energies */
     std::vector<double> level_energy(atom_type__.num_atomic_levels());
 
-    for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
-        level_energy[ist] = -1.0 * zn / 2 / std::pow(double(atom_type__.atomic_level(ist).n), 2);
-    }
+    auto find_bound_state = [&](int ist) {
+        auto const& level = atom_type__.atomic_level(ist);
+        if (previous_energies__.size() == level_energy.size()) {
+            try {
+                return Bound_state(core_rel__, zn, level.n, level.l, level.k, rgrid, veff, previous_energies__[ist]);
+            } catch (std::runtime_error const&) {
+                // Retry this level from the atomic initial guess below.
+            }
+        }
+        double enu = -zn / (2.0 * level.n * level.n);
+        return Bound_state(core_rel__, zn, level.n, level.l, level.k, rgrid, veff, enu);
+    };
 
     mdarray<double, 2> rho_t({rgrid.num_points(), atom_type__.num_atomic_levels()});
     rho_t.zero();
@@ -108,8 +119,7 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
         if (atom_type__.atomic_level(ist).core) {
             try {
                 /* search for the bound state */
-                Bound_state bs(core_rel__, zn, atom_type__.atomic_level(ist).n, atom_type__.atomic_level(ist).l,
-                               atom_type__.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
+                auto bs = find_bound_state(ist);
 
                 auto& rho = bs.rho();
                 for (int i = 0; i < rgrid.num_points(); i++) {
@@ -160,7 +170,7 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
         }
     }
 
-    return result_t{core_leakage, core_eval_sum, level_energy};
+    return result_t{core_leakage, core_eval_sum, std::move(level_energy)};
 }
 
 #if defined(SIRIUS_GPU)
@@ -239,14 +249,6 @@ Density::Density(Simulation_context& ctx__, bool kinetic_density__)
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
         rho_pseudo_core_ = std::make_unique<spf>(ctx_.spfft<double>(), ctx_.gvec_fft_sptr());
-    } else {
-        ae_core_charge_density_.resize(unit_cell_.num_atom_symmetry_classes());
-        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            ae_core_charge_density_[ic] =
-                    std::vector<double>(unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points());
-        }
-        core_eval_sum_.resize(unit_cell_.num_atom_symmetry_classes());
-        core_leakage_.resize(unit_cell_.num_atom_symmetry_classes());
     }
 
     l_by_lm_ = sf::l_by_lm(ctx_.lmax_rho());
@@ -277,6 +279,15 @@ Density::update()
         }
         if (!is_empty) {
             generate_pseudo_core_charge_density();
+        }
+    } else {
+        core_level_energies_.clear();
+        int nc = unit_cell_.num_atom_symmetry_classes();
+        ae_core_charge_density_.resize(nc);
+        core_eval_sum_.resize(nc);
+        core_leakage_.resize(nc);
+        for (int ic = 0; ic < nc; ic++) {
+            ae_core_charge_density_[ic].resize(unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points());
         }
     }
 }
@@ -314,6 +325,7 @@ Density::initial_density()
     zero();
 
     if (ctx_.full_potential()) {
+        core_level_energies_.clear();
         initial_density_full_pot();
     } else {
         initial_density_pseudo();
@@ -2342,6 +2354,7 @@ Density::save(std::string name__) const
 void
 Density::load(std::string name__)
 {
+    core_level_energies_.clear();
     HDF5_tree fin(name__, hdf5_access_t::read_only);
 
     int ngv;
@@ -2390,10 +2403,12 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
 
     mpi::pstdout pout(ctx_.comm());
     ctx_.comm().collective_call([&] {
+        core_level_energies_.resize(spl_idx.local_size());
         for (auto it : spl_idx) {
-            auto& type           = unit_cell_.atom_symmetry_class(it.i).atom_type();
-            auto result          = ::sirius::generate_core_charge_density(type, ctx_.core_relativity(), vs__[it.i],
-                                                                          ae_core_charge_density_[it.i]);
+            auto& energies = core_level_energies_[it.li];
+            auto& type     = unit_cell_.atom_symmetry_class(it.i).atom_type();
+            auto result    = ::sirius::generate_core_charge_density(type, ctx_.core_relativity(), vs__[it.i], energies,
+                                                                    ae_core_charge_density_[it.i]);
             core_leakage_[it.i]  = result.core_leakage;
             core_eval_sum_[it.i] = result.core_eval_sum;
             pout << "atom class : " << it.i << std::endl;
@@ -2404,6 +2419,7 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
                          << std::endl;
                 }
             }
+            energies = std::move(result.level_energy);
         }
     });
     for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {

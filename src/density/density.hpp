@@ -254,6 +254,9 @@ class Density : public Field4D
         the change of effective potential. */
     std::vector<std::vector<double>> ae_core_charge_density_;
 
+    /// Last converged core energies, indexed by local atom symmetry class and atomic level.
+    std::vector<std::vector<double>> core_level_energies_;
+
     /// Core eigen-value sum.
     std::vector<double> core_eval_sum_;
 
