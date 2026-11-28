@@ -58,6 +58,33 @@ generate_h_L(Atom_type const& type__, lapw_radial_basis_t const& rb__,
 
     //if (type__.parameters().cfg().settings().simple_lapw_ri()) {
     if (true) {
+        auto const& grid = type__.radial_grid();
+        // integrate(0) weights the k-th spline coefficient on a segment of width h by h^(k+1)/(k+1).
+        mdarray<double, 2> moments({nmtp, 4});
+        moments.zero();
+        for (int ir = 0; ir < nmtp - 1; ir++) {
+            double h  = grid.dx(ir);
+            double hk = h;
+            for (int k = 0; k < 4; k++) {
+                moments(ir, k) = hk / (k + 1);
+                hk *= h;
+            }
+        }
+        auto weights = Spline<double>(grid).interpolation_adjoint(moments);
+        // The interpolated nodal product includes the radial volume factor.
+        for (int ir = 0; ir < nmtp; ir++) {
+            weights[ir] *= grid.x(ir) * grid.x(ir);
+        }
+        auto radial_integral = [&](int lm, int i1, int i2, int component) {
+            auto const& field = (*vns__[component])[ia__];
+            double sum{0};
+            for (int ir = 0; ir < nmtp; ir++) {
+                sum += field(lm, ir) * rb__.radial_functions_(ir, i1, 0) * rb__.radial_functions_(ir, i2, 0) *
+                       weights[ir];
+            }
+            return sum;
+        };
+
         #pragma omp parallel for
         for (int lm = 0; lm < lmmax; lm++) {
             int l = l_by_lm[lm];
@@ -68,26 +95,14 @@ generate_h_L(Atom_type const& type__, lapw_radial_basis_t const& rb__,
                     int l1 = type__.indexr(i1).am.l();
                     if ((l + l1 + l2) % 2 == 0) {
                         if (lm) {
-                            Spline<double> s(type__.radial_grid());
-                            for (int ir = 0; ir < nmtp; ir++) {
-                                auto const& veff = (*vns__[0])[ia__](lm, ir);
-                                s(ir) = veff * rb__.radial_functions_(ir, i1, 0) * rb__.radial_functions_(ir, i2, 0) *
-                                        std::pow(type__.radial_grid(ir), 2);
-                            }
-                            h_L(lm, 0, i1, i2) = h_L(lm, 0, i2, i1) = s.interpolate().integrate(0);
+                            h_L(lm, 0, i1, i2) = h_L(lm, 0, i2, i1) = radial_integral(lm, i1, i2, 0);
                         } else {
                             /* copy spherical part */
                             h_L(lm, 0, i1, i2) = rb__.h_spherical_integrals_(i1, i2);
                             h_L(lm, 0, i2, i1) = rb__.h_spherical_integrals_(i2, i1);
                         }
                         for (int j = 0; j < num_mag_dims; j++) {
-                            Spline<double> s(type__.radial_grid());
-                            for (int ir = 0; ir < nmtp; ir++) {
-                                auto const& beff = (*vns__[idx_map[j]])[ia__](lm, ir);
-                                s(ir) = beff * rb__.radial_functions_(ir, i1, 0) * rb__.radial_functions_(ir, i2, 0) *
-                                        std::pow(type__.radial_grid(ir), 2);
-                            }
-                            h_L(lm, 1 + j, i1, i2) = h_L(lm, 1 + j, i2, i1) = s.interpolate().integrate(0);
+                            h_L(lm, 1 + j, i1, i2) = h_L(lm, 1 + j, i2, i1) = radial_integral(lm, i1, i2, idx_map[j]);
                         }
                     }
                 }
