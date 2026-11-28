@@ -27,7 +27,7 @@ xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vec
 {
     bool is_gga{false};
     for (auto& ixc : xc_func__) {
-        if (ixc.is_gga() || ixc.is_vdw()) {
+        if (ixc.is_gga()) {
             is_gga = true;
         }
     }
@@ -65,6 +65,9 @@ xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vec
     }
 
     for (auto& ixc : xc_func__) {
+        if (ixc.is_vdw() || (!ixc.is_lda() && !ixc.is_gga())) {
+            continue;
+        }
         /* if this is an LDA functional */
         if (ixc.is_lda()) {
             ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_tp__.at(memory_t::host),
@@ -105,8 +108,8 @@ xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vec
                 vxc_tp -= 2.0 * div_vsigma_grad_rho_tp;
             }
         }
-        exc_lm__ += transform(sht__, exc_tp);
-        vxc_lm__ += transform(sht__, vxc_tp);
+        exc_lm__ += ixc.weight() * transform(sht__, exc_tp);
+        vxc_lm__ += ixc.weight() * transform(sht__, vxc_tp);
     } // ixc
 }
 
@@ -117,7 +120,7 @@ xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag
 {
     bool is_gga{false};
     for (auto& ixc : xc_func__) {
-        if (ixc.is_gga() || ixc.is_vdw()) {
+        if (ixc.is_gga()) {
             is_gga = true;
         }
     }
@@ -201,6 +204,9 @@ xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag
     }
 
     for (auto& ixc : xc_func__) {
+        if (ixc.is_vdw() || (!ixc.is_lda() && !ixc.is_gga())) {
+            continue;
+        }
         if (ixc.is_lda()) {
             ixc.get_lda(sht__.num_points() * rgrid__.num_points(), rho_up_tp.at(memory_t::host),
                         rho_dn_tp.at(memory_t::host), vxc_up_tp.at(memory_t::host), vxc_dn_tp.at(memory_t::host),
@@ -300,11 +306,11 @@ xc_mt_magnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, int num_mag
         }
         /* convert magnetic field back to Rlm */
         for (int j = 0; j < num_mag_dims__; j++) {
-            *vxc__[j + 1] += transform(sht__, bxc_tp[j]);
+            *vxc__[j + 1] += ixc.weight() * transform(sht__, bxc_tp[j]);
         }
         /* forward transform from (theta, phi) to Rlm */
-        *vxc__[0] += transform(sht__, vxc_tp);
-        exc__ += transform(sht__, exc_tp);
+        *vxc__[0] += ixc.weight() * transform(sht__, vxc_tp);
+        exc__ += ixc.weight() * transform(sht__, exc_tp);
     } // ixc
 }
 

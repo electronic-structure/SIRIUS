@@ -172,11 +172,6 @@ Potential::Potential(Simulation_context& ctx__)
 
     vh_el_ = mdarray<double, 1>({unit_cell_.num_atoms()});
 
-    if (ctx_.full_potential()) {
-        gvec_ylm_ =
-                mdarray<std::complex<double>, 2>({ctx_.lmmax_pot(), ctx_.gvec().count()}, mdarray_label("gvec_ylm_"));
-    }
-
     aux_bf_ = mdarray<double, 2>({3, ctx_.unit_cell().num_atoms()});
     aux_bf_.zero();
 
@@ -225,9 +220,8 @@ Potential::update()
         generate_local_potential();
         ewald_energy_ = sirius::ewald_energy(ctx_, ctx_.gvec(), ctx_.unit_cell());
     } else {
-        gvec_ylm_ = generate_gvec_ylm(ctx_, ctx_.lmax_pot());
-
         auto lmax   = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+        gvec_ylm_   = generate_gvec_ylm(ctx_, lmax);
         sbessel_mt_ = generate_sbessel_mt(ctx_, lmax + pseudo_density_order_ + 1);
 
         /* compute moments of spherical Bessel functions

@@ -11,6 +11,7 @@
  *  \brief Contains partial implementation of sirius::K_point class.
  */
 
+#include <unordered_map>
 #include "k_point/k_point.hpp"
 #include "hamiltonian/non_local_operator.hpp"
 #include "core/la/inverse_sqrt.hpp"
@@ -392,7 +393,7 @@ K_point<T>::update()
 
     if (ctx_.full_potential()) {
         bool all_atoms = {false};
-        if (ctx_.cfg().iterative_solver().type() == "exact") {
+        if (ctx_.cfg().iterative_solver().type() == "exact" || !ctx_.cfg().control().use_second_variation()) {
             alm_coeffs_row_ = std::make_unique<Matching_coefficients>(unit_cell_, *gkvec_row_);
             alm_coeffs_col_ = std::make_unique<Matching_coefficients>(unit_cell_, *gkvec_col_);
         } else {
@@ -588,42 +589,52 @@ template <typename T>
 void
 K_point<T>::load(HDF5_tree h5in__)
 {
-    h5in__.read("band_energies", band_energies_);
-    h5in__.read("band_occupancies", band_occupancies_);
-    int num_gkvec_in;
-    h5in__.read("num_gkvec", &num_gkvec_in, 1);
-    if (num_gkvec_in != this->num_gkvec()) {
-        RTE_THROW("wrong number of G+k vectors");
-    }
-    int gklo_basis_size_in;
-    h5in__.read("gklo_basis_size", &gklo_basis_size_in, 1);
-    if (gklo_basis_size_in != this->gklo_basis_size()) {
-        RTE_THROW("wrong LAPW+lo basis size");
-    }
-    // read the order of G-vectors
-    mdarray<int, 2> gv({3, num_gkvec()});
-    h5in__.read("gvec", gv);
+    std::vector<int> file_index;
+    comm().collective_call([&] {
+        h5in__.read("band_energies", band_energies_);
+        h5in__.read("band_occupancies", band_occupancies_);
+        int num_gkvec_in;
+        h5in__.read("num_gkvec", &num_gkvec_in, 1);
+        if (num_gkvec_in != this->num_gkvec()) {
+            RTE_THROW("wrong number of G+k vectors");
+        }
+        int gklo_basis_size_in;
+        h5in__.read("gklo_basis_size", &gklo_basis_size_in, 1);
+        if (gklo_basis_size_in != this->gklo_basis_size()) {
+            RTE_THROW("wrong LAPW+lo basis size");
+        }
+        if (comm().rank() == 0) {
+            mdarray<int, 2> gv({3, num_gkvec()});
+            h5in__.read("gvec", gv);
+            std::unordered_map<r3::vector<int>, int, fft::r3_int_hash> index_by_gvec(num_gkvec());
+            for (int ig = 0; ig < num_gkvec(); ig++) {
+                index_by_gvec.emplace(r3::vector<int>(&gv(0, ig)), ig);
+            }
+            file_index.resize(num_gkvec());
+            for (int ig = 0; ig < num_gkvec(); ig++) {
+                auto it = index_by_gvec.find(gkvec().gvec(gvec_index_t::global(ig)));
+                if (it == index_by_gvec.end()) {
+                    RTE_THROW("saved wave functions have a different G-vector set");
+                }
+                file_index[ig] = it->second;
+            }
+        }
+    });
 
-    std::vector<std::complex<T>> tmp(num_gkvec());
-
+    std::vector<std::complex<T>> tmp(file_index.size());
+    std::vector<std::complex<T>> wf(num_gkvec() + unit_cell_.mt_aw_basis_size() + unit_cell_.mt_lo_basis_size());
     for (int i = 0; i < ctx_.num_bands(); i++) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* gather wave-functions */
-            std::vector<std::complex<T>> wf(num_gkvec() + unit_cell_.mt_aw_basis_size() +
-                                            unit_cell_.mt_lo_basis_size());
-            if (comm().rank() == 0) {
-                h5in__["bands"][i]["spinor_wave_function"][ispn].read("coeffs", wf);
-                /* now we need to rearrange G-vectors in the new order */
-                #pragma omp parallel for
-                for (int i = 0; i < num_gkvec(); i++) {
-                    auto gv_old = r3::vector<int>(gv(0, i), gv(1, i), gv(2, i));
-                    /* index in the new order */
-                    int ig  = this->gkvec().index_by_gvec(gv_old);
-                    tmp[ig] = wf[i];
+            comm().collective_call([&] {
+                if (comm().rank() == 0) {
+                    h5in__["bands"][i]["spinor_wave_function"][ispn].read("coeffs", wf);
+                    #pragma omp parallel for
+                    for (int ig = 0; ig < num_gkvec(); ig++) {
+                        tmp[ig] = wf[file_index[ig]];
+                    }
+                    std::copy(tmp.begin(), tmp.end(), wf.begin());
                 }
-                /* replace the order */
-                std::copy(wf.begin(), wf.begin() + num_gkvec(), tmp.begin());
-            }
+            });
             comm().bcast(wf.data(), wf.size(), 0);
             this->spinor_wave_functions().scatter(wf, wf::spin_index(ispn), wf::band_index(i));
         }

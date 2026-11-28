@@ -11,6 +11,7 @@
  *  \brief Contains implementation of sirius::Density class.
  */
 
+#include <exception>
 #include "core/power.hpp"
 #include "core/profiler.hpp"
 #include "core/serialize_mdarray.hpp"
@@ -101,20 +102,33 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
 
     mdarray<double, 2> rho_t({rgrid.num_points(), atom_type__.num_atomic_levels()});
     rho_t.zero();
+    std::exception_ptr eptr{nullptr};
     #pragma omp parallel for
     for (int ist = 0; ist < atom_type__.num_atomic_levels(); ist++) {
         if (atom_type__.atomic_level(ist).core) {
-            /* serch for the bound state */
-            Bound_state bs(core_rel__, zn, atom_type__.atomic_level(ist).n, atom_type__.atomic_level(ist).l,
-                           atom_type__.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
+            try {
+                /* search for the bound state */
+                Bound_state bs(core_rel__, zn, atom_type__.atomic_level(ist).n, atom_type__.atomic_level(ist).l,
+                               atom_type__.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
 
-            auto& rho = bs.rho();
-            for (int i = 0; i < rgrid.num_points(); i++) {
-                rho_t(i, ist) = atom_type__.atomic_level(ist).occupancy * rho(i) / fourpi;
+                auto& rho = bs.rho();
+                for (int i = 0; i < rgrid.num_points(); i++) {
+                    rho_t(i, ist) = atom_type__.atomic_level(ist).occupancy * rho(i) / fourpi;
+                }
+
+                level_energy[ist] = bs.enu();
+            } catch (...) {
+                #pragma omp critical
+                {
+                    if (!eptr) {
+                        eptr = std::current_exception();
+                    }
+                }
             }
-
-            level_energy[ist] = bs.enu();
         }
+    }
+    if (eptr) {
+        std::rethrow_exception(eptr);
     }
 
     /* charge density */
@@ -1785,8 +1799,9 @@ Density::reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::comple
     for (int idxrf2 = 0; idxrf2 < atom_type__.mt_radial_basis_size(); idxrf2++) {
         int l2 = atom_type__.indexr(idxrf2).am.l();
         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
-            int offs = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-            int l1   = atom_type__.indexr(idxrf1).am.l();
+            int offs       = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+            int l1         = atom_type__.indexr(idxrf1).am.l();
+            double const f = (idxrf1 == idxrf2) ? 1.0 : 2.0;
 
             int xi2 = atom_type__.indexb().index_of(rf_index(idxrf2));
             for (int lm2 = sf::lm(l2, -l2); lm2 <= sf::lm(l2, l2); lm2++, xi2++) {
@@ -1794,17 +1809,24 @@ Density::reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::comple
                 for (int lm1 = sf::lm(l1, -l1); lm1 <= sf::lm(l1, l1); lm1++, xi1++) {
                     for (int k = 0; k < atom_type__.gaunt_coefs().num_gaunt(lm1, lm2); k++) {
                         int lm3 = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).lm3;
+                        if (lm3 >= static_cast<int>(mt_density_matrix__.size(0))) {
+                            break;
+                        }
                         auto gc = atom_type__.gaunt_coefs().gaunt(lm1, lm2, k).coef;
                         switch (num_mag_dims) {
                             case 3: {
-                                mt_density_matrix__(lm3, offs, 2) += 2.0 * std::real(zdens__(xi1, xi2, 2) * gc);
-                                mt_density_matrix__(lm3, offs, 3) -= 2.0 * std::imag(zdens__(xi1, xi2, 2) * gc);
+                                auto z = zdens__(xi1, xi2, 2) * gc;
+                                if (idxrf1 != idxrf2) {
+                                    z += zdens__(xi2, xi1, 2) * std::conj(gc);
+                                }
+                                mt_density_matrix__(lm3, offs, 2) += 2.0 * std::real(z);
+                                mt_density_matrix__(lm3, offs, 3) -= 2.0 * std::imag(z);
                             }
                             case 1: {
-                                mt_density_matrix__(lm3, offs, 1) += std::real(zdens__(xi1, xi2, 1) * gc);
+                                mt_density_matrix__(lm3, offs, 1) += f * std::real(zdens__(xi1, xi2, 1) * gc);
                             }
                             case 0: {
-                                mt_density_matrix__(lm3, offs, 0) += std::real(zdens__(xi1, xi2, 0) * gc);
+                                mt_density_matrix__(lm3, offs, 0) += f * std::real(zdens__(xi1, xi2, 0) * gc);
                             }
                         }
                     }
@@ -1915,10 +1937,8 @@ Density::generate_valence_mt(LAPW_radial_basis const& lapw_basis__)
         for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++) {
             int offs = idxrf2 * (idxrf2 + 1) / 2;
             for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
-                /* off-diagonal pairs are taken two times: d_{12}*f_1*f_2 + d_{21}*f_2*f_1 = d_{12}*2*f_1*f_2 */
-                int n = (idxrf1 == idxrf2) ? 1 : 2;
                 for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
-                    rf_pairs(ir, offs + idxrf1) = n * rb.radial_function(ir, idxrf1) * rb.radial_function(ir, idxrf2);
+                    rf_pairs(ir, offs + idxrf1) = rb.radial_function(ir, idxrf1) * rb.radial_function(ir, idxrf2);
                 }
             }
         }
@@ -2369,7 +2389,7 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
     auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
 
     mpi::pstdout pout(ctx_.comm());
-    try {
+    ctx_.comm().collective_call([&] {
         for (auto it : spl_idx) {
             auto& type           = unit_cell_.atom_symmetry_class(it.i).atom_type();
             auto result          = ::sirius::generate_core_charge_density(type, ctx_.core_relativity(), vs__[it.i],
@@ -2385,17 +2405,13 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
                 }
             }
         }
-
-        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
-            auto rank = spl_idx.location(ic).ib;
-            ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
-                              unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
-            ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
-            ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
-        }
-    } catch (std::exception const& e) {
-        RTE_OUT(ctx_.out()) << "Warning: generation of core charge density failed" << std::endl
-                            << e.what() << std::endl;
+    });
+    for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+        auto rank = spl_idx.location(ic).ib;
+        ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
+                          unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+        ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
+        ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
     }
     RTE_OUT(ctx_.out(3)) << pout.flush(0);
 }

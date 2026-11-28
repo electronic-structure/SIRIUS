@@ -24,6 +24,8 @@
 #include <cstring>
 #include <cstdio>
 #include <map>
+#include <stdexcept>
+#include <string>
 
 namespace sirius {
 
@@ -591,6 +593,29 @@ class Communicator
         bcast(buf, sz + 1, root__);
         str__ = std::string(buf);
         delete[] buf;
+    }
+
+    /// Run local work and propagate any exception to all ranks before the next collective.
+    template <typename F>
+    void
+    collective_call(F&& f__) const
+    {
+        int failed_rank{-1};
+        std::string message;
+        try {
+            f__();
+        } catch (std::exception const& e) {
+            failed_rank = rank();
+            message     = e.what();
+        } catch (...) {
+            failed_rank = rank();
+            message     = "unknown exception in collective_call";
+        }
+        allreduce<int, op_t::max>(&failed_rank, 1);
+        if (failed_rank >= 0) {
+            bcast(message, failed_rank);
+            throw std::runtime_error(message);
+        }
     }
 
     /// In-place MPI_Allgatherv.

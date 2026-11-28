@@ -268,6 +268,9 @@ radial_integrals_sum_L3(std::array<std::complex<double>, N> const& coefficients_
     std::complex<double> result{0};
 
     for (auto const& g : gnt__) {
+        if (g.lm3 >= ld__) {
+            break;
+        }
         std::complex<double> z{0};
 
         for (int j = 0; j < N; j++) {
@@ -465,7 +468,7 @@ Hamiltonian0<T>::Hamiltonian0(Potential& potential__, std::shared_ptr<LAPW_radia
             RTE_THROW("LAPW radial basis is not provided");
         }
 
-        if (ctx_.cfg().iterative_solver().type() == "exact") {
+        if (ctx_.cfg().iterative_solver().type() == "exact" || !ctx_.cfg().control().use_second_variation()) {
             this->generate_pw_coefs(potential__);
         }
 
@@ -696,6 +699,8 @@ void
 Hamiltonian0<T>::apply_so_correction(wf::Wave_functions<T>& psi__, std::vector<wf::Wave_functions<T>>& hpsi__) const
 {
     PROFILE("sirius::Hamiltonian0::apply_so_correction");
+
+    RTE_ASSERT(hpsi__.size() == 3);
 
     wf::spin_index s(0);
 

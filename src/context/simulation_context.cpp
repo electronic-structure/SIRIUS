@@ -302,8 +302,13 @@ Simulation_context::initialize()
         }
     }
 
-    /* set default values for the G+k-vector cutoff */
     if (full_potential()) {
+        if (so_correction() && num_mag_dims() != 3) {
+            RTE_THROW("Spin-orbit correction in FP-LAPW requires num_mag_dims == 3");
+        }
+        if (num_mag_dims() == 3 && !cfg().control().use_second_variation()) {
+            RTE_THROW("Noncollinear FP-LAPW requires second variation");
+        }
         /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
         if (aw_cutoff() > 0) {
             gk_cutoff(aw_cutoff() / unit_cell().min_mt_radius());

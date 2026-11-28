@@ -191,6 +191,12 @@ class Matching_coefficients // TODO: compute on GPU
         if (all_atoms_) {
             alm_all_atoms_ = mdarray<std::complex<double>, 2>({gkvec_.count(), unit_cell_.mt_aw_basis_size()},
                                                               mdarray_label("alm_all_atoms"));
+            int num_mt_aw{0};
+            mt_aw_offset_.resize(unit_cell_.num_atoms());
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                mt_aw_offset_[ia] = num_mt_aw;
+                num_mt_aw += unit_cell_.atom(ia).mt_aw_basis_size();
+            }
         }
     }
 
@@ -341,11 +347,8 @@ class Matching_coefficients // TODO: compute on GPU
     {
         PROFILE("sirius::Matching_coefficients::generate");
 
-        int num_mt_aw{0};
-        mt_aw_offset_ = std::vector<int>(unit_cell_.num_atoms());
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            mt_aw_offset_[ia] = num_mt_aw;
-            num_mt_aw += unit_cell_.atom(ia).mt_aw_basis_size();
+        if (!all_atoms_) {
+            RTE_THROW("Matching coefficients for all atoms were not allocated");
         }
 
         #pragma omp parallel for

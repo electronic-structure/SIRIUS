@@ -360,7 +360,7 @@ Hamiltonian_k<T>::set_fv_h_o(int ispn__, la::dmatrix<std::complex<T>>& h__, la::
     // TODO: use generate_alm_block()
 
     /* maximum number of apw coefficients in the block of atoms */
-    int max_mt_aw = num_atoms_in_block * uc.max_mt_aw_basis_size();
+    int max_mt_aw = std::min(uc.num_atoms(), num_atoms_in_block) * uc.max_mt_aw_basis_size();
     /* current processing unit */
     auto pu = H0_.ctx().processing_unit();
 
@@ -805,7 +805,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     PROFILE("sirius::Hamiltonian_k::apply_fv_h_o");
 
     /* trivial case */
-    if (hphi__ == nullptr && ophi__ == nullptr) {
+    if ((hphi__ == nullptr && ophi__ == nullptr) || b__.size() == 0) {
         return;
     }
 
@@ -1030,7 +1030,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
         size_t nops{0};
         int nat_loc_alm = alm_phi__.spl_num_atoms().local_size();
         /* dispatch one async gemm per atom, round-robin over GPU streams */
-        #pragma omp parallel for
+        #pragma omp parallel for reduction(+ : nops)
         for (int ialoc = 0; ialoc < nat_loc_alm; ialoc++) {
             int tid    = omp_get_thread_num();
             auto aidx  = atom_index_t::local(ialoc);
@@ -1298,14 +1298,14 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                     auto mg1 = alm_phi_slab.memory_guard(mem, wf::copy_to::device);
                     auto mg2 = halm_phi_slab.memory_guard(mem, wf::copy_to::host);
                     flop += appy_hmt_apw_apw(atom_begin, alm_phi_slab, halm_phi_slab);
-
-                    if (pcs) {
-                        auto cs1 = alm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), b__);
-                        auto cs2 = halm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), b__);
-                        if (comm.rank() == 0) {
-                            print_checksum("alm_phi_slab", cs1, RTE_OUT(std::cout));
-                            print_checksum("halm_phi_slab", cs2, RTE_OUT(std::cout));
-                        }
+                }
+                if (pcs) {
+                    auto br_loc = wf::band_range(0, b__.size());
+                    auto cs1    = alm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), br_loc);
+                    auto cs2    = halm_phi_slab.checksum_mt(memory_t::host, wf::spin_index(0), br_loc);
+                    if (comm.rank() == 0) {
+                        print_checksum("alm_phi_slab", cs1, RTE_OUT(std::cout));
+                        print_checksum("halm_phi_slab", cs2, RTE_OUT(std::cout));
                     }
                 }
 
@@ -1327,7 +1327,7 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
                                 halm_phi.ld(), 0, 0, halm_phi.spla_distribution(), one,
                                 hphi__->at(mem, 0, wf::spin_index(0), wf::band_index(b__.begin())), hphi__->ld(),
                                 ctx.spla_context());
-                flop += 8 * ngv * b__.size() * num_mt_aw;
+                flop += 8L * ngv * b__.size() * num_mt_aw;
                 if (pcs) {
                     auto cs = hphi__->checksum_pw(mem, wf::spin_index(0), b__);
                     if (comm.rank() == 0) {
@@ -1423,8 +1423,13 @@ Hamiltonian_k<T>::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, wf::band_range
     }
     PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|mt");
 
-    if (is_device_memory(mem) && ophi__) {
-        ophi__->copy_mt_to(mem, wf::spin_index(0), b__);
+    if (is_device_memory(mem)) {
+        if (ophi__) {
+            ophi__->copy_mt_to(mem, wf::spin_index(0), b__);
+        } else if (!apw_only__ && ctx.unit_cell().mt_lo_basis_size()) {
+            // H-only calls skip the blocking overlap copy. Finish the LO GEMMs before releasing tmp.
+            acc::sync();
+        }
     }
 
     if (pp && comm.rank() == 0) {
